@@ -12,5 +12,5 @@ trigger: always_on
 - **Standard Commands**: Ensure the following standard verbs are always present and mapped to their language-specific equivalents: `build`, `run`, `test`, `lint`.
 
 ## 2. Containerization First
-- **Docker by Default**: Always include a minimal `Dockerfile` for any new service, API, or persistent background job created. Skip for standalone scripts, CLIs, or single-file utilities.
+- **Docker by Default**: Always include a minimal `Dockerfile` for any new service, API, or persistent background job created. Skip for standalone scripts, CLIs, single-file utilities, or serverless functions where containerless deployment is standard.
 - **Optimization**: Dockerfiles MUST be multi-stage, optimized for final image size (e.g., using alpine or scratch base images), and structured to maximize layer caching.

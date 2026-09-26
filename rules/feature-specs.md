@@ -34,5 +34,4 @@ Group the technical implementation into logical layers:
 - Use behavioral checklists (e.g., Given/When/Then formats) that map directly to the sad-paths and edge cases.
 
 ## 6. Documentation Deliverables
-- **README or Inline Docs**: Every feature must include documentation covering: what it does, how to run it, and any required environment variables or prerequisites.
-- **ADR if Architectural**: If a significant architectural decision was made during the feature, draft a lightweight ADR (Context, Decision, Consequences).
+- Deliver documentation adhering to `documentation.md` standards (actionable READMEs and lightweight ADRs for architectural decisions).

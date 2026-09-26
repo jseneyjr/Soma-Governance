@@ -3,13 +3,16 @@ name: Destructive Ops Safety
 description: Mandates dry-runs and explicit cost-warnings for infrastructure-as-code state mutations.
 trigger: model_decision
 ---
-# Infrastructure Safety Net
+# State-Mutating Operations Safety Net
 
-> **Role**: This rule acts as a safety boundary for Infrastructure as Code (IaC) to prevent accidental cloud spend, data loss, or unintentional resource mutations.
+> **Role**: This rule acts as a safety boundary for destructive or state-mutating operations to prevent accidental data loss, cloud spend, or unintentional resource mutations.
 
 ## 1. Dry-Run Mandate
-- **No Blind Applies**: Never automatically execute commands that mutate infrastructure state (e.g., `terraform apply`, `kubectl apply`, `aws cloudformation deploy`) without explicit permission.
-- **Mandatory Plans**: Always run the dry-run equivalent first (e.g., `terraform plan`, `kubectl diff`) and present the output. Explicitly pause and require the user's sign-off before proceeding with the destructive/mutating operation.
+- **No Blind Applies**: Never automatically execute commands that mutate state without explicit permission. This includes:
+  1. **Cloud Infrastructure**: `terraform apply`, `kubectl apply`, `aws cloudformation deploy`
+  2. **Database Mutations**: `DROP TABLE`, `prisma migrate reset`, destructive migrations
+  3. **Filesystem/Git**: `rm -rf`, `git reset --hard`, `git push --force`, recursive deletes
+- **Mandatory Plans**: Always run the dry-run equivalent first (e.g., `terraform plan`, `kubectl diff`, `git diff`) and present the output. Explicitly pause and require the user's sign-off before proceeding.
 
 ## 2. Cost-Warning System
 - **Flag Persistent Costs**: Before applying any infrastructure change, explicitly flag if the change introduces a persistently running resource (e.g., an EC2 instance, an RDS instance, a NAT Gateway, or an un-capped load balancer).

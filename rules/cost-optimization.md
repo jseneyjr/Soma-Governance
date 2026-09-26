@@ -9,7 +9,7 @@ trigger: always_on
 
 ## 1. No Conversational Filler
 - **Zero Fluff**: Skip pleasantries, restatements of the problem, and excessive explanations unless explicitly asked.
-- **Never Sacrifice Accuracy**: Cost savings must never come at the expense of correctness. Never kill a research subagent early or skip codebase verification to save tokens. The providence governance rule always takes precedence.
+- **Never Sacrifice Accuracy**: Cost savings must never come at the expense of correctness. Never kill a research subagent early or skip codebase verification to save tokens. The providence governance rule always takes precedence. Engineering trade-off analyses (per architectural-tenets) and evidence citations (per providence) are essential deliverables, not conversational fluff.
 - **Direct Answers**: Provide the solution or code immediately.
 
 ## 2. Diffs Only

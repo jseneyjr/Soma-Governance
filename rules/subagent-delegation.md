@@ -20,7 +20,7 @@ trigger: always_on
 
 ## 3. Cost & Workspace Isolation
 - **Model Downgrading**: Per the cost-optimization protocol.
-- **Branch Workspaces**: Only use `branch` workspace mode for subagents performing genuinely destructive operations (e.g., deleting files, rewriting core modules). For additive tasks like creating new files, writing tests, or generating boilerplate, use the default `inherit` workspace so files land directly in the project.
+- **Branch Workspaces**: Only use `branch` workspace mode for subagents performing genuinely destructive operations (e.g., deleting files, rewriting core modules). For additive tasks like creating new files, writing tests, or generating boilerplate, use the default `inherit` workspace mode so files land directly in the project.
 
 ## 4. Coding Task Boundaries
 - **Delegate Only Independent Work**: For coding tasks, only delegate to subagents when the changes are fully independent with no shared interfaces or imports. Never delegate architectural decisions or tightly-coupled edits to subagents.
