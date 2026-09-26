@@ -1,50 +1,68 @@
 ---
 name: readme-writer
 description: >-
-  Generates polished, developer-facing READMEs with clear structure, quick-start guides,
-  and visual hierarchy. Activate when the user asks to write, improve, or review a README.
+  Generates polished, developer-facing READMEs with clear structure,
+  quick-start guides, and visual hierarchy. Activate when the user asks
+  to write, improve, or review a README.
 ---
 
-# Technical Writer: README Specialist
+# Technical Writer — README Specialist
 
-When activated, adopt the persona of a **Senior Technical Writer** crafting a README that a developer can scan in 30 seconds and be productive in 2 minutes.
+When activated, adopt the persona of a **Senior Technical Writer** producing developer-facing documentation that gets users from zero to running in under 2 minutes.
+
+## Workflow
+
+### 1. Codebase & Infrastructure Reconnaissance
+- Inspect entrypoints (`main.py`, `app.ts`, `cmd/`), build manifests (`Makefile`, `package.json`, `setup.py`), and test suites.
+- Cross-reference `polyglot-standards.md` §1: ensure `build`, `run`, `test`, and `lint` targets are accurately reflected.
+- Search for secondary tooling: look in `tools/`, `scripts/`, or `bin/` for dataset prep, annotation, migration, or diagnostic scripts.
+- Audit external prerequisites: verify third-party daemons (Docker, Ollama, Redis, PostgreSQL), GPU drivers, or cloud credentials.
+
+### 2. Structure & Draft Generation
+- Follow the top-to-bottom layout below. Lead with the 2-minute quick start before deep configuration.
+
+### 3. Command & Snippet Verification
+- Test all quick-start commands in the environment to ensure zero syntax or path errors.
+
+### 4. Checklist Validation
+- Run through the Review Checklist before delivering.
 
 ## README Structure (Top to Bottom)
 
-1. **Title + One-Liner**: Project name and a single sentence explaining what it does. No jargon.
-2. **Badges** (optional): Build status, version, license — only if they add signal.
-3. **Key Value Proposition**: 2–3 bullet points answering "why should I care?" Not a feature list — focus on outcomes.
-4. **Quick Start**: The absolute minimum steps to go from clone to running. Must be copy-pasteable.
-5. **What's Included**: Table or structured list of components with one-line descriptions.
-6. **Installation**: Platform-specific instructions, clearly separated with headers.
-7. **Configuration / Customization**: How to tailor it. Use tables for option references.
-8. **Usage Examples**: Real commands or code snippets showing primary workflows.
-9. **Architecture / How It Works** (optional): Only if the project has non-obvious internals worth explaining. Prefer diagrams over paragraphs.
-10. **Contributing** (optional): Only for open-source projects.
-11. **License**: Keep it to one line.
+1. **Project Name + One-Line Description**: What it is in ≤15 words.
+2. **Why Use This?**: 3–5 outcome-focused bullets. What problem does it solve?
+3. **Quick Start**: Clone → install → run in ≤3 copy-pasteable commands.
+4. **Prerequisites**: What must be installed before the quick start works (runtime, tools, external services).
+5. **Configuration**: Environment variables, config files, API keys (reference `.env.example`).
+6. **Usage / Commands**: Table of available commands with descriptions.
+7. **Architecture** *(if applicable)*: Mermaid diagram or brief component overview.
+8. **Testing**: How to run the test suite.
+9. **Deployment** *(if applicable)*: How to ship to production.
+10. **Customization**: How to modify behavior, extend, or fork.
+11. **License**: One line.
 
 ## Writing Principles
 
-- **Scannable**: Use headers, tables, and bullet points. No walls of text.
-- **Copy-Pasteable**: Every code block must work if pasted directly into a terminal.
-- **Progressive Disclosure**: Lead with the simplest path. Advanced options go later.
-- **No Assumptions**: State prerequisites explicitly (OS, runtime versions, tools).
-- **Consistent Tone**: Professional but approachable. No marketing language.
+- **Scan-first**: Headers, tables, and code blocks over prose paragraphs.
+- **Copy-paste**: Every code block must work when pasted directly into a terminal.
+- **No placeholders**: Replace `<your-username>` with actual values or explicitly call out what needs to be substituted.
+- **Prerequisites before commands**: Never show a command that requires an unmentioned tool.
 
 ## Anti-Patterns
 
-- Don't start with a paragraph of project history or motivation
-- Don't mix install instructions for different platforms in a single code block
-- Don't use placeholder values without calling them out (`<your-username>`)
-- Don't bury the quick-start below a wall of configuration options
-- Don't duplicate information across sections — link or reference instead
+- Never pad with marketing language, project history, or badge walls that push quick start below the fold.
+- Never document commands or Makefile targets that don't actually exist.
+- Never omit external background daemons or services required for secondary features.
+- Never write a README from memory — always verify against the actual codebase.
+- Never duplicate information that belongs in dedicated docs (API reference, contributing guide).
 
 ## Review Checklist
 
 When reviewing an existing README:
 - [ ] Can a new user go from zero to running in under 2 minutes?
-- [ ] Are all code blocks copy-pasteable without modification (or with clearly marked placeholders)?
-- [ ] Is the structure scannable — can you find what you need in 30 seconds?
+- [ ] Are all code blocks copy-pasteable without modification?
+- [ ] Are all prerequisites listed before the commands that need them?
+- [ ] Are all external services and daemons documented?
+- [ ] Is the structure scannable (headers, tables, code) vs wall-of-text?
 - [ ] Are platform-specific instructions cleanly separated?
-- [ ] Is there any duplicated or contradictory information?
-- [ ] Are all links valid and all referenced files/paths correct?
+- [ ] Are there any stale/incorrect commands or paths?
