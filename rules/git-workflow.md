@@ -1,7 +1,7 @@
 ---
 name: Git Workflow Standards
 description: Enforces consistent git practices across all projects with version control. Activate when working in a git-tracked repository.
-trigger: conditional
+trigger: model_decision
 ---
 # Git Workflow Standards
 

@@ -1,7 +1,7 @@
 ---
 name: Polyglot Standards
 description: Enforces unified entrypoints (Makefiles/Justfiles) and containerization across all tech stacks.
-trigger: always_on
+trigger: model_decision
 ---
 # Cross-Stack Consistency Standards
 

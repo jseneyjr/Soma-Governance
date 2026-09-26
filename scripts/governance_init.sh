@@ -23,9 +23,9 @@ CRITICAL="$LOGS_REPO/governance/pending_critical.md"
 AUTO_LOG="$LOGS_REPO/governance/auto_applied_log.jsonl"
 EXPORT_SCRIPT="$HOME/.gemini/antigravity/scratch/ai-steering-rules/scripts/export_logs.sh"
 
-# Run log export if script exists
+# Run log export async (non-blocking — avoid 2-5s startup delay)
 if [ -x "$EXPORT_SCRIPT" ]; then
-    bash "$EXPORT_SCRIPT" > /dev/null 2>&1 || true
+    bash "$EXPORT_SCRIPT" > /dev/null 2>&1 &
 fi
 
 # Check for CRITICAL findings only (non-critical are auto-applied by the pipeline)
