@@ -44,7 +44,7 @@ Rules take effect on your next conversation turn. No restart needed.
 - **`always_on`** — Loaded every turn. Non-negotiable governance. (~2,815 tokens)
 - **`model_decision`** — Model sees the name/description and loads full content only when relevant. (~15 tokens idle)
 
-### Skills (4 expert personas)
+### Skills (7 expert personas)
 
 Skills auto-activate based on your task. Zero tokens until invoked.
 
@@ -54,6 +54,9 @@ Skills auto-activate based on your task. Zero tokens until invoked.
 | `security-audit` | You ask to check security or audit endpoints. AppSec Engineer persona: OWASP Top 10 baseline. |
 | `incident-debug` | You report a crash, hang, or error. SRE persona: reproduce → isolate → diagnose → fix → verify. |
 | `readme-writer` | You ask to write or improve a README. Technical Writer persona: scannable structure, copy-pasteable quick-starts. |
+| `performance-audit` | You ask to optimize or profile code. Performance Engineer persona: hot-path allocations, O(n²), GC pressure, resource utilization. |
+| `post-mortem` | You ask to review a past session or do a retrospective. SRE Facilitator persona: blameless analysis, pattern extraction, actionable recommendations. |
+| `refactoring-pilot` | You ask to refactor or restructure 4+ files. Refactoring Specialist persona: Mikado Method, incremental moves, safety nets. |
 
 ## Installation Details
 
@@ -131,18 +134,21 @@ Copilot doesn't support conditional triggers — all rules are always active.
 | Skill | Idle Cost | Full Cost (when activated) |
 |:------|:----------|:--------------------------|
 | `readme-writer` | ~45 | ~689 |
-| `incident-debug` | ~60 | ~469 |
+| `refactoring-pilot` | ~65 | ~629 |
+| `post-mortem` | ~60 | ~596 |
+| `performance-audit` | ~65 | ~496 |
+| `incident-debug` | ~60 | ~493 |
 | `security-audit` | ~62 | ~417 |
 | `code-review` | ~55 | ~376 |
-| **Subtotal** | **~222** | **~1,951** |
+| **Subtotal** | **~412** | **~3,696** |
 
 ### Conditional Loading Savings
 
 | Approach | Tokens/Turn |
 |:---------|:------------|
-| **Naive** — all 9 rules + 4 skills always loaded | ~6,854 |
-| **Optimized** — conditional rules + skills idle | ~3,165 |
-| **Savings** | **~3,689 tokens/turn (54%)** |
+| **Naive** — all 9 rules + 7 skills always loaded | ~9,046 |
+| **Optimized** — conditional rules + skills idle | ~3,355 |
+| **Savings** | **~5,691 tokens/turn (63%)** |
 
 The optimized setup delivers the same governance coverage at 46% of the naive token cost. Conditional rules and skills only expand to full cost on the specific turns where they're relevant.
 
