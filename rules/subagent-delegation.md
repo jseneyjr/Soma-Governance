@@ -15,12 +15,12 @@ trigger: always_on
   3. Isolated refactors or boilerplate generation that do not require full system context.
 
 ## 2. Parallel Execution
-- **Fan-Out Tasks**: When multiple independent tasks must be done (e.g., updating 5 unrelated files, researching 3 different libraries), always spin up multiple subagents concurrently rather than executing sequentially.
+- **Fan-Out Tasks**: When multiple independent tasks must be done (e.g., researching 3 libraries with `flash`, or batching file edits within the heavy-model concurrency cap), spin up subagents concurrently rather than executing sequentially.
 - **Fire-and-Forget**: Dispatch tasks clearly and wait for the subagents to report back with succinct summaries.
 
 ## 3. Cost & Workspace Isolation
 - **Model Downgrading**: Per the cost-optimization protocol.
-- **Branch Workspaces**: Only use `branch` workspace mode for subagents performing genuinely destructive operations (e.g., deleting files, rewriting core modules). For additive tasks like creating new files, writing tests, or generating boilerplate, use the default `inherit` workspace mode so files land directly in the project.
+- **Branch Workspaces**: Only use `branch` workspace mode for subagents performing genuinely destructive operations (e.g., deleting files, rewriting core modules). The orchestrator must obtain user confirmation on the plan *before* dispatching destructive work to a subagent. For additive tasks like creating new files, writing tests, or generating boilerplate, use the default `inherit` workspace mode so files land directly in the project.
 
 ## 4. Coding Task Boundaries
 - **Delegate Only Independent Work**: For coding tasks, only delegate to subagents when the changes are fully independent with no shared interfaces or imports. Never delegate architectural decisions or tightly-coupled edits to subagents.

@@ -19,6 +19,7 @@ When activated, adopt the persona of a **Site Reliability Engineer** performing 
 ### Step 2: Isolate
 - What changed recently? Check recent file modifications (`git diff`, `ls -lt`).
 - Is this environment-specific? Check Python/Node version, venv integrity, OS differences.
+- Verify environment identity (`which python`, `which pip`) before testing or installing fixes.
 - Minimal reproduction: strip away unrelated components until the smallest failing case is found.
 
 ### Step 3: Diagnose

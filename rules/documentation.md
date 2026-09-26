@@ -19,7 +19,8 @@ trigger: model_decision
   3. **Consequences** (What are the trade-offs: cost, latency, complexity?)
 
 ## 3. Actionable READMEs
-- **Utility First**: Project READMEs must be stripped down to pure utility.
+- **Internal Tools & Scripts**: Strip READMEs down to pure utility.
+- **Public/Product Repositories**: Follow the comprehensive structure defined in the `readme-writer` skill.
 - **Required Sections**: 
   - **Prerequisites**: What needs to be installed?
   - **Environment Variables**: What `.env` values are required?
