@@ -52,6 +52,37 @@ The final artifact follows feature-specs format:
 - Verification criteria for each change
 - Open questions requiring user input
 
+## Continuous Review Mode (Coding Sessions)
+
+For coding sessions exceeding ~75 steps, the orchestrator should dispatch lightweight Flash review probes at natural breakpoints instead of waiting for a batch review.
+
+### When to Dispatch
+- After completing a logical unit (feature, bugfix, refactor pass)
+- Before any `git push`
+- Every ~50 coding steps if no natural breakpoint occurred
+- After any subagent delivers code that will be committed
+
+### Probe Scope (Lightweight — NOT a full staff review)
+The Flash reviewer receives:
+1. List of files modified since last probe (`git diff --name-only`)
+2. The actual diffs (`git diff`)
+3. The project's test runner command
+
+The reviewer checks:
+- **Symbol consistency**: No hallucinated attributes/methods (e.g., `total_mem` vs `total_memory`)
+- **Import validity**: All imports resolve to real modules
+- **Blast radius**: Any public API changes that affect callers?
+- **Test execution**: Run the test suite, report failures
+
+### Probe Output
+Structured findings: `{critical: [...], warnings: [...], clean: true/false}`
+If critical findings exist, orchestrator must fix before continuing.
+
+### Cost Budget
+- Each probe: ~1,000 Flash tokens
+- At 1 probe per 50 steps over a 500-step session: ~10,000 tokens total
+- ROI: prevents 50-150 steps of rework (50,000-150,000 tokens saved)
+
 ## Anti-Patterns
 
 - **Don't dispatch a subagent for synthesis** — the orchestrator retains design authority and cross-cutting context that subagents lack

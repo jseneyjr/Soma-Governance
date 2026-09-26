@@ -17,7 +17,24 @@ trigger: always_on
 - **Delegation Floor**: For engineering tasks exceeding ~100 steps, the orchestrator must have delegated at least one standalone module to a subagent. If step 100 is reached with zero delegations, halt and decompose.
 
 ## 2. Parallel Execution
-- **Fan-Out Tasks**: When multiple independent tasks must be done (e.g., researching 3 libraries with `flash`, or batching file edits within the heavy-model concurrency cap), spin up subagents concurrently rather than executing sequentially.
+- **Fan-Out Research**: When multiple independent research tasks exist, dispatch Flash subagents concurrently.
+- **Fan-Out Implementation**: When approved changes touch disjoint file sets (no shared imports, no shared interfaces), dispatch coding subagents in parallel. Apply the Disjoint Lane Protocol:
+
+### Disjoint Lane Protocol
+Before parallelizing implementation:
+1. **Map file ownership**: List every file each task will read or write
+2. **Check intersection**: If any file appears in two tasks, serialize those tasks
+3. **Check interface coupling**: If Task A modifies a function that Task B calls, serialize them
+4. **Dispatch with explicit scope**: Each subagent prompt must list its owned files and explicitly state "do NOT modify files outside this list"
+5. **Merge verification**: After all lanes complete, run the test suite once to catch integration issues
+
+**Parallelizable** (disjoint files, no shared interfaces):
+- Lane A edits `rules/git-workflow.md`, Lane B edits `rules/testing.md`, Lane C edits `rules/documentation.md`
+
+**Must serialize** (shared interface):
+- Task 1 adds parameter to `log_finding.sh` → Task 2 calls `log_finding.sh` from `governance_init.sh`
+
+- **Review Sentinels**: For coding sessions exceeding ~75 steps, dispatch a lightweight Flash review probe after each logical unit of work. The probe reads recent diffs (`git diff`) and runs the test suite. This is NOT a full staff review — it's a 30-second sanity check that catches hallucinated symbols and regressions before they compound. See `staff-review` skill, Continuous Review section.
 - **Fire-and-Forget**: Dispatch tasks clearly and wait for the subagents to report back with succinct summaries.
 
 ## 3. Cost & Workspace Isolation
