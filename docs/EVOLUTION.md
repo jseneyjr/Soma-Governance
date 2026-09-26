@@ -54,7 +54,7 @@ The Dwarf Fortress session was the most catastrophic: **1,579 steps, 8 architect
 The final shift was from periodic review to continuous monitoring:
 
 ```
-Session analyzed → waste classified by 18-pattern taxonomy → metrics stored
+Session analyzed → waste classified by 23-pattern taxonomy (v2.1) → metrics stored
     ↓
 effectiveness.json updated with before/after waste rates
     ↓
@@ -64,6 +64,17 @@ IF new pattern with no rule → flagged UNCOVERED, priority = wasted steps
 ```
 
 This caught 7 additional findings that manual review missed — including the insight that copying files into Antigravity's brain scratch directory pollutes checkpoint metadata.
+
+## Phase 5: Divide & Conquer Optimization ("Work smarter, not harder")
+
+After achieving 5% waste in governance sessions, the focus shifted from *preventing mistakes* to *maximizing throughput*:
+
+- **Session Pre-flight Probe**: A Flash subagent checks venv health, test suite, git state, and display environment at session start — eliminating the #2 and #3 waste categories before any code is written (~500 tokens, <10s).
+- **Review Sentinel**: Lightweight Flash reviewer dispatched every ~50 coding steps catches regressions before they compound. In `5dd84eed`, a hallucinated `total_mem` survived 188 steps; with sentinels, it would have been caught at step 73.
+- **Disjoint Lane Protocol**: When approved changes touch separate files, parallel subagents execute simultaneously with explicit file ownership. Wall-clock time reduced 2-3x with zero merge conflicts.
+- **Configurable Team Profiles**: `steering.conf` lets teams customize rules for their stack, team size, git strategy, and approval chains — making the system distributable without forking.
+
+**Impact on rules:** Added `session-preflight` skill, Continuous Review to `staff-review`, Disjoint Lane Protocol to `subagent-delegation §2`, and Makefile-based installation with `steering.conf`.
 
 ## The Compound Effect
 
@@ -77,7 +88,7 @@ Cross-Conversation → proved patterns are systemic, not one-off
 Continuous Monitor → catches new patterns as they emerge
 ```
 
-Compliance went from **7.8/10 to 9.7/10**, waste rate dropped from **~56% to ~7%**, and the rules now cover failure modes that no amount of upfront design would have predicted.
+Compliance went from **7.8/10 to 9.8/10**, waste rate dropped from **~56% to ~5% (latest session)**, and the rules now cover failure modes that no amount of upfront design would have predicted.
 
 ## Design Principles (Emerged, Not Prescribed)
 

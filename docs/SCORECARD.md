@@ -53,5 +53,13 @@ This rule set has been through **3 formal review iterations**, multiple session 
 | 5 | providence §13 | Metric rationalization | 70 | 5% |
 | 6 | providence §1 | Hallucination (APIs, keybindings) | 55 | 4% |
 | 7 | cost-optimization §4 | Zombie accumulation | 50 | 4% |
+| 8 | testing §6 | Syntax-only verification (ast.parse) | 55 | 4% |
 
 Top 3 rules target **54% of all waste**.
+
+## Live Validation
+
+Session `0dc37064` (TAB AI, same project as `5dd84eed`) is the first live A/B test of the full governance suite:
+- Waste rate: **3.2%** at step 92 (vs 27.6% predecessor)
+- Credit usage: **~12%** of predecessor
+- First successful `make train`: step 36 (predecessor: never achieved)

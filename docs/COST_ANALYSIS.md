@@ -9,9 +9,9 @@ Detailed token costs, conditional loading savings, and ROI calculations for the 
 | Rule | Tokens/Turn |
 |:-----|:------------|
 | `providence.md` | ~1,661 |
-| `subagent-delegation.md` | ~944 |
+| `subagent-delegation.md` | ~1,200 |
 | `cost-optimization.md` | ~475 |
-| **Subtotal** | **~3,080** |
+| **Subtotal** | **~3,336** |
 
 **Conditional rules** — only name + description loaded unless activated:
 
@@ -37,29 +37,42 @@ Detailed token costs, conditional loading savings, and ROI calculations for the 
 | `refactoring-pilot` | ~65 | ~629 |
 | `post-mortem` | ~60 | ~596 |
 | `performance-audit` | ~65 | ~496 |
-| `staff-review` | ~55 | ~480 |
-| **Subtotal** | **~467** | **~5,652** |
+| `staff-review` | ~55 | ~720 |
+| `session-preflight` | ~50 | ~400 |
+| **Subtotal** | **~517** | **~5,892** |
 
 ## Conditional Loading Savings
 
 | Approach | Tokens/Turn |
 |:---------|:------------|
-| **Naive** — all 10 rules + 8 skills always loaded | ~12,218 |
-| **Optimized** — conditional rules + skills idle | ~3,727 |
-| **Savings** | **~8,491 tokens/turn (69%)** |
+| **Naive** — all 10 rules + 9 skills always loaded | ~12,564 |
+| **Optimized** — conditional rules + skills idle | ~4,033 |
+| **Savings** | **~8,531 tokens/turn (68%)** |
 
 > **Methodology note**: The 69% figure pools rules and skills. Rules-only savings (excluding skills, which are natively deferred by the platform) = **~47%**. Both numbers are valid; the distinction matters for comparing against other governance systems.
 
 ## Observed Savings (Real Session Data)
 
-Based on 8 sessions (5,361 steps) with waste classification:
+Based on 9 sessions (5,561 steps) with waste classification:
 
 | Metric | Before Rules | After Rules |
 |:-------|:-------------|:------------|
-| Waste rate | ~56% (1,339-step session) | ~7-10% (post-optimization) |
+| Waste rate | ~56% (earliest) | 27.6% (mid) → 5.0% (latest) |
 | Rework loops per session | ~5 incidents | ~1 incident |
 | Failed subagent steps | ~150 per session | ~0 (model tier fix) |
 | Zombie background tasks | 6+ concurrent | Capped at 2 |
+
+## Live Session Comparison (0dc37064 vs 5dd84eed)
+
+Direct A/B comparison of the same project (TAB AI) with and without governance:
+
+| Metric | `5dd84eed` (weak rules) | `0dc37064` (full governance) | Improvement |
+|:-------|:----------------------:|:---------------------------:|:------------|
+| Waste rate | 27.6% | 3.2% (at step 92) | -24.4pp |
+| Steps to first working train | Never (547 steps) | Step 36 | ∞ → 36 |
+| Credit usage | ~100% baseline | ~12% | -88% |
+| Rule violations | 8 | 1 | -87.5% |
+| Subagent model tier | Opus (inherit) | 100% Flash | Massive savings |
 
 ## Accuracy-Driven Savings Over Time
 
