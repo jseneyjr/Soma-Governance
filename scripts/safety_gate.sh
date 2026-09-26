@@ -47,6 +47,12 @@ if echo "$CMD" | grep -qE 'git\s+reset\s+--hard'; then
     REASON="Hard reset — will discard uncommitted changes"
 fi
 
+# Bulk git staging without dry-run
+if echo "$CMD" | grep -qE 'git\s+add\s+(-A|\.)\s*$'; then
+    BLOCKED=true
+    REASON="Bulk staging (git add -A/.) — run git status first to verify file count"
+fi
+
 GATE_LOG="$HOME/.gemini/antigravity/scratch/ai-conversation-logs/governance/gate_events.jsonl"
 
 if [ "$BLOCKED" = true ]; then
