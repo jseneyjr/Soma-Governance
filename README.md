@@ -160,6 +160,39 @@ Based on a 611-step coding session before and after optimization:
 
 **Estimated session cost reduction: ~45%**
 
+### Accuracy-Driven Savings Over Time
+
+The biggest cost driver in AI coding sessions isn't token consumption — it's **rework loops**. When the agent makes a wrong claim, applies a bad fix, or silently works around a problem, the resulting debug cycle costs far more than getting it right the first time.
+
+**Anatomy of a rework loop** (observed from real session data):
+
+```
+Agent claims "fixed" → User tests → Same error → Agent re-investigates → Finds real cause → Applies correct fix
+```
+
+Each loop costs **~20–25 steps** of wasted context. From the 611-step session:
+
+| Rework Incident | Steps Wasted | Rule That Prevents It |
+|:----------------|:-------------|:----------------------|
+| False "NCCL is fixed" claim | ~20 | Providence §1 (Evidence-Based Claims) |
+| Silent try/except workaround rejected by user | ~15 | Providence §7 (No Silent Workarounds) |
+| Fixed wrong venv, broke again | ~25 | Providence §8 (Environment Verification) |
+| Hallucinated files from subagent | ~15 | Subagent §5 (Structured Reporting) |
+| 100-step blind retry loop (pytest hang) | ~60 | Incident-debug skill (systematic triage) |
+
+**Compound effect:** Rework loops don't just waste steps — they fill the context window with noise, degrading model accuracy on subsequent turns. This creates a vicious cycle: mistakes → rework → context pollution → more mistakes.
+
+**Projected savings at scale:**
+
+| Timeframe | Without Governance | With Governance | Savings |
+|:----------|:-------------------|:----------------|:--------|
+| Per incident | ~22 rework steps | ~3 steps (first-time-right) | ~19 steps |
+| Per session (~600 steps) | ~5 incidents × 22 = 110 steps | ~1 incident × 22 = 22 steps | ~88 steps |
+| Per week (5 sessions) | ~550 wasted steps | ~110 wasted steps | ~440 steps |
+| Per month (20 sessions) | ~2,200 wasted steps | ~440 wasted steps | **~1,760 steps** |
+
+> **The governance rules cost ~2,833 tokens/turn to maintain. A single prevented rework loop saves ~20 steps × ~4,000 tokens/step = ~80,000 tokens. The rules pay for themselves within the first prevented mistake.**
+
 ## Customization
 
 These rules are opinionated. Fork and adjust to your preferences:
