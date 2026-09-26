@@ -8,8 +8,8 @@ set -euo pipefail
 INPUT=$(cat)
 INVOCATION_NUM=$(echo "$INPUT" | python3 -c "import sys,json; print(json.load(sys.stdin).get('invocationNum', 0))" 2>/dev/null || echo "0")
 
-# Only run on first invocation
-if [ "$INVOCATION_NUM" != "1" ]; then
+# Run on first invocation and every 100th invocation (catches existing sessions)
+if [ "$INVOCATION_NUM" != "1" ] && [ "$(( INVOCATION_NUM % 100 ))" != "0" ]; then
     echo '{}'
     exit 0
 fi
