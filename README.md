@@ -21,6 +21,16 @@ A battle-tested set of global steering rules for AI coding assistants. Works wit
 - **`always_on`**: Loaded into context on every turn. These are your non-negotiable governance rules.
 - **`model_decision`**: The model sees the name and description but only loads the full content when it determines the rule is relevant. Zero cost until needed.
 
+### Skills (On-Demand Expert Personas)
+
+Skills are richer, multi-step instructions that the model auto-activates based on your task. They cost zero tokens until invoked.
+
+| Skill | Auto-Activates When... |
+|:------|:-----------------------|
+| `code-review` | You ask to review, audit, or critique code. Acts as a Staff Engineer focusing on architectural flaws, race conditions, and SOLID violations. |
+| `security-audit` | You ask to check security or audit endpoints. Acts as an AppSec Engineer using OWASP Top 10. |
+| `incident-debug` | You report a crash, hang, or error. Acts as an SRE following a structured reproduce → isolate → diagnose → fix → verify workflow. |
+
 ## Installation
 
 ### Gemini / Antigravity (Google Cloud)
@@ -29,9 +39,10 @@ A battle-tested set of global steering rules for AI coding assistants. Works wit
 # Clone the repo
 git clone https://github.com/<your-username>/ai-steering-rules.git
 
-# Copy rules to your global Gemini config
-mkdir -p ~/.gemini/config/rules
+# Copy rules and skills to your global Gemini config
+mkdir -p ~/.gemini/config/rules ~/.gemini/config/skills
 cp ai-steering-rules/rules/*.md ~/.gemini/config/rules/
+cp -r ai-steering-rules/skills/* ~/.gemini/config/skills/
 ```
 
 ### Gemini Symlink Install (stay synced with `git pull`)
@@ -39,8 +50,9 @@ cp ai-steering-rules/rules/*.md ~/.gemini/config/rules/
 ```bash
 git clone https://github.com/<your-username>/ai-steering-rules.git ~/ai-steering-rules
 
-# Symlink the entire rules directory
+# Symlink the entire rules and skills directories
 ln -sf ~/ai-steering-rules/rules ~/.gemini/config/rules
+ln -sf ~/ai-steering-rules/skills ~/.gemini/config/skills
 ```
 
 ### Kiro (AWS)
@@ -75,6 +87,39 @@ cd /path/to/your/project
 
 > **Note:** Ensure "Enable custom instructions" is checked in your IDE's Copilot settings.
 
+## Cost Analysis
+
+This setup is optimized to minimize per-turn token consumption while maximizing governance coverage.
+
+### Per-Turn Token Budget
+
+| Category | Items | Tokens/Turn |
+|:---------|:------|:------------|
+| **Always-on rules** | providence, cost-optimization, polyglot-standards, subagent-delegation | ~1,200 |
+| **Conditional rule metadata** | 5 `model_decision` rules (name + description only) | ~75 |
+| **Skill metadata** | 3 skills (name + description only) | ~45 |
+| **Total baseline** | | **~1,320** |
+
+### What You Get for ~1,320 Tokens
+
+- 8 sections of governance (grounding, accuracy, no workarounds, venv safety, task hygiene, subagent reporting, coding boundaries, workspace isolation)
+- 5 conditional specialist rules (architecture, testing, docs, feature specs, IaC safety) at near-zero idle cost
+- 3 expert persona skills (code review, security audit, incident debug) at zero idle cost
+
+### Observed Savings
+
+Based on a post-mortem of a real 611-step coding session:
+
+| Metric | Before | After |
+|:-------|:-------|:------|
+| Wasted steps per session | ~362 (59%) | ~60–90 (est.) |
+| Duplicate context tokens/turn | ~400 | 0 |
+| Failed subagent steps | ~150 | 0 (model tier fix) |
+| Zombie background tasks | 6 concurrent | Capped at 2 |
+| False "it's fixed" claims | 3 incidents | Blocked by verification rules |
+
+**Estimated session cost reduction: ~45%**
+
 ## Customization
 
 These rules are opinionated. Fork and adjust to your preferences:
@@ -93,3 +138,4 @@ These rules are opinionated. Fork and adjust to your preferences:
 ## License
 
 MIT — use however you like.
+
