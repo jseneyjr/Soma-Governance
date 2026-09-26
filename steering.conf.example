@@ -1,0 +1,59 @@
+# AI Steering Rules — Team & Workflow Configuration
+# Copy this file to steering.conf and customize for your environment.
+# If no steering.conf exists, all defaults apply (solo developer, trunk-based).
+
+# ─── Team Structure ───────────────────────────────────────────────
+
+# TEAM_SIZE: solo | small (2-5) | team (6-20) | enterprise (20+)
+# Affects: branching strategy, approval requirements, PR policies
+TEAM_SIZE=solo
+
+# AI_USAGE: individual | shared-repo | multi-team
+#   individual  = one developer, one AI assistant
+#   shared-repo = multiple devs sharing AI rules via committed repo
+#   multi-team  = multiple teams with different rule subsets
+AI_USAGE=individual
+
+# APPROVAL_CHAIN: none | peer | lead
+# Who must approve destructive operations and architectural changes?
+APPROVAL_CHAIN=none
+
+# ─── Git Workflow ─────────────────────────────────────────────────
+
+# GIT_STRATEGY: trunk | feature-branch | gitflow
+#   trunk          = direct commits to main (default for solo)
+#   feature-branch = all changes via feature/<name> branches
+#   gitflow        = develop/release/hotfix branching model
+GIT_STRATEGY=trunk
+
+# ─── Tech Stack ───────────────────────────────────────────────────
+
+# TECH_STACK: Comma-separated list of primary technologies
+# Tailors environment checks, testing commands, and package manager guidance
+# Options: python, node, go, rust, java, dotnet, ruby, shell
+TECH_STACK=python
+
+# LANGUAGES: Comma-separated list of languages used in the project
+# Affects linting, formatting, and code style guidance
+# Options: python, typescript, javascript, go, rust, java, kotlin, csharp, ruby, bash
+LANGUAGES=python
+
+# TEST_COMMAND: Override the default test runner command
+# Leave empty to auto-detect (make test, pytest, npm test, go test, cargo test)
+TEST_COMMAND=
+
+# PACKAGE_MANAGER: Override the default package manager
+# Leave empty to auto-detect (pip, npm, yarn, pnpm, go, cargo)
+PACKAGE_MANAGER=
+
+# ─── Installation ─────────────────────────────────────────────────
+
+# RULES_SUBSET: all | core | minimal
+#   all     = full 11-rule suite (~3,500 tokens always-on)
+#   core    = 6 rules: providence, cost-opt, delegation, testing, git-workflow, destructive-ops
+#   minimal = 3 rules: providence, delegation, destructive-ops (~2,000 tokens)
+RULES_SUBSET=all
+
+# ENABLE_HOOKS: true | false
+# Set false if your platform doesn't support lifecycle hooks (e.g., Copilot)
+ENABLE_HOOKS=true
