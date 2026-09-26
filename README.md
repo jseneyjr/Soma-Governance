@@ -141,17 +141,19 @@ IF post_adoption_rate < 30% of pre → rule flagged EFFECTIVE
 IF new pattern with no rule → flagged UNCOVERED, priority = wasted steps
 ```
 
-**Current top waste sources** (across 4,980 reviewed steps):
+**Current top waste sources** (across 5,361 steps, 8 sessions, 18-pattern taxonomy v2.0):
 
 | Rank | Rule | Target Pattern | Waste (steps) | % of Total |
 |:-----|:-----|:---------------|:--------------|:-----------|
-| 1 | providence §10 | Desktop automation guessing | 255 | 27% |
-| 2 | providence §11 | Scope inversion + micro-prototyping | 197 | 21% |
-| 3 | providence §3 | Rework loops (no read-before-write) | 162 | 17% |
-| 4 | providence §13 | Metric rationalization | 70 | 7% |
-| 5 | providence §8 | Environment blindness | 62 | 7% |
+| 1 | providence §10 | Desktop automation guessing | 255 | 19% |
+| 2 | providence §3 | Rework loops (no read-before-write) | 230 | 18% |
+| 3 | providence §11 | Scope inversion + micro-prototyping | 222 | 17% |
+| 4 | providence §8 | Environment blindness / venv drift | 120 | 9% |
+| 5 | providence §13 | Metric rationalization | 70 | 5% |
+| 6 | providence §1 | Hallucination (APIs, keybindings) | 55 | 4% |
+| 7 | cost-optimization §4 | Zombie accumulation | 50 | 4% |
 
-Rules addressing the top 3 patterns prevent **65% of all observed waste**.
+Overall waste rate: **24.4%** (1,310 / 5,361 steps). Top 3 rules target **54% of all waste**.
 
 ## Installation Details
 
