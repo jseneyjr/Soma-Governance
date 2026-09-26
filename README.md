@@ -124,6 +124,35 @@ All changes — regardless of severity — are recorded in an append-only audit 
 | Audit trail | `ai-conversation-logs/governance/auto_applied_log.jsonl` | Append-only, pushed on session close |
 | Critical proposals | `ai-conversation-logs/governance/pending_critical.md` | Checked every session start |
 | Conversation logs | `ai-conversation-logs/conversations/` | Exported on session start + close |
+| **Pattern taxonomy** | `ai-conversation-logs/governance/taxonomy.json` | 12 canonical waste patterns |
+| **Session metrics** | `ai-conversation-logs/governance/session_metrics/` | Per-session structured waste scoring |
+| **Rule effectiveness** | `ai-conversation-logs/governance/effectiveness.json` | Before/after waste rates per rule |
+
+### Metrics-Driven Improvement
+
+Rules aren't assumed to work — they're measured. Each session gets scored against the pattern taxonomy, and rule effectiveness is tracked over time:
+
+```
+Session analyzed → waste classified by pattern → metrics stored
+    ↓
+effectiveness.json updated with before/after waste rates
+    ↓
+IF post_adoption_rate >= pre_adoption_rate → rule flagged INEFFECTIVE
+IF post_adoption_rate < 30% of pre → rule flagged EFFECTIVE
+IF new pattern with no rule → flagged UNCOVERED, priority = wasted steps
+```
+
+**Current top waste sources** (across 4,980 reviewed steps):
+
+| Rank | Rule | Target Pattern | Waste (steps) | % of Total |
+|:-----|:-----|:---------------|:--------------|:-----------|
+| 1 | providence §10 | Desktop automation guessing | 255 | 27% |
+| 2 | providence §11 | Scope inversion + micro-prototyping | 197 | 21% |
+| 3 | providence §3 | Rework loops (no read-before-write) | 162 | 17% |
+| 4 | providence §13 | Metric rationalization | 70 | 7% |
+| 5 | providence §8 | Environment blindness | 62 | 7% |
+
+Rules addressing the top 3 patterns prevent **65% of all observed waste**.
 
 ## Installation Details
 
