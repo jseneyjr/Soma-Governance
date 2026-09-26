@@ -25,3 +25,4 @@ trigger: always_on
 - **Kill Stale Tasks**: Before spawning a new background command for a task you've already attempted, kill the previous hanging/timed-out task first.
 - **No Task Accumulation**: Never allow more than 2 concurrent background tasks for the same logical operation. If a task times out, kill it and diagnose the root cause before retrying.
 - **Heavy Model Concurrency Cap**: When spawning subagents with `inherit` or `pro` model tiers, limit to 2 concurrent subagents to avoid API rate limiting (HTTP 429).
+- **No Bulk Media in Brain**: Never copy large batches of media files or datasets (>10 files) into the brain scratch directory. The artifact indexing engine registers each file, polluting checkpoint metadata and truncating context summaries. Process media in-place or stage in a project-local temp directory.

@@ -13,6 +13,7 @@ trigger: always_on
   1. Deep-diving into unfamiliar documentation or APIs.
   2. Broad codebase research or dependency mapping.
   3. Isolated refactors or boilerplate generation that do not require full system context.
+  4. Bulk media triage, visual dataset exploration, or screenshot classification across >5 images.
 
 ## 2. Parallel Execution
 - **Fan-Out Tasks**: When multiple independent tasks must be done (e.g., researching 3 libraries with `flash`, or batching file edits within the heavy-model concurrency cap), spin up subagents concurrently rather than executing sequentially.
