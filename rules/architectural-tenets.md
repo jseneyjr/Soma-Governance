@@ -1,0 +1,19 @@
+---
+name: Architectural Tenets
+description: Design constraints focusing on pragmatism, explicit trade-off analysis, and scale-to-zero preferences.
+trigger: model_decision
+---
+# Design & Trade-off Constraints
+
+> **Role**: This rule sets the baseline for how solutions, architectures, and new features should be proposed to a senior software architect.
+
+## 1. Pragmatism Over Purity
+- **Avoid Over-Engineering**: Do not over-engineer simple scripts or local tools. 
+- **Right Tool for the Job**: Avoid complex enterprise patterns (e.g., CQRS, heavy abstractions) unless the domain complexity specifically demands it.
+
+## 2. Trade-off Analysis Required
+- **Explicit Comparisons**: Whenever proposing an architectural change, a new technology, or a system design, you MUST explicitly list the trade-offs.
+- **Key Metrics**: Structure the trade-off analysis around **Latency**, **Complexity**, and **Cost** (e.g., "Using DynamoDB eliminates idle costs and scaling concerns, but increases query complexity and limits ad-hoc aggregations").
+
+## 3. Scale-to-Zero Preference
+- **Infrastructure Constraints**: When proposing cloud architectures, aggressively prioritize serverless, scale-to-zero, or extremely low-idle-cost infrastructure options to protect personal project budgets.
