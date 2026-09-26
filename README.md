@@ -1,6 +1,6 @@
 # AI Steering Rules
 
-Battle-tested governance rules and expert persona skills for AI coding assistants.
+Battle-tested governance rules for AI coding assistants — forged from 4,700+ steps of real failures across 3 projects, refined through 7 review phases, and continuously monitored.
 
 ## Why Use This?
 
@@ -210,11 +210,95 @@ These rules are opinionated. Fork and adjust to your preferences:
 | Infrastructure preferences | `architectural-tenets.md` |
 | Priority hierarchy | `providence.md` (declared highest-priority; all others defer) |
 
-## Design Philosophy
+## How This Approach Evolved
 
-1. **Accuracy over speed** — The agent must never sacrifice correctness to save tokens.
-2. **Cost-aware** — Minimize token consumption through precise edits, smart delegation, and conditional loading.
-3. **Battle-tested** — Every rule was derived from real failure patterns observed in production coding sessions.
+These rules weren't designed in a vacuum. They were extracted from real failures, refined through staff-level review, and continuously validated against live coding sessions. Here's how the approach changed — and how each shift reshaped the rules.
+
+### Phase 1: Prescriptive Rules ("Write what sounds right")
+
+The first version was 4 `always_on` rules and 4 flat-checklist skills, written from best practices and intuition. Providence said "don't hallucinate." Cost-optimization said "use Flash for research." Testing said "test sad paths."
+
+**What we learned:** Prescriptive rules are necessary but insufficient. The agent followed the letter of the rules while violating the spirit — it would "verify" by re-reading the same file 4 times, or "delegate" by spawning a Pro-tier subagent for a 3-line edit.
+
+**Impact on rules:** Led to the **3 formal review iterations** (21 findings), which caught contradictions between rules (cost-optimization vs. providence on trade-off analysis), missing coverage (destructive-ops only covered IaC, not git/filesystem), and ambiguous terminology (`inherit` meant both model tier and workspace mode).
+
+### Phase 2: Evidence-Based Evolution ("Extract rules from real failures")
+
+The turning point was running a **1,339-step post-mortem** on a real project session. Instead of guessing what rules were needed, we analyzed what actually went wrong:
+
+- **749 steps (~56%) were wasted** on rework
+- **180 steps** lost to hallucinated game hotkeys the agent invented without checking
+- **110 steps** lost to venv confusion (host Python vs. project venv)
+- **103 steps** lost to an infinite polling loop in tests with no timeout
+- **50 steps** lost to method shadowing (`action_masks()` silently overridden)
+
+Each failure pattern mapped directly to a missing rule:
+
+| Failure (steps wasted) | Rule Created |
+|:-----------------------|:-------------|
+| Hallucinated hotkeys (180) | UI Grounding Gate — verify via screenshots, never guess |
+| Venv confusion (110) | Makefile Venv Guard — bind `$(VENV)/bin/python` explicitly |
+| Infinite test polling (103) | Mock-First Mandate — hardware boundaries always mocked |
+| Method shadowing (50) | Symbol Collision Guard — grep before defining in large files |
+| Stale references after rename (30) | Refactoring Sweep — global grep confirms zero orphans |
+
+**Impact on rules:** This phase added 6 rules to providence.md and testing.md. More importantly, it shifted the methodology: rules are now derived from **observed waste**, not assumed best practices.
+
+### Phase 3: Cross-Conversation Discovery ("Same failures, different projects")
+
+Analyzing a single session was revealing. Analyzing **all sessions** showed which patterns are systemic:
+
+| Pattern | Dwarf Fortress (1,579 steps) | TAB AI (1,551 steps) | Steering (856 steps) |
+|:--------|:---:|:---:|:---:|
+| Hallucinated controls | ✅ 160 steps | ✅ 180 steps | — |
+| Venv/path confusion | ✅ | ✅ | — |
+| Zero subagent delegation | ✅ 0 subagents, 17 compactions | Improved | Heavy use |
+| Bulk media context pollution | — | ✅ 127 files in brain | — |
+| Open-loop state desync | ✅ spacebar seizure | — | — |
+| Desktop automation safety breach | ✅ clicked through Steam | — | — |
+| Premature framework extraction | ✅ 150 steps on unused SDK | — | — |
+| Architectural pivot churn | ✅ 8 paradigm shifts | — | — |
+
+The Dwarf Fortress session was the most catastrophic: **1,579 steps, 8 architectural pivots, 2 safety incidents (blind desktop clicking + PyAutoGUI crash), and zero subagent delegation.** It burned an estimated 8M tokens and produced zero working autonomous runs.
+
+**Impact on rules:** This phase added 5 entirely new governance areas — desktop automation safety, premature abstraction bans, pivot discipline, delegation floors, and real-time loop budgets. These aren't theoretical; they're extracted from watching the same agent make the same category of mistake across independent projects.
+
+### Phase 4: Continuous Governance ("Rules that improve themselves")
+
+The final shift was from periodic review to continuous monitoring. A background cron job now:
+1. Tails new steps from active conversations every 10 minutes
+2. Cross-references behavior against all 9 rules and 7 skills
+3. Stages proposed rule changes for human approval
+4. Updates the scorecard and pushes to the repo
+
+This caught 7 additional findings that manual review missed — including the insight that copying files into Antigravity's brain scratch directory pollutes checkpoint metadata (a platform-specific behavior no prescriptive rule would have anticipated).
+
+**Impact on rules:** The monitor workflow itself generated governance improvements: approval-gated changes (don't auto-mutate global config), post-report tracker updates (don't skip steps on analyst failure), and prompt subagent cleanup (don't accumulate zombies).
+
+### The Compound Effect
+
+Each phase built on the last:
+
+```
+Prescriptive Rules → caught obvious gaps but missed real failure modes
+    ↓
+Evidence-Based → extracted rules from 1,339 steps of real waste
+    ↓
+Cross-Conversation → proved patterns are systemic, not one-off
+    ↓
+Continuous Monitor → catches new patterns as they emerge
+```
+
+The result: compliance went from **7.8/10 to 9.7/10**, waste rate dropped from **~56% to ~10%**, and the rules now cover failure modes that no amount of upfront design would have predicted.
+
+### Design Principles (Emerged, Not Prescribed)
+
+These weren't declared at the start — they crystallized through the evolution:
+
+1. **Evidence over intuition** — Every rule traces back to observed steps wasted. No rule exists "just in case."
+2. **Accuracy over speed** — The agent must never sacrifice correctness to save tokens. Cost-optimization explicitly defers to providence on trade-off analyses.
+3. **Rules as a system** — Cross-references between rules are intentional. Providence §3 mandates read-before-write; refactoring-pilot operationalizes it as a phased workflow. Neither works alone.
+4. **Continuous validation** — Rules aren't "done" after review. The live monitor treats governance as a living system that evolves with each session.
 
 ## Staff Review Scorecard
 
@@ -244,35 +328,27 @@ This rule set has been through **3 formal review iterations**, a **1,339-step se
 | **Backfill** | f7cf2179 (1,579-step Dwarf Fortress) | 5 | 5 | Desktop automation safety, premature abstraction ban, pivot discipline, delegation floor, real-time loop budgets |
 | **Total** | | **49** | **45** | 4 skipped were intentional design decisions |
 
-## Development Post-Mortem
+## Development History
 
-This governance suite was built and refined over a single 642-step session. Here's what the process revealed.
+This governance suite was built, tested, and continuously refined across 4,700+ steps of real coding sessions.
 
 ### Process Metrics
 
 | Metric | Value |
 |:-------|:------|
-| Total development steps | 642 |
-| Review iterations | 3 formal + 2 focused |
-| Subagents used | 7 (all Flash tier, ~$0.05 total) |
-| Findings surfaced | 21 (🔴 6 Critical, 🟡 11 Warning, 🔵 4 Nit) |
-| Findings fixed | 17 (4 skipped as intentional design decisions) |
-| Git pushes | 14 (should have been ~4 milestone releases) |
+| Total steps analyzed across all sessions | 4,700+ |
+| Sessions analyzed | 3 (Dwarf Fortress, TAB AI, Steering Rules) |
+| Review phases | 7 (3 formal + post-mortem + skills modernization + live monitor + backfill) |
+| Total findings | 49 |
+| Findings fixed | 45 (4 skipped as intentional design decisions) |
+| Subagents used for reviews | 12+ (all Flash tier) |
 
 ### What Worked
 
-- **Flash subagents for reviews**: 6 reviewers at ~$0.05 total saved the main context from 350K+ tokens of file reading
-- **Dual reviewer fan-out**: Dispatching a compliance auditor + gap analyst concurrently — each caught findings the other missed
-- **Incremental user approval**: Implementation plan → approve → execute prevented over-building
-
-### What We'd Do Differently
-
-| Lesson | Detail |
-|:-------|:-------|
-| **Design as a system** | Rules were created one-at-a-time, causing cross-rule contradictions (e.g., fan-out vs concurrency cap). Design the dependency graph first. |
-| **Define templates before instances** | Original 4 skills were flat checklists. After creating 3 new skills with phased workflows, all 4 originals needed full rewrites. |
-| **Add shift-left rules first** | Fail-Fast Validation and Assumption Surfacing are the highest-ROI rules but were created last. They should be in v1. |
-| **Batch deployments** | 14 git pushes should have been 4 milestones: Core → Standards → Skills → Final Audit. |
+- **Flash subagents for reviews**: Independent reviewers at negligible cost saved the main context from 350K+ tokens of file reading
+- **Dual reviewer fan-out**: Compliance auditor + gap analyst concurrently — each caught findings the other missed
+- **Cross-conversation backfill**: Analyzing the Dwarf Fortress session (never previously reviewed) surfaced 5 entirely new pattern categories
+- **Continuous monitoring**: The 10-min cron caught 7 findings that batch reviews missed
 
 ### Optimal Creation Order
 
