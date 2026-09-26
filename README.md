@@ -218,27 +218,30 @@ These rules are opinionated. Fork and adjust to your preferences:
 
 ## Staff Review Scorecard
 
-This rule set has been through **3 iterations of staff-level review**, each performed by independent AI reviewers auditing for contradictions, gaps, and clarity issues.
+This rule set has been through **3 formal review iterations**, a **1,339-step session post-mortem**, a **skills modernization pass**, and **continuous live monitoring** — each performed by independent AI reviewers.
 
-### Compliance Score (tested against a live 1,042-step coding session)
+### Compliance Score (tested against a live 1,339-step coding session)
 
-| Dimension | Score | Notes |
-|:----------|:-----:|:------|
-| Providence & Governance | 6.5 → 9.0 | Fixed: external evidence priority, plan adherence gates |
-| Cost Optimization | 9.5 → 10 | Fixed: concurrency cap, tier consolidation |
-| Subagent Delegation | 8.5 → 9.5 | Fixed: read-only awareness, workspace conflict prevention, destructive delegation |
-| Root Cause Resolution | 9.5 | No changes needed — agent fixed all 6 code review findings |
-| Execution Discipline | 6.0 → 9.0 | Fixed: phase gate enforcement rule added |
-| **Overall** | **7.8 → 9.4** | |
+| Dimension | Before | After | Key Fixes |
+|:----------|:------:|:-----:|:----------|
+| Providence & Governance | 6.5 | 9.5 | External evidence, plan adherence, fail-fast validation, assumption surfacing, UI grounding gate, symbol collision guard, refactoring sweep, data ingestion filter |
+| Cost Optimization | 9.5 | 10 | Concurrency cap, tier consolidation, scratch hygiene, bulk media delegation |
+| Subagent Delegation | 8.5 | 9.5 | Read-only awareness, workspace conflict prevention, destructive delegation, media triage offload |
+| Root Cause Resolution | 9.5 | 9.5 | No changes needed — agent fixed all 6 code review findings |
+| Execution Discipline | 6.0 | 9.5 | Phase gates, checkpoint testing, mock-first mandate, venv binding |
+| **Overall** | **7.8** | **9.6** | **29 findings fixed across all phases** |
 
-### Review Iteration History
+### Review & Improvement History
 
-| Iteration | Findings | Fixed | Skipped | Key Changes |
-|:----------|:---------|:------|:--------|:------------|
-| **1** | 7 | 5 | 2 | Trade-off clarification, broadened destructive-ops, serverless carve-out, deduplicated docs, disambiguated `inherit` |
-| **2** | 7 | 6 | 1 | External evidence priority, YAGNI migration gate, read-only awareness, phase gates, concurrency cap, workspace lock |
-| **3** | 7 | 6 | 1 | Stale frontmatter, fan-out alignment, tier consolidation, destructive delegation, README split, env verification |
-| **Total** | **21** | **17** | **4** | 4 skipped were intentional design decisions (severity scales, polyglot trigger) |
+| Phase | Source | Findings | Fixed | Key Changes |
+|:------|:-------|:---------|:------|:------------|
+| **Review 1** | Staff cross-rule audit | 7 | 5 | Trade-off clarity, broadened destructive-ops, serverless carve-out, dedup docs, disambiguated `inherit` |
+| **Review 2** | Compliance audit (1,042 steps) | 7 | 6 | External evidence priority, YAGNI migration gate, read-only awareness, phase gates, concurrency cap, workspace lock |
+| **Review 3** | Third iteration audit | 7 | 6 | Stale frontmatter, fan-out alignment, tier consolidation, destructive delegation, README split, env verification |
+| **Post-Mortem** | 1,339-step session analysis | 6 | 6 | UI grounding gate, symbol collision guard, refactoring sweep, mock mandate, venv binding, data ingestion filter |
+| **Skills Modernization** | Original 4 skills audit | 10 | 10 | Phased workflows, anti-patterns, output formats, Providence cross-refs, full OWASP checklist |
+| **Live Monitor** | Continuous (10-min cycles) | 2 | 2 | Bulk media delegation, scratch hygiene guard |
+| **Total** | | **39** | **35** | 4 skipped were intentional design decisions |
 
 ## Development Post-Mortem
 
