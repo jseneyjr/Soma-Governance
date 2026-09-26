@@ -21,6 +21,7 @@ trigger: model_decision
 
 ## 4. Script & CLI Testing
 - **Integration Mindset**: When testing local scripts or CLIs, test them by invoking the entry function with various arguments and capturing stdout/stderr/exit codes, ensuring they behave correctly from a user's perspective.
+- **No Syntax-Only Verification**: Syntax validation (`ast.parse`, `pyflakes`, `python -m py_compile`) is non-behavioral and does not satisfy verification requirements for runnable scripts. Always execute the actual entrypoint (`python script.py --help`, `make target`) before marking a deliverable complete.
 - **Setup/Teardown**: Ensure tests clean up after themselves (e.g., deleting temporary files created during script execution).
 
 ## Checkpoint Testing

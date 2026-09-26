@@ -45,6 +45,7 @@ Before making a technical assertion or implementing a change, you must verify th
 ## 8. Environment Identity Verification
 - **Verify Before Mutating**: Before running any package installation (`pip install`, `npm install`) or environment mutation, explicitly verify which environment/venv is being targeted by checking `which python`, `which pip`, or equivalent.
 - **Multi-Venv Awareness**: If a project contains multiple virtual environments (e.g., scratch workspace copies), always confirm you are operating on the correct one before making changes.
+- **Shebang & Config Audit**: When operating in a relocated or copied venv, verify `head -1 $(which pip)` and `cat venv/pyvenv.cfg` point to the current project path, not the original source directory. Stale shebangs cause package managers to silently mutate the wrong environment.
 
 ## 9. Plan Adherence
 - **Respect Phase Gates**: When an approved implementation plan defines sequential phases with verification gates, do not begin a later phase until the preceding gate criteria have been verified. If you need to proceed out of order, flag it explicitly and get user approval.
