@@ -30,18 +30,18 @@ Rules take effect on your next conversation turn. No restart needed.
 
 | Rule | Trigger | Purpose |
 |:-----|:--------|:--------|
-| `providence.md` | always_on | **Highest priority.** Codebase grounding, claim verification, no hallucinations, no silent workarounds, external evidence priority, plan adherence. |
+| `providence.md` | always_on | **Highest priority.** Codebase grounding, claim verification, no hallucinations, no silent workarounds, external evidence priority, plan adherence, symbol collision guard, UI grounding gate. |
 | `cost-optimization.md` | always_on | Token efficiency, subagent model tiering, task hygiene, heavy model concurrency cap. |
 | `polyglot-standards.md` | always_on | Unified entrypoints (Makefiles), containerization with carve-outs for scripts/serverless. |
 | `subagent-delegation.md` | always_on | Context window protection, parallel execution, coding task boundaries, structured reporting, workspace conflict prevention. |
 | `architectural-tenets.md` | model_decision | Pragmatism over purity, trade-off analysis, scale-to-zero, artifact existence verification. |
 | `feature-specs.md` | model_decision | PRD structure, acceptance criteria, documentation deliverables. |
-| `testing.md` | model_decision | Behavioral testing, sad paths, minimal mocking, CLI/script testing. |
+| `testing.md` | model_decision | Behavioral testing, sad paths, minimal mocking, CLI/script testing, hardware mock mandate. |
 | `documentation.md` | model_decision | ADRs, actionable READMEs, Mermaid diagrams, high-signal comments. |
 | `destructive-ops.md` | model_decision | Dry-run mandates for IaC, database mutations, and destructive git/filesystem ops. |
 
 **Trigger types:**
-- **`always_on`** — Loaded every turn. Non-negotiable governance. (~2,815 tokens)
+- **`always_on`** — Loaded every turn. Non-negotiable governance. (~3,326 tokens)
 - **`model_decision`** — Model sees the name/description and loads full content only when relevant. (~15 tokens idle)
 
 ### Skills (7 expert personas)
@@ -112,45 +112,45 @@ Copilot doesn't support conditional triggers — all rules are always active.
 
 | Rule | Tokens/Turn |
 |:-----|:------------|
-| `providence.md` | ~1,130 |
-| `subagent-delegation.md` | ~753 |
-| `cost-optimization.md` | ~635 |
-| `polyglot-standards.md` | ~295 |
-| **Subtotal** | **~2,813** |
+| `providence.md` | ~1,556 |
+| `subagent-delegation.md` | ~787 |
+| `cost-optimization.md` | ~638 |
+| `polyglot-standards.md` | ~345 |
+| **Subtotal** | **~3,326** |
 
 **Conditional rules** — only name + description loaded unless activated:
 
 | Rule | Idle Cost | Full Cost (when activated) |
 |:-----|:----------|:--------------------------|
+| `testing.md` | ~29 | ~665 |
 | `feature-specs.md` | ~29 | ~463 |
-| `testing.md` | ~29 | ~441 |
-| `documentation.md` | ~18 | ~414 |
-| `destructive-ops.md` | ~25 | ~350 |
+| `documentation.md` | ~18 | ~439 |
 | `architectural-tenets.md` | ~29 | ~416 |
-| **Subtotal** | **~130** | **~2,084** |
+| `destructive-ops.md` | ~25 | ~361 |
+| **Subtotal** | **~130** | **~2,344** |
 
 **Skills** — zero cost until auto-activated:
 
 | Skill | Idle Cost | Full Cost (when activated) |
 |:------|:----------|:--------------------------|
-| `readme-writer` | ~45 | ~689 |
+| `security-audit` | ~62 | ~895 |
+| `readme-writer` | ~45 | ~889 |
+| `incident-debug` | ~60 | ~847 |
+| `code-review` | ~55 | ~820 |
 | `refactoring-pilot` | ~65 | ~629 |
 | `post-mortem` | ~60 | ~596 |
 | `performance-audit` | ~65 | ~496 |
-| `incident-debug` | ~60 | ~493 |
-| `security-audit` | ~62 | ~417 |
-| `code-review` | ~55 | ~376 |
-| **Subtotal** | **~412** | **~3,696** |
+| **Subtotal** | **~412** | **~5,172** |
 
 ### Conditional Loading Savings
 
 | Approach | Tokens/Turn |
 |:---------|:------------|
-| **Naive** — all 9 rules + 7 skills always loaded | ~9,046 |
-| **Optimized** — conditional rules + skills idle | ~3,355 |
-| **Savings** | **~5,691 tokens/turn (63%)** |
+| **Naive** — all 9 rules + 7 skills always loaded | ~10,842 |
+| **Optimized** — conditional rules + skills idle | ~3,868 |
+| **Savings** | **~6,974 tokens/turn (64%)** |
 
-The optimized setup delivers the same governance coverage at 46% of the naive token cost. Conditional rules and skills only expand to full cost on the specific turns where they're relevant.
+The optimized setup delivers the same governance coverage at 36% of the naive token cost. Conditional rules and skills only expand to full cost on the specific turns where they're relevant.
 
 ### Observed Savings (Real Session Post-Mortem)
 
@@ -197,7 +197,7 @@ Each loop costs **~20–25 steps** of wasted context. From the 611-step session:
 | Per week (5 sessions) | ~550 wasted steps | ~110 wasted steps | ~440 steps |
 | Per month (20 sessions) | ~2,200 wasted steps | ~440 wasted steps | **~1,760 steps** |
 
-> **The governance rules cost ~3,355 tokens/turn to maintain. A single prevented rework loop saves ~20 steps × ~4,000 tokens/step = ~80,000 tokens. The rules pay for themselves within the first prevented mistake.**
+> **The governance rules cost ~3,868 tokens/turn to maintain. A single prevented rework loop saves ~20 steps × ~4,000 tokens/step = ~80,000 tokens. The rules pay for themselves within the first prevented mistake.**
 
 ## Customization
 

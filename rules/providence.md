@@ -22,6 +22,8 @@ Before making a technical assertion or implementing a change, you must verify th
 ## 3. The "Read-Before-Write" Mandate
 - **Context Gathering**: You must read the relevant files before proposing modifications. 
 - **Blast Radius**: Before deleting or significantly altering a public function or component, search the codebase for usages to understand the impact of the change.
+- **Symbol Collision Guard**: Before defining a function/method in a file >150 lines, grep for `def <name>` across the entire file to prevent Python method shadowing.
+- **Refactoring Sweep**: When renaming or altering the signature of a public method, execute a global grep for the old identifier and confirm zero unmigrated references remain before closing the task.
 
 ## 4. Architectural Boundaries
 - **Respect Boundaries**: Do not mix concerns. For example, do not put database queries directly in UI components if the project uses a layered architecture (e.g., repositories/services).
@@ -52,4 +54,6 @@ Before making a technical assertion or implementing a change, you must verify th
   - Before designing a data migration: verify the source data exists (`ls`, `find`, ask the user).
   - Before building around an external system's API: confirm the API behaves as expected (one test call, one screenshot, or one doc link).
   - Before architecting around a library feature: verify the feature exists in the installed version.
+  - Before writing automation or keybinding maps for external graphical software (games, desktop apps, GUIs), verify bindings via direct UI screenshots or settings menus. Guessing control schemes is strictly prohibited.
+- **Data Ingestion Guard**: When ingesting external data directories, verify file dimensions/sizes before bulk processing. Filter out metadata, thumbnails, and system files.
 - **One-Step Probes**: The validation should be achievable in 1–3 steps. If it takes more than that, you're validating too late.

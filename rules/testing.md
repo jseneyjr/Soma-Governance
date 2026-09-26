@@ -27,3 +27,7 @@ trigger: model_decision
 - **Test Early, Test Often**: When modifying 3 or more files in sequence, run the relevant test suite before proceeding to the next file. Do not batch all testing to the end of a phase.
 - **Incremental Verification**: After each significant behavioral change (new action type, new observation shape, new API contract), run at least the directly affected tests before building the next layer on top.
 - **Fail-Fast on Red**: If tests fail after a change, stop and fix before modifying additional files. Do not continue building on a broken foundation.
+
+## Hardware & External System Mocking
+- **Mock by Default**: Tests asserting on hardware, OS window managers (xdotool, pygetwindow), or external processes must include mock fixtures by default.
+- **Timeout Guard**: Never execute a polling loop in a test without an explicit short timeout (≤2s) and a simulated target.
