@@ -27,16 +27,17 @@ This rule set has been through **3 formal review iterations**, multiple session 
 | **Hooks Redesign** | Architectural review | 8 | 8 | PreInvocation governance, PreToolUse safety gate, Stop log export |
 | **Backfill 2** | 7 sessions (5,800+ steps) | 5 | 5 | No collateral kills, deliverable-first, micro-prototyping cap |
 | **Staff Review** | Architecture + Performance fan-out | 15 | 10 | Circular symlink fix, polyglot conditional, cost-opt dedup, git add gate, async export |
-| **Total** | | **77** | **68** | 9 deferred as intentional design decisions or P2/P3 |
+| **Post-Mortem 11** | bdb02985 + 5dd84eed (4 Flash analysts) | 9 | 9 | Pre-push test gate, coordinate grounding, taxonomy v2.1 (23 patterns), hook testing, README threshold |
+| **Total** | | **86** | **77** | 9 deferred as intentional design decisions or P2/P3 |
 
 ## Current Metrics
 
 | Metric | Value |
 |:-------|:------|
-| Total steps analyzed | 5,361 |
-| Sessions analyzed | 8 |
-| Overall waste rate | 24.4% (1,310 / 5,361 steps) |
-| Waste patterns tracked | 18 (taxonomy v2.0) |
+| Total steps analyzed | 5,561 |
+| Sessions analyzed | 9 |
+| Overall waste rate | 23.7% (1,320 / 5,561 steps) |
+| Waste patterns tracked | 23 (taxonomy v2.1) |
 | Rule sections monitored | 13 |
 | Rules with EFFECTIVE verdict | 2 (providence §11, §8) |
 | Rules with INEFFECTIVE verdict | 3 (needs mechanical enforcement) |

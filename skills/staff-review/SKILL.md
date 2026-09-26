@@ -33,7 +33,8 @@ After all reviewers report back, the **orchestrator** (not a subagent) performs 
 
 1. **Cross-reference**: Identify findings that appear in multiple reviews (high confidence)
 2. **Fact-check**: Verify quantitative claims against actual file sizes, step counts, or code
-3. **Reconcile conflicts**: When reviewers disagree, investigate and determine which is correct
+3. **Verification sweep**: Before drafting the final assessment, run a filesystem verification script confirming all reviewer assertions (file counts, byte sizes, trigger values, symlink targets). Do not trust reviewer math without mechanical confirmation.
+4. **Reconcile conflicts**: When reviewers disagree, investigate and determine which is correct
 4. **Incorporate context**: Fold in post-mortems, prior decisions, and architectural tenets
 5. **Prioritize**: Rank findings by impact × effort, group into implementation tiers
 6. **Produce**: One consolidated artifact with:

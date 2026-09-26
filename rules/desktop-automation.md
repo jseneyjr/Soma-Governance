@@ -16,6 +16,7 @@ trigger: model_decision
 - **Safe Boundaries**: Clamp all mouse coordinates to `[1, dimension - 2]` to prevent automation library fail-safes (e.g., PyAutoGUI's corner pause, OS hot corners).
 - **Resolution Verification**: Before first input, capture and log the target window's actual resolution. Never assume resolution matches development environment.
 - **Relative Coordinates**: Prefer window-relative coordinates over absolute screen coordinates. Calculate offsets from the window's top-left corner.
+- **Coordinate Grounding**: Pixel bounding boxes, ROI slices, and brightness thresholds must reference existing calibrated constants (e.g., from `config.py`, `hud_reader.py`) or be derived from a fresh screenshot analysis. Fabricating coordinates from memory or assumption is strictly prohibited.
 
 ## 3. Closed-Loop State Transitions
 - **No Blind Toggles**: Never use open-loop binary toggles (e.g., blind Spacebar for pause/unpause). The agent cannot know the current state without checking.

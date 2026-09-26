@@ -37,3 +37,7 @@ trigger: model_decision
 
 ## Shell Pipeline Safety
 - **Pipefail Mandate**: When piping test or build commands through filters (`| tail`, `| head`, `| grep`), prefix with `set -o pipefail` to prevent exit code masking.
+
+## Hook & Script Integration Testing
+- **Behavioral Acceptance**: When creating or modifying lifecycle hooks or governance scripts, execute a behavioral acceptance test before committing: inject test data → verify state changes → confirm idempotency → reset test artifacts.
+- **No Syntax-Only Gates**: `ast.parse`, `bash -n`, or `shellcheck` alone are never sufficient. Scripts must be executed with representative inputs at least once.

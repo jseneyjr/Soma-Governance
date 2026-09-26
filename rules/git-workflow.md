@@ -15,7 +15,8 @@ trigger: model_decision
 - **Logical Units**: Commit after completing each logical unit of work (e.g., a bug fix, a feature component, a refactor pass). Do not commit after every file edit, and do not accumulate an entire session's work into a single commit.
 - **Convention**: Use [Conventional Commits](https://www.conventionalcommits.org/) format: `<type>: <description>`. Types: `feat`, `fix`, `perf`, `refactor`, `test`, `chore`, `docs`.
 - **Atomic Commits**: Each commit should be self-contained. If reverted, only one logical change should be undone.
-- **Test Before Commit**: Run the project's test/lint command (e.g., `make test`, `make lint`) before committing. Do not commit code that fails syntax checks.
+- **Test Before Commit**: Run the project's test/lint command (e.g., `make test`, `make lint`) before committing. Do not commit code that fails tests.
+- **Test Before Push**: `git push` is prohibited unless the project's test runner has been executed in the current session with zero failures. If no test runner exists, explicitly state "no test suite available" in the commit — do not silently skip.
 
 ## 3. Branching
 - **Direct to Main**: Small, low-risk changes (single-file fixes, config tweaks) go directly to `main`.
