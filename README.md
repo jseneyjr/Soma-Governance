@@ -1,63 +1,80 @@
 # AI Steering Rules
 
-A battle-tested set of global steering rules for AI coding assistants. Works with **Gemini / Antigravity**, **Kiro**, and **GitHub Copilot**. Designed by a senior software architect prioritizing **accuracy** and **cost optimization**.
+Battle-tested governance rules and expert persona skills for AI coding assistants.
+
+## Why Use This?
+
+- **Stop AI from guessing** — Rules force the agent to verify claims against your actual codebase before acting
+- **Cut token costs ~45%** — Conditional loading, smart subagent delegation, and task hygiene eliminate wasted steps
+- **Cross-platform** — Works with Gemini/Antigravity (Google), Kiro (AWS), and GitHub Copilot (Microsoft)
+
+## Quick Start
+
+> **Prerequisites:** `git` and one of: [Gemini/Antigravity](https://github.com/google-gemini/antigravity), [Kiro](https://kiro.dev), or [GitHub Copilot](https://github.com/features/copilot)
+
+```bash
+git clone https://github.com/nseney1/ai-steering-rules.git
+cd ai-steering-rules
+
+# Pick your platform:
+./install-gemini.sh     # Gemini / Antigravity
+./install-kiro.sh       # Kiro
+./install-copilot.sh    # GitHub Copilot (run with 'global' or 'project')
+```
+
+Rules take effect on your next conversation turn. No restart needed.
 
 ## What's Included
+
+### Rules (9 files)
 
 | Rule | Trigger | Purpose |
 |:-----|:--------|:--------|
 | `providence.md` | always_on | **Highest priority.** Codebase grounding, claim verification, no hallucinations, no silent workarounds, venv safety. |
 | `cost-optimization.md` | always_on | Token efficiency, subagent model tier selection, task hygiene. |
-| `polyglot-standards.md` | always_on | Unified entrypoints (Makefiles), containerization with carve-outs for scripts. |
-| `subagent-delegation.md` | always_on | Context window protection, parallel execution, coding task boundaries. |
+| `polyglot-standards.md` | always_on | Unified entrypoints (Makefiles), containerization with carve-outs for scripts/serverless. |
+| `subagent-delegation.md` | always_on | Context window protection, parallel execution, coding task boundaries, structured reporting. |
 | `architectural-tenets.md` | model_decision | Pragmatism over purity, explicit trade-off analysis, scale-to-zero preferences. |
 | `feature-specs.md` | model_decision | PRD structure, acceptance criteria, documentation deliverables. |
 | `testing.md` | model_decision | Behavioral testing, sad paths, minimal mocking, CLI/script testing. |
 | `documentation.md` | model_decision | ADRs, actionable READMEs, Mermaid diagrams, high-signal comments. |
-| `destructive-ops.md` | model_decision | Dry-run mandates and cost warnings for infrastructure-as-code. |
+| `destructive-ops.md` | model_decision | Dry-run mandates for IaC, database mutations, and destructive git/filesystem ops. |
 
-### Trigger Types
+**Trigger types:**
+- **`always_on`** — Loaded every turn. Non-negotiable governance. (~1,200 tokens)
+- **`model_decision`** — Model sees the name/description and loads full content only when relevant. (~15 tokens idle)
 
-- **`always_on`**: Loaded into context on every turn. These are your non-negotiable governance rules.
-- **`model_decision`**: The model sees the name and description but only loads the full content when it determines the rule is relevant. Zero cost until needed.
+### Skills (4 expert personas)
 
-### Skills (On-Demand Expert Personas)
+Skills auto-activate based on your task. Zero tokens until invoked.
 
-Skills are richer, multi-step instructions that the model auto-activates based on your task. They cost zero tokens until invoked.
+| Skill | Activates When... |
+|:------|:------------------|
+| `code-review` | You ask to review or critique code. Staff Engineer persona: architectural flaws, race conditions, SOLID violations. |
+| `security-audit` | You ask to check security or audit endpoints. AppSec Engineer persona: OWASP Top 10 baseline. |
+| `incident-debug` | You report a crash, hang, or error. SRE persona: reproduce → isolate → diagnose → fix → verify. |
+| `readme-writer` | You ask to write or improve a README. Technical Writer persona: scannable structure, copy-pasteable quick-starts. |
 
-| Skill | Auto-Activates When... |
-|:------|:-----------------------|
-| `code-review` | You ask to review, audit, or critique code. Acts as a Staff Engineer focusing on architectural flaws, race conditions, and SOLID violations. |
-| `security-audit` | You ask to check security or audit endpoints. Acts as an AppSec Engineer using OWASP Top 10. |
-| `incident-debug` | You report a crash, hang, or error. Acts as an SRE following a structured reproduce → isolate → diagnose → fix → verify workflow. |
-
-## Installation
+## Installation Details
 
 ### Gemini / Antigravity (Google Cloud)
 
+**Option A: Copy** (simple, manual updates)
 ```bash
-# Clone the repo
-git clone https://github.com/<your-username>/ai-steering-rules.git
-
-# Copy rules and skills to your global Gemini config
 mkdir -p ~/.gemini/config/rules ~/.gemini/config/skills
-cp ai-steering-rules/rules/*.md ~/.gemini/config/rules/
-cp -r ai-steering-rules/skills/* ~/.gemini/config/skills/
+cp rules/*.md ~/.gemini/config/rules/
+cp -r skills/* ~/.gemini/config/skills/
 ```
 
-### Gemini Symlink Install (stay synced with `git pull`)
-
+**Option B: Symlink** (stays synced with `git pull`)
 ```bash
-git clone https://github.com/<your-username>/ai-steering-rules.git ~/ai-steering-rules
-
-# Symlink the entire rules and skills directories
-ln -sf ~/ai-steering-rules/rules ~/.gemini/config/rules
-ln -sf ~/ai-steering-rules/skills ~/.gemini/config/skills
+ln -sf "$(pwd)/rules" ~/.gemini/config/rules
+ln -sf "$(pwd)/skills" ~/.gemini/config/skills
 ```
 
 ### Kiro (AWS)
 
-The install script automatically converts Gemini trigger syntax to Kiro inclusion modes:
+The install script converts trigger syntax automatically:
 
 | Gemini | Kiro | Behavior |
 |:-------|:-----|:---------|
@@ -65,46 +82,35 @@ The install script automatically converts Gemini trigger syntax to Kiro inclusio
 | `trigger: model_decision` | `inclusion: manual` | Reference in chat via `#rulename` |
 
 ```bash
-git clone https://github.com/<your-username>/ai-steering-rules.git
-cd ai-steering-rules
 ./install-kiro.sh
 ```
 
-Manual rules can be activated in Kiro by typing `#testing`, `#documentation`, `#feature-specs`, etc. in the chat.
+Activate manual rules by typing `#testing`, `#documentation`, `#feature-specs`, etc.
 
 ### GitHub Copilot (Microsoft / Azure)
 
-Copilot doesn't support conditional triggers, so all rules are always active. Two modes available:
+Copilot doesn't support conditional triggers — all rules are always active.
 
 ```bash
 # Global — merges all rules into ~/copilot-instructions.md
 ./install-copilot.sh global
 
 # Per-project — creates .github/instructions/*.instructions.md files
-cd /path/to/your/project
-/path/to/ai-steering-rules/install-copilot.sh project
+./install-copilot.sh project
 ```
 
 > **Note:** Ensure "Enable custom instructions" is checked in your IDE's Copilot settings.
 
 ## Cost Analysis
 
-This setup is optimized to minimize per-turn token consumption while maximizing governance coverage.
-
 ### Per-Turn Token Budget
 
 | Category | Items | Tokens/Turn |
 |:---------|:------|:------------|
-| **Always-on rules** | providence, cost-optimization, polyglot-standards, subagent-delegation | ~1,200 |
-| **Conditional rule metadata** | 5 `model_decision` rules (name + description only) | ~75 |
-| **Skill metadata** | 3 skills (name + description only) | ~45 |
-| **Total baseline** | | **~1,320** |
-
-### What You Get for ~1,320 Tokens
-
-- 8 sections of governance (grounding, accuracy, no workarounds, venv safety, task hygiene, subagent reporting, coding boundaries, workspace isolation)
-- 5 conditional specialist rules (architecture, testing, docs, feature specs, IaC safety) at near-zero idle cost
-- 3 expert persona skills (code review, security audit, incident debug) at zero idle cost
+| Always-on rules | providence, cost-optimization, polyglot-standards, subagent-delegation | ~1,200 |
+| Conditional rule metadata | 5 `model_decision` rules (name + description only) | ~75 |
+| Skill metadata | 4 skills (name + description only) | ~60 |
+| **Total baseline** | | **~1,335** |
 
 ### Observed Savings
 
@@ -124,18 +130,19 @@ Based on a post-mortem of a real 611-step coding session:
 
 These rules are opinionated. Fork and adjust to your preferences:
 
-- **Cost tolerance**: Edit `cost-optimization.md` to adjust subagent model tiers or task limits.
-- **Tech stack**: Edit `polyglot-standards.md` to change your preferred entrypoint format (Makefile vs Justfile vs package.json).
-- **Architecture style**: Edit `architectural-tenets.md` to match your infrastructure preferences.
-- **Priority hierarchy**: `providence.md` is declared as the highest-priority rule. All other rules defer to it.
+| What to Change | File to Edit |
+|:---------------|:-------------|
+| Token limits, subagent model tiers | `cost-optimization.md` |
+| Entrypoint format (Makefile vs Justfile) | `polyglot-standards.md` |
+| Infrastructure preferences | `architectural-tenets.md` |
+| Priority hierarchy | `providence.md` (declared highest-priority; all others defer) |
 
 ## Design Philosophy
 
 1. **Accuracy over speed** — The agent must never sacrifice correctness to save tokens.
-2. **Cost-aware** — Minimize token consumption through precise edits, smart subagent delegation, and conditional rule loading.
-3. **Battle-tested** — Every rule in this set was derived from real failure patterns observed in production coding sessions.
+2. **Cost-aware** — Minimize token consumption through precise edits, smart delegation, and conditional loading.
+3. **Battle-tested** — Every rule was derived from real failure patterns observed in production coding sessions.
 
 ## License
 
-MIT — use however you like.
-
+MIT
