@@ -55,8 +55,7 @@ Before making a technical assertion or implementing a change, you must verify th
   - Before designing a data migration: verify the source data exists (`ls`, `find`, ask the user).
   - Before building around an external system's API: confirm the API behaves as expected (one test call, one screenshot, or one doc link).
   - Before architecting around a library feature: verify the feature exists in the installed version.
-  - Before writing automation or keybinding maps for external graphical software (games, desktop apps, GUIs), verify bindings via direct UI screenshots or settings menus. Guessing control schemes is strictly prohibited.
-- **Desktop Automation Safety**: Scripts injecting mouse/keyboard inputs via PyAutoGUI, xdotool, or similar must: (a) verify active window focus before every action burst (abort if focus lost), (b) clamp coordinates to `[1, dimension - 2]` to prevent automation library fail-safes, (c) never use open-loop binary toggles (e.g., blind Spacebar for pause) — verify state via visual assertion before issuing toggle keys.
+  - Before writing automation or keybinding maps for external graphical software (games, desktop apps, GUIs), verify bindings and coordinates via direct UI screenshots or settings menus. Guessing control schemes or UI coordinates is strictly prohibited. See `desktop-automation.md` for implementation safety protocols.
 - **Data Ingestion Guard**: When ingesting external data directories, verify file dimensions/sizes before bulk processing. Filter out metadata, thumbnails, and system files.
 - **One-Step Probes**: The validation should be achievable in 1–3 steps. If it takes more than that, you're validating too late.
 

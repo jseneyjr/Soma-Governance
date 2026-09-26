@@ -11,6 +11,10 @@ echo "Timestamp: $(date -Iseconds)"
 
 cd "$REPO_DIR"
 
+# Non-blocking lock — skip if another export is already running
+exec 200>"$REPO_DIR/.export.lock"
+flock -n 200 || { echo "Export already running. Skipping."; exit 0; }
+
 # Find all conversations with transcripts
 find "$BRAIN_DIR" -maxdepth 5 -name "transcript.jsonl" -path "*/.system_generated/logs/*" 2>/dev/null | while read -r transcript; do
     conv_id=$(echo "$transcript" | grep -oP 'brain/\K[a-f0-9-]+')

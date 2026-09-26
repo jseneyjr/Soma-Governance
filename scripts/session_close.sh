@@ -8,9 +8,14 @@ STEERING_REPO="$HOME/.gemini/antigravity/scratch/ai-steering-rules"
 LOGS_REPO="$HOME/.gemini/antigravity/scratch/ai-conversation-logs"
 EXPORT_SCRIPT="$STEERING_REPO/scripts/export_logs.sh"
 
-# Clean stale git locks (prevents contention between concurrent export scripts)
+# Clean stale git locks (only if no process is actively using them)
 for repo in "$STEERING_REPO" "$LOGS_REPO"; do
-    [ -f "$repo/.git/index.lock" ] && rm -f "$repo/.git/index.lock"
+    lock="$repo/.git/index.lock"
+    if [ -f "$lock" ]; then
+        if ! fuser "$lock" > /dev/null 2>&1; then
+            rm -f "$lock"
+        fi
+    fi
 done
 
 # Export logs
