@@ -25,3 +25,7 @@ trigger: always_on
 ## 4. Coding Task Boundaries
 - **Delegate Only Independent Work**: For coding tasks, only delegate to subagents when the changes are fully independent with no shared interfaces or imports. Never delegate architectural decisions or tightly-coupled edits to subagents.
 - **Orchestrator Retains Design Authority**: The primary conversation must retain all integration work, API contract decisions, and cross-module coordination. Subagents execute; they do not design.
+
+## 5. Subagent Reporting
+- **Structured Debrief**: When completing a task as a subagent, always report back with: (1) files created/modified, (2) what succeeded, (3) what failed or was skipped, and (4) any assumptions made.
+- **No Silent Completions**: Never report "done" without listing concrete deliverables. If zero files were produced, explicitly state that and explain why.
