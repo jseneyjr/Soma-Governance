@@ -1,11 +1,13 @@
 # AI Steering Rules
 
-Battle-tested governance rules for AI coding assistants — forged from 4,700+ steps of real failures across 3 projects, refined through 7 review phases, and continuously monitored.
+Battle-tested governance rules for AI coding assistants — forged from 4,900+ steps of real failures across 3 projects, refined through 8 review phases, and enforced via lifecycle hooks.
 
 ## Why Use This?
 
 - **Stop AI from guessing** — Rules force the agent to verify claims against your actual codebase before acting
-- **Cut token costs ~64%** — Conditional loading, smart subagent delegation, and task hygiene eliminate wasted steps
+- **Cut token costs ~63%** — Conditional loading, smart subagent delegation, and task hygiene eliminate wasted steps
+- **Mechanically enforced** — Lifecycle hooks gate destructive operations, inject governance context, and capture logs automatically
+- **Cross-platform** — Works with Gemini/Antigravity (Google), Kiro (AWS), and GitHub Copilot (Microsoft)
 - **Cross-platform** — Works with Gemini/Antigravity (Google), Kiro (AWS), and GitHub Copilot (Microsoft)
 
 ## Quick Start
@@ -57,6 +59,16 @@ Skills auto-activate based on your task. Zero tokens until invoked.
 | `performance-audit` | You ask to optimize or profile code. Performance Engineer persona: hot-path allocations, O(n²), GC pressure, resource utilization. |
 | `post-mortem` | You ask to review a past session or do a retrospective. SRE Facilitator persona: blameless analysis, pattern extraction, actionable recommendations. |
 | `refactoring-pilot` | You ask to refactor or restructure 4+ files. Refactoring Specialist persona: Mikado Method, incremental moves, safety nets. |
+
+### Hooks (3 lifecycle hooks)
+
+Hooks enforce governance mechanically — they don't rely on the model remembering rules.
+
+| Hook | Event | What It Does |
+|:-----|:------|:-------------|
+| `governance-monitor` | `PreInvocation` | On session start (and every 100th turn): exports logs, checks for pending governance proposals, injects reminder if found. |
+| `safety-gate` | `PreToolUse` | Gates destructive `run_command` calls (`rm -rf /`, `git push -f`, `DROP TABLE`). Returns `force_ask` for dangerous patterns. |
+| `session-close` | `Stop` | Exports conversation logs and syncs both repos when any session ends. No data loss even on crashes. |
 
 ## Installation Details
 
@@ -302,7 +314,7 @@ These weren't declared at the start — they crystallized through the evolution:
 
 ## Staff Review Scorecard
 
-This rule set has been through **3 formal review iterations**, a **1,339-step session post-mortem**, a **skills modernization pass**, and **continuous live monitoring** — each performed by independent AI reviewers.
+This rule set has been through **3 formal review iterations**, a **1,339-step session post-mortem**, a **skills modernization pass**, **continuous live monitoring**, a **1,579-step cross-conversation backfill**, and an **architectural redesign to hooks** — each performed by independent AI reviewers.
 
 ### Compliance Score (tested against a live 1,339-step coding session)
 
@@ -313,7 +325,7 @@ This rule set has been through **3 formal review iterations**, a **1,339-step se
 | Subagent Delegation | 8.5 | 9.5 | Read-only awareness, workspace conflict prevention, destructive delegation, media triage offload |
 | Root Cause Resolution | 9.5 | 9.5 | No changes needed — agent fixed all 6 code review findings |
 | Execution Discipline | 6.0 | 9.5 | Phase gates, checkpoint testing, mock-first mandate, venv binding |
-| **Overall** | **7.8** | **9.7** | **45 findings fixed across all phases** |
+| **Overall** | **7.8** | **9.8** | **53 findings fixed across all phases** |
 
 ### Review & Improvement History
 
@@ -326,7 +338,8 @@ This rule set has been through **3 formal review iterations**, a **1,339-step se
 | **Skills Modernization** | Original 4 skills audit | 10 | 10 | Phased workflows, anti-patterns, output formats, Providence cross-refs, full OWASP checklist |
 | **Live Monitor** | Continuous (10-min cycles) | 7 | 7 | Bulk media delegation, scratch hygiene, disjoint file ownership, zombie cleanup, pipefail guard, mock clarity, tracker race fix |
 | **Backfill** | f7cf2179 (1,579-step Dwarf Fortress) | 5 | 5 | Desktop automation safety, premature abstraction ban, pivot discipline, delegation floor, real-time loop budgets |
-| **Total** | | **49** | **45** | 4 skipped were intentional design decisions |
+| **Hooks Redesign** | Architectural review | 8 | 8 | PreInvocation governance init, PreToolUse safety gate, Stop log export, symlinks (zero drift), persistent state, cross-session memory |
+| **Total** | | **57** | **53** | 4 skipped were intentional design decisions |
 
 ## Development History
 
@@ -336,19 +349,22 @@ This governance suite was built, tested, and continuously refined across 4,700+ 
 
 | Metric | Value |
 |:-------|:------|
-| Total steps analyzed across all sessions | 4,700+ |
+| Total steps analyzed across all sessions | 4,900+ |
 | Sessions analyzed | 3 (Dwarf Fortress, TAB AI, Steering Rules) |
-| Review phases | 7 (3 formal + post-mortem + skills modernization + live monitor + backfill) |
-| Total findings | 49 |
-| Findings fixed | 45 (4 skipped as intentional design decisions) |
-| Subagents used for reviews | 12+ (all Flash tier) |
+| Review phases | 8 (3 formal + post-mortem + skills modernization + live monitor + backfill + hooks redesign) |
+| Total findings | 57 |
+| Findings fixed | 53 (4 skipped as intentional design decisions) |
+| Subagents used for reviews | 15+ (all Flash tier) |
+| Lifecycle hooks deployed | 3 (PreInvocation, PreToolUse, Stop) |
+| Conversations archived | 13 (private repo) |
 
 ### What Worked
 
 - **Flash subagents for reviews**: Independent reviewers at negligible cost saved the main context from 350K+ tokens of file reading
 - **Dual reviewer fan-out**: Compliance auditor + gap analyst concurrently — each caught findings the other missed
 - **Cross-conversation backfill**: Analyzing the Dwarf Fortress session (never previously reviewed) surfaced 5 entirely new pattern categories
-- **Continuous monitoring**: The 10-min cron caught 7 findings that batch reviews missed
+- **Hooks over cron**: Replacing the ephemeral in-session cron with lifecycle hooks eliminated the "governance dies with session" problem entirely
+- **Symlinks over copies**: Eliminated the manual cp → git push sync cycle that caused drift 3 times in one session
 
 ### Optimal Creation Order
 
