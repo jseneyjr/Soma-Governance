@@ -5,9 +5,9 @@ set -euo pipefail
 # Fires before every model call. On first invocation (and every 100th),
 # checks for pending governance proposals.
 #
-# Severity routing:
-#   🔴 Critical → escalate to user via ephemeral message (DO NOT auto-apply)
-#   🟡 Warning / 🔵 Nit → auto-applied by governance pipeline (logged to auto_applied_log.jsonl)
+# Severity routing (ALL auto-applied, visibility differs):
+#   🔴 Critical → auto-applied + LOUD ephemeral alert so user sees it immediately
+#   🟡 Warning / 🔵 Nit → auto-applied + quiet info on next session start
 
 INPUT=$(cat)
 INVOCATION_NUM=$(echo "$INPUT" | python3 -c "import sys,json; print(json.load(sys.stdin).get('invocationNum', 0))" 2>/dev/null || echo "0")
@@ -35,7 +35,7 @@ if [ -f "$CRITICAL" ] && [ -s "$CRITICAL" ]; then
 {
   "injectSteps": [
     {
-      "ephemeralMessage": "🔴 CRITICAL GOVERNANCE ALERT: $FINDING_COUNT critical finding(s) require your review. Non-critical findings have been auto-applied. Review: cat $CRITICAL"
+      "ephemeralMessage": "🔴 GOVERNANCE: $FINDING_COUNT critical change(s) were AUTO-APPLIED to your steering rules. Review what changed: cat $CRITICAL && cat $AUTO_LOG | tail -5"
     }
   ]
 }
