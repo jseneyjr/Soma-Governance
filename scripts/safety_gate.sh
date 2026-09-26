@@ -47,7 +47,10 @@ if echo "$CMD" | grep -qE 'git\s+reset\s+--hard'; then
     REASON="Hard reset — will discard uncommitted changes"
 fi
 
+GATE_LOG="$HOME/.gemini/antigravity/scratch/ai-conversation-logs/governance/gate_events.jsonl"
+
 if [ "$BLOCKED" = true ]; then
+    echo "{\"timestamp\":\"$(date -Iseconds)\",\"command\":\"$(echo "$CMD" | head -c 200)\",\"decision\":\"BLOCKED\",\"reason\":\"$REASON\"}" >> "$GATE_LOG" 2>/dev/null || true
     cat << RESPONSE
 {
   "decision": "force_ask",
@@ -55,5 +58,6 @@ if [ "$BLOCKED" = true ]; then
 }
 RESPONSE
 else
+    echo "{\"timestamp\":\"$(date -Iseconds)\",\"command\":\"$(echo "$CMD" | head -c 200)\",\"decision\":\"ALLOWED\"}" >> "$GATE_LOG" 2>/dev/null || true
     echo '{"decision": "allow"}'
 fi
