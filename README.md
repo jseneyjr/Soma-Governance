@@ -5,7 +5,7 @@ Battle-tested governance rules for AI coding assistants — forged from 5,800+ s
 ## Why Use This?
 
 - **Stop AI from guessing** — Rules force the agent to verify claims against your actual codebase before acting
-- **Cut token costs ~63%** — Conditional loading, smart subagent delegation, and task hygiene eliminate wasted steps
+- **Cut token costs ~65%** — Conditional loading, smart subagent delegation, and task hygiene eliminate wasted steps
 - **Mechanically enforced** — Lifecycle hooks gate destructive operations, inject governance context, and capture logs automatically
 - **Cross-platform** — Works with Gemini/Antigravity (Google), Kiro (AWS), and GitHub Copilot (Microsoft)
 
