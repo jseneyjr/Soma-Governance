@@ -11,19 +11,25 @@ Battle-tested governance rules for AI coding assistants — forged from 5,500+ s
 
 ## Quick Start
 
-> **Prerequisites:** `git` and one of: [Gemini/Antigravity](https://github.com/google-gemini/antigravity), [Kiro](https://kiro.dev), or [GitHub Copilot](https://github.com/features/copilot)
+> **Prerequisites:** `git`, `make`, and one of: [Gemini/Antigravity](https://github.com/google-gemini/antigravity), [Kiro](https://kiro.dev), or [GitHub Copilot](https://github.com/features/copilot)
 
 ```bash
 git clone https://github.com/nseney1/ai-steering-rules.git
 cd ai-steering-rules
 
-# Pick your platform:
-./install-gemini.sh     # Gemini / Antigravity
-./install-kiro.sh       # Kiro
-./install-copilot.sh    # GitHub Copilot (run with 'global' or 'project')
+# Optional: customize for your team/stack
+cp steering.conf.example steering.conf
+# Edit steering.conf (team size, tech stack, git strategy, etc.)
+
+# Install for your platform:
+make install              # Gemini / Antigravity (default)
+make install-kiro         # Kiro
+make install-copilot      # GitHub Copilot (MODE=global|project)
 ```
 
 Rules take effect on your next conversation turn. No restart needed.
+
+> **No `make`?** The install scripts still work standalone: `./install-gemini.sh`
 
 ---
 
@@ -144,6 +150,32 @@ Activate manual rules by typing `#testing`, `#documentation`, `#feature-specs`, 
 
 ---
 
+## Team Configuration
+
+Copy `steering.conf.example` → `steering.conf` and customize for your environment:
+
+```bash
+make info   # Show current configuration
+```
+
+| Variable | Options | Effect |
+|:---------|:--------|:-------|
+| `TEAM_SIZE` | `solo`, `small`, `team`, `enterprise` | Branching strategy, approval requirements |
+| `GIT_STRATEGY` | `trunk`, `feature-branch`, `gitflow` | Git workflow overrides |
+| `AI_USAGE` | `individual`, `shared-repo`, `multi-team` | Context coordination guidance |
+| `TECH_STACK` | `python`, `node`, `go`, `rust`, `java`... | Environment checks, package manager, preflight |
+| `TEST_COMMAND` | any command | Override test runner auto-detection |
+| `RULES_SUBSET` | `all`, `core`, `minimal` | Control how many rules are installed |
+| `APPROVAL_CHAIN` | `none`, `peer`, `lead` | Destructive operation approval requirements |
+
+### Rule Subsets
+
+| Subset | Rules | Tokens | Best For |
+|:-------|:-----:|:------:|:---------|
+| `all` | 11 | ~3,500 | Full governance (default) |
+| `core` | 6 | ~2,800 | Balanced coverage without domain-specific rules |
+| `minimal` | 3 | ~2,000 | Token-constrained environments or quick experiments |
+
 ## Customization
 
 These rules are opinionated. Fork and adjust:
@@ -154,14 +186,6 @@ These rules are opinionated. Fork and adjust:
 | Entrypoint format (Makefile vs Justfile) | `polyglot-standards.md` |
 | Infrastructure preferences | `architectural-tenets.md` |
 | Priority hierarchy | `providence.md` (all others defer) |
-
-### Minimum Viable Governance
-
-For small projects or token-constrained environments, load only 3 files (~2,000 tokens):
-
-1. `providence.md` — grounding, anti-hallucination, no workarounds
-2. `subagent-delegation.md` — context protection + cost tiering
-3. `destructive-ops.md` — safety net for destructive operations
 
 ---
 
