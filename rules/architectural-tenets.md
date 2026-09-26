@@ -20,3 +20,12 @@ trigger: model_decision
 
 ## 4. Verify Artifact Existence Before Designing Migrations
 - **No Speculative Backward Compatibility**: Before specifying migration utilities, checkpoint adapters, schema versioning, or backward-compatibility shims, verify whether the legacy data or artifacts actually exist in the workspace. If no legacy state exists to preserve, confirm with the user before investing engineering effort.
+
+## Premature Abstraction
+- **Prove Before Generalizing**: Do not extract "generic multi-app engines" or reusable frameworks until the primary implementation has demonstrated end-to-end operational stability across at least 3 successful runs. Cite YAGNI.
+
+## Pivot Discipline
+- **Two-Pivot Halt**: If a project changes its foundational paradigm twice (e.g., LLM → RL → Imitation), the agent must halt, summarize trade-offs in an ADR, and receive explicit user re-authorization before scaffolding a third framework.
+
+## Real-Time Loop Budgets
+- **No Blocking Inference in Control Loops**: AI inference calls (VLM, LLM, object detection) inside real-time execution loops must be async or decoupled. Synchronous calls with >500ms latency in a loop running at >1 Hz are prohibited.

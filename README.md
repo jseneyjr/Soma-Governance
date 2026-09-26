@@ -30,18 +30,18 @@ Rules take effect on your next conversation turn. No restart needed.
 
 | Rule | Trigger | Purpose |
 |:-----|:--------|:--------|
-| `providence.md` | always_on | **Highest priority.** Codebase grounding, claim verification, no hallucinations, no silent workarounds, external evidence priority, plan adherence, symbol collision guard, UI grounding gate. |
+| `providence.md` | always_on | **Highest priority.** Codebase grounding, claim verification, no hallucinations, no silent workarounds, external evidence priority, plan adherence, symbol collision guard, UI grounding gate, desktop automation safety. |
 | `cost-optimization.md` | always_on | Token efficiency, subagent model tiering, task hygiene, heavy model concurrency cap. |
 | `polyglot-standards.md` | always_on | Unified entrypoints (Makefiles), containerization with carve-outs for scripts/serverless. |
 | `subagent-delegation.md` | always_on | Context window protection, parallel execution, coding task boundaries, structured reporting, workspace conflict prevention. |
-| `architectural-tenets.md` | model_decision | Pragmatism over purity, trade-off analysis, scale-to-zero, artifact existence verification. |
+| `architectural-tenets.md` | model_decision | Pragmatism, trade-off analysis, scale-to-zero, premature abstraction ban, pivot discipline, real-time loop budgets. |
 | `feature-specs.md` | model_decision | PRD structure, acceptance criteria, documentation deliverables. |
 | `testing.md` | model_decision | Behavioral testing, sad paths, minimal mocking, CLI/script testing, hardware mock mandate. |
 | `documentation.md` | model_decision | ADRs, actionable READMEs, Mermaid diagrams, high-signal comments. |
 | `destructive-ops.md` | model_decision | Dry-run mandates for IaC, database mutations, and destructive git/filesystem ops. |
 
 **Trigger types:**
-- **`always_on`** — Loaded every turn. Non-negotiable governance. (~3,506 tokens)
+- **`always_on`** — Loaded every turn. Non-negotiable governance. (~3,665 tokens)
 - **`model_decision`** — Model sees the name/description and loads full content only when relevant. (~15 tokens idle)
 
 ### Skills (7 expert personas)
@@ -112,22 +112,22 @@ Copilot doesn't support conditional triggers — all rules are always active.
 
 | Rule | Tokens/Turn |
 |:-----|:------------|
-| `providence.md` | ~1,556 |
-| `subagent-delegation.md` | ~890 |
+| `providence.md` | ~1,661 |
+| `subagent-delegation.md` | ~944 |
 | `cost-optimization.md` | ~715 |
 | `polyglot-standards.md` | ~345 |
-| **Subtotal** | **~3,506** |
+| **Subtotal** | **~3,665** |
 
 **Conditional rules** — only name + description loaded unless activated:
 
 | Rule | Idle Cost | Full Cost (when activated) |
 |:-----|:----------|:--------------------------|
 | `testing.md` | ~29 | ~739 |
+| `architectural-tenets.md` | ~29 | ~612 |
 | `feature-specs.md` | ~29 | ~463 |
 | `documentation.md` | ~18 | ~439 |
-| `architectural-tenets.md` | ~29 | ~416 |
 | `destructive-ops.md` | ~25 | ~361 |
-| **Subtotal** | **~130** | **~2,418** |
+| **Subtotal** | **~130** | **~2,614** |
 
 **Skills** — zero cost until auto-activated:
 
@@ -146,11 +146,11 @@ Copilot doesn't support conditional triggers — all rules are always active.
 
 | Approach | Tokens/Turn |
 |:---------|:------------|
-| **Naive** — all 9 rules + 7 skills always loaded | ~11,096 |
-| **Optimized** — conditional rules + skills idle | ~4,048 |
-| **Savings** | **~7,048 tokens/turn (64%)** |
+| **Naive** — all 9 rules + 7 skills always loaded | ~11,451 |
+| **Optimized** — conditional rules + skills idle | ~4,207 |
+| **Savings** | **~7,244 tokens/turn (63%)** |
 
-The optimized setup delivers the same governance coverage at 36% of the naive token cost. Conditional rules and skills only expand to full cost on the specific turns where they're relevant.
+The optimized setup delivers the same governance coverage at 37% of the naive token cost. Conditional rules and skills only expand to full cost on the specific turns where they're relevant.
 
 ### Observed Savings (Real Session Post-Mortem)
 
@@ -197,7 +197,7 @@ Each loop costs **~20–25 steps** of wasted context. From the 611-step session:
 | Per week (5 sessions) | ~550 wasted steps | ~110 wasted steps | ~440 steps |
 | Per month (20 sessions) | ~2,200 wasted steps | ~440 wasted steps | **~1,760 steps** |
 
-> **The governance rules cost ~4,048 tokens/turn to maintain. A single prevented rework loop saves ~20 steps × ~4,000 tokens/step = ~80,000 tokens. The rules pay for themselves within the first prevented mistake.**
+> **The governance rules cost ~4,207 tokens/turn to maintain. A single prevented rework loop saves ~20 steps × ~4,000 tokens/step = ~80,000 tokens. The rules pay for themselves within the first prevented mistake.**
 
 ## Customization
 
@@ -229,7 +229,7 @@ This rule set has been through **3 formal review iterations**, a **1,339-step se
 | Subagent Delegation | 8.5 | 9.5 | Read-only awareness, workspace conflict prevention, destructive delegation, media triage offload |
 | Root Cause Resolution | 9.5 | 9.5 | No changes needed — agent fixed all 6 code review findings |
 | Execution Discipline | 6.0 | 9.5 | Phase gates, checkpoint testing, mock-first mandate, venv binding |
-| **Overall** | **7.8** | **9.7** | **40 findings fixed across all phases** |
+| **Overall** | **7.8** | **9.7** | **45 findings fixed across all phases** |
 
 ### Review & Improvement History
 
@@ -241,7 +241,8 @@ This rule set has been through **3 formal review iterations**, a **1,339-step se
 | **Post-Mortem** | 1,339-step session analysis | 6 | 6 | UI grounding gate, symbol collision guard, refactoring sweep, mock mandate, venv binding, data ingestion filter |
 | **Skills Modernization** | Original 4 skills audit | 10 | 10 | Phased workflows, anti-patterns, output formats, Providence cross-refs, full OWASP checklist |
 | **Live Monitor** | Continuous (10-min cycles) | 7 | 7 | Bulk media delegation, scratch hygiene, disjoint file ownership, zombie cleanup, pipefail guard, mock clarity, tracker race fix |
-| **Total** | | **44** | **40** | 4 skipped were intentional design decisions |
+| **Backfill** | f7cf2179 (1,579-step Dwarf Fortress) | 5 | 5 | Desktop automation safety, premature abstraction ban, pivot discipline, delegation floor, real-time loop budgets |
+| **Total** | | **49** | **45** | 4 skipped were intentional design decisions |
 
 ## Development Post-Mortem
 
