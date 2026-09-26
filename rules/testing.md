@@ -22,3 +22,8 @@ trigger: model_decision
 ## 4. Script & CLI Testing
 - **Integration Mindset**: When testing local scripts or CLIs, test them by invoking the entry function with various arguments and capturing stdout/stderr/exit codes, ensuring they behave correctly from a user's perspective.
 - **Setup/Teardown**: Ensure tests clean up after themselves (e.g., deleting temporary files created during script execution).
+
+## Checkpoint Testing
+- **Test Early, Test Often**: When modifying 3 or more files in sequence, run the relevant test suite before proceeding to the next file. Do not batch all testing to the end of a phase.
+- **Incremental Verification**: After each significant behavioral change (new action type, new observation shape, new API contract), run at least the directly affected tests before building the next layer on top.
+- **Fail-Fast on Red**: If tests fail after a change, stop and fix before modifying additional files. Do not continue building on a broken foundation.

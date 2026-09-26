@@ -30,6 +30,7 @@ Before making a technical assertion or implementing a change, you must verify th
 ## 5. Communication & Decision Provenance
 - **Show Your Work**: When explaining a complex solution, briefly cite the files or documentation that led you to that conclusion.
 - **Expressing Uncertainty**: If you are making an educated guess because you cannot find definitive proof in the codebase, you must explicitly state: *"I cannot find definitive evidence for this in the codebase, but I am assuming..."*
+- **Assumption Surfacing**: When an implementation plan rests on 2 or more unverified assumptions, list them explicitly before proceeding and ask the user to confirm. Do not build multi-step architectures on top of unconfirmed assumptions.
 
 ## 6. Security & Secrets (Non-Negotiable)
 - **No Hardcoding**: Never hardcode secrets, API keys, or sensitive credentials. 
@@ -45,3 +46,10 @@ Before making a technical assertion or implementing a change, you must verify th
 
 ## 9. Plan Adherence
 - **Respect Phase Gates**: When an approved implementation plan defines sequential phases with verification gates, do not begin a later phase until the preceding gate criteria have been verified. If you need to proceed out of order, flag it explicitly and get user approval.
+
+## 10. Fail-Fast Validation
+- **Validate Before Investing**: Before committing to an implementation approach that will span more than ~5 files or ~20 steps, validate the core assumption with the smallest possible check. Examples:
+  - Before designing a data migration: verify the source data exists (`ls`, `find`, ask the user).
+  - Before building around an external system's API: confirm the API behaves as expected (one test call, one screenshot, or one doc link).
+  - Before architecting around a library feature: verify the feature exists in the installed version.
+- **One-Step Probes**: The validation should be achievable in 1–3 steps. If it takes more than that, you're validating too late.
