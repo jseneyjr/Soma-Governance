@@ -70,6 +70,61 @@ Hooks enforce governance mechanically — they don't rely on the model rememberi
 | `safety-gate` | `PreToolUse` | Gates destructive `run_command` calls (`rm -rf /`, `git push -f`, `DROP TABLE`). Returns `force_ask` for dangerous patterns. |
 | `session-close` | `Stop` | Exports conversation logs and syncs both repos when any session ends. No data loss even on crashes. |
 
+## How It Works
+
+The governance system runs automatically across session boundaries. No manual setup needed after installation.
+
+### Session Lifecycle
+
+```
+SESSION START
+│
+├── PreInvocation hook (turn 1 + every 100th turn)
+│   ├── Exports conversation logs to private repo
+│   ├── Checks for pending critical governance proposals
+│   └── Injects ephemeral message:
+│       🔴 LOUD if critical changes were auto-applied
+│       ℹ️  Quiet if non-critical changes were applied
+│       (nothing if clean)
+│
+├── NORMAL WORK
+│   └── PreToolUse hook (every run_command)
+│       ├── rm -rf /, git push -f, DROP TABLE → BLOCKED (force_ask)
+│       └── Everything else → allowed instantly (~5ms)
+│
+└── SESSION END (or crash)
+    └── Stop hook
+        ├── Exports this session's logs
+        └── Pushes steering repo if rules changed
+```
+
+### Governance Pipeline (between sessions)
+
+When the backfill flow or a manual review discovers patterns:
+
+```
+Flash subagent analyzes transcripts → classifies by severity
+│
+├── 🟡 Warning / 🔵 Nit → auto-applied to rules, logged to audit trail
+│   └── Next session: ℹ️ "non-critical changes were applied"
+│
+└── 🔴 Critical → auto-applied to rules, logged + written to pending_critical.md
+    └── Next session: 🔴 "critical changes — review what changed"
+```
+
+All changes — regardless of severity — are recorded in an append-only audit trail (`auto_applied_log.jsonl`) so you can always trace what changed and why.
+
+### Where Everything Lives
+
+| What | Location | Sync Mechanism |
+|:-----|:---------|:---------------|
+| Live rules + skills | `~/.gemini/config/rules/`, `skills/` | **Symlinks** to steering repo (zero drift) |
+| Hooks | `~/.gemini/config/plugins/governance/hooks.json` | Plugin auto-discovered by Antigravity |
+| Hook scripts | `ai-steering-rules/scripts/` | Git-versioned, executable |
+| Audit trail | `ai-conversation-logs/governance/auto_applied_log.jsonl` | Append-only, pushed on session close |
+| Critical proposals | `ai-conversation-logs/governance/pending_critical.md` | Checked every session start |
+| Conversation logs | `ai-conversation-logs/conversations/` | Exported on session start + close |
+
 ## Installation Details
 
 ### Gemini / Antigravity (Google Cloud)
