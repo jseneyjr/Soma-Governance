@@ -1,6 +1,6 @@
 # AI Steering Rules
 
-Battle-tested governance rules for AI coding assistants — forged from 5,300+ steps of real failures across 8 sessions, refined through 10 review phases, and enforced via lifecycle hooks.
+Battle-tested governance rules for AI coding assistants — forged from 5,500+ steps of real failures across 9 sessions, refined through 12 review phases, and enforced via lifecycle hooks.
 
 ## Why Use This?
 
@@ -39,21 +39,22 @@ Rules take effect on your next conversation turn. No restart needed.
 | `architectural-tenets.md` | model_decision | Pragmatism, trade-off analysis, scale-to-zero, premature abstraction ban. |
 | `polyglot-standards.md` | model_decision | Unified entrypoints (Makefiles), containerization. |
 | `feature-specs.md` | model_decision | PRD structure, acceptance criteria, documentation deliverables. |
-| `testing.md` | model_decision | Behavioral testing, ast.parse ban, sad paths, checkpoint testing. |
-| `documentation.md` | model_decision | ADRs, actionable READMEs, Mermaid diagrams. |
+| `testing.md` | model_decision | Behavioral testing, ast.parse ban, sad paths, checkpoint testing, hook integration testing. |
+| `documentation.md` | model_decision | ADRs, actionable READMEs, Mermaid diagrams, README modularization. |
 | `destructive-ops.md` | model_decision | Dry-run mandates for IaC, database mutations, bulk git staging. |
-| `git-workflow.md` | model_decision | Session awareness, conventional commits, .gitignore verification. |
-| `desktop-automation.md` | model_decision | PyAutoGUI/xdotool safety: focus verification, coordinate clamping, closed-loop validation. |
+| `git-workflow.md` | model_decision | Session awareness, conventional commits, .gitignore verification, pre-push test gate. |
+| `desktop-automation.md` | model_decision | PyAutoGUI/xdotool safety: focus verification, coordinate clamping, coordinate grounding, closed-loop validation. |
 
 - **`always_on`** — Loaded every turn (~2,980 tokens)
 - **`model_decision`** — Loads full content only when relevant (~30 tokens idle)
 
-### Skills (8 expert personas)
+### Skills (9 expert personas)
 
 Zero tokens until invoked.
 
 | Skill | Activates When... |
 |:------|:------------------|
+| `session-preflight` | Starting a coding project. Flash probe: venv health, test suite, git state, display env. |
 | `code-review` | Review or critique code. Staff Engineer: architectural flaws, race conditions, SOLID. |
 | `security-audit` | Check security or audit endpoints. AppSec Engineer: OWASP Top 10. |
 | `incident-debug` | Crash, hang, or error. SRE: reproduce → isolate → diagnose → fix → verify. |
@@ -61,7 +62,7 @@ Zero tokens until invoked.
 | `performance-audit` | Optimize or profile code. Performance Engineer: hot-path allocations, O(n²). |
 | `post-mortem` | Review a past session. SRE Facilitator: blameless analysis, pattern extraction. |
 | `refactoring-pilot` | Refactor 4+ files. Specialist: Mikado Method, incremental moves. |
-| `staff-review` | Comprehensive review or audit. Multi-lens fan-out with staff-level synthesis. |
+| `staff-review` | Comprehensive review or audit. Multi-lens fan-out with staff-level synthesis. Includes continuous review sentinel for coding sessions. |
 
 ### Hooks (3 lifecycle hooks)
 
@@ -102,7 +103,7 @@ SESSION START
 | Hooks | `~/.gemini/config/plugins/governance/hooks.json` |
 | Hook scripts | `ai-steering-rules/scripts/` |
 | Audit trail | `ai-conversation-logs/governance/auto_applied_log.jsonl` |
-| Pattern taxonomy | `ai-conversation-logs/governance/taxonomy.json` (18 patterns) |
+| Pattern taxonomy | `ai-conversation-logs/governance/taxonomy.json` (23 patterns, v2.1) |
 | Rule effectiveness | `ai-conversation-logs/governance/effectiveness.json` |
 
 ---
