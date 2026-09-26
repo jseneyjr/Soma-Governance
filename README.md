@@ -8,7 +8,6 @@ Battle-tested governance rules for AI coding assistants — forged from 5,800+ s
 - **Cut token costs ~63%** — Conditional loading, smart subagent delegation, and task hygiene eliminate wasted steps
 - **Mechanically enforced** — Lifecycle hooks gate destructive operations, inject governance context, and capture logs automatically
 - **Cross-platform** — Works with Gemini/Antigravity (Google), Kiro (AWS), and GitHub Copilot (Microsoft)
-- **Cross-platform** — Works with Gemini/Antigravity (Google), Kiro (AWS), and GitHub Copilot (Microsoft)
 
 ## Quick Start
 
