@@ -5,7 +5,7 @@ Battle-tested governance rules and expert persona skills for AI coding assistant
 ## Why Use This?
 
 - **Stop AI from guessing** — Rules force the agent to verify claims against your actual codebase before acting
-- **Cut token costs ~45%** — Conditional loading, smart subagent delegation, and task hygiene eliminate wasted steps
+- **Cut token costs ~64%** — Conditional loading, smart subagent delegation, and task hygiene eliminate wasted steps
 - **Cross-platform** — Works with Gemini/Antigravity (Google), Kiro (AWS), and GitHub Copilot (Microsoft)
 
 ## Quick Start
@@ -41,7 +41,7 @@ Rules take effect on your next conversation turn. No restart needed.
 | `destructive-ops.md` | model_decision | Dry-run mandates for IaC, database mutations, and destructive git/filesystem ops. |
 
 **Trigger types:**
-- **`always_on`** — Loaded every turn. Non-negotiable governance. (~3,326 tokens)
+- **`always_on`** — Loaded every turn. Non-negotiable governance. (~3,506 tokens)
 - **`model_decision`** — Model sees the name/description and loads full content only when relevant. (~15 tokens idle)
 
 ### Skills (7 expert personas)
@@ -113,21 +113,21 @@ Copilot doesn't support conditional triggers — all rules are always active.
 | Rule | Tokens/Turn |
 |:-----|:------------|
 | `providence.md` | ~1,556 |
-| `subagent-delegation.md` | ~787 |
-| `cost-optimization.md` | ~638 |
+| `subagent-delegation.md` | ~890 |
+| `cost-optimization.md` | ~715 |
 | `polyglot-standards.md` | ~345 |
-| **Subtotal** | **~3,326** |
+| **Subtotal** | **~3,506** |
 
 **Conditional rules** — only name + description loaded unless activated:
 
 | Rule | Idle Cost | Full Cost (when activated) |
 |:-----|:----------|:--------------------------|
-| `testing.md` | ~29 | ~665 |
+| `testing.md` | ~29 | ~739 |
 | `feature-specs.md` | ~29 | ~463 |
 | `documentation.md` | ~18 | ~439 |
 | `architectural-tenets.md` | ~29 | ~416 |
 | `destructive-ops.md` | ~25 | ~361 |
-| **Subtotal** | **~130** | **~2,344** |
+| **Subtotal** | **~130** | **~2,418** |
 
 **Skills** — zero cost until auto-activated:
 
@@ -146,15 +146,15 @@ Copilot doesn't support conditional triggers — all rules are always active.
 
 | Approach | Tokens/Turn |
 |:---------|:------------|
-| **Naive** — all 9 rules + 7 skills always loaded | ~10,842 |
-| **Optimized** — conditional rules + skills idle | ~3,868 |
-| **Savings** | **~6,974 tokens/turn (64%)** |
+| **Naive** — all 9 rules + 7 skills always loaded | ~11,096 |
+| **Optimized** — conditional rules + skills idle | ~4,048 |
+| **Savings** | **~7,048 tokens/turn (64%)** |
 
 The optimized setup delivers the same governance coverage at 36% of the naive token cost. Conditional rules and skills only expand to full cost on the specific turns where they're relevant.
 
 ### Observed Savings (Real Session Post-Mortem)
 
-Based on a 611-step coding session before and after optimization:
+Based on a 1,339-step coding session before and after optimization:
 
 | Metric | Before | After |
 |:-------|:-------|:------|
@@ -197,7 +197,7 @@ Each loop costs **~20–25 steps** of wasted context. From the 611-step session:
 | Per week (5 sessions) | ~550 wasted steps | ~110 wasted steps | ~440 steps |
 | Per month (20 sessions) | ~2,200 wasted steps | ~440 wasted steps | **~1,760 steps** |
 
-> **The governance rules cost ~3,868 tokens/turn to maintain. A single prevented rework loop saves ~20 steps × ~4,000 tokens/step = ~80,000 tokens. The rules pay for themselves within the first prevented mistake.**
+> **The governance rules cost ~4,048 tokens/turn to maintain. A single prevented rework loop saves ~20 steps × ~4,000 tokens/step = ~80,000 tokens. The rules pay for themselves within the first prevented mistake.**
 
 ## Customization
 
@@ -229,7 +229,7 @@ This rule set has been through **3 formal review iterations**, a **1,339-step se
 | Subagent Delegation | 8.5 | 9.5 | Read-only awareness, workspace conflict prevention, destructive delegation, media triage offload |
 | Root Cause Resolution | 9.5 | 9.5 | No changes needed — agent fixed all 6 code review findings |
 | Execution Discipline | 6.0 | 9.5 | Phase gates, checkpoint testing, mock-first mandate, venv binding |
-| **Overall** | **7.8** | **9.6** | **29 findings fixed across all phases** |
+| **Overall** | **7.8** | **9.7** | **40 findings fixed across all phases** |
 
 ### Review & Improvement History
 
@@ -240,8 +240,8 @@ This rule set has been through **3 formal review iterations**, a **1,339-step se
 | **Review 3** | Third iteration audit | 7 | 6 | Stale frontmatter, fan-out alignment, tier consolidation, destructive delegation, README split, env verification |
 | **Post-Mortem** | 1,339-step session analysis | 6 | 6 | UI grounding gate, symbol collision guard, refactoring sweep, mock mandate, venv binding, data ingestion filter |
 | **Skills Modernization** | Original 4 skills audit | 10 | 10 | Phased workflows, anti-patterns, output formats, Providence cross-refs, full OWASP checklist |
-| **Live Monitor** | Continuous (10-min cycles) | 2 | 2 | Bulk media delegation, scratch hygiene guard |
-| **Total** | | **39** | **35** | 4 skipped were intentional design decisions |
+| **Live Monitor** | Continuous (10-min cycles) | 7 | 7 | Bulk media delegation, scratch hygiene, disjoint file ownership, zombie cleanup, pipefail guard, mock clarity, tracker race fix |
+| **Total** | | **44** | **40** | 4 skipped were intentional design decisions |
 
 ## Development Post-Mortem
 

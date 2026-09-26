@@ -29,5 +29,10 @@ trigger: model_decision
 - **Fail-Fast on Red**: If tests fail after a change, stop and fix before modifying additional files. Do not continue building on a broken foundation.
 
 ## Hardware & External System Mocking
+> As an exception to Minimal Mocking (§2), external hardware and OS boundaries must always be mocked.
+
 - **Mock by Default**: Tests asserting on hardware, OS window managers (xdotool, pygetwindow), or external processes must include mock fixtures by default.
 - **Timeout Guard**: Never execute a polling loop in a test without an explicit short timeout (≤2s) and a simulated target.
+
+## Shell Pipeline Safety
+- **Pipefail Mandate**: When piping test or build commands through filters (`| tail`, `| head`, `| grep`), prefix with `set -o pipefail` to prevent exit code masking.
