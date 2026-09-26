@@ -1,6 +1,6 @@
 # AI Steering Rules
 
-Battle-tested governance rules for AI coding assistants — forged from 4,900+ steps of real failures across 3 projects, refined through 8 review phases, and enforced via lifecycle hooks.
+Battle-tested governance rules for AI coding assistants — forged from 5,800+ steps of real failures across 7 sessions, refined through 9 review phases, and enforced via lifecycle hooks.
 
 ## Why Use This?
 
@@ -325,7 +325,7 @@ This rule set has been through **3 formal review iterations**, a **1,339-step se
 | Subagent Delegation | 8.5 | 9.5 | Read-only awareness, workspace conflict prevention, destructive delegation, media triage offload |
 | Root Cause Resolution | 9.5 | 9.5 | No changes needed — agent fixed all 6 code review findings |
 | Execution Discipline | 6.0 | 9.5 | Phase gates, checkpoint testing, mock-first mandate, venv binding |
-| **Overall** | **7.8** | **9.8** | **53 findings fixed across all phases** |
+| **Overall** | **7.8** | **9.8** | **58 findings fixed across all phases** |
 
 ### Review & Improvement History
 
@@ -339,7 +339,8 @@ This rule set has been through **3 formal review iterations**, a **1,339-step se
 | **Live Monitor** | Continuous (10-min cycles) | 7 | 7 | Bulk media delegation, scratch hygiene, disjoint file ownership, zombie cleanup, pipefail guard, mock clarity, tracker race fix |
 | **Backfill** | f7cf2179 (1,579-step Dwarf Fortress) | 5 | 5 | Desktop automation safety, premature abstraction ban, pivot discipline, delegation floor, real-time loop budgets |
 | **Hooks Redesign** | Architectural review | 8 | 8 | PreInvocation governance init, PreToolUse safety gate, Stop log export, symlinks (zero drift), persistent state, cross-session memory |
-| **Total** | | **57** | **53** | 4 skipped were intentional design decisions |
+| **Backfill 2** | 7 sessions (5,800+ steps total) | 5 | 5 | No collateral kills, deliverable-first mandate, micro-prototyping cap, sandbox awareness, metric rationalization ban |
+| **Total** | | **62** | **58** | 4 skipped were intentional design decisions |
 
 ## Development History
 
@@ -349,14 +350,14 @@ This governance suite was built, tested, and continuously refined across 4,700+ 
 
 | Metric | Value |
 |:-------|:------|
-| Total steps analyzed across all sessions | 4,900+ |
-| Sessions analyzed | 3 (Dwarf Fortress, TAB AI, Steering Rules) |
-| Review phases | 8 (3 formal + post-mortem + skills modernization + live monitor + backfill + hooks redesign) |
-| Total findings | 57 |
-| Findings fixed | 53 (4 skipped as intentional design decisions) |
-| Subagents used for reviews | 15+ (all Flash tier) |
+| Total steps analyzed across all sessions | 5,800+ |
+| Sessions analyzed | 7 (Dwarf Fortress, TAB AI, Steering Rules, 4 mid-size) |
+| Review phases | 9 (3 formal + post-mortem + skills modernization + live monitor + 2 backfills + hooks redesign) |
+| Total findings | 62 |
+| Findings fixed | 58 (4 skipped as intentional design decisions) |
+| Subagents used for reviews | 17+ (all Flash tier) |
 | Lifecycle hooks deployed | 3 (PreInvocation, PreToolUse, Stop) |
-| Conversations archived | 13 (private repo) |
+| Conversations archived | 14 (private repo) |
 
 ### What Worked
 

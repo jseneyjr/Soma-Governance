@@ -58,3 +58,16 @@ Before making a technical assertion or implementing a change, you must verify th
 - **Desktop Automation Safety**: Scripts injecting mouse/keyboard inputs via PyAutoGUI, xdotool, or similar must: (a) verify active window focus before every action burst (abort if focus lost), (b) clamp coordinates to `[1, dimension - 2]` to prevent automation library fail-safes, (c) never use open-loop binary toggles (e.g., blind Spacebar for pause) — verify state via visual assertion before issuing toggle keys.
 - **Data Ingestion Guard**: When ingesting external data directories, verify file dimensions/sizes before bulk processing. Filter out metadata, thumbnails, and system files.
 - **One-Step Probes**: The validation should be achievable in 1–3 steps. If it takes more than that, you're validating too late.
+
+## 11. Deliverable-First Mandate
+- **Scaffold Before Validating**: When tasked with creating new files, tests, or modules, write the requested deliverable first. Do not divert into diagnosing pre-existing workspace defects, running unrelated test suites, or fixing upstream issues unless they directly block writing the deliverable.
+- **Micro-Prototyping Cap**: Limit pre-implementation exploratory commands (e.g., one-liner `python -c` probes) to at most 5 before drafting the initial implementation file. If you need more than 5 probes, you're designing in the shell instead of in code.
+
+## 12. Sandbox Awareness
+- **Network Verification**: Before running package installs (`pip install`, `npm install`) or any command requiring network access in a sandboxed environment, verify outbound connectivity first (e.g., a single `curl` or check if the sandbox has network access). Do not burn steps waiting for DNS timeouts on unreachable registries.
+
+## 13. Metric Rationalization Ban
+- **Challenge Poor Metrics**: When a benchmark or test produces results exceeding the target budget by >2x, do not rationalize the result as acceptable. Instead, question the fundamental approach. Examples:
+  - Latency 4x over budget → don't tune the slow path; ask if the slow path is necessary.
+  - Test failure rate >50% → don't add more retries; investigate root cause.
+  - Error rate regression → don't raise the threshold; fix the regression.
