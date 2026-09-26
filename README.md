@@ -197,7 +197,7 @@ Each loop costs **~20–25 steps** of wasted context. From the 611-step session:
 | Per week (5 sessions) | ~550 wasted steps | ~110 wasted steps | ~440 steps |
 | Per month (20 sessions) | ~2,200 wasted steps | ~440 wasted steps | **~1,760 steps** |
 
-> **The governance rules cost ~2,833 tokens/turn to maintain. A single prevented rework loop saves ~20 steps × ~4,000 tokens/step = ~80,000 tokens. The rules pay for themselves within the first prevented mistake.**
+> **The governance rules cost ~3,355 tokens/turn to maintain. A single prevented rework loop saves ~20 steps × ~4,000 tokens/step = ~80,000 tokens. The rules pay for themselves within the first prevented mistake.**
 
 ## Customization
 
@@ -239,6 +239,60 @@ This rule set has been through **3 iterations of staff-level review**, each perf
 | **2** | 7 | 6 | 1 | External evidence priority, YAGNI migration gate, read-only awareness, phase gates, concurrency cap, workspace lock |
 | **3** | 7 | 6 | 1 | Stale frontmatter, fan-out alignment, tier consolidation, destructive delegation, README split, env verification |
 | **Total** | **21** | **17** | **4** | 4 skipped were intentional design decisions (severity scales, polyglot trigger) |
+
+## Development Post-Mortem
+
+This governance suite was built and refined over a single 642-step session. Here's what the process revealed.
+
+### Process Metrics
+
+| Metric | Value |
+|:-------|:------|
+| Total development steps | 642 |
+| Review iterations | 3 formal + 2 focused |
+| Subagents used | 7 (all Flash tier, ~$0.05 total) |
+| Findings surfaced | 21 (🔴 6 Critical, 🟡 11 Warning, 🔵 4 Nit) |
+| Findings fixed | 17 (4 skipped as intentional design decisions) |
+| Git pushes | 14 (should have been ~4 milestone releases) |
+
+### What Worked
+
+- **Flash subagents for reviews**: 6 reviewers at ~$0.05 total saved the main context from 350K+ tokens of file reading
+- **Dual reviewer fan-out**: Dispatching a compliance auditor + gap analyst concurrently — each caught findings the other missed
+- **Incremental user approval**: Implementation plan → approve → execute prevented over-building
+
+### What We'd Do Differently
+
+| Lesson | Detail |
+|:-------|:-------|
+| **Design as a system** | Rules were created one-at-a-time, causing cross-rule contradictions (e.g., fan-out vs concurrency cap). Design the dependency graph first. |
+| **Define templates before instances** | Original 4 skills were flat checklists. After creating 3 new skills with phased workflows, all 4 originals needed full rewrites. |
+| **Add shift-left rules first** | Fail-Fast Validation and Assumption Surfacing are the highest-ROI rules but were created last. They should be in v1. |
+| **Batch deployments** | 14 git pushes should have been 4 milestones: Core → Standards → Skills → Final Audit. |
+
+### Optimal Creation Order
+
+If starting from scratch, follow this dependency graph:
+
+```
+Tier 1 (Epistemic Foundation)  →  providence.md
+Tier 2 (Agent Operating System) →  cost-optimization.md, subagent-delegation.md
+Tier 3 (Safety Nets)           →  destructive-ops.md
+Tier 4 (Engineering Standards)  →  architectural-tenets.md, polyglot-standards.md, documentation.md, testing.md
+Tier 5 (Specialized Workflows)  →  feature-specs.md + Skills (using 4-phase template)
+```
+
+### Minimum Viable Governance
+
+For small projects or token-constrained environments, load only 3 files (~2,000 tokens):
+
+1. `providence.md` — grounding, anti-hallucination, no workarounds
+2. `subagent-delegation.md` — context protection + cost tiering
+3. `destructive-ops.md` — safety net for destructive operations
+
+### ROI
+
+The review process cost ~1M tokens. It permanently prevents ~1,760 wasted steps/month (~14M tokens/month) across active development. **Pays for itself within the first week.**
 
 ## License
 
