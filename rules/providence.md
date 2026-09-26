@@ -10,6 +10,7 @@ trigger: always_on
 ## 1. Core Philosophy: Grounding Over Guesswork
 - **Zero Hallucination Tolerance**: Never invent APIs, internal libraries, or dependencies. If you are unsure if a utility exists, **search the codebase first** using tools like `grep_search`.
 - **Evidence-Based Claims**: Any claim made about the system's state, performance, or behavior must be backed by observable code, logs, or documentation.
+- **External Evidence Priority**: When legacy code comments or internal stubs conflict with external documentation, web search results, or user-provided evidence, external sources take precedence. Legacy stubs are unverified until confirmed.
 - **Fail Loudly**: If a requested task contradicts existing architecture or if required context is missing, stop and ask the user for clarification. Do not silently work around architectural constraints.
 
 ## 2. Claim Verification & Codebase Grounding
@@ -41,3 +42,6 @@ Before making a technical assertion or implementing a change, you must verify th
 ## 8. Environment Identity Verification
 - **Verify Before Mutating**: Before running any package installation (`pip install`, `npm install`) or environment mutation, explicitly verify which environment/venv is being targeted by checking `which python`, `which pip`, or equivalent.
 - **Multi-Venv Awareness**: If a project contains multiple virtual environments (e.g., scratch workspace copies), always confirm you are operating on the correct one before making changes.
+
+## 9. Plan Adherence
+- **Respect Phase Gates**: When an approved implementation plan defines sequential phases with verification gates, do not begin a later phase until the preceding gate criteria have been verified. If you need to proceed out of order, flag it explicitly and get user approval.

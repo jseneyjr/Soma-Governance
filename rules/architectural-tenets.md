@@ -17,3 +17,6 @@ trigger: model_decision
 
 ## 3. Scale-to-Zero Preference
 - **Infrastructure Constraints**: When proposing cloud architectures, aggressively prioritize serverless, scale-to-zero, or extremely low-idle-cost infrastructure options to protect personal project budgets.
+
+## 4. Verify Artifact Existence Before Designing Migrations
+- **No Speculative Backward Compatibility**: Before specifying migration utilities, checkpoint adapters, schema versioning, or backward-compatibility shims, verify whether the legacy data or artifacts actually exist in the workspace. If no legacy state exists to preserve, confirm with the user before investing engineering effort.
