@@ -103,18 +103,52 @@ Copilot doesn't support conditional triggers — all rules are always active.
 
 ## Cost Analysis
 
-### Per-Turn Token Budget
+### Per-File Token Costs
 
-| Category | Items | Tokens/Turn |
-|:---------|:------|:------------|
-| Always-on rules | providence, cost-optimization, polyglot-standards, subagent-delegation | ~1,200 |
-| Conditional rule metadata | 5 `model_decision` rules (name + description only) | ~75 |
-| Skill metadata | 4 skills (name + description only) | ~60 |
-| **Total baseline** | | **~1,335** |
+**Always-on rules** — full content loaded every turn:
 
-### Observed Savings
+| Rule | Tokens/Turn |
+|:-----|:------------|
+| `providence.md` | ~996 |
+| `subagent-delegation.md` | ~633 |
+| `cost-optimization.md` | ~557 |
+| `polyglot-standards.md` | ~295 |
+| **Subtotal** | **~2,481** |
 
-Based on a post-mortem of a real 611-step coding session:
+**Conditional rules** — only name + description loaded unless activated:
+
+| Rule | Idle Cost | Full Cost (when activated) |
+|:-----|:----------|:--------------------------|
+| `feature-specs.md` | ~29 | ~463 |
+| `testing.md` | ~29 | ~441 |
+| `documentation.md` | ~18 | ~414 |
+| `destructive-ops.md` | ~25 | ~350 |
+| `architectural-tenets.md` | ~29 | ~318 |
+| **Subtotal** | **~130** | **~1,986** |
+
+**Skills** — zero cost until auto-activated:
+
+| Skill | Idle Cost | Full Cost (when activated) |
+|:------|:----------|:--------------------------|
+| `readme-writer` | ~45 | ~689 |
+| `incident-debug` | ~60 | ~469 |
+| `security-audit` | ~62 | ~417 |
+| `code-review` | ~55 | ~376 |
+| **Subtotal** | **~222** | **~1,951** |
+
+### Conditional Loading Savings
+
+| Approach | Tokens/Turn |
+|:---------|:------------|
+| **Naive** — all 9 rules + 4 skills always loaded | ~6,418 |
+| **Optimized** — conditional rules + skills idle | ~2,833 |
+| **Savings** | **~3,585 tokens/turn (56%)** |
+
+The optimized setup delivers the same governance coverage at 44% of the naive token cost. Conditional rules and skills only expand to full cost on the specific turns where they're relevant.
+
+### Observed Savings (Real Session Post-Mortem)
+
+Based on a 611-step coding session before and after optimization:
 
 | Metric | Before | After |
 |:-------|:-------|:------|
