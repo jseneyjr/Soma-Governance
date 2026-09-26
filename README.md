@@ -1,11 +1,11 @@
 # AI Steering Rules
 
-Battle-tested governance rules for AI coding assistants — forged from 5,800+ steps of real failures across 7 sessions, refined through 9 review phases, and enforced via lifecycle hooks.
+Battle-tested governance rules for AI coding assistants — forged from 5,300+ steps of real failures across 8 sessions, refined through 9 review phases, and enforced via lifecycle hooks.
 
 ## Why Use This?
 
 - **Stop AI from guessing** — Rules force the agent to verify claims against your actual codebase before acting
-- **Cut token costs ~65%** — Conditional loading, smart subagent delegation, and task hygiene eliminate wasted steps
+- **Cut token costs ~65%** — Conditional loading (40% from rules, 65% including skills), smart subagent delegation, and task hygiene eliminate wasted steps
 - **Mechanically enforced** — Lifecycle hooks gate destructive operations, inject governance context, and capture logs automatically
 - **Cross-platform** — Works with Gemini/Antigravity (Google), Kiro (AWS), and GitHub Copilot (Microsoft)
 
@@ -27,25 +27,26 @@ Rules take effect on your next conversation turn. No restart needed.
 
 ## What's Included
 
-### Rules (9 files)
+### Rules (10 files)
 
 | Rule | Trigger | Purpose |
 |:-----|:--------|:--------|
-| `providence.md` | always_on | **Highest priority.** Codebase grounding, claim verification, no hallucinations, no silent workarounds, external evidence priority, plan adherence, symbol collision guard, UI grounding gate, desktop automation safety. |
-| `cost-optimization.md` | always_on | Token efficiency, subagent model tiering, task hygiene, heavy model concurrency cap. |
-| `polyglot-standards.md` | always_on | Unified entrypoints (Makefiles), containerization with carve-outs for scripts/serverless. |
-| `subagent-delegation.md` | always_on | Context window protection, parallel execution, coding task boundaries, structured reporting, workspace conflict prevention. |
-| `architectural-tenets.md` | model_decision | Pragmatism, trade-off analysis, scale-to-zero, premature abstraction ban, pivot discipline, real-time loop budgets. |
+| `providence.md` | always_on | **Highest priority.** Codebase grounding, claim verification, no hallucinations, no silent workarounds, venv shebang verification, desktop automation safety, metric rationalization ban. |
+| `cost-optimization.md` | always_on | Token efficiency, diffs-only edits, subagent model tiering (cross-ref), task hygiene. |
+| `subagent-delegation.md` | always_on | Context window protection, parallel execution, coding task boundaries, structured reporting, no collateral kills. |
+| `architectural-tenets.md` | model_decision | Pragmatism, trade-off analysis, scale-to-zero, premature abstraction ban, pivot discipline. |
+| `polyglot-standards.md` | model_decision | Unified entrypoints (Makefiles), containerization with carve-outs for scripts/serverless. |
 | `feature-specs.md` | model_decision | PRD structure, acceptance criteria, documentation deliverables. |
-| `testing.md` | model_decision | Behavioral testing, sad paths, minimal mocking, CLI/script testing, hardware mock mandate. |
+| `testing.md` | model_decision | Behavioral testing, ast.parse ban, sad paths, minimal mocking, checkpoint testing. |
 | `documentation.md` | model_decision | ADRs, actionable READMEs, Mermaid diagrams, high-signal comments. |
-| `destructive-ops.md` | model_decision | Dry-run mandates for IaC, database mutations, and destructive git/filesystem ops. |
+| `destructive-ops.md` | model_decision | Dry-run mandates for IaC, database mutations, bulk git staging, and destructive filesystem ops. |
+| `git-workflow.md` | model_decision | Session awareness, conventional commits, branching strategy, .gitignore verification. |
 
 **Trigger types:**
-- **`always_on`** — Loaded every turn. Non-negotiable governance. (~3,665 tokens)
-- **`model_decision`** — Model sees the name/description and loads full content only when relevant. (~15 tokens idle)
+- **`always_on`** — Loaded every turn. Non-negotiable governance. (~3,320 tokens)
+- **`model_decision`** — Model sees the name/description and loads full content only when relevant. (~25 tokens idle)
 
-### Skills (7 expert personas)
+### Skills (8 expert personas)
 
 Skills auto-activate based on your task. Zero tokens until invoked.
 
@@ -55,9 +56,10 @@ Skills auto-activate based on your task. Zero tokens until invoked.
 | `security-audit` | You ask to check security or audit endpoints. AppSec Engineer persona: OWASP Top 10 baseline. |
 | `incident-debug` | You report a crash, hang, or error. SRE persona: reproduce → isolate → diagnose → fix → verify. |
 | `readme-writer` | You ask to write or improve a README. Technical Writer persona: scannable structure, copy-pasteable quick-starts. |
-| `performance-audit` | You ask to optimize or profile code. Performance Engineer persona: hot-path allocations, O(n²), GC pressure, resource utilization. |
-| `post-mortem` | You ask to review a past session or do a retrospective. SRE Facilitator persona: blameless analysis, pattern extraction, actionable recommendations. |
-| `refactoring-pilot` | You ask to refactor or restructure 4+ files. Refactoring Specialist persona: Mikado Method, incremental moves, safety nets. |
+| `performance-audit` | You ask to optimize or profile code. Performance Engineer persona: hot-path allocations, O(n²), GC pressure. |
+| `post-mortem` | You ask to review a past session or do a retrospective. SRE Facilitator persona: blameless analysis, pattern extraction. |
+| `refactoring-pilot` | You ask to refactor or restructure 4+ files. Refactoring Specialist persona: Mikado Method, incremental moves. |
+| `staff-review` | You ask for a comprehensive review or audit. Multi-lens fan-out: parallel Flash analysts + staff-level synthesis. |
 
 ### Hooks (3 lifecycle hooks)
 
