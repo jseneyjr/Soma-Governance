@@ -29,7 +29,7 @@ Rules take effect on your next conversation turn. No restart needed.
 
 ## What's Included
 
-### Rules (10 files)
+### Rules (11 files)
 
 | Rule | Trigger | Purpose |
 |:-----|:--------|:--------|
@@ -43,9 +43,10 @@ Rules take effect on your next conversation turn. No restart needed.
 | `documentation.md` | model_decision | ADRs, actionable READMEs, Mermaid diagrams. |
 | `destructive-ops.md` | model_decision | Dry-run mandates for IaC, database mutations, bulk git staging. |
 | `git-workflow.md` | model_decision | Session awareness, conventional commits, .gitignore verification. |
+| `desktop-automation.md` | model_decision | PyAutoGUI/xdotool safety: focus verification, coordinate clamping, closed-loop validation. |
 
-- **`always_on`** — Loaded every turn (~3,320 tokens)
-- **`model_decision`** — Loads full content only when relevant (~25 tokens idle)
+- **`always_on`** — Loaded every turn (~2,980 tokens)
+- **`model_decision`** — Loads full content only when relevant (~30 tokens idle)
 
 ### Skills (8 expert personas)
 
