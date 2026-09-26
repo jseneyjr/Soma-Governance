@@ -30,18 +30,18 @@ Rules take effect on your next conversation turn. No restart needed.
 
 | Rule | Trigger | Purpose |
 |:-----|:--------|:--------|
-| `providence.md` | always_on | **Highest priority.** Codebase grounding, claim verification, no hallucinations, no silent workarounds, venv safety. |
-| `cost-optimization.md` | always_on | Token efficiency, subagent model tier selection, task hygiene. |
+| `providence.md` | always_on | **Highest priority.** Codebase grounding, claim verification, no hallucinations, no silent workarounds, external evidence priority, plan adherence. |
+| `cost-optimization.md` | always_on | Token efficiency, subagent model tiering, task hygiene, heavy model concurrency cap. |
 | `polyglot-standards.md` | always_on | Unified entrypoints (Makefiles), containerization with carve-outs for scripts/serverless. |
-| `subagent-delegation.md` | always_on | Context window protection, parallel execution, coding task boundaries, structured reporting. |
-| `architectural-tenets.md` | model_decision | Pragmatism over purity, explicit trade-off analysis, scale-to-zero preferences. |
+| `subagent-delegation.md` | always_on | Context window protection, parallel execution, coding task boundaries, structured reporting, workspace conflict prevention. |
+| `architectural-tenets.md` | model_decision | Pragmatism over purity, trade-off analysis, scale-to-zero, artifact existence verification. |
 | `feature-specs.md` | model_decision | PRD structure, acceptance criteria, documentation deliverables. |
 | `testing.md` | model_decision | Behavioral testing, sad paths, minimal mocking, CLI/script testing. |
 | `documentation.md` | model_decision | ADRs, actionable READMEs, Mermaid diagrams, high-signal comments. |
 | `destructive-ops.md` | model_decision | Dry-run mandates for IaC, database mutations, and destructive git/filesystem ops. |
 
 **Trigger types:**
-- **`always_on`** — Loaded every turn. Non-negotiable governance. (~1,200 tokens)
+- **`always_on`** — Loaded every turn. Non-negotiable governance. (~2,815 tokens)
 - **`model_decision`** — Model sees the name/description and loads full content only when relevant. (~15 tokens idle)
 
 ### Skills (4 expert personas)
@@ -109,11 +109,11 @@ Copilot doesn't support conditional triggers — all rules are always active.
 
 | Rule | Tokens/Turn |
 |:-----|:------------|
-| `providence.md` | ~996 |
-| `subagent-delegation.md` | ~633 |
-| `cost-optimization.md` | ~557 |
+| `providence.md` | ~1,130 |
+| `subagent-delegation.md` | ~753 |
+| `cost-optimization.md` | ~635 |
 | `polyglot-standards.md` | ~295 |
-| **Subtotal** | **~2,481** |
+| **Subtotal** | **~2,813** |
 
 **Conditional rules** — only name + description loaded unless activated:
 
@@ -123,8 +123,8 @@ Copilot doesn't support conditional triggers — all rules are always active.
 | `testing.md` | ~29 | ~441 |
 | `documentation.md` | ~18 | ~414 |
 | `destructive-ops.md` | ~25 | ~350 |
-| `architectural-tenets.md` | ~29 | ~318 |
-| **Subtotal** | **~130** | **~1,986** |
+| `architectural-tenets.md` | ~29 | ~416 |
+| **Subtotal** | **~130** | **~2,084** |
 
 **Skills** — zero cost until auto-activated:
 
@@ -140,11 +140,11 @@ Copilot doesn't support conditional triggers — all rules are always active.
 
 | Approach | Tokens/Turn |
 |:---------|:------------|
-| **Naive** — all 9 rules + 4 skills always loaded | ~6,418 |
-| **Optimized** — conditional rules + skills idle | ~2,833 |
-| **Savings** | **~3,585 tokens/turn (56%)** |
+| **Naive** — all 9 rules + 4 skills always loaded | ~6,854 |
+| **Optimized** — conditional rules + skills idle | ~3,165 |
+| **Savings** | **~3,689 tokens/turn (54%)** |
 
-The optimized setup delivers the same governance coverage at 44% of the naive token cost. Conditional rules and skills only expand to full cost on the specific turns where they're relevant.
+The optimized setup delivers the same governance coverage at 46% of the naive token cost. Conditional rules and skills only expand to full cost on the specific turns where they're relevant.
 
 ### Observed Savings (Real Session Post-Mortem)
 
