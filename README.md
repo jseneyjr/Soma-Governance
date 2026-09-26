@@ -1,6 +1,6 @@
 # Gemini Steering Rules
 
-A battle-tested set of global steering rules for AI coding assistants (Gemini / Antigravity). Designed by a senior software architect prioritizing **accuracy** and **cost optimization**.
+A battle-tested set of global steering rules for AI coding assistants. Works with **Gemini / Antigravity** and **Kiro**. Designed by a senior software architect prioritizing **accuracy** and **cost optimization**.
 
 ## What's Included
 
@@ -23,7 +23,7 @@ A battle-tested set of global steering rules for AI coding assistants (Gemini / 
 
 ## Installation
 
-### Quick Install
+### Gemini / Antigravity (Google Cloud)
 
 ```bash
 # Clone the repo
@@ -34,7 +34,7 @@ mkdir -p ~/.gemini/config/rules
 cp gemini-steering-rules/rules/*.md ~/.gemini/config/rules/
 ```
 
-### Symlink Install (stay synced with `git pull`)
+### Gemini Symlink Install (stay synced with `git pull`)
 
 ```bash
 git clone https://github.com/<your-username>/gemini-steering-rules.git ~/gemini-steering-rules
@@ -42,6 +42,38 @@ git clone https://github.com/<your-username>/gemini-steering-rules.git ~/gemini-
 # Symlink the entire rules directory
 ln -sf ~/gemini-steering-rules/rules ~/.gemini/config/rules
 ```
+
+### Kiro (AWS)
+
+The install script automatically converts Gemini trigger syntax to Kiro inclusion modes:
+
+| Gemini | Kiro | Behavior |
+|:-------|:-----|:---------|
+| `trigger: always_on` | `inclusion: always` | Active on every interaction |
+| `trigger: model_decision` | `inclusion: manual` | Reference in chat via `#rulename` |
+
+```bash
+git clone https://github.com/<your-username>/gemini-steering-rules.git
+cd gemini-steering-rules
+./install-kiro.sh
+```
+
+Manual rules can be activated in Kiro by typing `#testing`, `#documentation`, `#feature-specs`, etc. in the chat.
+
+### GitHub Copilot (Microsoft / Azure)
+
+Copilot doesn't support conditional triggers, so all rules are always active. Two modes available:
+
+```bash
+# Global — merges all rules into ~/copilot-instructions.md
+./install-copilot.sh global
+
+# Per-project — creates .github/instructions/*.instructions.md files
+cd /path/to/your/project
+/path/to/gemini-steering-rules/install-copilot.sh project
+```
+
+> **Note:** Ensure "Enable custom instructions" is checked in your IDE's Copilot settings.
 
 ## Customization
 
