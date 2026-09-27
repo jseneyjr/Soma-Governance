@@ -53,7 +53,9 @@ def count_tokens(text, model_name):
 def main():
     args = parse_args()
     
-    workspace = "/home/nseney/.gemini/antigravity/scratch/prism-ai-steering"
+    # Resolve workspace root dynamically
+    script_dir = os.path.dirname(os.path.abspath(__file__))
+    workspace = os.path.dirname(script_dir)  # scripts/ -> repo root
     rules_dir = os.path.join(workspace, "rules")
     skills_dir = os.path.join(workspace, "skills")
     
