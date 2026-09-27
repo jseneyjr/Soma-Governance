@@ -7,6 +7,9 @@ Lightweight A/B experiments on the governance system. Each experiment changes on
 | ID | Hypothesis | Change | Metric | Baseline | Status |
 |:---|:-----------|:-------|:-------|:---------|:-------|
 | E1 | Higher concurrency reduces wall-clock time without waste regression | Fan-out 3→4 readers, 2→3 writers | Waste rate | 1.0% (0dc37064) | 🔬 RUNNING |
+| E2 | Pre-seeding domain context reduces research steps | Added §2.1 Context Pre-Seeding Protocol to subagent-delegation.md | Steps-to-first-useful-output | 2–3 exploratory steps / dispatch | 🔬 RUNNING |
+| E3 | Auto-activating session-preflight on coding projects catches env issues before step 10 | governance_init.sh detects coding projects and injects PREFLIGHT prompt | Steps wasted on env issues | 40–120 steps on venv/env issues | 🔬 RUNNING |
+| E6 | Dispatching a domain-researcher at session start for game projects eliminates mid-session wiki lookups | governance_init.sh detects game/ML projects and injects DOMAIN hint | Wiki/search steps after step 50 | 160–180 steps on hotkeys/wiki | 🔬 RUNNING |
 
 ## Experiment Backlog
 
@@ -14,11 +17,8 @@ Ideas to test. Pick the highest-signal, lowest-risk experiment next.
 
 | ID | Hypothesis | Change | Expected Signal | Risk |
 |:---|:-----------|:-------|:----------------|:-----|
-| E2 | Pre-seeding domain context reduces research steps | Orchestrator sends project README + tech stack summary to every subagent prompt | Steps-to-first-useful-output | Low |
-| E3 | Auto-activating session-preflight on coding projects catches env issues before step 10 | Add preflight dispatch to governance_init.sh for projects with venv/ | Steps wasted on env issues | Low |
 | E4 | Requiring `make test` before ANY code commit (not just push) catches defects earlier | Tighten git-workflow §2 to pre-commit gate | Rework loop frequency | Medium — may slow down exploratory coding |
 | E5 | Summarizing subagent findings in ≤5 bullet points reduces orchestrator context consumption | Add output cap to subagent prompt template | Orchestrator compaction frequency | Low |
-| E6 | Dispatching a domain-researcher at session start for game projects eliminates mid-session wiki lookups | Auto-dispatch on project detection | Wiki/search steps after step 50 | Low |
 | E7 | Running sweep_session.py as a review sentinel (instead of full Flash subagent) is 10x cheaper with 80% signal retention | Replace Flash sentinel with local Python scan | Cost per probe, defect catch rate | Medium — may miss nuanced issues |
 | E8 | Caching taxonomy patterns in the orchestrator prompt reduces Flash subagent taxonomy lookups | Inline top-10 patterns in subagent prompts | Subagent file reads | Low |
 | E9 | Proactive error classification in subagent prompts ("if you see X, it's probably Y") reduces diagnosis time | Add known-error catalog to incident-debug skill | Steps from error to root cause | Low |

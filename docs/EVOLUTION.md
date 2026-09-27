@@ -76,6 +76,21 @@ After achieving 5% waste in governance sessions, the focus shifted from *prevent
 
 **Impact on rules:** Added `session-preflight` skill, Continuous Review to `staff-review`, Disjoint Lane Protocol to `subagent-delegation §2`, and Makefile-based installation with `steering.conf`.
 
+## Phase 6: Multi-Lens Synthesis & Mechanized Guardrails ("Scale depth and automation")
+
+With low baseline waste established, Phase 6 addressed review depth, context efficiency, and proactive mechanical detection:
+
+- **Trident Protocol**: Added progressive 3-prong deep review (RECON → STRIKE → FORTIFY) to `staff-review`. Separating reconnaissance scouts (problems only) from strike analysts (concrete fixes) and verifiers (SHIP/BLOCK gate) prevents confirmation bias and scope creep (~8–12k tokens vs ~80k for prevented rework).
+- **5 Specialist Skills**: Expanded domain capabilities with `domain-researcher` (grounded external fact compilation), `spec-synthesizer` (cross-referencing multi-lens findings into prioritized plans), `session-monitor` (live trajectory and waste tracking), `governance-auditor` (transcript-level per-rule PASS/FAIL checks), and `visual-analyst` (screen and UI state calibration), bringing the suite to 13 skills total.
+- **10-Lens Staff Protocol**: Staff review expanded from ad-hoc analysis to 10 formal lenses covering Architecture, Performance, Security, Compliance, Behavioral, Domain Research, Spec Synthesis, Visual, Governance Audit, and Live Monitor.
+- **Auto-Preflight & Domain Detection**: Embedded automated project scanning into `governance_init.sh` hooks. Invocation 1 automatically identifies coding project markers (`venv`, `package.json`, `Makefile`, `tests/`) and domain patterns (game automation, ML/RL), injecting targeted prompts with 0 model tokens consumed.
+- **Context Pre-Seeding Protocol**: Standardized subagent dispatches with compact ~200-token headers (`[PROJECT]`, `[STACK]`, `[LAYOUT]`, `[CONSTRAINTS]`, `[OUTPUT]`), eliminating 2–3 cold-start exploratory steps per subagent.
+- **Experiment Framework (E1–E10)**: Created `docs/EXPERIMENTS.md` with an active/backlog registry to systematically test governance hypotheses (concurrency, pre-seeding, preflight, gate triggers) with quantifiable metrics before graduating changes to rules.
+- **Concurrency Expansion**: Raised read-only concurrency limits from 3 to 4 subagents and implementation writers from 2 to 3 under the Disjoint Lane Protocol, lowering the delegation floor from 100 to 75 steps.
+- **Governance Sweep**: Introduced `scripts/governance_sweep.sh` to run periodic, non-blocking sweeps for unreviewed sessions (>100 steps), warning trend aggregation, and real-time session tracking without burning AI tokens (~500 tokens / local run).
+
+**Impact on rules:** Upgraded `skills/staff-review` to support Standard & Trident modes across 10 lenses; added 5 specialist skills (13 total); updated `subagent-delegation.md` with §2.1 Context Pre-Seeding, higher concurrency (4 readers, 3 writers), and a 75-step delegation floor; automated hooks in `scripts/governance_init.sh`; and established `scripts/governance_sweep.sh` and `docs/EXPERIMENTS.md`.
+
 ## The Compound Effect
 
 ```
@@ -86,6 +101,10 @@ Evidence-Based → extracted rules from 1,339 steps of real waste
 Cross-Conversation → proved patterns are systemic, not one-off
     ↓
 Continuous Monitor → catches new patterns as they emerge
+    ↓
+Divide & Conquer → parallel lanes, preflight probe, review sentinels
+    ↓
+Trident & Mechanized Guardrails → 10 lenses, 13 skills, auto-hooks, experiment framework
 ```
 
 Compliance went from **7.8/10 to 9.8/10**, waste rate dropped from **~56% to ~5% (latest session)**, and the rules now cover failure modes that no amount of upfront design would have predicted.

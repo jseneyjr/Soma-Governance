@@ -24,9 +24,10 @@ Detailed token costs, conditional loading savings, and ROI calculations for the 
 | `documentation.md` | ~18 | ~439 |
 | `destructive-ops.md` | ~25 | ~361 |
 | `polyglot-standards.md` | ~25 | ~345 |
-| **Subtotal** | **~180** | **~3,486** |
+| `desktop-automation.md` | ~25 | ~510 |
+| **Subtotal** | **~205** | **~3,996** |
 
-**Skills** — zero cost until auto-activated:
+**Skills (13 total)** — zero cost until auto-activated:
 
 | Skill | Idle Cost | Full Cost (when activated) |
 |:------|:----------|:--------------------------|
@@ -37,19 +38,40 @@ Detailed token costs, conditional loading savings, and ROI calculations for the 
 | `refactoring-pilot` | ~65 | ~629 |
 | `post-mortem` | ~60 | ~596 |
 | `performance-audit` | ~65 | ~496 |
-| `staff-review` | ~55 | ~720 |
-| `session-preflight` | ~50 | ~400 |
-| **Subtotal** | **~517** | **~5,892** |
+| `staff-review` | ~55 | ~1,850 |
+| `domain-researcher` | ~50 | ~550 |
+| `spec-synthesizer` | ~50 | ~460 |
+| `session-monitor` | ~50 | ~500 |
+| `governance-auditor` | ~55 | ~650 |
+| `visual-analyst` | ~50 | ~600 |
+| **Subtotal** | **~672** | **~9,782** |
+
+## Protocol & Automation Cost Profiles
+
+| Protocol / Component | Type | Token Cost | Savings / ROI |
+|:---------------------|:-----|:-----------|:--------------|
+| **Standard Protocol** | Review (Single-Pass) | ~4k tokens | ~80k tokens per prevented rework loop (20x ROI) |
+| **Trident Protocol** | Review (3-Prong) | ~8–12k tokens | ~80k tokens per prevented architectural regression (7–10x ROI) |
+| **Auto-Preflight** | PreInvocation Hook | **0 tokens** (Bash) + ~900 tokens (if Flash probe dispatched) | Prevents 40–120 steps on venv/git drift (~160k–480k tokens) |
+| **Context Pre-Seeding** | Subagent Prompting | ~200 tokens / dispatch | Eliminates 2–3 exploratory steps (~8k–12k tokens saved) |
+| **Governance Sweep** | Periodic Scanner | ~500 tokens / run | Pure local Python (`sweep_session.py`), zero AI model tokens |
+
+### Cost Breakdown Highlights:
+- **Trident Protocol**: Standard protocol runs 3–4 Flash reviewers in a single pass (~4k tokens). Trident runs progressive prongs (RECON 3–4 scouts @ ~1k, STRIKE 1–2 analysts @ ~1.5k, optional FORTIFY 1 verifier @ ~1k) + staff synthesis (~2k orchestrator tokens), costing ~8–12k tokens for comprehensive deep reviews.
+- **Auto-Preflight**: Zero-cost detection runs via bash/JSON inspection in `governance_init.sh` on Invocation 1. If project markers (`venv`, `package.json`, `Makefile`, `tests/`) are found, the agent dispatches a ~900-token Flash probe, preventing 40–120 steps of environment defects.
+- **Context Pre-Seeding**: Prepends a ~200-token compact header (`[PROJECT]`, `[STACK]`, `[LAYOUT]`, `[CONSTRAINTS]`, `[OUTPUT]`) to subagent prompts, saving 2–3 exploratory file/search steps (~8k–12k tokens) per subagent.
+- **Governance Sweep**: `scripts/governance_sweep.sh` scans unreviewed transcripts (>100 steps) and recalculates metrics locally at ~500 tokens equivalent per execution, incurring zero LLM API costs.
+- **Updated Skills Count**: 13 skills total (up from 8 originally; idle cost ~672 tokens across all 13).
 
 ## Conditional Loading Savings
 
 | Approach | Tokens/Turn |
 |:---------|:------------|
-| **Naive** — all 10 rules + 9 skills always loaded | ~12,564 |
-| **Optimized** — conditional rules + skills idle | ~4,033 |
-| **Savings** | **~8,531 tokens/turn (68%)** |
+| **Naive** — all 11 rules + 13 skills always loaded | ~17,114 |
+| **Optimized** — conditional rules + skills idle | ~4,213 |
+| **Savings** | **~12,901 tokens/turn (75%)** |
 
-> **Methodology note**: The 69% figure pools rules and skills. Rules-only savings (excluding skills, which are natively deferred by the platform) = **~47%**. Both numbers are valid; the distinction matters for comparing against other governance systems.
+> **Methodology note**: The 75% figure pools rules and skills. Rules-only savings (excluding skills, which are natively deferred by the platform) = **~52%**. Both numbers are valid; the distinction matters for comparing against other governance systems.
 
 ## Observed Savings (Real Session Data)
 
