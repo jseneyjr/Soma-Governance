@@ -4,14 +4,15 @@ This directory contains Prism AI Steering governance cells. Cells are atomic, mo
 
 ## Cell Types
 - **Vacuole**: Traps and anti-patterns. Prevents the agent from falling into common pitfalls (e.g., using incorrect build tools, deprecated APIs).
-- **Chloroplast**: Accelerators and optimizations. Provides fast-paths for common workflows.
-- **Wall**: Boundary conditions and strict invariants. Enforces safety and policy requirements.
-- **Membrane**: Filtering and transformation. Adjusts input/output to conform to expected structures.
+- **Chloroplast**: Accelerators and optimizations, usually as repo-specific personas tuned to the domain. Provides fast-paths for common workflows.
+- **Wall**: Boundary conditions and strict invariants. Enforces safety and policy requirements (e.g. things you must never do).
+- **Membrane**: Filtering and transformation. Adjusts input/output to conform to expected structures, or defines escalation overrides.
+- **Plasmodesmata**: Cross-repo connections in multi-service architectures. Maps data paths between distinct projects.
 
 ## Cell Format Spec
 Each cell is a Markdown file starting with YAML frontmatter.
 Required fields:
-- `type`: vacuole, chloroplast, wall, or membrane
+- `type`: vacuole, chloroplast, wall, membrane, or plasmodesmata
 - `hypothesis`: What this cell intends to achieve
 - `prediction`: Expected measurable outcome
 - `falsification`: Conditions under which this cell should be removed

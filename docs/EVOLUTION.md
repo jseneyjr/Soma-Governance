@@ -255,9 +255,9 @@ Analysis of a new dataset of 66 masked and sanitized production sessions (618 us
 
 ---
 
-## Phase 13: Adaptive Governance — Cytogenesis with Integrated Selection *(Concept)*
+## Phase 13: Adaptive Governance — Cytogenesis with Integrated Selection
 
-**Concept**: Genesis currently does observation — it scans a repo and reports. Phase 13 makes it do synthesis — it scans a repo and generates governance extensions tailored to it, **with fitness tracking built in from day one**. Lesson from Phase 12: measure first, then optimize. Don't generate cells and evaluate later — build the feedback loop immediately.
+**Trigger**: Genesis observation was insufficient; it needed synthesis to generate governance extensions tailored to the repo, **with fitness tracking built in from day one**. Lesson from Phase 12: measure first, then optimize. Don't generate cells and evaluate later — build the feedback loop immediately.
 
 ### Naming Hierarchy
 ```
@@ -319,7 +319,7 @@ For each cell in .gemini/cells/:
 
 **Validation**: E23 (Chloroplast Effectiveness), E24 (Vacuole Trap Persistence), E25 (Fitness Function Accuracy). See [EXPERIMENTS.md](EXPERIMENTS.md).
 
-**Impact on rules:** Genesis expanded from 4 to 5 stages (Canopy, Rings, Taproot, Lichen, Cytogenesis). Additive repo-local governance layer with integrated self-pruning. 2 experiments proposed (E23–E24). Components 1 (Vacuoles) and 2 (Cell Walls + Membranes) are now implemented and wired into `governance_init.sh` and `escalation_sentinel.sh`.
+**Impact on rules:** Genesis expanded from 4 to 5 stages (Canopy, Rings, Taproot, Lichen, Cytogenesis). Additive repo-local governance layer with integrated self-pruning. 2 experiments in TESTING (E23–E24). Components 1-5 are now fully implemented and wired into `governance_init.sh` and `escalation_sentinel.sh`.
 
 ---
 
@@ -362,7 +362,7 @@ This separation ensures: governance rules are **public** (Apache 2.0 licensed), 
 
 **Validation**: E26 (Promotion Path Validation). See [EXPERIMENTS.md](EXPERIMENTS.md).
 
-**Impact on rules:** Automated cross-repo governance evolution. Self-discovering rules. Configurable data separation. Promotion path from repo-local cells to global forest-floor rules. 2 experiments proposed (E25–E26).
+**Impact on rules:** Automated cross-repo governance evolution. Self-discovering rules. Configurable data separation. Promotion path from repo-local cells to global forest-floor rules. 2 experiments in TESTING (E25–E26). 26 experiments total.
 
 ---
 

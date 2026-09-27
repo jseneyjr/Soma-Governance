@@ -30,7 +30,7 @@ GIT_STRATEGY=trunk
 # ─── Installation ─────────────────────────────────────────────────
 
 # RULES_SUBSET: all | core | minimal
-#   all     = full 11-rule suite (~4,285 tokens always-on, measured via token_census.py)
+#   all     = full 11-rule suite (~4,380 tokens idle, 3,743 always-on, measured via token_census.py)
 #   core    = 6 rules: providence, cost-optimization, subagent-delegation, testing, git-workflow, destructive-ops
 #   minimal = 3 rules: providence, subagent-delegation, destructive-ops
 RULES_SUBSET=all
@@ -49,11 +49,11 @@ ENABLE_HOOKS=true
 # METRICS_REPO=~/repos/prism-ai-telemetry
 
 # CONVERSATION_LOG_DIR: path where AI assistant conversation logs live
-# Used by governance_sweep.sh to locate session transcripts for analysis.
+# Note: This is not yet consumed by scripts.
 # Default: ~/.gemini/antigravity/brain (Antigravity/AGY)
 # CONVERSATION_LOG_DIR=~/.gemini/antigravity/brain
 
 # GENESIS_REPORT_DIR: where Genesis reports are stored and loaded from
-# Used by governance_init.sh for pre-seeding subagent context.
+# Note: This is not yet consumed by scripts.
 # Default: docs/ (within this repo)
 # GENESIS_REPORT_DIR=docs/

@@ -95,8 +95,8 @@ All token values in this document are empirical, step-based measurements, genera
 | Approach | Tokens/Turn |
 |:---------|:------------|
 | **Naive** — all 11 rules + 15 skills always loaded | 25,163 |
-| **Optimized** — conditional rules + skills idle | 4,378 |
-| **Savings** | **20,785 tokens/turn (82.6%)** |
+| **Optimized** — conditional rules + skills idle | 4,380 |
+| **Savings** | **20,783 tokens/turn (82.6%)** |
 
 > [!NOTE]
 > The 82.6% figure pools rules and skills. Rules-only savings (excluding skills, which are natively deferred by the platform) = **~47.9%**. Both numbers are valid; the distinction matters for comparing against other governance systems.
@@ -122,8 +122,8 @@ All token values in this document are empirical, step-based measurements, genera
 | 2. Skill Deprecation | legacy-review removed | -1,850 active tokens |
 | 3. Cost-Opt Dedup | 750 → 525 | -225 tokens from `cost-optimization.md` |
 | 4. Frontmatter Purge | 60–100 per file | -1,500+ active tokens across all files |
-| 5. Conditional Loading | 25,163 → 4,378 | -20,785 tokens per turn (82.6% reduction) |
-| **Total System Overhead** | | **4,378 tokens/turn (idle)** |
+| 5. Conditional Loading | 25,163 → 4,380 | -20,783 tokens per turn (82.6% reduction) |
+| **Total System Overhead** | | **4,380 tokens/turn (idle)** |
 
 ---
 

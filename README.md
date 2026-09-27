@@ -3,13 +3,11 @@
 [![License: Apache 2.0](https://img.shields.io/badge/License-Apache_2.0-blue?style=flat-square)](LICENSE)
 [![Rules](https://img.shields.io/badge/Rules-11-green?style=flat-square)](#rules)
 [![Skills](https://img.shields.io/badge/Skills-15-purple?style=flat-square)](#skills)
-[![Review Modes](https://img.shields.io/badge/Review_Modes-5-orange?style=flat-square)](#review-protocols)
+[![Scripts](https://img.shields.io/badge/Scripts-15-red?style=flat-square)](#scripts)
 [![Phases](https://img.shields.io/badge/Phases-14-blue?style=flat-square)](docs/EVOLUTION.md)
-[![Platforms](https://img.shields.io/badge/Gemini_%7C_Kiro_%7C_Copilot-black?style=flat-square)](#quick-start)
+[![Cells](https://img.shields.io/badge/Cells-4-orange?style=flat-square)](#adaptive-governance-cells)
 
-> **7,015+** steps analyzed · **~65%** token savings · **80%** fewer false positives · **5** review modes · **6** prongs
-
-Battle-tested governance rules for AI coding assistants — forged from 17+ real sessions and validated across 66 production sessions. Enforced via lifecycle hooks.
+Prism AI Steering is an adaptive governance framework that generates, measures, and evolves its own rules based on observed agent behavior. Built on top of continuous feedback loops and biological natural selection principles, it ensures agents remain grounded, efficient, and safe across different repositories. See the [NOTICE](NOTICE) file for our full local-only Data Privacy Statement.
 
 ## Quick Start
 
@@ -22,74 +20,75 @@ cp steering.conf.example steering.conf   # Optional: customize for your team
 
 # Linux, macOS, WSL, Windows (Git Bash):
 make install                              # Gemini / Antigravity (default)
-# make install-kiro                       # Kiro alternative
-# make install-copilot                    # GitHub Copilot alternative
 
 # Windows (Native PowerShell):
 .\install.ps1                             # Rules + skills only (hooks require bash)
 ```
 
-Rules take effect on your next conversation turn. No restart needed.
+**Activate Genesis onboarding:** Run the `genesis` skill on your repository to generate initial project-specific governance cells.
+**Verify Installation:** Run `make validate` and `make doctor` to ensure your deployment is healthy.
 
-### Cross-OS Support Matrix
+## Architecture
 
-| OS / Environment | Shell | Command | Rules | Skills | Hooks | Notes |
-|:-----------------|:------|:--------|:-----:|:------:|:-----:|:------|
-| **Linux** | Bash | `make install` or `bash install.sh` | ✅ | ✅ | ✅ | Full support |
-| **macOS** | Zsh / Bash | `make install` or `bash install.sh` | ✅ | ✅ | ✅ | Full support |
-| **WSL** | Bash | `make install` or `bash install.sh` | ✅ | ✅ | ✅ | Auto-resolves Windows user profile |
-| **Windows (Git Bash)** | Bash | `make install` or `bash install.sh` | ✅ | ✅ | ✅ | Full support via bash runtime |
-| **Windows (PowerShell)** | PowerShell | `.\install.ps1` or `make install-windows` | ✅ | ✅ | ❌ | Rules + skills only; hooks require bash |
+The governance architecture follows a three-layer biological hierarchy:
 
-> [!NOTE]
-> **Windows Hook Limitations**: Native PowerShell deploys rules and skills only. Hook scripts (`governance_init.sh`, `safety_gate.sh`, `session_close.sh`) require bash (Git Bash, WSL, or MSYS2).
-
-## How It Works
-
-```mermaid
-flowchart LR
-    subgraph SLC ["Session Lifecycle"]
-        A[User Prompt] --> B{PreInvocation}
-        B --> C[Agent Processing]
-        C --> D{PreToolUse}
-        D -->|Safe| E[Tool Execution]
-        D -->|Dangerous| F[BLOCKED]
-        E --> G[Response]
-    end
-    subgraph AA ["Always Active"]
-        H["providence.md"] -.-> B
-        I["cost-optimization.md"] -.-> B
-        J["subagent-delegation.md"] -.-> B
-    end
+```text
+🌲 BIOME (Global)       → Review Modes: Breeze through Tempest
+🍄 FOREST FLOOR         → Review Prongs: Spores through Mulch  
+🌱 CELL (Repo-Local)    → Adaptive: Vacuoles, Chloroplasts, Walls, Membranes, Plasmodesmata
 ```
 
-**Text fallback:** Every user prompt passes through a PreInvocation hook that injects always-on governance rules. Each tool call is screened by a PreToolUse safety gate — dangerous operations (e.g., `rm -rf /`, `git push -f`) are blocked automatically.
+- **Biome Layer**: Global operational modes that determine the rigorousness of review.
+- **Forest Floor Layer**: Modular analytical prongs that compose the reviews, ranging from basic heuristics (Spores) to deep security verification (Bedrock).
+- **Cell Layer**: Ephemeral, repository-specific invariants generated dynamically based on local codebase features, traps, and performance metrics.
+
+## Review Protocol
+
+The framework enforces code modifications using tiered Review Modes and structured Review Prongs.
+
+### Review Modes
+| Mode | Dispatches | Cost | Best For |
+|:-----|:----------:|:----:|:---------|
+| 🌱 Breeze | 2 | ~3-4k | Known bugs, renames |
+| 🌬️ Gale | 3-4 | ~4k | Quick reviews |
+| 🔱 Trident | 5-8 | ~8-12k | Features, refactors |
+| 🌊 Maelstrom | 7-12 | ~15-20k | Architecture, security |
+| ⛈️ Tempest | 8-12 | ~30-50k | Catastrophic risk |
+
+### Review Prongs
+| Prong | Purpose | Output Budgets |
+|:------|:--------|:---------------|
+| 🍄 Spores | Width/Heuristics survey | Lightweight |
+| 🍄 Mycelium | Blast radius impact | Medium |
+| 🌿 Roots | Root-cause depth | High |
+| 🌹 Thorns | Adversarial testing | High |
+| 🪨 Bedrock | Final verification gate | Binary Gate |
+| 🍂 Mulch | Learning extraction | Lightweight |
+
+*An **escalation sentinel** runs dynamically in the PreInvocation lifecycle to evaluate diff sensitivity and automatically dictate the minimum Review Mode (e.g., Breeze vs Tempest).*
 
 ## 📜 Rules
 
 | Rule | Trigger | Purpose |
 |:-----|:--------|:--------|
-| [providence.md](rules/providence.md) | always_on | **Highest priority.** Codebase grounding, claim verification, no hallucinations, diagnose-before-repair. |
-| [cost-optimization.md](rules/cost-optimization.md) | always_on | Token efficiency, diffs-only edits, model tiering, FPSR metric (>80%). |
-| [subagent-delegation.md](rules/subagent-delegation.md) | always_on | Context protection, concurrency limits (4 readers / 3 writers), delegation floor. |
+| [providence.md](rules/providence.md) | always_on | Codebase grounding, no hallucinations, diagnose-before-repair. |
+| [cost-optimization.md](rules/cost-optimization.md) | always_on | Token efficiency, diffs-only edits, FPSR metric (>80%). |
+| [subagent-delegation.md](rules/subagent-delegation.md) | always_on | Context protection, concurrency limits, delegation floor. |
 | [architectural-tenets.md](rules/architectural-tenets.md) | model_decision | Pragmatism, trade-off analysis, scale-to-zero. |
 | [polyglot-standards.md](rules/polyglot-standards.md) | model_decision | Unified entrypoints (Makefiles), containerization. |
 | [feature-specs.md](rules/feature-specs.md) | model_decision | PRD structure, acceptance criteria, documentation. |
 | [testing.md](rules/testing.md) | model_decision | Behavioral testing, sad paths, ast.parse ban. |
 | [documentation.md](rules/documentation.md) | model_decision | ADRs, actionable READMEs, Mermaid diagrams. |
 | [destructive-ops.md](rules/destructive-ops.md) | model_decision | Dry-run mandates for IaC, database mutations, bulk git. |
-| [git-workflow.md](rules/git-workflow.md) | model_decision | Conventional commits, .gitignore verification, pre-push test gate. |
-| [desktop-automation.md](rules/desktop-automation.md) | model_decision | PyAutoGUI/xdotool safety: focus verification, coordinate clamping. |
-
-> [!TIP]
-> `always_on` rules load every turn. Total measured system idle overhead is 4,378 tokens/turn (rules + skills). `model_decision` rules load full content only when relevant. See [METRICS.md](docs/METRICS.md) for per-file token costs.
+| [git-workflow.md](rules/git-workflow.md) | model_decision | Conventional commits, .gitignore verification. |
+| [desktop-automation.md](rules/desktop-automation.md) | model_decision | PyAutoGUI/xdotool safety, focus verification. |
 
 ## 🧠 Skills
 
 | Skill | Purpose |
 |:------|:--------|
-| [adaptive-reviewer](skills/adaptive-reviewer/SKILL.md) | 🔬 Auto-escalating review orchestrator with subagent nesting (E11 — TESTING). |
-| [domain-researcher](skills/domain-researcher/SKILL.md) | Compiles verified external facts (wikis, API docs, papers). |
+| [adaptive-reviewer](skills/adaptive-reviewer/SKILL.md) | Auto-escalating review orchestrator with subagent nesting. |
+| [domain-researcher](skills/domain-researcher/SKILL.md) | Compiles verified external facts (wikis, API docs). |
 | [genesis](skills/genesis/SKILL.md) | 4-stage codebase onboarding: Canopy → Rings → Taproot → Lichen. |
 | [governance-auditor](skills/governance-auditor/SKILL.md) | Mechanical per-rule PASS/FAIL compliance checks. |
 | [incident-debug](skills/incident-debug/SKILL.md) | SRE: reproduce → isolate → diagnose → fix → verify. |
@@ -102,86 +101,66 @@ flowchart LR
 | [session-preflight](skills/session-preflight/SKILL.md) | Pre-flight: venv health, git state, test suite verification. |
 | [spec-synthesizer](skills/spec-synthesizer/SKILL.md) | Cross-references multi-lens findings into prioritized plans. |
 | [staff-review](skills/staff-review/SKILL.md) | Multi-lens fan-out (10 lenses) with staff-level synthesis. |
-| [visual-analyst](skills/visual-analyst/SKILL.md) | Screen & UI analysis: game state, coordinates, regressions. |
+| [visual-analyst](skills/visual-analyst/SKILL.md) | Screen & UI analysis: game state, regressions. |
 
-## 🔍 Review Protocols
+## Adaptive Governance (Cells)
 
-| Mode | Dispatches | Cost | Best For |
-|:-----|:----------:|:----:|:---------|
-| 🌱 Breeze | 2 | ~3-4k | Known bugs, renames |
-| 🌬️ Gale | 3-4 | ~4k | Quick reviews |
-| 🔱 Trident | 5-8 | ~8-12k | Features, refactors |
-| 🌊 Maelstrom | 7-12 | ~15-20k | Architecture, security |
-| ⛈️ Tempest | 8-12 | ~30-50k | Catastrophic risk |
+Cells are atomic, dynamically generated governance invariants that live exclusively inside a repository (`.gemini/cells/`). 
+1. **Vacuole**: Traps and anti-patterns.
+2. **Chloroplast**: Accelerators and repo-specific personas.
+3. **Cell Wall**: Boundary conditions and invariants.
+4. **Membrane**: Context filtering and escalation overrides.
+5. **Plasmodesmata**: Cross-repo data boundaries and service connections.
 
-> [!NOTE]
-> Reviews use a biological naming hierarchy (Biome → Forest Floor → Cell) with 6 prongs: 🍄 Spores (width), 🍄 Mycelium (blast radius), 🌿 Roots (depth), 🌹 Thorns (adversarial), 🪨 Bedrock (verification gate), 🍂 Mulch (learning). See [staff-review SKILL.md](skills/staff-review/SKILL.md) for full prong details and escalation paths.
+### Cell Lifecycle
+Cells operate on a Darwinian evolutionary lifecycle:
+`Generate → Score → Adapt → Prune → Promote`
+
+A background **fitness function** monitors the success rate (true positives) of each cell against its disruption rate (false positives). Overperforming cells are kept (or promoted globally), and underperforming ones are autonomously adapted or driven to extinction. 
+
+You can manually trigger these via: `python3 scripts/cell_fitness.py`, `scripts/cell_selection.sh`, `python3 scripts/cell_adapt.py`, `python3 scripts/cell_promote.py`.
+
+## 📜 Scripts
+
+Refer to [docs/SCRIPTS.md](docs/SCRIPTS.md) for full documentation of the 15 system scripts. Highlights include:
+- `cell_selection.sh`: Main entrypoint for evaluating cell fitness.
+- `escalation_sentinel.sh`: Predicts escalation necessity.
+- `governance_init.sh`: Seeds contexts, domain hints and tests.
+- `metrics_snapshot.sh`: Snapshots environment metrics telemetry.
+- `token_census.py`: Uses Gemini SDK to validate token budgets.
 
 ## Configuration
 
-Copy [`steering.conf.example`](steering.conf.example) → `steering.conf` to customize platform, team size, git strategy, and approval chains.
+Copy [`steering.conf.example`](steering.conf.example) → `steering.conf` to customize platform, team size, git strategy, approval chains, and hooks configuration. 
+It includes a `METRICS_REPO` configuration for storing telemetry distinct from the public workspace.
 
-```bash
-make info     # Show current configuration
-make doctor   # Verify installation health
-```
+### Cross-OS Support Matrix
 
-> [!IMPORTANT]
-> Run `make doctor` after installation to verify symlinks, hook registration, rule loading, and skill deployment.
+| OS / Environment | Shell | Command | Rules | Skills | Hooks | Notes |
+|:-----------------|:------|:--------|:-----:|:------:|:-----:|:------|
+| **Linux** | Bash | `make install` | ✅ | ✅ | ✅ | Full support |
+| **macOS** | Zsh / Bash | `make install` | ✅ | ✅ | ✅ | Full support |
+| **WSL** | Bash | `make install` | ✅ | ✅ | ✅ | Auto-resolves Windows user profile |
+| **Windows (Git Bash)** | Bash | `make install` | ✅ | ✅ | ✅ | Full support via bash runtime |
+| **Windows (PowerShell)** | PowerShell | `.\install.ps1` | ✅ | ✅ | ❌ | Rules + skills only; hooks require bash |
 
-<details>
-<summary>Advanced Installation & Options</summary>
+## Evolution
+Prism AI Steering has evolved across 14 measured phases, from manually written logic into a self-adapting machine:
+- Phases 1-5: Prescriptive logic extraction and optimization.
+- Phases 6-10: Multi-lens scaling and Autonomous Orchestration.
+- Phases 11-12: Full dataset mapping and token census calibration.
+- Phase 13: Cytogenesis — Local governance and cell generation.
+- Phase 14: Natural Selection — Evolutionary scaling and cross-repo speciation.
 
-### Dry-Run Mode
-Preview changes without copying or modifying any files:
-```bash
-bash install.sh --dry-run
-# Windows PowerShell:
-.\install.ps1 -DryRun
-```
+Read the [EVOLUTION.md](docs/EVOLUTION.md) for a comprehensive breakdown, driven by 6 core Design Principles ensuring empirical, adaptive, hypothesis-driven, system-first governance.
 
-### Symlink Method (Gemini / Linux & macOS)
-
-```bash
-ln -sf "$(pwd)/rules" "$HOME/.gemini/config/rules"
-ln -sf "$(pwd)/skills" "$HOME/.gemini/config/skills"
-```
-
-### Kiro
-
-```bash
-make install-kiro
-# Windows PowerShell:
-.\install.ps1 -Platform kiro
-```
-
-Activate manual rules by typing `#testing`, `#documentation`, `#feature-specs`, etc.
-
-### GitHub Copilot
-
-```bash
-make install-copilot MODE=global    # Merges all rules into ~/copilot-instructions.md
-make install-copilot MODE=project   # Creates .github/instructions/*.instructions.md
-# Windows PowerShell:
-# .\install.ps1 -Platform copilot -Mode global
-# .\install.ps1 -Platform copilot -Mode project
-```
-
-Ensure "Enable custom instructions" is checked in your IDE's Copilot settings.
-
-</details>
-
-## Deep Dives
-
-| Document | Contents |
-|:---------|:---------|
-| [Metrics & Token Economics](docs/METRICS.md) | Per-file token costs, compliance scores, waste analysis, ROI calculations |
-| [Evolution](docs/EVOLUTION.md) | How the approach evolved across 14 phases, from prescriptive to autonomous orchestration, dataset analysis, and adaptive governance |
-| [Experiments](docs/EXPERIMENTS.md) | A/B testing framework (E1–E22) for data-driven governance evolution |
-| [Work Sessions Postmortem](docs/postmortem-work-sessions.md) | Comparative analysis of 66 production sessions vs. 17 governed development sessions |
+## Metrics
+- **Total System Idle Overhead**: 4,380 tokens/turn
+- **Waste Rate**: ~1.1% in best governed sessions
+- **Calibrated Token Ratio**: 1.35 measured directly against models
+See [METRICS.md](docs/METRICS.md) for a complete system breakdown.
 
 ## License
 
 Apache 2.0 — Copyright 2026 Nicholas Seney
-
-> See the [NOTICE](NOTICE) file for our full local-only Data Privacy Statement.
+See [NOTICE](NOTICE) for Data Privacy details.
