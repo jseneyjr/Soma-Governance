@@ -37,3 +37,4 @@ docs/postmortem-work-sessions.md
 # Cell fitness tracking (private telemetry)
 .gemini/cells/fitness.jsonl
 .gemini/cells/.archive/
+docs/internal/

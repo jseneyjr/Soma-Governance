@@ -10,11 +10,12 @@ SCRIPT_DIR="$(cd -P "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PYTHON_SCRIPT="$SCRIPT_DIR/cell_fitness.py"
 
 # Wraps cell_fitness.py. If it doesn't exist yet, we parse it ourselves.
-python3 - << 'PYEOF' "$EXECUTE" "$PYTHON_SCRIPT"
+python3 - "$EXECUTE" "$SCRIPT_DIR" << 'PYEOF'
 import os, sys, re, json, datetime, shutil
 
 execute_mode = len(sys.argv) > 1 and sys.argv[1] == '--execute'
-repo_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+script_dir = sys.argv[2] if len(sys.argv) > 2 else os.getcwd()
+repo_root = os.path.dirname(script_dir)
 cells_dir = os.path.join(repo_root, ".gemini", "cells")
 archive_dir = os.path.join(cells_dir, ".archive")
 fitness_log = os.path.join(cells_dir, "fitness.jsonl")
