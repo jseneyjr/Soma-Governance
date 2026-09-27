@@ -98,6 +98,69 @@ With low baseline waste established, Phase 6 addressed review depth, context eff
 
 **Impact on rules:** Upgraded `skills/staff-review` to support Gale, Trident, & Maelstrom modes across 10 lenses; added 5 specialist skills (13 total); updated `subagent-delegation.md` with §2.1 Context Pre-Seeding, higher concurrency (4 readers, 3 writers), and a 75-step delegation floor; automated hooks in `scripts/governance_init.sh`; and established `scripts/governance_sweep.sh` and `docs/EXPERIMENTS.md`.
 
+## Phase 7: Empirical Falsification & Research-Backed Grounding ("Prove it or lose it")
+
+While Phase 6 established multi-stage reviews and baseline automation, real-world execution revealed that multi-agent systems suffer from subtle failure modes: false-positive findings chasing nonexistent bugs, consensus bias among homogeneous subagents, symptom-patching retry loops, and unverified subagent drift. 
+
+In **Maelstrom #2**, we incorporated state-of-the-art 2026 academic research and live post-mortem lessons into the governance engine:
+
+1. **Empirical Refutation Gate (`staff-review` SKILL.md)**:
+   - Before accepting any critical review finding, require at least **2 of 3 empirical criteria**: (1) verified `file:line` citation (±5 lines), (2) executable reproduction command or test case, and (3) independent mechanical verification (grep check or arithmetic validation).
+   - Omission findings (e.g., missing middleware, missing rate-limiting) satisfy criterion 3 via grep-confirmed absence without penalizing missing line citations.
+   - Enforces graduated demotion: findings meeting 0 criteria become ℹ️ info, 1 criterion becomes ⚠️ warning, and only 2+ criteria reach 🔴 critical.
+   - **Academic Source**: Agarwal et al. (2026), eliminating ~80% of false-positive claims in multi-agent code analysis.
+
+2. **Boundary Verification Protocol (`subagent-delegation.md §6`)**:
+   - The orchestrator must spot-check subagent assertions before acting on them, incorporating a **fuzzy ±5 line locality tolerance** to accommodate natural 1–3 line drifts common in LLM context representations.
+   - Enforces a strict *demote-not-discard* policy: findings failing locality search are downgraded to ℹ️ info rather than silently suppressed, preserving visibility while preventing ungrounded hallucination compounding across agent boundaries.
+   - Omission claims are validated through negative grep scans.
+   - **Academic Source**: IEEE GLOBECOM 2026 (Verification Protocols in Multi-Agent Orchestration).
+
+3. **Orthogonal Persona Mandate (`subagent-delegation.md §7`)**:
+   - Explicitly bans homogeneous reviewer fan-outs (e.g., 3 subagents identically prompted to "find bugs"), which waste tokens by converging on identical surface-level findings via consensus bias.
+   - Mandates assigning conflicting analytical incentives across concurrent reviewers (e.g., correctness verifier vs. performance minimalist vs. adversarial red-team).
+   - Permits same-domain depth audits only as an exception for high-assurance single-domain subsystems (e.g., cryptography, auth pipelines).
+   - **Academic Source**: MAR (Multi-Agent Review) / ICML 2026.
+
+4. **Diagnose Before Repair (`providence.md §7`)**:
+   - Prohibits writing fix code until root-cause analysis is formalized.
+   - Mandates an explicit structured diagnostic schema before drafting fixes:
+     ```
+     failure_mode: <observable symptom>
+     root_cause: <underlying defect>
+     broken_invariant: <system contract violated>
+     fix_spec: <concrete modification requirements>
+     ```
+   - Eliminates blind symptom-patching loops where agents repeatedly wrap broken code in defensive `try/except` blocks, null checks, or retries.
+   - **Academic Source**: REFLEX / ICML 2026.
+
+5. **First-Pass Success Rate (FPSR) Metric (`cost-optimization.md §5`)**:
+   - Introduces FPSR (percentage of initial code writes passing tests without revision) alongside waste rate, setting a target of **>80%**.
+   - Triggers an immediate coding halt and root-cause diagnostic if FPSR drops below 50% after a minimum sample of $N \ge 5$ code writes.
+   - Explicitly excludes intentional red-phase failures in Test-Driven Development (TDD).
+   - **Industry/Academic Source**: Tencent SiriusDeliver (2026 benchmark achieving 87.2% FPSR).
+
+6. **Incremental Escalation (`staff-review` SKILL.md)**:
+   - Eliminates redundant work when upgrading review intensity mid-session across 4 transition paths:
+     - Gale (fan-out) → Trident (maps fan-out to RECON, then runs Roots + Bedrock)
+     - Gale (fan-out) → Maelstrom (adds security lens RECON, then full Roots → Thorns → Bedrock)
+     - Trident (RECON + Roots) → Maelstrom (injects Thorns adversarial testing on existing Roots, then Bedrock)
+     - Trident (full) → Maelstrom (injects Thorns, re-verifies via Bedrock with adversarial context)
+   - Incorporates a **dirty-tree caveat** (`git status` check) to guarantee that code has not drifted before running subsequent adversarial prongs.
+   - **Source**: Extracted from live session post-mortem `f8b82d61`.
+
+7. **Mechanical Diff Downgrade (`cost-optimization.md §3`)**:
+   - When deep review prongs (Roots or Thorns) have already produced exact, line-numbered before/after diffs, applying those diffs is purely syntactic.
+   - Mandates down-tiering subagent dispatches to the lightweight `flash` tier, banning expensive `inherit` or `pro` token consumption for mechanical diff applications.
+
+8. **Validated Concurrency Ceilings**:
+   - Empirically validated the existing limits (4 read-only subagents, 3 disjoint writers) against 2024–2026 multi-agent scaling literature:
+     - 4 read-only subagents marks the optimal recall knee before diminishing returns and consensus degradation set in.
+     - 3 implementation writers under the Disjoint Lane Protocol represents the industry sweet spot for parallel writes without branch thrashing or interface lock contention.
+   - **Sources**: MIT multi-agent scaling study, Tencent, Coasty, and commercial agent baselines (Devin, Cursor, Copilot).
+
+**Impact on rules:** Enforced empirical falsification in `staff-review`, codified Boundary Verification and Orthogonal Personas in `subagent-delegation.md`, established structured diagnosis in `providence.md`, added FPSR and mechanical diff tiering to `cost-optimization.md`, and validated subagent concurrency against top-tier 2026 benchmarks.
+
 ## The Compound Effect
 
 ```
@@ -112,6 +175,8 @@ Continuous Monitor → catches new patterns as they emerge
 Divide & Conquer → parallel lanes, preflight probe, review sentinels
     ↓
 Trident, Maelstrom & Mechanized Guardrails → Gale/Trident/Maelstrom, 10 lenses, 13 skills, auto-hooks
+    ↓
+Empirical Falsification & Research Grounding → Refutation Gate, Boundary Verification, Orthogonal Personas, FPSR, Structured Diagnosis
 ```
 
 Compliance went from **7.8/10 to 9.8/10**, waste rate dropped from **~56% to 18.8% across 17 sessions (7,015 steps)**, with best-governed sessions reaching **1.1% waste** (`0dc37064` across 1,325 steps), and the rules now cover failure modes that no amount of upfront design would have predicted.

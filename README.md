@@ -39,9 +39,9 @@ Rules take effect on your next conversation turn. No restart needed.
 
 | Rule | Trigger | Purpose |
 |:-----|:--------|:--------|
-| `providence.md` | always_on | **Highest priority.** Codebase grounding, claim verification, no hallucinations, venv shebang verification, desktop automation safety. |
-| `cost-optimization.md` | always_on | Token efficiency, diffs-only edits, subagent model tiering, task hygiene. |
-| `subagent-delegation.md` | always_on | Context window protection, concurrency limits (4 readers, 3 writers), delegation floor (75 steps), Context Pre-Seeding Protocol, coding task boundaries. |
+| `providence.md` | always_on | **Highest priority.** Codebase grounding, claim verification, no hallucinations, venv shebang verification, desktop automation safety, diagnose-before-repair schema. |
+| `cost-optimization.md` | always_on | Token efficiency, diffs-only edits, subagent model tiering, mechanical diff downgrade (Flash), task hygiene, FPSR metric (>80%). |
+| `subagent-delegation.md` | always_on | Context window protection, validated concurrency limits (4 readers, 3 writers), delegation floor (75 steps), Context Pre-Seeding, Boundary Verification Protocol, Orthogonal Persona Mandate. |
 | `architectural-tenets.md` | model_decision | Pragmatism, trade-off analysis, scale-to-zero, premature abstraction ban. |
 | `polyglot-standards.md` | model_decision | Unified entrypoints (Makefiles), containerization. |
 | `feature-specs.md` | model_decision | PRD structure, acceptance criteria, documentation deliverables. |
@@ -71,12 +71,12 @@ Zero tokens until invoked.
 | `security-audit` | Check security or audit endpoints. AppSec Engineer: OWASP Top 10. |
 | `session-monitor` | Live session monitoring. Tracks waste trajectory, periodic probes, regression alerts. |
 | `spec-synthesizer` | Synthesize review reports. Cross-references multi-lens findings into a single prioritized plan. |
-| `staff-review` | Comprehensive review or audit. Multi-lens fan-out (10 lenses) with staff-level synthesis. Supports Gale, Trident, & Maelstrom modes. |
+| `staff-review` | Comprehensive review or audit. Multi-lens fan-out (10 lenses) with staff-level synthesis. Supports Gale, Trident, & Maelstrom modes, Incremental Escalation, and Empirical Refutation Gate. |
 | `visual-analyst` | Screen & UI analysis. Extracts game state, UI coordinates, error messages, and visual regressions. |
 
 ### Review Protocols (Gale, Trident, Maelstrom)
 
-The `staff-review` skill orchestrates 10 specialized lenses in three review modes:
+The `staff-review` skill orchestrates 10 specialized lenses across three review modes, supporting **Incremental Escalation** (upgrading review intensity mid-flight without restarting completed prongs) and the **Empirical Refutation Gate** (filtering false positives before Bedrock):
 
 | Mode | Rounds | Dispatches | Token Cost | Best For | Workflow |
 |:-----|:------:|:----------:|:----------:|:---------|:---------|
@@ -85,10 +85,17 @@ The `staff-review` skill orchestrates 10 specialized lenses in three review mode
 | **Maelstrom** | 3–4 | 7–12 Flash | ~15–20k tokens | Critical/Catastrophic risk, core governance, security-critical changes | Full adversarial: RECON → Roots → Thorns → Bedrock |
 
 #### Review Protocol Prongs:
-- **RECON (width)** — 3–4 Flash scouts survey codebase; identify problems and rank by severity (🔴 critical / ⚠️ warning / ℹ️ info); no fix proposals allowed.
+- **RECON (width)** — 3–4 Flash scouts survey codebase with orthogonal personas; identify problems and rank by severity (🔴 critical / ⚠️ warning / ℹ️ info); no fix proposals allowed.
 - **Roots (depth)** — 1–2 Flash analysts receive deduplicated findings, investigate root cause, and propose concrete fixes with blast radius analysis.
 - **Thorns (adversarial)** — Falsification team (NASA IV&V tripartite) actively attempts to break/falsify proposed fixes with a 2-cycle revision cap.
-- **Bedrock (verification)** — Structural-only verification gate (read-only, does NOT run tests); validates proposed changes against test suites and callers; outputs a SHIP/BLOCK gate.
+- **Bedrock (verification)** — Structural-only verification gate (read-only, does NOT run tests); validates proposed changes against test suites, callers, and the Empirical Refutation Gate; outputs a SHIP/BLOCK gate.
+
+#### Key Governance Mechanisms:
+- **Empirical Refutation Gate**: Before accepting critical review findings, requires at least 2 of 3 criteria: (1) verified `file:line` citation (±5 lines), (2) executable reproduction command/test, (3) mechanical verification (grep/math check; omission claims satisfy this). Findings meeting 1 criterion become ⚠️ warning; 0 become ℹ️ info (eliminates ~80% false positives; Agarwal 2026).
+- **Incremental Escalation**: Upgrades review depth mid-flight across 4 paths (Gale→Trident, Gale→Maelstrom, Trident partial→Maelstrom, Trident full→Maelstrom) without re-running earlier prongs (requires clean `git status`).
+- **Boundary Verification Protocol**: Orchestrator spot-checks subagent claims before acting with fuzzy ±5 line tolerance; demotes ungrounded claims rather than discarding them silently (IEEE GLOBECOM 2026).
+- **Orthogonal Persona Mandate**: Bans homogeneous reviewer fan-outs; assigns conflicting analytical incentives (e.g. correctness vs performance vs security) to prevent consensus bias (MAR/ICML 2026).
+- **Validated Concurrency Limits**: Benchmark-confirmed optimal ceilings (4 read-only scouts, 3 disjoint writers) maximizing recall before consensus degradation (MIT, Tencent, Coasty).
 
 **10 Review Lenses:** Architecture, Performance, Security, Compliance, Behavioral, Domain Research, Spec Synthesis, Visual, Governance Audit, Live Monitor.
 
@@ -205,10 +212,10 @@ These rules are opinionated. Fork and adjust:
 
 | What to Change | File to Edit |
 |:---------------|:-------------|
-| Token limits, subagent model tiers | `cost-optimization.md` |
+| Token limits, subagent model tiers, FPSR targets | `cost-optimization.md` |
 | Entrypoint format (Makefile vs Justfile) | `polyglot-standards.md` |
 | Infrastructure preferences | `architectural-tenets.md` |
-| Priority hierarchy | `providence.md` (all others defer) |
+| Priority hierarchy, diagnostic schemas | `providence.md` (all others defer) |
 
 ---
 
