@@ -17,19 +17,7 @@ log_warn()  { echo -e "  ${YELLOW}⚠${NC}  $*"; }
 log_skip()  { echo -e "  ${CYAN}⏭${NC}  $*"; }
 log_error() { echo -e "  ${RED}❌${NC} $*" >&2; }
 
-# ── Symlink-Safe Script Directory Resolution ─────────────────────
-# Resolves the true directory of the calling script, even through symlinks.
-# Thorns fix #3: naive dirname fails when script is symlinked.
-resolve_script_dir() {
-  local prg="${1:-${BASH_SOURCE[1]}}"
-  while [ -h "$prg" ]; do
-    local dir
-    dir="$(cd -P "$(dirname "$prg")" && pwd)"
-    prg="$(readlink "$prg")"
-    [[ $prg != /* ]] && prg="$dir/$prg"
-  done
-  cd -P "$(dirname "$prg")" && pwd
-}
+# (P7: resolve_script_dir removed — zero callers confirmed repo-wide)
 
 # ── Configuration Loading ────────────────────────────────────────
 # Loads steering.conf if present. Environment variables take precedence.
@@ -38,12 +26,22 @@ load_config() {
   local conf="$repo_dir/steering.conf"
 
   if [ -f "$conf" ]; then
-    # Source config, but don't override existing env vars
-    # (Thorns fix #2: preserve pre-set environment variables)
-    set -a
-    # shellcheck disable=SC1090
-    source "$conf"
-    set +a
+    # Safe config parsing (S2 fix: no arbitrary code execution)
+    while IFS= read -r line || [ -n "$line" ]; do
+      line="${line//$'\r'/}"         # Strip CRLF
+      line="${line#"${line%%[![:space:]]*}"}"  # Trim leading whitespace
+      [[ -z "$line" || "$line" =~ ^# ]] && continue
+      if [[ "$line" =~ ^([A-Za-z0-9_]+)[[:space:]]*=[[:space:]]*(.*)$ ]]; then
+        key="${BASH_REMATCH[1]}"; val="${BASH_REMATCH[2]}"
+        val="${val%%#*}"             # Strip inline comments
+        # Strip surrounding quotes
+        [[ "$val" =~ ^\"(.*)\"$ || "$val" =~ ^\'(.*)\'$ ]] && val="${BASH_REMATCH[1]}"
+        case "$key" in
+          STEERING_PLATFORM|TEAM_SIZE|APPROVAL_CHAIN|GIT_STRATEGY|RULES_SUBSET|ENABLE_HOOKS)
+            [ -z "${!key:-}" ] && export "$key=$val" ;;
+        esac
+      fi
+    done < "$conf"
   fi
 
   # Apply defaults for any unset variables

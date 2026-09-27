@@ -31,26 +31,45 @@ LOGS_REPO="${HOME}/.gemini/antigravity/scratch/ai-conversation-logs"
 AUTO_LOG="${LOGS_REPO}/governance/auto_applied_log.jsonl"
 CRITICAL="${LOGS_REPO}/governance/pending_critical.md"
 LOCK_FILE="${LOGS_REPO}/governance/.governance.lock"
-TIMESTAMP=$(date -Iseconds)
+TIMESTAMP=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
 
 mkdir -p "${LOGS_REPO}/governance"
 
 # Concurrency-safe write
 (
-  flock -x 200
+  if command -v flock &>/dev/null; then
+      flock -x 200
+  else
+      lock_dir="${LOCK_FILE}.d"
+      retries=0
+      while ! mkdir "$lock_dir" 2>/dev/null; do
+          sleep 0.05; retries=$((retries + 1))
+          [ "$retries" -ge 40 ] && { rm -rf "$lock_dir"; break; }
+      done
+      trap 'rm -rf "$lock_dir"' EXIT
+  fi
 
-  # 1. Append JSON record to audit log
-  printf '{"timestamp":"%s","severity":"%s","rule":"%s","change":"%s","source":"%s"}\n' \
-    "$TIMESTAMP" "$SEVERITY" "$RULE" "$CHANGE" "$SOURCE" >> "$AUTO_LOG"
+  # 1. Append JSON record to audit log (safe serialization)
+  if command -v python3 &>/dev/null; then
+    python3 -c "
+import json, sys
+print(json.dumps({
+    'timestamp': sys.argv[1],
+    'severity': sys.argv[2],
+    'rule': sys.argv[3],
+    'change': sys.argv[4],
+    'source': sys.argv[5]
+}))" "$TIMESTAMP" "$SEVERITY" "$RULE" "$CHANGE" "$SOURCE" >> "$AUTO_LOG"
+  else
+    esc() { printf '%s' "$1" | sed -e 's/\\/\\\\/g' -e 's/"/\\"/g' | tr '\n' ' '; }
+    printf '{"timestamp":"%s","severity":"%s","rule":"%s","change":"%s","source":"%s"}\n' \
+      "$(esc "$TIMESTAMP")" "$(esc "$SEVERITY")" "$(esc "$RULE")" "$(esc "$CHANGE")" "$(esc "$SOURCE")" >> "$AUTO_LOG"
+  fi
 
   # 2. If critical, also append to pending_critical.md
   if [[ "$SEVERITY" == "critical" ]]; then
-    cat >> "$CRITICAL" << EOF
-
-### 🔴 CRITICAL: $RULE ($TIMESTAMP)
-- **Change**: $CHANGE
-- **Source**: $SOURCE
-EOF
+    printf '\n### 🔴 CRITICAL: %s (%s)\n- **Change**: %s\n- **Source**: %s\n' \
+      "$RULE" "$TIMESTAMP" "$CHANGE" "$SOURCE" >> "$CRITICAL"
   fi
 ) 200>"$LOCK_FILE"
 

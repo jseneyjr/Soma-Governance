@@ -71,7 +71,7 @@ uninstall: ## Remove installed rules, skills, and hooks
 	    echo "  Removing hooks"; \
 	    rm -f ~/.gemini/config/plugins/governance/hooks.json; \
 	    echo "  Removing skills"; \
-	    for skill in code-review domain-researcher governance-auditor incident-debug performance-audit post-mortem readme-writer refactoring-pilot security-audit session-monitor session-preflight spec-synthesizer staff-review visual-analyst; do \
+	    for skill in adaptive-reviewer code-review domain-researcher governance-auditor incident-debug performance-audit post-mortem readme-writer refactoring-pilot security-audit session-monitor session-preflight spec-synthesizer staff-review visual-analyst; do \
 	      rm -rf ~/.gemini/config/skills/$$skill; \
 	    done; \
 	    echo "Done! Rules, hooks, and skills removed."; \

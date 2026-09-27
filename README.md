@@ -2,7 +2,7 @@
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue?style=flat-square)](LICENSE)
 [![Rules](https://img.shields.io/badge/Rules-11-green?style=flat-square)](#rules)
-[![Skills](https://img.shields.io/badge/Skills-14-purple?style=flat-square)](#skills)
+[![Skills](https://img.shields.io/badge/Skills-15-purple?style=flat-square)](#skills)
 [![Review Modes](https://img.shields.io/badge/Review_Modes-5-orange?style=flat-square)](#review-protocols)
 [![Platforms](https://img.shields.io/badge/Gemini_%7C_Kiro_%7C_Copilot-black?style=flat-square)](#quick-start)
 
@@ -69,6 +69,7 @@ flowchart LR
 
 | Skill | Purpose |
 |:------|:--------|
+| [adaptive-reviewer](skills/adaptive-reviewer/SKILL.md) | Auto-escalating review orchestrator with subagent nesting (E11). |
 | [code-review](skills/code-review/SKILL.md) | Staff Engineer: architectural flaws, race conditions, SOLID violations. |
 | [domain-researcher](skills/domain-researcher/SKILL.md) | Compiles verified external facts (wikis, API docs, papers). |
 | [governance-auditor](skills/governance-auditor/SKILL.md) | Mechanical per-rule PASS/FAIL compliance checks. |

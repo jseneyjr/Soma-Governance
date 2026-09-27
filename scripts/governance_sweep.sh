@@ -31,7 +31,7 @@ TAXONOMY="$GOVERNANCE_DIR/taxonomy.json"
 SWEEP_SCANNER="$SCRIPT_DIR/sweep_session.py"
 
 ACTIVE_ONLY="${1:-}"
-TIMESTAMP="$(date -Iseconds)"
+TIMESTAMP="$(date -u +"%Y-%m-%dT%H:%M:%SZ")"
 
 # Counters
 sessions_scanned=0
@@ -190,7 +190,8 @@ active_report=""
 for transcript in $(find "$BRAIN_DIR" -name "transcript.jsonl" -mmin -120 2>/dev/null); do
   step_count="$(wc -l < "$transcript" 2>/dev/null || echo 0)"
   if [ "$step_count" -gt 50 ]; then
-    session_id="$(echo "$transcript" | grep -oP 'brain/\K[^/]+')"
+    rel="${transcript#"$BRAIN_DIR"/}"
+    session_id="${rel%%/*}"
     short_id="${session_id:0:8}"
 
     summary="$(python3 "$SWEEP_SCANNER" "$transcript" --summary-only 2>/dev/null || echo "{}")"
@@ -198,7 +199,7 @@ for transcript in $(find "$BRAIN_DIR" -name "transcript.jsonl" -mmin -120 2>/dev
     top_pattern="$(echo "$summary" | python3 -c "import json,sys; print(json.load(sys.stdin).get('top_pattern','unknown'))" 2>/dev/null || echo "unknown")"
 
     # Convert to percentage for comparison
-    waste_pct="$(python3 -c "print(int(float('$waste_rate') * 100))" 2>/dev/null || echo "0")"
+    waste_pct="$(python3 -c "import sys; print(int(float(sys.argv[1]) * 100))" "$waste_rate" 2>/dev/null || echo "0")"
 
     if [ "$waste_pct" -gt 15 ]; then
       echo "  ⚠️  $short_id: ${step_count} steps, ~${waste_pct}% waste, top: $top_pattern"

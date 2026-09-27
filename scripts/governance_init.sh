@@ -108,7 +108,17 @@ fi
 GOV_STEPS="[]"
 if [ -d "$LOGS_REPO/governance" ]; then
     GOV_STEPS=$(
-        flock -x 200
+        if command -v flock &>/dev/null; then
+            flock -x 200
+        else
+            lock_dir="${LOCK_FILE}.d"
+            retries=0
+            while ! mkdir "$lock_dir" 2>/dev/null; do
+                sleep 0.05; retries=$((retries + 1))
+                [ "$retries" -ge 40 ] && { rm -rf "$lock_dir"; break; }
+            done
+            trap 'rm -rf "$lock_dir"' EXIT
+        fi
 
         # 1. Check for critical findings
         if [ -f "$CRITICAL" ] && [ -s "$CRITICAL" ]; then

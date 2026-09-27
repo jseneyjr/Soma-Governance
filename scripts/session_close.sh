@@ -22,8 +22,14 @@ EXPORT_SCRIPT="$STEERING_REPO/scripts/export_logs.sh"
 for repo in "$STEERING_REPO" "$LOGS_REPO"; do
     lock="$repo/.git/index.lock"
     if [ -f "$lock" ]; then
-        if ! fuser "$lock" > /dev/null 2>&1; then
-            rm -f -- "$lock"
+        if command -v fuser > /dev/null 2>&1; then
+            if ! fuser "$lock" > /dev/null 2>&1; then
+                rm -f -- "$lock"
+            fi
+        elif command -v lsof > /dev/null 2>&1; then
+            if ! lsof "$lock" > /dev/null 2>&1; then
+                rm -f -- "$lock"
+            fi
         fi
     fi
 done

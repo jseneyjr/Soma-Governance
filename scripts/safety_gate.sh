@@ -39,36 +39,36 @@ REASON=""
 # --- File system destruction ---
 
 # rm: catch -rf, -r -f, -fr, --recursive, and rmdir with ignore flag
-if echo "$CMD" | grep -qE 'rm\s+(-[a-zA-Z]*r[a-zA-Z]*f|-[a-zA-Z]*f[a-zA-Z]*r|-r\s+-f|-f\s+-r|--recursive)\s+(/|~|/home|\$HOME)'; then
+if echo "$CMD" | grep -qE 'rm[[:space:]]+(-[a-zA-Z]*r[a-zA-Z]*f|-[a-zA-Z]*f[a-zA-Z]*r|-r[[:space:]]+-f|-f[[:space:]]+-r|--recursive)[[:space:]]+(/|~|/home|\$HOME)'; then
     BLOCKED=true
     REASON="Recursive delete targeting home/root directory"
 fi
 
-if echo "$CMD" | grep -qE 'rmdir\s+--ignore-fail-on-non-empty'; then
+if echo "$CMD" | grep -qE 'rmdir[[:space:]]+--ignore-fail-on-non-empty'; then
     BLOCKED=true
     REASON="rmdir with --ignore-fail-on-non-empty — bypasses safety check"
 fi
 
 # mkfs — formatting a filesystem
-if echo "$CMD" | grep -qE '\bmkfs\b'; then
+if echo "$CMD" | grep -qE '(^|[^[:alnum:]_])mkfs([^[:alnum:]_]|$)'; then
     BLOCKED=true
     REASON="Filesystem format (mkfs) detected — destructive operation"
 fi
 
 # dd if= — raw disk write
-if echo "$CMD" | grep -qE '\bdd\s+.*if='; then
+if echo "$CMD" | grep -qE '(^|[^[:alnum:]_])dd[[:space:]]+.*if='; then
     BLOCKED=true
     REASON="Raw disk write (dd) detected — destructive operation"
 fi
 
 # chmod 777 — overly permissive
-if echo "$CMD" | grep -qE 'chmod\s+777'; then
+if echo "$CMD" | grep -qE 'chmod[[:space:]]+777'; then
     BLOCKED=true
     REASON="chmod 777 — overly permissive, potential security risk"
 fi
 
 # kill -9 -1 — kill all processes
-if echo "$CMD" | grep -qE 'kill\s+-9\s+-1'; then
+if echo "$CMD" | grep -qE 'kill[[:space:]]+-9[[:space:]]+-1'; then
     BLOCKED=true
     REASON="kill -9 -1 — would kill all user processes"
 fi
@@ -76,7 +76,7 @@ fi
 # --- Privilege escalation ---
 
 # sudo — any sudo invocation
-if echo "$CMD" | grep -qE '\bsudo\b'; then
+if echo "$CMD" | grep -qE '(^|[^[:alnum:]_])sudo([^[:alnum:]_]|$)'; then
     BLOCKED=true
     REASON="sudo detected — elevated privileges require confirmation"
 fi
@@ -84,7 +84,7 @@ fi
 # --- Remote code execution ---
 
 # curl|sh, wget|sh patterns
-if echo "$CMD" | grep -qE 'curl\s.*\|.*sh|wget\s.*\|.*sh'; then
+if echo "$CMD" | grep -qE 'curl[[:space:]].*\|.*sh|wget[[:space:]].*\|.*sh'; then
     BLOCKED=true
     REASON="Piping remote content to shell — potential code execution risk"
 fi
@@ -92,43 +92,43 @@ fi
 # --- Git destructive operations ---
 
 # Force push: --force, -f flag, or +refspec
-if echo "$CMD" | grep -qE 'git\s+push\s+.*(-f|--force|--force-with-lease)'; then
+if echo "$CMD" | grep -qE 'git[[:space:]]+push[[:space:]]+.*(-f|--force|--force-with-lease)'; then
     BLOCKED=true
     REASON="Force push detected — destructive-ops mandate requires confirmation"
 fi
 
-if echo "$CMD" | grep -qE 'git\s+push\s+\S+\s+\+'; then
+if echo "$CMD" | grep -qE 'git[[:space:]]+push[[:space:]]+[^[:space:]]+[[:space:]]+\+'; then
     BLOCKED=true
     REASON="Force push via +refspec detected — destructive-ops mandate requires confirmation"
 fi
 
 # Git reset --hard
-if echo "$CMD" | grep -qE 'git\s+reset\s+--hard'; then
+if echo "$CMD" | grep -qE 'git[[:space:]]+reset[[:space:]]+--hard'; then
     BLOCKED=true
     REASON="Hard reset — will discard uncommitted changes"
 fi
 
 # Git checkout -f (force checkout, discards local changes)
-if echo "$CMD" | grep -qE 'git\s+checkout\s+-f'; then
+if echo "$CMD" | grep -qE 'git[[:space:]]+checkout[[:space:]]+-f'; then
     BLOCKED=true
     REASON="Force checkout — will discard uncommitted changes"
 fi
 
 # Git clean -fdx (removes untracked files and directories)
-if echo "$CMD" | grep -qE 'git\s+clean\s+.*-[a-zA-Z]*f'; then
+if echo "$CMD" | grep -qE 'git[[:space:]]+clean[[:space:]]+.*-[a-zA-Z]*f'; then
     BLOCKED=true
     REASON="git clean -f — will permanently remove untracked files"
 fi
 
 # Bulk git staging without dry-run: git add -A, git add ., git add --all, git add *
-if echo "$CMD" | grep -qE 'git\s+add\s+(-A|\.|\*|--all)\s*$'; then
+if echo "$CMD" | grep -qE 'git[[:space:]]+add[[:space:]]+(-A|\.|\./?|\*|--all)([[:space:]]|$|[;&|>)])'; then
     BLOCKED=true
     REASON="Bulk staging (git add -A/./*/--all) — run git status first to verify file count"
 fi
 
 # --- Database destructive operations ---
 
-if echo "$CMD" | grep -qiE '(DROP\s+(TABLE|DATABASE)|DELETE\s+FROM\s+\w+\s*|TRUNCATE\s+TABLE)'; then
+if echo "$CMD" | grep -qiE '(DROP[[:space:]]+(TABLE|DATABASE)|DELETE[[:space:]]+FROM[[:space:]]+[[:alnum:]_]+[[:space:]]*|TRUNCATE[[:space:]]+TABLE)'; then
     BLOCKED=true
     REASON="Destructive database operation without WHERE clause"
 fi
@@ -145,8 +145,16 @@ fi
 
 # Safe JSON logger — prevents command injection via python3 json.dumps
 log_gate_event() {
-  local decision="$1" reason="${2:-}" cmd_snippet
-  cmd_snippet="$(echo "$CMD" | head -c 200)"
+  local decision="$1" reason="${2:-}" cmd_snippet redacted_cmd
+  redacted_cmd=$(echo "$CMD" | sed \
+    -e 's/AKIA[0-9A-Z]\{16\}/AKIA_REDACTED/g' \
+    -e 's/ghp_[a-zA-Z0-9]\{36\}/ghp_REDACTED/g' \
+    -e 's/github_pat_[a-zA-Z0-9_]\{20,\}/github_pat_REDACTED/g' \
+    -e 's/sk-[a-zA-Z0-9]\{20,\}/sk-REDACTED/g' \
+    -e 's/AIzaSy[a-zA-Z0-9_-]\{33\}/AIzaSy_REDACTED/g' \
+    -e 's/Bearer [a-zA-Z0-9._-]\{20,\}/Bearer REDACTED/g' \
+    -e 's/GEMINI_API_KEY=[^ ]*/GEMINI_API_KEY=REDACTED/g')
+  cmd_snippet="$(echo "$redacted_cmd" | head -c 200)"
   if command -v python3 &>/dev/null; then
     python3 -c "
 import json, sys
