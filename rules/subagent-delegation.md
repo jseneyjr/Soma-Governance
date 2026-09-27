@@ -77,13 +77,14 @@ Every subagent prompt should prepend a compact context block (~200 tokens) to el
 - **Read-Only Awareness**: Research subagents cannot write files. Instruct them to return results via `send_message`, not file creation. Only subagents with write tools can create or modify files.
 
 ## 6. Boundary Verification Protocol
-Before acting on subagent findings, the orchestrator **must verify claims against the actual codebase**:
+Before acting on subagent findings, the orchestrator **must spot-check claims against the actual codebase** (not exhaustively — protect context window):
 - **File existence**: Confirm cited file paths exist (`list_dir` or `view_file`)
-- **Line accuracy**: Spot-check that cited line numbers contain the claimed content
+- **Line accuracy**: Verify cited content exists within ±5 lines of the claimed location (LLMs commonly drift by 1–3 lines)
 - **Symbol validity**: Verify function/class names exist where claimed (`grep_search`)
 - **Numeric claims**: Independently verify any aggregate math (sums, percentages, counts)
+- **Omission claims**: Findings about *missing* code (e.g., no auth middleware, no rate limiting) cannot cite a file:line. Accept these if the subagent specifies *where* the check should exist and a grep confirms absence.
 
-If a subagent cites a file:line that does not match reality, discard that finding and flag the subagent's report as partially ungrounded. Never propagate unverified claims downstream — hallucinations compound across agent boundaries.
+If a finding fails verification after fuzzy locality search, demote it to ℹ️ info (not silent discard) and flag the subagent's report as partially ungrounded. Never propagate unverified claims downstream — hallucinations compound across agent boundaries.
 
 ## 7. Orthogonal Persona Mandate
 When dispatching 2+ review subagents in the same phase, assign **conflicting analytical incentives**:
@@ -91,4 +92,6 @@ When dispatching 2+ review subagents in the same phase, assign **conflicting ana
 - ✅ **Required**: Orthogonal lenses (e.g., correctness verifier, performance minimalist, adversarial red-team)
 
 Homogeneous reviewers converge on the same findings via consensus bias, wasting tokens. Orthogonal personas with different success criteria (one rewarded for finding waste, another for finding bugs, another for finding security issues) maximize coverage per token spent.
+
+**Exception**: High-assurance single-domain subsystems (cryptography, auth pipelines) may use multiple same-domain lenses exploring different attack vectors. The orchestrator serves as the arbiter when reviewers conflict.
 
