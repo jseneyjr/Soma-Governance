@@ -50,7 +50,8 @@ Unified metrics for the AI Steering Rules governance system — token costs, emp
 | `session-monitor` | ~50 | ~500 |
 | `performance-audit` | ~65 | ~496 |
 | `spec-synthesizer` | ~50 | ~460 |
-| **Subtotal** | **~672** | **~9,782** |
+| `session-preflight` | ~50 | ~900 |
+| **Subtotal** | **~772** | **~10,682** |
 
 ### Review Protocol Costs (5 Modes + 6 Prongs)
 
@@ -81,12 +82,12 @@ Unified metrics for the AI Steering Rules governance system — token costs, emp
 
 | Approach | Tokens/Turn |
 |:---------|:------------|
-| **Naive** — all 11 rules + 13 skills always loaded | ~17,528 |
-| **Optimized** — conditional rules + skills idle | ~4,627 |
-| **Savings** | **~12,901 tokens/turn (73.6%)** |
+| **Naive** — all 11 rules + 14 skills always loaded | ~18,428 |
+| **Optimized** — conditional rules + skills idle | ~4,727 |
+| **Savings** | **~13,701 tokens/turn (74.3%)** |
 
 > [!NOTE]
-> The 73.6% figure pools rules and skills. Rules-only savings (excluding skills, which are natively deferred by the platform) = **~52%**. Both numbers are valid; the distinction matters for comparing against other governance systems.
+> The 74.3% figure pools rules and skills. Rules-only savings (excluding skills, which are natively deferred by the platform) = **~52%**. Both numbers are valid; the distinction matters for comparing against other governance systems.
 
 **Additional automation savings:**
 
@@ -188,7 +189,7 @@ Direct comparison of the same project (TAB AI) with and without governance:
 | Subagent Delegation | 8.5 | 9.5 | Read-only awareness, workspace conflict prevention, no collateral kills |
 | Root Cause Resolution | 9.5 | 9.5 | No changes needed — agent fixed all 6 code review findings |
 | Execution Discipline | 6.0 | 9.5 | Phase gates, checkpoint testing, ast.parse ban, mock-first mandate |
-| **Overall** | **7.8** | **9.8** | **62 findings fixed across all phases** |
+| **Overall** | **7.8** | **9.8** | **77 findings fixed across all phases** |
 
 ### Accuracy-Driven Savings Over Time
 
@@ -216,3 +217,6 @@ Each loop costs **~20–25 steps** of wasted context. Compound effect: rework fi
 - **Maelstrom #3** — Added Breeze, Tempest, Mycelium, Mulch modes. 4-prong verification.
 - **Tempest #1** — Build system overhaul (16 files, 1080 insertions). Unified installer, shared library, safety gate hardening.
 - **Tempest #2** — Documentation modernization. README rewrite (242→150 lines), METRICS.md merge, EVOLUTION dedup.
+- **Tempest #3** — Governance meta-review (8 files). Config precedence fix, JSON serialization safety, model tiering consolidation.
+- **Tempest #4** — Final capstone + first operational Mulch (12 files). Validated E14/E15, codified Mechanical Arithmetic and Mulch Invariant.
+- **Gale Review** — Git hygiene, 13→14 skill sync, branch modernization (`master` → `main`).

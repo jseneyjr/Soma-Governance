@@ -86,15 +86,15 @@ With low baseline waste established, Phase 6 addressed review depth, context eff
 - **Risk-Based Protocol Selection**: Automated risk-tiered routing — see [METRICS.md](METRICS.md#review-protocol-costs-5-modes--6-prongs) for cost details.
 - **First Successful Maelstrom Dogfood**: Thorns adversarial prong caught 5 critical bugs that would have shipped broken under traditional review.
 - **Schema Bifurcation Fix**: Reconciled disparate transcript field structures in `governance_sweep.sh` — see [METRICS.md](METRICS.md#aggregate-stats-17-sessions-7015-steps) for aggregate numbers.
-- **13 Skills**: Added 5 specialist skills (domain-researcher, spec-synthesizer, session-monitor, governance-auditor, visual-analyst) alongside the original 8.
+- **14 Skills**: Added 5 specialist skills (domain-researcher, spec-synthesizer, session-monitor, governance-auditor, visual-analyst) alongside the 8 original and session-preflight.
 - **10-Lens Staff Protocol**: Architecture, Performance, Security, Compliance, Behavioral, Domain Research, Spec Synthesis, Visual, Governance Audit, Live Monitor.
 - **Auto-Preflight & Domain Detection**: Zero-token project scanning in `governance_init.sh` hooks.
 - **Context Pre-Seeding**: ~200-token compact headers eliminating 2–3 cold-start steps per subagent.
-- **Experiment Framework (E1–E10)**: Active/backlog registry in [EXPERIMENTS.md](EXPERIMENTS.md).
+- **Experiment Framework (E1–E15)**: Active/backlog registry in [EXPERIMENTS.md](EXPERIMENTS.md).
 - **Concurrency Expansion**: 4 readers / 3 writers under Disjoint Lane Protocol; delegation floor lowered from 100 to 75 steps.
 - **Governance Sweep**: Local periodic scanning at ~500 tokens / run, zero LLM cost.
 
-**Impact on rules:** Upgraded `staff-review` to support Gale, Trident, & Maelstrom across 10 lenses; 13 skills total; Context Pre-Seeding and higher concurrency in `subagent-delegation.md`; automated hooks; and `docs/EXPERIMENTS.md`.
+**Impact on rules:** Upgraded `staff-review` to support Gale, Trident, & Maelstrom across 10 lenses; 14 skills total; Context Pre-Seeding and higher concurrency in `subagent-delegation.md`; automated hooks; and `docs/EXPERIMENTS.md`.
 
 ## Phase 7: Empirical Falsification & Research-Backed Grounding ("Prove it or lose it")
 
@@ -127,16 +127,19 @@ Maelstrom #3 expanded the review system in two dimensions: **breadth** (Breeze a
 
 ## Phase 9: Tempest Hardening — Portability, Security & Documentation
 
-Tempest #1 and #2 overhauled the build system, security gate, and documentation to make the governance framework portable and self-verifying:
+Tempest #1–#4 and Gale review overhauled the build system, security gate, runtime learning, and documentation:
 
 - **Unified installer** replacing 3 duplicated platform scripts with a single `scripts/common.sh`-backed `install.sh`
 - **Shared library** (`scripts/common.sh`) eliminating ~95 lines of duplicated path resolution, error handling, and color output
 - **Dynamic `hooks.json.template`** replacing hardcoded scratch paths with `{{SCRIPTS_DIR}}` placeholders resolved at install time
-- **6 new Make targets**: `uninstall`, `doctor`, `validate`, `update`, `status` (plus existing `install`, `test`)
+- **6 new Make targets**: `info`, `uninstall`, `doctor`, `validate`, `update`, `status` (plus existing `install`, `test`)
 - **Safety gate hardened**: fail-closed default, 15+ dangerous patterns, regex bypass fixes for edge cases
 - **Documentation consolidated**: METRICS.md merge (token economics + telemetry + benchmarks), README rewrite (242→150 lines), EVOLUTION dedup
+- **First operational Mulch**: Runtime learning extraction pipeline with proposals persisted to `governance/mulch_queue.jsonl`
+- **Default branch modernization**: Repository migrated from `master` to `main`
+- **Git & permissions hygiene**: Expanded `.gitignore`, enforced executable bits on all scripts
 
-**Impact on rules:** No rule text changes — this phase improved the delivery and verification infrastructure around the rules.
+**Impact on rules:** Added Mandatory Mechanical Verification for Arithmetic (`providence.md §2`) and Mulch Execution Invariant (`subagent-delegation.md §5`). Consolidated model tiering authority in `cost-optimization.md §3`.
 
 ## The Compound Effect
 
@@ -151,7 +154,7 @@ Continuous Monitor → catches new patterns as they emerge
     ↓
 Divide & Conquer → parallel lanes, preflight probe, review sentinels
     ↓
-Trident, Maelstrom & Mechanized Guardrails → Gale/Trident/Maelstrom, 10 lenses, 13 skills, auto-hooks
+Trident, Maelstrom & Mechanized Guardrails → Gale/Trident/Maelstrom, 10 lenses, 14 skills, auto-hooks
     ↓
 Empirical Falsification & Research Grounding → Refutation Gate, Boundary Verification, Orthogonal Personas, FPSR, Structured Diagnosis
     ↓
