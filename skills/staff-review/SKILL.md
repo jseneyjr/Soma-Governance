@@ -1,32 +1,46 @@
 ---
 name: Staff Review Protocol
-description: Multi-lens review fan-out with staff-level synthesis. Supports two modes — Standard Protocol (single-pass parallel) and Trident Protocol (progressive 3-prong deep review). Activate when the user requests a comprehensive review, audit, or architectural assessment.
+description: Multi-lens review fan-out with staff-level synthesis. Three modes — Gale (single-pass), Trident (progressive RECON → Roots → Bedrock), and Maelstrom (full adversarial with Thorns). Activate when the user requests a comprehensive review, audit, or architectural assessment.
 trigger: user_request
 ---
 # Staff Review Protocol
 
-> **Role**: Orchestrates expert reviews from independent perspectives, then synthesizes findings into a single fact-checked, actionable artifact. Supports multiple review modes based on depth requirements.
+> **Role**: Orchestrates expert reviews from independent perspectives, then synthesizes findings into a single fact-checked, actionable artifact. Supports multiple review modes scaled by risk level.
 
 ## Review Modes
 
-| Mode | Alias | Rounds | Flash Dispatches | Token Cost | When to Use |
+| Mode | Alias | Prongs | Flash Dispatches | Token Cost | When to Use |
 |:-----|:------|:------:|:----------------:|:----------:|:------------|
-| **Salvo** | "salvo", "quick review" | 1 | 3–4 | ~4k tokens | Quick reviews, known domains, minor changes |
-| **Trident** | "trident", "deep review", "full review" | 2–3 | 5–8 | ~8–12k tokens | Architecture changes, unfamiliar code, high-risk refactors |
+| **Gale** | "gale", "quick review" | Fan-out → Synthesize | 3–4 | ~4k tokens | Quick reviews, minor changes |
+| **Trident** | "trident", "deep review" | RECON → Roots → Bedrock | 5–8 | ~8–12k tokens | Feature reviews, refactors |
+| **Maelstrom** | "maelstrom", "full review", "max review" | RECON → Roots → Thorns → Bedrock | 7–12 | ~15–20k tokens | Architecture, security, breaking changes |
 
-Individual Trident prongs can be run standalone:
+### Risk-Based Protocol Selection
+
+Choose protocol by **failure severity**, not scope:
+
+| Risk Level | Failure Impact | Protocol | Example |
+|:-----------|:---------------|:---------|:--------|
+| Low | Cosmetic, docs | Gale | README update, style fix |
+| Medium | Feature regression | Trident (RECON + Roots) | New feature, bug fix |
+| High | API breakage, data loss | Trident (full 3-prong) | Public API change, schema migration |
+| Critical | Security breach, rule bypass | Maelstrom | Auth flow, governance rule changes |
+| Catastrophic | Production outage, data corruption | Maelstrom + human gate | Infrastructure, core protocol changes |
+
+### Individual Prongs (run standalone)
 
 | Prong | Alias | What It Does |
 |:------|:------|:-------------|
 | **RECON** | "recon", "scout" | Broad parallel survey — finds problems, ranks by severity, no fixes |
-| **STRIKE** | "strike", "deep dive" | Focused analysis on specific findings — proposes concrete fixes |
-| **FORTIFY** | "fortify", "verify" | Verification gate — checks blast radius, pass/fail on proposed changes |
+| **Roots** | "roots", "deep dive" | Focused analysis on specific findings — proposes concrete fixes |
+| **Thorns** | "thorns", "break it", "red team" | Adversarial falsification — actively tries to break proposed fixes |
+| **Bedrock** | "bedrock", "verify" | Final verification gate — checks blast radius, pass/fail |
 
-The orchestrator selects the mode based on user request. Default to Salvo for routine reviews. When the user says "trident", "deep review", or "full review", use the Trident Protocol.
+The orchestrator selects the mode based on risk level. Default to Gale for routine reviews. Maelstrom for anything that could be exploited or bypassed.
 
 ---
 
-## Salvo Protocol (Single-Pass)
+## Gale Protocol (Single-Pass)
 
 ### Phase 1: Fan-Out (Independent Analysis)
 
@@ -80,13 +94,13 @@ The final artifact follows feature-specs format:
 
 ## Trident Protocol (Progressive Deep Review)
 
-Three prongs, each sharper than the last. Scouts find problems, strikers propose solutions, fortifiers verify them. Each round narrows focus based on the previous round's findings.
+Three prongs, each sharper than the last. Scouts find problems, root analysts propose solutions, bedrock verifiers confirm them. Each round narrows focus based on the previous round's findings.
 
 ```
-  RECON (width)         STRIKE (depth)        FORTIFY (verification)
+  RECON (width)         Roots (depth)         Bedrock (verification)
   ┌─────────────┐      ┌─────────────┐       ┌──────────────┐
   │ 3-4 Flash   │      │ 1-2 Flash   │       │ 1 Flash      │
-  │ broad survey│ ───► │ critical    │  ───► │ verify fixes │
+  │ broad survey│ ───► │ root cause  │  ───► │ verify fixes │
   │ find issues │      │ deep-dive   │       │ check blast  │
   │ rank by     │      │ propose     │       │ radius       │
   │ severity    │      │ solutions   │       │ pass/fail    │
@@ -96,9 +110,9 @@ Three prongs, each sharper than the last. Scouts find problems, strikers propose
 
 ### Prong 1: RECON (Broad Survey)
 
-Dispatch 3–4 Flash scouts with orthogonal lenses (same as Standard Protocol Phase 1).
+Dispatch 3–4 Flash scouts with orthogonal lenses (same as Gale Protocol Phase 1).
 
-**Key difference from Standard**: Scouts do NOT propose fixes. They only:
+**Key difference from Gale**: Scouts do NOT propose fixes. They only:
 - Identify problems with evidence (file:line citations)
 - Rank findings by severity (🔴 critical / ⚠️ warning / ℹ️ info)
 - Flag areas that need deeper investigation
@@ -114,24 +128,24 @@ Format: 🔴/⚠️/ℹ️ [finding] — Evidence: [file:line]
 **Orchestrator triage** (between prongs):
 After scouts report, the orchestrator:
 1. Deduplicates findings across scouts (multi-scout = high confidence)
-2. Selects the top 3–5 critical findings for the strike round
+2. Selects the top 3–5 critical findings for the Roots round
 3. Drops ℹ️ info-level findings (address later or never)
 
-### Prong 2: STRIKE (Focused Deep-Dive)
+### Prong 2: Roots (Focused Deep-Dive)
 
-Dispatch 1–2 Flash strikers on ONLY the critical findings from RECON.
+Dispatch 1–2 Flash analysts on ONLY the critical findings from RECON.
 
 **Key differences**:
-- Strikers receive the scout findings as input context
-- Strikers propose **concrete fixes** (file, line, change)
-- Strikers may activate specialist skills (domain-researcher, visual-analyst) if needed
-- Each striker owns a disjoint subset of findings (no overlap)
+- Analysts receive the scout findings as input context
+- Analysts propose **concrete fixes** (file, line, change)
+- Analysts may activate specialist skills (domain-researcher, visual-analyst) if needed
+- Each analyst owns a disjoint subset of findings (no overlap)
 
-**Striker prompt template**:
+**Roots prompt template**:
 ```
 <!-- CONTEXT: [PROJECT] from Context Pre-Seeding Protocol -->
 
-STRIKE ANALYSIS — You are investigating these findings from the RECON round:
+ROOTS ANALYSIS — You are investigating these findings from the RECON round:
 
 1. 🔴 [finding summary] — Evidence: [file:line]
 2. 🔴 [finding summary] — Evidence: [file:line]
@@ -147,11 +161,9 @@ For each finding:
 [How to confirm the fix works — specific test command]
 ```
 
-### Prong 3: FORTIFY (Verification Gate)
+### Prong 3: Bedrock (Verification Gate)
 
-*Optional — activate only for high-risk changes (architecture, public APIs, breaking changes).*
-
-Dispatch 1 Flash verifier that receives the proposed fixes from STRIKE.
+Dispatch 1 Flash verifier that receives the proposed fixes from Roots.
 
 **Verifier checks**:
 - Do the proposed fixes introduce new issues?
@@ -163,14 +175,76 @@ Dispatch 1 Flash verifier that receives the proposed fixes from STRIKE.
 
 If BLOCK: orchestrator reviews issues and either revises fixes or escalates to user.
 
+---
+
+## Maelstrom Protocol (Full Adversarial Review)
+
+Extends Trident with an adversarial **Thorns** prong. Use for changes where cooperative review is insufficient — security, governance rules, breaking changes, core infrastructure.
+
+```
+  RECON (width)      Roots (depth)      Thorns (adversarial)   Bedrock (verify)
+  ┌────────────┐    ┌────────────┐     ┌────────────────┐    ┌─────────────┐
+  │ 3-4 scouts │    │ 1-2 fixers │     │ 1-2 breakers   │    │ 1 verifier  │
+  │ find issues│ ►  │ propose    │  ►  │ BREAK the fixes│ ►  │ final gate  │
+  │ rank sev.  │    │ solutions  │     │ falsify claims │    │ pass/fail   │
+  └────────────┘    └────────────┘     │ test negatives │    └─────────────┘
+    cooperative       cooperative      │ exploit edges  │      cooperative
+                                       └────────────────┘
+                                         adversarial
+```
+
+### Prong 3b: Thorns (Adversarial Falsification)
+
+Dispatch 1–2 Flash breakers with **explicit falsification objectives**. Breakers receive Roots' proposed fixes and actively try to break them.
+
+**Breaker mandate** (NASA IV&V tripartite):
+1. **Does it do what it should?** — Verify the fix actually addresses the root cause
+2. **Does it NOT do what it must NOT do?** — Test negative invariants (data leaks, regressions, side effects)
+3. **Does it handle adverse conditions?** — Edge cases, malformed input, truncated context, concurrent access
+
+**Key differences from Bedrock**:
+- Bedrock is cooperative ("does this look right?")
+- Thorns is adversarial ("how can I break this?")
+- Breakers are **rewarded for finding breaks**, not for confirming correctness
+
+**Breaker prompt template**:
+```
+<!-- CONTEXT: [PROJECT] from Context Pre-Seeding Protocol -->
+
+THORNS ANALYSIS — You are an adversarial reviewer. Your job is to BREAK these fixes.
+
+Proposed changes from Roots:
+1. [fix summary + file:line]
+2. [fix summary + file:line]
+
+For each fix, attempt to falsify it:
+### Negative Invariants
+[Does this fix introduce anything it must NOT do? Data leaks? Regressions? Side effects?]
+### Edge Cases
+[What inputs break this? Empty arrays? Concurrent access? Truncated context?]
+### Bypass Vectors
+[Can an agent hallucinate around this fix? Can the rule be circumvented?]
+### Adverse Conditions
+[What happens when the environment is degraded? Network down? Stale cache? Wrong venv?]
+
+Output: {broken: [{fix_id, how, severity}], survived: [fix_ids]}
+```
+
+**Orchestrator response to Thorns findings**:
+- If `broken` is non-empty: revise fixes and re-run Roots on broken items
+- If all `survived`: proceed to Bedrock
+- If breaker finds a bypass vector: escalate to user before proceeding
+
 ### When to Skip Prongs
 
-| Scenario | Prongs Used | Rationale |
-|:---------|:-----------:|:----------|
-| Quick style/lint review | RECON only | No fixes needed — findings are the deliverable |
-| Feature implementation review | RECON + STRIKE | Fixes are proposed, verification via test suite |
-| Architecture change | All 3 | High blast radius requires explicit verification |
-| Post-mortem analysis | RECON only | Findings feed into spec-synthesizer, not direct fixes |
+| Scenario | Protocol | Prongs Used | Rationale |
+|:---------|:---------|:-----------:|:----------|
+| Style/docs | Gale | Fan-out only | No fixes needed |
+| Bug fix | Trident | RECON + Roots | Fixes verified by test suite |
+| Feature | Trident | RECON + Roots + Bedrock | Blast radius check needed |
+| Architecture | Maelstrom | All 4 | High blast radius + adversarial edge cases |
+| Security/governance | Maelstrom | All 4 | Must verify no bypass vectors |
+| Post-mortem | Standalone | RECON only | Findings, not fixes |
 
 ---
 
@@ -222,20 +296,21 @@ Specialists run as **Flash subagents** and report back like standard reviewers. 
 ## Anti-Patterns
 
 - **Don't dispatch a subagent for synthesis** — the orchestrator retains design authority and cross-cutting context that subagents lack
-- **Don't let reviewers see each other's work** — independence prevents confirmation bias (scouts in RECON are independent; strikers in STRIKE receive scout findings but not each other's)
+- **Don't let reviewers see each other's work** — independence prevents confirmation bias (scouts in RECON are independent; Roots analysts receive scout findings but not each other's)
 - **Don't skip fact-checking** — reviewer claims must be verified against actual data before presenting to user
 - **Don't fan out >4 reviewers per prong** — diminishing returns; 4 orthogonal lenses catch ~98% of issues
 - **Don't use inherit/pro for reviewers** — Flash is sufficient for read-only analysis; reserve heavyweight models for synthesis
 - **Don't let scouts propose fixes** (Trident) — separation of concerns keeps RECON fast and unbiased
-- **Don't let strikers find new problems** (Trident) — scope creep; if new issues surface, log them for the next review cycle
+- **Don't let Roots analysts find new problems** (Trident) — scope creep; if new issues surface, log them for the next review cycle
 
 ## Model Selection
 
 | Role | Model | Rationale |
 |:-----|:------|:----------|
 | RECON scout | `flash` | Read-heavy, structured output, severity ranking |
-| STRIKE analyst | `flash` | Focused analysis, concrete fix proposals |
-| FORTIFY verifier | `flash` | Checklist-based, pass/fail gate |
+| Roots analyst | `flash` | Focused analysis, concrete fix proposals |
+| Thorns breaker | `flash` | Adversarial falsification, edge-case probing |
+| Bedrock verifier | `flash` | Checklist-based, pass/fail gate |
 | Staff synthesizer | orchestrator (self) | Needs cross-cutting context, design authority, write access |
 
 ## Example Prompt Template for Reviewers
