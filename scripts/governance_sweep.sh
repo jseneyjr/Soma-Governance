@@ -138,19 +138,43 @@ metrics_dir = '$METRICS_DIR'
 total_steps = 0
 total_waste = 0
 session_count = 0
+deep_sessions = 0
+sweep_sessions = 0
 
 for f in sorted(glob.glob(os.path.join(metrics_dir, '*.json'))):
     try:
         with open(f) as fh:
             m = json.load(fh)
-        total_steps += m.get('total_steps', 0)
-        total_waste += m.get('wasted_steps', 0)
+        if 'total_steps' not in m:
+            continue  # Skip non-session files (backups, schemas)
+        steps = int(m.get('total_steps', 0))
+        # Polymorphic extraction: prefer nested dict, fallback to flat
+        flat_waste = m.get('wasted_steps')
+        nested_waste = None
+        if isinstance(m.get('waste'), dict):
+            nested_waste = m['waste'].get('total_wasted_steps')
+        # Use nested if flat is missing or zero-but-nested-is-nonzero
+        if nested_waste is not None and (flat_waste is None or flat_waste == 0):
+            waste = int(nested_waste)
+        elif flat_waste is not None:
+            waste = int(flat_waste)
+        else:
+            waste = 0
+        
+        is_sweep = m.get('scan_type') == 'lightweight_sweep' or m.get('review_tier') == 'heuristic_sweep'
+        if is_sweep:
+            sweep_sessions += 1
+        else:
+            deep_sessions += 1
+            
+        total_steps += steps
+        total_waste += waste
         session_count += 1
-    except (json.JSONDecodeError, KeyError):
+    except (json.JSONDecodeError, KeyError, TypeError, ValueError):
         continue
 
 rate = round(total_waste / total_steps * 100, 1) if total_steps > 0 else 0
-print(f'  Sessions: {session_count}')
+print(f'  Sessions: {session_count} (deep: {deep_sessions}, sweep: {sweep_sessions})')
 print(f'  Total steps: {total_steps:,}')
 print(f'  Total waste: {total_waste:,} ({rate}%)')
 " 2>/dev/null || echo "  (computation error)")"

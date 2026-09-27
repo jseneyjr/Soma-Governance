@@ -13,7 +13,7 @@ trigger: user_request
 |:-----|:------|:------:|:----------------:|:----------:|:------------|
 | **Gale** | "gale", "quick review" | Fan-out → Synthesize | 3–4 | ~4k tokens | Quick reviews, minor changes |
 | **Trident** | "trident", "deep review" | RECON → Roots → Bedrock | 5–8 | ~8–12k tokens | Feature reviews, refactors |
-| **Maelstrom** | "maelstrom", "full review", "max review" | RECON → Roots → Thorns → Bedrock | 7–12 | ~15–20k tokens | Architecture, security, breaking changes |
+| **Maelstrom** | "maelstrom", "max review" | RECON → Roots → Thorns → Bedrock | 7–12 | ~15–20k tokens | Architecture, security, breaking changes |
 
 ### Risk-Based Protocol Selection
 
@@ -22,10 +22,10 @@ Choose protocol by **failure severity**, not scope:
 | Risk Level | Failure Impact | Protocol | Example |
 |:-----------|:---------------|:---------|:--------|
 | Low | Cosmetic, docs | Gale | README update, style fix |
-| Medium | Feature regression | Trident (RECON + Roots) | New feature, bug fix |
+| Medium | Feature regression | Trident (RECON + Roots + Bedrock) | New feature, bug fix |
 | High | API breakage, data loss | Trident (full 3-prong) | Public API change, schema migration |
 | Critical | Security breach, rule bypass | Maelstrom | Auth flow, governance rule changes |
-| Catastrophic | Production outage, data corruption | Maelstrom + human gate | Infrastructure, core protocol changes |
+| Catastrophic | Production outage, data corruption | Maelstrom + `ask_question` human gate before Bedrock | Infrastructure, core protocol changes |
 
 ### Individual Prongs (run standalone)
 
@@ -165,11 +165,13 @@ For each finding:
 
 Dispatch 1 Flash verifier that receives the proposed fixes from Roots.
 
-**Verifier checks**:
-- Do the proposed fixes introduce new issues?
-- Are there missed dependencies or callers?
-- Does the test suite pass with these changes?
+**Verifier checks** (structural, not execution-based — verifier is read-only):
+- Do the proposed fixes introduce new symbol collisions or import conflicts?
+- Are there missed dependencies or callers? (grep for usages)
 - Is the blast radius accurately scoped?
+- Are there internal contradictions between the fix and existing code?
+
+*Note: Bedrock does NOT execute test suites (read-only subagent). It verifies structural correctness. The orchestrator runs tests after applying fixes.*
 
 **Verifier output**: `{verdict: "SHIP" | "BLOCK", issues: [...]}`
 
@@ -213,6 +215,9 @@ Dispatch 1–2 Flash breakers with **explicit falsification objectives**. Breake
 
 THORNS ANALYSIS — You are an adversarial reviewer. Your job is to BREAK these fixes.
 
+Read ALL of these files for context:
+[explicit file list — same as Roots received]
+
 Proposed changes from Roots:
 1. [fix summary + file:line]
 2. [fix summary + file:line]
@@ -231,7 +236,7 @@ Output: {broken: [{fix_id, how, severity}], survived: [fix_ids]}
 ```
 
 **Orchestrator response to Thorns findings**:
-- If `broken` is non-empty: revise fixes and re-run Roots on broken items
+- If `broken` is non-empty: revise fixes and re-run Roots on broken items (**max 2 revision cycles** — if still broken after 2 cycles, escalate to user)
 - If all `survived`: proceed to Bedrock
 - If breaker finds a bypass vector: escalate to user before proceeding
 
@@ -240,7 +245,7 @@ Output: {broken: [{fix_id, how, severity}], survived: [fix_ids]}
 | Scenario | Protocol | Prongs Used | Rationale |
 |:---------|:---------|:-----------:|:----------|
 | Style/docs | Gale | Fan-out only | No fixes needed |
-| Bug fix | Trident | RECON + Roots | Fixes verified by test suite |
+| Bug fix | Trident | RECON + Roots + Bedrock | Structural check catches regressions |
 | Feature | Trident | RECON + Roots + Bedrock | Blast radius check needed |
 | Architecture | Maelstrom | All 4 | High blast radius + adversarial edge cases |
 | Security/governance | Maelstrom | All 4 | Must verify no bypass vectors |
