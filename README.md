@@ -144,7 +144,7 @@ Ensure "Enable custom instructions" is checked in your IDE's Copilot settings.
 |:---------|:---------|
 | [Metrics & Token Economics](docs/METRICS.md) | Per-file token costs, compliance scores, waste analysis, ROI calculations |
 | [Evolution](docs/EVOLUTION.md) | How the approach evolved across 9 phases, from prescriptive to evidence-based |
-| [Experiments](docs/EXPERIMENTS.md) | A/B testing framework (E1–E15) for data-driven governance evolution |
+| [Experiments](docs/EXPERIMENTS.md) | A/B testing framework (E1–E17) for data-driven governance evolution |
 
 ## License
 
