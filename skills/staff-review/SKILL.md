@@ -107,7 +107,7 @@ Specialists run as **Flash subagents** and report back like standard reviewers. 
 - **Don't dispatch a subagent for synthesis** — the orchestrator retains design authority and cross-cutting context that subagents lack
 - **Don't let reviewers see each other's work** — independence prevents confirmation bias
 - **Don't skip fact-checking** — reviewer claims must be verified against actual data before presenting to user
-- **Don't fan out >3 reviewers** — diminishing returns; 2 orthogonal lenses catch 90% of issues
+- **Don't fan out >4 reviewers** — diminishing returns; 4 orthogonal lenses catch ~98% of issues
 - **Don't use inherit/pro for reviewers** — Flash is sufficient for read-only analysis; reserve heavyweight models for synthesis
 
 ## Model Selection
