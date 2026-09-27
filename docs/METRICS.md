@@ -225,9 +225,9 @@ Each loop costs **~20–25 steps** of wasted context. Compound effect: rework fi
 
 ---
 
-## Cross-Platform Field Validation (Phase 11)
+## Expanded Dataset Analysis (Phase 11)
 
-Comparison dataset from 66 production sessions in an external field deployment. All session data was masked and sanitized to remove organization, product, domain, and user-identifying information prior to analysis. The deployment ran rules derived from our Phase 1 governance set but **without skills installed** due to an installer gap in one platform target.
+Comparison dataset from a new set of 66 masked and sanitized production sessions. All organization, product, domain, and user-identifying information was removed prior to analysis. These sessions ran rules derived from our Phase 1 governance set but **without skills installed** due to an installer gap.
 
 ### Dataset Summary
 

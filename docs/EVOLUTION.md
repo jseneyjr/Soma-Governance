@@ -197,16 +197,16 @@ Tempest Hardening → Unified installer, shared library, dynamic hooks, safety g
 Autonomous Orchestration → Subagent nesting, adaptive auto-escalation, escalation sentinel, 15 skills, 17 experiments
 ```
 
-## Phase 11: Cross-Platform Field Validation & Genesis (Prism AI Steering)
+## Phase 11: Expanded Dataset Analysis & Genesis (Prism AI Steering)
 
-Analysis of 66 production sessions (618 user turns, 4,913 assistant turns, 4,945 tool calls) from an external field deployment — masked and sanitized to remove all organization, product, domain, and user-identifying information — validated governance effectiveness and exposed critical installer gaps:
+Analysis of a new dataset of 66 masked and sanitized production sessions (618 user turns, 4,913 assistant turns, 4,945 tool calls) validated governance effectiveness and exposed critical installer gaps:
 
-### Installer Platform Parity Fix
-- **Root cause**: `install.sh` for one platform target deployed 11 rules but 0 skills. The `doctor` target checked rules but never verified that the skills those rules referenced were installed.
+### Installer Completeness Fix
+- **Root cause**: `install.sh` had a conditional branch that deployed 11 rules but 0 skills. The `doctor` target checked rules but never verified that the skills those rules referenced were installed.
 - **Impact**: Security-sensitive code changes executed without any review protocol, when the risk table called for Maelstrom.
-- **Fix**: All platform targets now install rules, skills, and hooks with the same fidelity. `doctor` and `status` targets extended for full platform parity.
+- **Fix**: All installer paths now deploy rules, skills, and hooks with the same fidelity. `doctor` and `status` targets extended for full coverage.
 
-### 66-Session Field Validation Dataset
+### 66-Session Masked Dataset
 - Date range: 2026-08-10 to 2026-09-27 (~7 weeks)
 - Tool distribution: 30.6% execute_bash, 12.4% read_file, 9.2% str_replace
 - Delegation evolution: 0 subagents (sessions 1–24) → selective context-gatherers (25–53) → full orchestrated review with 14 subagents (session 53)
@@ -230,7 +230,7 @@ Analysis of 66 production sessions (618 user turns, 4,913 assistant turns, 4,945
 - Metaphor: a prism refracts a single interaction into a spectrum of review lenses
 - 5 new experiments registered (E18–E22), bringing total to 22
 
-**Impact on rules:** Installer platform parity fix. `make doctor` now verifies skills. Genesis skill added (16 skills total). 5 experiments proposed (E18–E22). Project renamed to Prism AI Steering.
+**Impact on rules:** Installer completeness fix. `make doctor` now verifies skills. Genesis skill added (16 skills total). 5 experiments proposed (E18–E22). Project renamed to Prism AI Steering.
 
 ## The Compound Effect
 
@@ -255,7 +255,7 @@ Tempest Hardening → Unified installer, shared library, dynamic hooks, safety g
     ↓
 Autonomous Orchestration → Subagent nesting, adaptive auto-escalation, escalation sentinel, 15 skills, 17 experiments
     ↓
-Cross-Platform Field Validation → Prism AI Steering, 66-session validation, Genesis onboarding, installer parity, 16 skills, 22 experiments
+Expanded Dataset Analysis → Prism AI Steering, 66-session validation, Genesis onboarding, installer parity, 16 skills, 22 experiments
 ```
 
 Compliance went from **7.8/10 to 9.8/10** and waste dropped from **~56% to 1.1%** in best-governed sessions — see [METRICS.md](METRICS.md) for the full breakdown. The rules now cover failure modes that no amount of upfront design would have predicted. Phase 11 validated the system against 66 real production sessions, proving that the governance gap between "rules present" and "skills present" is the highest-risk silent failure mode.
@@ -266,4 +266,4 @@ Compliance went from **7.8/10 to 9.8/10** and waste dropped from **~56% to 1.1%*
 2. **Accuracy over speed** — The agent must never sacrifice correctness to save tokens.
 3. **Rules as a system** — Cross-references between rules are intentional. Providence §3 mandates read-before-write; refactoring-pilot operationalizes it as a phased workflow.
 4. **Continuous validation** — Rules aren't "done" after review. Governance is a living system that evolves with each session.
-5. **Platform parity** — Governance installed at partial fidelity provides false assurance. Every platform target must deploy rules, skills, and hooks with the same completeness.
+5. **Installation completeness** — Governance installed at partial fidelity provides false assurance. Every installer path must deploy rules, skills, and hooks with the same completeness.
