@@ -11,9 +11,11 @@ trigger: user_request
 
 | Mode | Alias | Prongs | Flash Dispatches | Token Cost | When to Use |
 |:-----|:------|:------:|:----------------:|:----------:|:------------|
-| **Gale** | "gale", "quick review" | Fan-out → Synthesize | 3–4 | ~4k tokens | Quick reviews, minor changes |
+| **Breeze** | "breeze", "quick fix" | Roots → Bedrock | 2–3 | ~2k tokens | Known defect, single-file fix, rename |
+| **Gale** | "gale", "quick review" | Spores → Synthesize | 3–4 | ~4k tokens | Quick reviews, minor changes |
 | **Trident** | "trident", "deep review" | Spores → Roots → Bedrock | 5–8 | ~8–12k tokens | Feature reviews, refactors |
 | **Maelstrom** | "maelstrom", "max review" | Spores → Roots → Thorns → Bedrock | 7–12 | ~15–20k tokens | Architecture, security, breaking changes |
+| **Tempest** | "tempest", "full assurance" | Spores → Mycelium → Roots → Thorns → Bedrock → Mulch | 10–16 | ~25–35k tokens | Catastrophic risk, infra, auth, schema migrations |
 
 ### Risk-Based Protocol Selection
 
@@ -21,20 +23,23 @@ Choose protocol by **failure severity**, not scope:
 
 | Risk Level | Failure Impact | Protocol | Example |
 |:-----------|:---------------|:---------|:--------|
+| Trivial | Known bug, rename, doc sync | Breeze | Single-file fix, string rename |
 | Low | Cosmetic, docs | Gale | README update, style fix |
 | Medium | Feature regression | Trident (Spores + Roots + Bedrock) | New feature, bug fix |
-| High | API breakage, data loss | Trident (full 3-prong) | Public API change, schema migration |
+| High | API breakage, data loss | Trident (full 3-prong) | Public API change, refactor |
 | Critical | Security breach, rule bypass | Maelstrom | Auth flow, governance rule changes |
-| Catastrophic | Production outage, data corruption | Maelstrom + `ask_question` human gate before Bedrock | Infrastructure, core protocol changes |
+| Catastrophic | Production outage, data corruption | Tempest + `ask_question` human gate | Infra, schema migration, core protocol |
 
 ### Individual Prongs (run standalone)
 
 | Prong | Alias | What It Does |
 |:------|:------|:-------------|
-| **Spores** | "spores", "scout" | Broad parallel survey — finds problems, ranks by severity, no fixes |
-| **Roots** | "roots", "deep dive" | Focused analysis on specific findings — proposes concrete fixes |
-| **Thorns** | "thorns", "break it", "red team" | Adversarial falsification — actively tries to break proposed fixes |
-| **Bedrock** | "bedrock", "verify" | Final verification gate — checks blast radius, pass/fail |
+| 🍄 **Spores** | "spores", "scout" | Broad parallel survey — finds problems, ranks by severity, no fixes |
+| 🍄 **Mycelium** | "mycelium", "dependencies" | Maps blast radius, cross-repo state, dependency chains — what does this change touch? |
+| 🌿 **Roots** | "roots", "deep dive" | Focused analysis on specific findings — proposes concrete fixes |
+| 🌹 **Thorns** | "thorns", "break it", "red team" | Adversarial falsification — actively tries to break proposed fixes |
+| 🪨 **Bedrock** | "bedrock", "verify" | Final verification gate — checks structural correctness, pass/fail |
+| 🍂 **Mulch** | "mulch", "learnings" | Post-ship decomposition — extracts patterns into taxonomy, rules, and skills |
 
 The orchestrator selects the mode based on risk level. Default to Gale for routine reviews. Maelstrom for anything that could be exploited or bypassed.
 
@@ -61,6 +66,22 @@ Before accepting any critical finding from a review phase as actionable, require
 **Omission findings** (missing auth, missing validation, absent config) satisfy criterion 3 via grep-confirmed absence — they are not demoted for lacking a file:line citation.
 
 Speculative findings meeting only 1 criterion are logged as ⚠️ warning, not promoted to 🔴 critical. Findings meeting 0 criteria are logged as ℹ️ info.
+
+---
+
+## Breeze Protocol (Targeted Fix)
+
+For known defects, renames, or single-file fixes where the problem is already identified. Skips Spores entirely.
+
+### Phase 1: Roots (Direct Fix)
+Dispatch 1 Flash analyst directly on the known issue. Provide:
+- The specific file(s) and defect description
+- Expected behavior vs actual behavior
+
+### Phase 2: Bedrock (Verify)
+Dispatch 1 Flash verifier to confirm the fix is structurally sound (imports resolve, no orphan references, blast radius check).
+
+**When to use**: `"breeze"`, `"quick fix"` — trivial known bugs, string renames, doc freshness sweeps, lint fixes.
 
 ---
 
@@ -268,12 +289,92 @@ Output: {broken: [{fix_id, how, severity}], survived: [fix_ids]}
 
 | Scenario | Protocol | Prongs Used | Rationale |
 |:---------|:---------|:-----------:|:----------|
-| Style/docs | Gale | Fan-out only | No fixes needed |
+| Known bug / rename | Breeze | Roots + Bedrock | Defect already located, skip scouting |
+| Style/docs | Gale | Spores only | No fixes needed |
 | Bug fix | Trident | Spores + Roots + Bedrock | Structural check catches regressions |
 | Feature | Trident | Spores + Roots + Bedrock | Blast radius check needed |
-| Architecture | Maelstrom | All 4 | High blast radius + adversarial edge cases |
-| Security/governance | Maelstrom | All 4 | Must verify no bypass vectors |
+| Architecture | Maelstrom | Spores + Roots + Thorns + Bedrock | High blast radius + adversarial edge cases |
+| Security/governance | Maelstrom | Spores + Roots + Thorns + Bedrock | Must verify no bypass vectors |
+| Schema migration / infra | Tempest | All 6 + Mycelium + Mulch | Cross-repo impact + post-ship learnings |
 | Post-mortem | Standalone | Spores only | Findings, not fixes |
+
+---
+
+## Tempest Protocol (Full Assurance)
+
+The highest-assurance review mode. Extends Maelstrom with **Mycelium** (dependency impact mapping) before Roots and **Mulch** (learning extraction) after Bedrock ships. For catastrophic-risk changes: infrastructure, auth pipelines, schema migrations, core governance.
+
+```
+  Spores (scout)     Mycelium (map)       Roots (fix)
+  ┌────────────┐    ┌──────────────┐    ┌─────────────┐
+  │ 3-4 Flash  │    │ 1-2 Flash    │    │ 1-2 Flash   │
+  │ find issues│ ─► │ trace deps   │ ─► │ propose     │
+  │ rank sev.  │    │ blast radius │    │ solutions   │
+  └────────────┘    │ cross-repo   │    └──────┬──────┘
+                    └──────────────┘           │
+                                               ▼
+  Mulch (learn)      Bedrock (verify)     Thorns (break)
+  ┌────────────┐    ┌──────────────┐    ┌──────────────┐
+  │ 1 Flash    │    │ 1 Flash      │    │ 1-2 Flash    │
+  │ extract    │ ◄─ │ SHIP/BLOCK   │ ◄─ │ falsify      │
+  │ patterns   │    │ human gate   │    │ NASA IV&V    │
+  │ → taxonomy │    └──────────────┘    └──────────────┘
+  └────────────┘
+```
+
+### Prong: Mycelium (Dependency Impact Mapping)
+
+Dispatch 1–2 Flash analysts to map the **blast radius** of proposed changes before Roots begins drafting fixes. Mycelium traces:
+
+1. **Import/call chains**: What calls the changed function? What does it call?
+2. **Cross-repo state**: If the project spans multiple repos, check for shared schemas, configs, or contracts
+3. **Type consumers**: Who depends on the changed interface? List all downstream consumers
+4. **Config propagation**: Environment variables, feature flags, or serialized state affected
+
+**Mycelium prompt template**:
+```
+MYCELIUM ANALYSIS — You are mapping the blast radius of these changes.
+
+Read ALL of these files for context:
+[explicit file list]
+
+For each proposed change from Spores:
+### Import Chain
+[Who calls this? What does this call? Trace 2 hops in each direction]
+### Cross-Repo Impact
+[Does this change affect schemas, configs, or contracts in other repositories?]
+### Downstream Consumers
+[List every file/function that depends on the changed interface]
+
+Output: {blast_radius: [{change_id, affected_files: [], affected_repos: [], risk_level}]}
+```
+
+### Prong: Mulch (Post-Ship Learning Extraction)
+
+After Bedrock ships, dispatch 1 Flash analyst to decompose the review's findings and Thorns breakages into **permanent, machine-readable learnings**:
+
+1. **Taxonomy patterns**: New failure modes → append to `taxonomy.json`
+2. **Steering rules**: New invariants discovered → propose additions to governance rules
+3. **Skill recipes**: Successful repair patterns → propose new skills or skill updates
+4. **Effectiveness metrics**: Record cost/step efficiency of the review itself
+
+**Mulch prompt template**:
+```
+MULCH ANALYSIS — You are extracting reusable learnings from this completed review.
+
+Read the review artifacts:
+[Spores findings, Roots fixes, Thorns breakages, Bedrock verdict]
+
+Extract:
+### New Taxonomy Patterns
+[Failure modes not yet in taxonomy.json — provide pattern_name, description, detection_rule]
+### Proposed Rule Updates
+[New governance invariants discovered — provide rule_file, section, addition]
+### Skill Recipes
+[Successful repair patterns that could be reusable — provide skill_name, trigger, steps]
+### Review Effectiveness
+[Total agents dispatched, token cost estimate, findings per 1k tokens, false positive rate]
+```
 
 ---
 
@@ -361,9 +462,11 @@ Specialists run as **Flash subagents** and report back like standard reviewers. 
 | Role | Model | Rationale |
 |:-----|:------|:----------|
 | Spores scout | `flash` | Read-heavy, structured output, severity ranking |
+| Mycelium analyst | `flash` | Dependency tracing, grep-based, structured output |
 | Roots analyst | `flash` | Focused analysis, concrete fix proposals |
 | Thorns breaker | `flash` | Adversarial falsification, edge-case probing |
 | Bedrock verifier | `flash` | Checklist-based, pass/fail gate |
+| Mulch extractor | `flash` | Pattern extraction, structured taxonomy output |
 | Staff synthesizer | orchestrator (self) | Needs cross-cutting context, design authority, write access |
 
 ## Example Prompt Template for Reviewers
