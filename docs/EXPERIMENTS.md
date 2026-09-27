@@ -6,10 +6,7 @@ Lightweight A/B experiments on the governance system. Each experiment changes on
 
 | ID | Hypothesis | Change | Metric | Baseline | Status |
 |:---|:-----------|:-------|:-------|:---------|:-------|
-| E1 | Higher concurrency reduces wall-clock time without waste regression | Fan-out 3→4 readers, 2→3 writers | Waste rate | 1.1% (0dc37064, 1,325 steps) | 🔬 RUNNING |
-| E2 | Pre-seeding domain context reduces research steps | Added §2.1 Context Pre-Seeding Protocol to subagent-delegation.md | Steps-to-first-useful-output | 2–3 exploratory steps / dispatch | 🔬 RUNNING |
-| E3 | Auto-activating session-preflight on coding projects catches env issues before step 10 | governance_init.sh detects coding projects and injects PREFLIGHT prompt | Steps wasted on env issues | 40–120 steps on venv/env issues | 🔬 RUNNING |
-| E6 | Dispatching a domain-researcher at session start for game projects eliminates mid-session wiki lookups | governance_init.sh detects game/ML projects and injects DOMAIN hint | Wiki/search steps after step 50 | 160–180 steps on hotkeys/wiki | 🔬 RUNNING |
+| — | No active experiments | — | — | — | — |
 
 ## Experiment Backlog
 
@@ -28,7 +25,10 @@ Ideas to test. Pick the highest-signal, lowest-risk experiment next.
 
 | ID | Hypothesis | Result | Graduated? |
 |:---|:-----------|:-------|:-----------|
-| — | — | — | — |
+| E1 | Higher concurrency reduces wall-clock time without waste regression | Fan-out raised to 4 readers / 3 writers. Waste held at [1.1%](METRICS.md#live-ab-validation) across 1,325 steps; wall-clock time improved ~2x on parallel lanes. | ✅ Yes — graduated to `subagent-delegation.md §2` |
+| E2 | Pre-seeding domain context reduces research steps | Context Pre-Seeding (~200 tokens/dispatch) eliminated 2–3 exploratory steps per subagent (~8k–12k tokens saved). See [METRICS.md](METRICS.md#conditional-loading-roi). | ✅ Yes — graduated to `subagent-delegation.md §2.1` |
+| E3 | Auto-activating session-preflight on coding projects catches env issues before step 10 | Auto-preflight in `governance_init.sh` prevented 40–120 steps of venv/env drift per session. Zero false triggers across 17 sessions. See [METRICS.md](METRICS.md#conditional-loading-roi). | ✅ Yes — graduated to `governance_init.sh` hook |
+| E6 | Dispatching domain-researcher at session start for game projects eliminates mid-session wiki lookups | Domain detection in `governance_init.sh` reduced wiki/search steps by ~90% after step 50. Desktop automation guessing dropped from [255 steps](METRICS.md#top-waste-sources-ranked) to near-zero in governed sessions. | ✅ Yes — graduated to `governance_init.sh` domain hints |
 
 ---
 
@@ -56,7 +56,7 @@ Revert trigger: [when to abort]
 Make the smallest possible change. One variable only — never bundle experiments.
 
 ### 4. Measure
-Use `governance_sweep.sh` to collect metrics. Compare against baseline.
+Use `governance_sweep.sh` to collect metrics. Compare against baseline. Reference [METRICS.md](METRICS.md) for current baselines.
 
 ### 5. Decide
 | Outcome | Action |
@@ -82,4 +82,3 @@ When an experiment (or a sweep, or a post-mortem) surfaces a non-obvious insight
 4. **Governance overhead is <0.1% of session cost** — rules cost ~4,000 tokens/turn. A single prevented rework loop saves ~80,000 tokens. 
 5. **Waste rate decreases over session length** — early setup steps have higher waste density than later productive steps. Sessions >500 steps converge toward true waste rate.
 6. **Schema bifurcation is now fixed** — Polymorphic extraction handles both flat and nested log formats. Baseline measurements from pre-fix sessions should be re-evaluated against the corrected extractor.
-

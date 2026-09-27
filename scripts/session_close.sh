@@ -4,7 +4,17 @@ set -euo pipefail
 # Session Close — Stop hook
 # Exports conversation logs and syncs both repos when session ends.
 
-STEERING_REPO="$HOME/.gemini/antigravity/scratch/ai-steering-rules"
+# Symlink-safe resolution (Thorns fix #3)
+PRG="${BASH_SOURCE[0]}"
+while [ -h "$PRG" ]; do
+  DIR="$(cd -P "$(dirname "$PRG")" && pwd)"
+  PRG="$(readlink "$PRG")"
+  [[ $PRG != /* ]] && PRG="$DIR/$PRG"
+done
+SCRIPT_DIR="$(cd -P "$(dirname "$PRG")" && pwd)"
+
+# Resolve repo root relative to this script (scripts/ -> repo root)
+STEERING_REPO="$(cd -P "$SCRIPT_DIR/.." && pwd)"
 LOGS_REPO="$HOME/.gemini/antigravity/scratch/ai-conversation-logs"
 EXPORT_SCRIPT="$STEERING_REPO/scripts/export_logs.sh"
 
@@ -13,7 +23,7 @@ for repo in "$STEERING_REPO" "$LOGS_REPO"; do
     lock="$repo/.git/index.lock"
     if [ -f "$lock" ]; then
         if ! fuser "$lock" > /dev/null 2>&1; then
-            rm -f "$lock"
+            rm -f -- "$lock"
         fi
     fi
 done
@@ -26,8 +36,10 @@ fi
 # Push steering repo if dirty (catches any rule edits made during session)
 if [ -d "$STEERING_REPO/.git" ]; then
     cd "$STEERING_REPO"
-    if [ -n "$(git status --porcelain 2>/dev/null)" ]; then
-        git add . && git commit -m "Auto-sync on session close: $(date -Iseconds)" && git push origin master 2>/dev/null || true
+    # Safe branch detection (Thorns fix #10): skip push if detached HEAD
+    CURRENT_BRANCH=$(git symbolic-ref --short -q HEAD 2>/dev/null || true)
+    if [ -n "$CURRENT_BRANCH" ] && [ -n "$(git status --porcelain 2>/dev/null)" ]; then
+        git add . && git commit -m "Auto-sync on session close: $(date -Iseconds)" && git push origin "$CURRENT_BRANCH" 2>/dev/null || true
     fi
 fi
 

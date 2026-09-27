@@ -80,130 +80,50 @@ After achieving 5% waste in governance sessions, the focus shifted from *prevent
 
 With low baseline waste established, Phase 6 addressed review depth, context efficiency, and proactive mechanical detection:
 
-- **Trident Protocol**: Added progressive 3-prong deep review (Spores → Roots → Bedrock) to `staff-review`. Separating reconnaissance scouts (problems only) from root-cause analysts (concrete fixes) and structural verifiers (Bedrock SHIP/BLOCK gate; read-only, does NOT run tests) prevents confirmation bias and scope creep (~8–12k tokens vs ~80k for prevented rework).
-- **Maelstrom Protocol & Thorns (Adversarial Falsification)**: Introduced a full 4-stage adversarial review workflow (Spores → Roots → Thorns → Bedrock, ~15–20k tokens) for critical and catastrophic risk surfaces. Incorporates the **Thorns** prong (NASA IV&V tripartite falsification), where an adversarial falsification team actively attempts to break proposed fixes with a strict 2-cycle revision cap before passing to Bedrock.
-- **Nature-Themed Naming**: Unified review protocols and prongs under natural phenomena metaphors:
-  - Protocols: **Gale** (single-pass fan-out, was Salvo/Standard), **Trident** (progressive 3-prong), and **Maelstrom** (full adversarial, was Siege).
-  - Prongs: **Spores** (broad survey, was RECON), **Roots** (root cause analysis, was STRIKE), **Thorns** (adversarial falsification, was BREACH), and **Bedrock** (structural-only verification gate, was FORTIFY).
-- **Risk-Based Protocol Selection**: Codified automated risk-tiered protocol routing: Low risk → Gale (~4k tokens), Medium/High risk → Trident (~8–12k tokens), and Critical/Catastrophic risk → Maelstrom (~15–20k tokens).
-- **First Successful Maelstrom Dogfood Run**: In its initial dogfood run, the Maelstrom protocol completed successfully; the Thorns adversarial prong caught 5 critical bugs that would have shipped broken under traditional review.
-- **Schema Bifurcation Fix in `governance_sweep.sh`**: Resolved schema bifurcation in `scripts/governance_sweep.sh`, reconciling disparate transcript field structures to accurately aggregate metrics across 17 sessions (7,015 total steps, 1,317 waste = 18.8% aggregate waste) under the 23-pattern taxonomy.
-- **5 Specialist Skills**: Expanded domain capabilities with `domain-researcher` (grounded external fact compilation), `spec-synthesizer` (cross-referencing multi-lens findings into prioritized plans), `session-monitor` (live trajectory and waste tracking), `governance-auditor` (transcript-level per-rule PASS/FAIL checks), and `visual-analyst` (screen and UI state calibration), bringing the suite to 13 skills total.
-- **10-Lens Staff Protocol**: Staff review expanded from ad-hoc analysis to 10 formal lenses covering Architecture, Performance, Security, Compliance, Behavioral, Domain Research, Spec Synthesis, Visual, Governance Audit, and Live Monitor.
-- **Auto-Preflight & Domain Detection**: Embedded automated project scanning into `governance_init.sh` hooks. Invocation 1 automatically identifies coding project markers (`venv`, `package.json`, `Makefile`, `tests/`) and domain patterns (game automation, ML/RL), injecting targeted prompts with 0 model tokens consumed.
-- **Context Pre-Seeding Protocol**: Standardized subagent dispatches with compact ~200-token headers (`[PROJECT]`, `[STACK]`, `[LAYOUT]`, `[CONSTRAINTS]`, `[OUTPUT]`), eliminating 2–3 cold-start exploratory steps per subagent.
-- **Experiment Framework (E1–E10)**: Created `docs/EXPERIMENTS.md` with an active/backlog registry to systematically test governance hypotheses (concurrency, pre-seeding, preflight, gate triggers) with quantifiable metrics before graduating changes to rules.
-- **Concurrency Expansion**: Raised read-only concurrency limits from 3 to 4 subagents and implementation writers from 2 to 3 under the Disjoint Lane Protocol, lowering the delegation floor from 100 to 75 steps.
-- **Governance Sweep**: Introduced `scripts/governance_sweep.sh` to run periodic, non-blocking sweeps for unreviewed sessions (>100 steps), warning trend aggregation, and real-time session tracking without burning AI tokens (~500 tokens / local run).
+- **Trident Protocol**: Progressive 3-prong deep review (Spores → Roots → Bedrock) separating reconnaissance from root-cause analysis and structural verification. Prevents confirmation bias and scope creep.
+- **Maelstrom Protocol & Thorns**: Full 4-stage adversarial workflow incorporating NASA IV&V tripartite falsification with a 2-cycle revision cap.
+- **Nature-Themed Naming**: Unified protocols (Gale, Trident, Maelstrom) and prongs (Spores, Roots, Thorns, Bedrock) under natural phenomena metaphors.
+- **Risk-Based Protocol Selection**: Automated risk-tiered routing — see [METRICS.md](METRICS.md#review-protocol-costs-5-modes--6-prongs) for cost details.
+- **First Successful Maelstrom Dogfood**: Thorns adversarial prong caught 5 critical bugs that would have shipped broken under traditional review.
+- **Schema Bifurcation Fix**: Reconciled disparate transcript field structures in `governance_sweep.sh` — see [METRICS.md](METRICS.md#aggregate-stats-17-sessions-7015-steps) for aggregate numbers.
+- **13 Skills**: Added 5 specialist skills (domain-researcher, spec-synthesizer, session-monitor, governance-auditor, visual-analyst) alongside the original 8.
+- **10-Lens Staff Protocol**: Architecture, Performance, Security, Compliance, Behavioral, Domain Research, Spec Synthesis, Visual, Governance Audit, Live Monitor.
+- **Auto-Preflight & Domain Detection**: Zero-token project scanning in `governance_init.sh` hooks.
+- **Context Pre-Seeding**: ~200-token compact headers eliminating 2–3 cold-start steps per subagent.
+- **Experiment Framework (E1–E10)**: Active/backlog registry in [EXPERIMENTS.md](EXPERIMENTS.md).
+- **Concurrency Expansion**: 4 readers / 3 writers under Disjoint Lane Protocol; delegation floor lowered from 100 to 75 steps.
+- **Governance Sweep**: Local periodic scanning at ~500 tokens / run, zero LLM cost.
 
-**Impact on rules:** Upgraded `skills/staff-review` to support Gale, Trident, & Maelstrom modes across 10 lenses; added 5 specialist skills (13 total); updated `subagent-delegation.md` with §2.1 Context Pre-Seeding, higher concurrency (4 readers, 3 writers), and a 75-step delegation floor; automated hooks in `scripts/governance_init.sh`; and established `scripts/governance_sweep.sh` and `docs/EXPERIMENTS.md`.
+**Impact on rules:** Upgraded `staff-review` to support Gale, Trident, & Maelstrom across 10 lenses; 13 skills total; Context Pre-Seeding and higher concurrency in `subagent-delegation.md`; automated hooks; and `docs/EXPERIMENTS.md`.
 
 ## Phase 7: Empirical Falsification & Research-Backed Grounding ("Prove it or lose it")
 
-While Phase 6 established multi-stage reviews and baseline automation, real-world execution revealed that multi-agent systems suffer from subtle failure modes: false-positive findings chasing nonexistent bugs, consensus bias among homogeneous subagents, symptom-patching retry loops, and unverified subagent drift. 
+While Phase 6 established multi-stage reviews and baseline automation, real-world execution revealed subtle multi-agent failure modes: false-positive findings, consensus bias, symptom-patching loops, and unverified subagent drift.
 
-In **Maelstrom #2**, we incorporated state-of-the-art 2026 academic research and live post-mortem lessons into the governance engine:
+In **Maelstrom #2**, state-of-the-art 2026 academic research was incorporated:
 
-1. **Empirical Refutation Gate (`staff-review` SKILL.md)**:
-   - Before accepting any critical review finding, require at least **2 of 3 empirical criteria**: (1) verified `file:line` citation (±5 lines), (2) executable reproduction command or test case, and (3) independent mechanical verification (grep check or arithmetic validation).
-   - Omission findings (e.g., missing middleware, missing rate-limiting) satisfy criterion 3 via grep-confirmed absence without penalizing missing line citations.
-   - Enforces graduated demotion: findings meeting 0 criteria become ℹ️ info, 1 criterion becomes ⚠️ warning, and only 2+ criteria reach 🔴 critical.
-   - **Academic Source**: Agarwal et al. (2026), eliminating ~80% of false-positive claims in multi-agent code analysis.
+1. **Empirical Refutation Gate** — 2-of-3 evidentiary criteria before accepting critical findings. Eliminates ~80% false positives (Agarwal 2026). See [METRICS.md](METRICS.md#review-protocol-costs-5-modes--6-prongs).
+2. **Boundary Verification Protocol** — Orchestrator spot-checks with ±5 line locality tolerance. Demote-not-discard policy (IEEE GLOBECOM 2026).
+3. **Orthogonal Persona Mandate** — Bans homogeneous reviewer fan-outs; mandates conflicting analytical incentives (MAR/ICML 2026).
+4. **Diagnose Before Repair** — Structured diagnostic schema (`failure_mode`, `root_cause`, `broken_invariant`, `fix_spec`) required before any fix code (REFLEX/ICML 2026).
+5. **First-Pass Success Rate (FPSR)** — Target >80%, halt at <50% (N≥5). Calibrated against Tencent SiriusDeliver 2026 (87.2%). See [METRICS.md](METRICS.md#first-pass-success-rate-fpsr).
+6. **Incremental Escalation** — 4 upgrade paths preserving completed prongs with dirty-tree caveat. Extracted from live post-mortem `f8b82d61`.
+7. **Mechanical Diff Downgrade** — Flash-tier for syntactic diff application (~85% reduction).
+8. **Validated Concurrency Ceilings** — 4 readers / 3 writers empirically validated against MIT, Tencent, Coasty, Devin, Cursor, Copilot benchmarks.
 
-2. **Boundary Verification Protocol (`subagent-delegation.md §6`)**:
-   - The orchestrator must spot-check subagent assertions before acting on them, incorporating a **fuzzy ±5 line locality tolerance** to accommodate natural 1–3 line drifts common in LLM context representations.
-   - Enforces a strict *demote-not-discard* policy: findings failing locality search are downgraded to ℹ️ info rather than silently suppressed, preserving visibility while preventing ungrounded hallucination compounding across agent boundaries.
-   - Omission claims are validated through negative grep scans.
-   - **Academic Source**: IEEE GLOBECOM 2026 (Verification Protocols in Multi-Agent Orchestration).
-
-3. **Orthogonal Persona Mandate (`subagent-delegation.md §7`)**:
-   - Explicitly bans homogeneous reviewer fan-outs (e.g., 3 subagents identically prompted to "find bugs"), which waste tokens by converging on identical surface-level findings via consensus bias.
-   - Mandates assigning conflicting analytical incentives across concurrent reviewers (e.g., correctness verifier vs. performance minimalist vs. adversarial red-team).
-   - Permits same-domain depth audits only as an exception for high-assurance single-domain subsystems (e.g., cryptography, auth pipelines).
-   - **Academic Source**: MAR (Multi-Agent Review) / ICML 2026.
-
-4. **Diagnose Before Repair (`providence.md §7`)**:
-   - Prohibits writing fix code until root-cause analysis is formalized.
-   - Mandates an explicit structured diagnostic schema before drafting fixes:
-     ```
-     failure_mode: <observable symptom>
-     root_cause: <underlying defect>
-     broken_invariant: <system contract violated>
-     fix_spec: <concrete modification requirements>
-     ```
-   - Eliminates blind symptom-patching loops where agents repeatedly wrap broken code in defensive `try/except` blocks, null checks, or retries.
-   - **Academic Source**: REFLEX / ICML 2026.
-
-5. **First-Pass Success Rate (FPSR) Metric (`cost-optimization.md §5`)**:
-   - Introduces FPSR (percentage of initial code writes passing tests without revision) alongside waste rate, setting a target of **>80%**.
-   - Triggers an immediate coding halt and root-cause diagnostic if FPSR drops below 50% after a minimum sample of $N \ge 5$ code writes.
-   - Explicitly excludes intentional red-phase failures in Test-Driven Development (TDD).
-   - **Industry/Academic Source**: Tencent SiriusDeliver (2026 benchmark achieving 87.2% FPSR).
-
-6. **Incremental Escalation (`staff-review` SKILL.md)**:
-   - Eliminates redundant work when upgrading review intensity mid-session across 4 transition paths:
-     - Gale (fan-out) → Trident (maps fan-out to Spores, then runs Roots + Bedrock)
-     - Gale (fan-out) → Maelstrom (adds security lens Spores, then full Roots → Thorns → Bedrock)
-     - Trident (Spores + Roots) → Maelstrom (injects Thorns adversarial testing on existing Roots, then Bedrock)
-     - Trident (full) → Maelstrom (injects Thorns, re-verifies via Bedrock with adversarial context)
-   - Incorporates a **dirty-tree caveat** (`git status` check) to guarantee that code has not drifted before running subsequent adversarial prongs.
-   - **Source**: Extracted from live session post-mortem `f8b82d61`.
-
-7. **Mechanical Diff Downgrade (`cost-optimization.md §3`)**:
-   - When deep review prongs (Roots or Thorns) have already produced exact, line-numbered before/after diffs, applying those diffs is purely syntactic.
-   - Mandates down-tiering subagent dispatches to the lightweight `flash` tier, banning expensive `inherit` or `pro` token consumption for mechanical diff applications.
-
-8. **Validated Concurrency Ceilings**:
-   - Empirically validated the existing limits (4 read-only subagents, 3 disjoint writers) against 2024–2026 multi-agent scaling literature:
-     - 4 read-only subagents marks the optimal recall knee before diminishing returns and consensus degradation set in.
-     - 3 implementation writers under the Disjoint Lane Protocol represents the industry sweet spot for parallel writes without branch thrashing or interface lock contention.
-   - **Sources**: MIT multi-agent scaling study, Tencent, Coasty, and commercial agent baselines (Devin, Cursor, Copilot).
-
-**Impact on rules:** Enforced empirical falsification in `staff-review`, codified Boundary Verification and Orthogonal Personas in `subagent-delegation.md`, established structured diagnosis in `providence.md`, added FPSR and mechanical diff tiering to `cost-optimization.md`, and validated subagent concurrency against top-tier 2026 benchmarks.
+**Impact on rules:** Empirical falsification in `staff-review`, Boundary Verification and Orthogonal Personas in `subagent-delegation.md`, structured diagnosis in `providence.md`, FPSR and mechanical diff tiering in `cost-optimization.md`.
 
 ## Phase 8: Spectrum Completion & Lifecycle Extraction ("Cover every risk tier, learn from every review")
 
-Maelstrom #3 expanded the review system in two dimensions: **breadth** (adding protocols at both ends of the risk spectrum) and **depth** (adding prongs for dependency mapping and post-review learning). Triple convergence from 3 Spores scouts, Thorns-verified (0/4 survived, all fixed), Bedrock SHIP.
+Maelstrom #3 expanded the review system in two dimensions: **breadth** (Breeze and Tempest at both ends of the risk spectrum) and **depth** (Mycelium and Mulch prongs). Triple convergence from 3 Spores scouts, Thorns-verified (0/4 survived, all fixed), Bedrock SHIP.
 
-1. **Breeze Protocol (`staff-review` SKILL.md)**:
-   - Lightweight targeted-fix mode for known defects (~3–4k tokens). Skips Spores reconnaissance entirely, running only Roots → Bedrock.
-   - BLOCK handling: max 1 revision attempt; if unresolved, auto-escalates to Trident.
-   - Use cases: known bugs, string renames, doc freshness, lint fixes.
-   - Fills the gap below Gale for changes where the problem is already identified and only the fix needs verification.
+1. **Breeze Protocol** — Lightweight targeted-fix mode for known defects. Skips Spores; BLOCK auto-escalates to Trident.
+2. **Tempest Protocol** — Highest-assurance 6-prong pipeline with human gate via `ask_question` before Bedrock verdict.
+3. **🍄 Mycelium Prong** — Blast-radius and dependency mapping (2-hop import chains) inserted between Spores and Roots.
+4. **🍂 Mulch Prong** — Post-review learning extraction with circuit breaker preventing recursive reviews.
+5. **7 Escalation Paths** (up from 4) and **5 Modes / 6 Prongs** — see [staff-review SKILL.md](../skills/staff-review/SKILL.md) for full details and [METRICS.md](METRICS.md#review-protocol-costs-5-modes--6-prongs) for costs.
 
-2. **Tempest Protocol (`staff-review` SKILL.md)**:
-   - Highest-assurance mode (~30–50k tokens). Full 6-prong pipeline: Spores → Mycelium → Roots → Thorns → Bedrock → Mulch.
-   - Introduces a **human gate** via `ask_question` before Bedrock issues its SHIP/BLOCK verdict, ensuring explicit human oversight for catastrophic-risk changes.
-   - Use cases: infrastructure changes, auth pipeline modifications, database schema migrations, cryptographic subsystems.
-   - Fills the gap above Maelstrom for changes where automated review alone is insufficient.
-
-3. **🍄 Mycelium Prong (`staff-review` SKILL.md)**:
-   - Blast-radius and dependency mapping stage inserted after Spores and before Roots.
-   - Traces import chains (max 2 hops), cross-repo state, and type consumers to build a dependency graph around affected code.
-   - Receives Spores findings as input and passes enriched dependency context to Roots, enabling more precise root-cause analysis.
-   - Prevents fixes that silently break downstream consumers.
-
-4. **🍂 Mulch Prong (`staff-review` SKILL.md)**:
-   - Post-review learning extraction stage that runs on both SHIP and BLOCK outcomes.
-   - Proposes taxonomy patterns, rule updates, and skill recipes based on review findings.
-   - Read-only with a circuit breaker preventing recursive governance reviews (Mulch never triggers a new review cycle).
-   - Proposals are queued for the next session, not applied immediately.
-   - Closes the feedback loop: reviews generate actionable governance improvements.
-
-5. **7 Escalation Paths (up from 4)**:
-   - Breeze → Trident (BLOCK escalation)
-   - Gale → Trident
-   - Gale → Maelstrom
-   - Gale → Tempest
-   - Trident partial → Maelstrom
-   - Trident full → Maelstrom
-   - Maelstrom → Tempest
-
-6. **5 Review Modes (up from 3)**: Breeze < Gale < Trident < Maelstrom < Tempest.
-
-7. **6 Prongs (up from 4)**: Spores, Mycelium, Roots, Thorns, Bedrock, Mulch.
-
-**Impact on rules:** Upgraded `staff-review` SKILL.md with Breeze and Tempest protocols, Mycelium and Mulch prongs, 7 escalation paths, and the Tempest human gate. Updated documentation across README.md, COST_ANALYSIS.md, and EVOLUTION.md.
+**Impact on rules:** Upgraded `staff-review` with Breeze, Tempest, Mycelium, and Mulch. Updated documentation across README.md and METRICS.md.
 
 ## The Compound Effect
 
@@ -225,7 +145,7 @@ Empirical Falsification & Research Grounding → Refutation Gate, Boundary Verif
 Spectrum Completion & Lifecycle Extraction → Breeze/Tempest, Mycelium/Mulch, 5 modes, 6 prongs, 7 escalation paths
 ```
 
-Compliance went from **7.8/10 to 9.8/10**, waste rate dropped from **~56% to 18.8% across 17 sessions (7,015 steps)**, with best-governed sessions reaching **1.1% waste** (`0dc37064` across 1,325 steps), and the rules now cover failure modes that no amount of upfront design would have predicted.
+Compliance went from **7.8/10 to 9.8/10** and waste dropped from **~56% to 1.1%** in best-governed sessions — see [METRICS.md](METRICS.md) for the full breakdown. The rules now cover failure modes that no amount of upfront design would have predicted.
 
 ## Design Principles (Emerged, Not Prescribed)
 

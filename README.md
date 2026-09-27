@@ -1,13 +1,14 @@
-# AI Steering Rules
+# 🎯 AI Steering Rules
 
-Battle-tested governance rules for AI coding assistants — forged from 7,015 steps of real failures across 17 sessions (18.8% waste), refined through 12 review phases, and enforced via lifecycle hooks.
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue?style=flat-square)](LICENSE)
+[![Rules](https://img.shields.io/badge/Rules-11-green?style=flat-square)](#-rules)
+[![Skills](https://img.shields.io/badge/Skills-13-purple?style=flat-square)](#-skills)
+[![Review Modes](https://img.shields.io/badge/Review_Modes-5-orange?style=flat-square)](#-review-protocols)
+[![Platforms](https://img.shields.io/badge/Gemini_%7C_Kiro_%7C_Copilot-black?style=flat-square)](#quick-start)
 
-## Why Use This?
+> **7,015+** steps analyzed · **~65%** token savings · **80%** fewer false positives · **5** review modes · **6** prongs
 
-- **Stop AI from guessing** — Rules force the agent to verify claims against your actual codebase before acting
-- **Cut token costs ~65%** — Conditional loading, smart subagent delegation, and task hygiene eliminate wasted steps ([methodology](docs/COST_ANALYSIS.md))
-- **Mechanically enforced** — Lifecycle hooks gate destructive operations, inject governance context, and capture logs automatically
-- **Cross-platform** — Works with Gemini/Antigravity (Google), Kiro (AWS), and GitHub Copilot (Microsoft)
+Battle-tested governance rules for AI coding assistants — forged from 17 real sessions and enforced via lifecycle hooks.
 
 ## Quick Start
 
@@ -16,152 +17,102 @@ Battle-tested governance rules for AI coding assistants — forged from 7,015 st
 ```bash
 git clone https://github.com/nseney1/ai-steering-rules.git
 cd ai-steering-rules
-
-# Optional: customize for your team/stack
-cp steering.conf.example steering.conf
-# Edit steering.conf (team size, tech stack, git strategy, etc.)
-
-# Install for your platform:
-make install              # Gemini / Antigravity (default)
-make install-kiro         # Kiro
-make install-copilot      # GitHub Copilot (MODE=global|project)
+cp steering.conf.example steering.conf   # Optional: customize for your team/stack
+make install                              # Gemini / Antigravity (default)
+# make install-kiro                       # Kiro alternative
+# make install-copilot                    # GitHub Copilot alternative
 ```
 
 Rules take effect on your next conversation turn. No restart needed.
 
-> **No `make`?** The install scripts still work standalone: `./install-gemini.sh`
+## How It Works
 
----
+```mermaid
+flowchart LR
+    subgraph Session Lifecycle
+        A[User Prompt] --> B{PreInvocation}
+        B --> C[Agent Processing]
+        C --> D{PreToolUse}
+        D -->|Safe| E[Tool Execution]
+        D -->|Dangerous| F[BLOCKED]
+        E --> G[Response]
+    end
+    subgraph Always Active
+        H[providence.md] -.-> B
+        I[cost-optimization.md] -.-> B
+        J[subagent-delegation.md] -.-> B
+    end
+```
 
-## What's Included
+**Text fallback:** Every user prompt passes through a PreInvocation hook that injects always-on governance rules. Each tool call is screened by a PreToolUse safety gate — dangerous operations (e.g., `rm -rf /`, `git push -f`) are blocked automatically.
 
-### Rules (11 files)
+## 📜 Rules
 
 | Rule | Trigger | Purpose |
 |:-----|:--------|:--------|
-| `providence.md` | always_on | **Highest priority.** Codebase grounding, claim verification, no hallucinations, venv shebang verification, desktop automation safety, diagnose-before-repair schema. |
-| `cost-optimization.md` | always_on | Token efficiency, diffs-only edits, subagent model tiering, mechanical diff downgrade (Flash), task hygiene, FPSR metric (>80%). |
-| `subagent-delegation.md` | always_on | Context window protection, validated concurrency limits (4 readers, 3 writers), delegation floor (75 steps), Context Pre-Seeding, Boundary Verification Protocol, Orthogonal Persona Mandate. |
-| `architectural-tenets.md` | model_decision | Pragmatism, trade-off analysis, scale-to-zero, premature abstraction ban. |
-| `polyglot-standards.md` | model_decision | Unified entrypoints (Makefiles), containerization. |
-| `feature-specs.md` | model_decision | PRD structure, acceptance criteria, documentation deliverables. |
-| `testing.md` | model_decision | Behavioral testing, ast.parse ban, sad paths, checkpoint testing, hook integration testing. |
-| `documentation.md` | model_decision | ADRs, actionable READMEs, Mermaid diagrams, README modularization. |
-| `destructive-ops.md` | model_decision | Dry-run mandates for IaC, database mutations, bulk git staging. |
-| `git-workflow.md` | model_decision | Session awareness, conventional commits, .gitignore verification, pre-push test gate. |
-| `desktop-automation.md` | model_decision | PyAutoGUI/xdotool safety: focus verification, coordinate clamping, coordinate grounding, closed-loop validation. |
+| [providence.md](rules/providence.md) | always_on | **Highest priority.** Codebase grounding, claim verification, no hallucinations, diagnose-before-repair. |
+| [cost-optimization.md](rules/cost-optimization.md) | always_on | Token efficiency, diffs-only edits, model tiering, FPSR metric (>80%). |
+| [subagent-delegation.md](rules/subagent-delegation.md) | always_on | Context protection, concurrency limits (4 readers / 3 writers), delegation floor. |
+| [architectural-tenets.md](rules/architectural-tenets.md) | model_decision | Pragmatism, trade-off analysis, scale-to-zero. |
+| [polyglot-standards.md](rules/polyglot-standards.md) | model_decision | Unified entrypoints (Makefiles), containerization. |
+| [feature-specs.md](rules/feature-specs.md) | model_decision | PRD structure, acceptance criteria, documentation. |
+| [testing.md](rules/testing.md) | model_decision | Behavioral testing, sad paths, ast.parse ban. |
+| [documentation.md](rules/documentation.md) | model_decision | ADRs, actionable READMEs, Mermaid diagrams. |
+| [destructive-ops.md](rules/destructive-ops.md) | model_decision | Dry-run mandates for IaC, database mutations, bulk git. |
+| [git-workflow.md](rules/git-workflow.md) | model_decision | Conventional commits, .gitignore verification, pre-push test gate. |
+| [desktop-automation.md](rules/desktop-automation.md) | model_decision | PyAutoGUI/xdotool safety: focus verification, coordinate clamping. |
 
-- **`always_on`** — Loaded every turn (~2,980 tokens)
-- **`model_decision`** — Loads full content only when relevant (~30 tokens idle)
+> [!TIP]
+> `always_on` rules load every turn (~2,980 tokens). `model_decision` rules load full content only when relevant (~30 tokens idle). See [METRICS.md](docs/METRICS.md) for per-file token costs.
 
-### Skills (13 expert personas)
+## 🧠 Skills
 
-Zero tokens until invoked.
+| Skill | Purpose |
+|:------|:--------|
+| [code-review](skills/code-review/SKILL.md) | Staff Engineer: architectural flaws, race conditions, SOLID violations. |
+| [domain-researcher](skills/domain-researcher/SKILL.md) | Compiles verified external facts (wikis, API docs, papers). |
+| [governance-auditor](skills/governance-auditor/SKILL.md) | Mechanical per-rule PASS/FAIL compliance checks. |
+| [incident-debug](skills/incident-debug/SKILL.md) | SRE: reproduce → isolate → diagnose → fix → verify. |
+| [performance-audit](skills/performance-audit/SKILL.md) | Hot-path allocations, O(n²) patterns, GC pressure. |
+| [post-mortem](skills/post-mortem/SKILL.md) | Blameless retrospective analysis, pattern extraction. |
+| [readme-writer](skills/readme-writer/SKILL.md) | Scannable, copy-pasteable developer READMEs. |
+| [refactoring-pilot](skills/refactoring-pilot/SKILL.md) | Mikado Method, incremental moves across 4+ files. |
+| [security-audit](skills/security-audit/SKILL.md) | AppSec Engineer: OWASP Top 10, hardcoded secrets. |
+| [session-monitor](skills/session-monitor/SKILL.md) | Live waste trajectory tracking, periodic probes. |
+| [spec-synthesizer](skills/spec-synthesizer/SKILL.md) | Cross-references multi-lens findings into prioritized plans. |
+| [staff-review](skills/staff-review/SKILL.md) | Multi-lens fan-out (10 lenses) with staff-level synthesis. |
+| [visual-analyst](skills/visual-analyst/SKILL.md) | Screen & UI analysis: game state, coordinates, regressions. |
 
-| Skill | Activates When... |
-|:------|:------------------|
-| `code-review` | Review or critique code. Staff Engineer: architectural flaws, race conditions, SOLID. |
-| `domain-researcher` | External domain research. Compiles verified facts (wikis, API docs, papers) for active domain. |
-| `governance-auditor` | Audit session transcripts. Mechanical per-rule PASS/FAIL compliance checks. |
-| `incident-debug` | Crash, hang, or error. SRE: reproduce → isolate → diagnose → fix → verify. |
-| `performance-audit` | Optimize or profile code. Performance Engineer: hot-path allocations, O(n²). |
-| `post-mortem` | Review a past session. SRE Facilitator: blameless analysis, pattern extraction. |
-| `readme-writer` | Write or improve a README. Technical Writer: scannable, copy-pasteable. |
-| `refactoring-pilot` | Refactor 4+ files. Specialist: Mikado Method, incremental moves. |
-| `security-audit` | Check security or audit endpoints. AppSec Engineer: OWASP Top 10. |
-| `session-monitor` | Live session monitoring. Tracks waste trajectory, periodic probes, regression alerts. |
-| `spec-synthesizer` | Synthesize review reports. Cross-references multi-lens findings into a single prioritized plan. |
-| `staff-review` | Comprehensive review or audit. Multi-lens fan-out (10 lenses) with staff-level synthesis. Supports Breeze, Gale, Trident, Maelstrom, & Tempest modes, Incremental Escalation, and Empirical Refutation Gate. |
-| `visual-analyst` | Screen & UI analysis. Extracts game state, UI coordinates, error messages, and visual regressions. |
+## 🔍 Review Protocols
 
-### Review Protocols (Breeze, Gale, Trident, Maelstrom, Tempest)
+| Mode | Dispatches | Cost | Best For |
+|:-----|:----------:|:----:|:---------|
+| 🌱 Breeze | 2 | ~3-4k | Known bugs, renames |
+| 🌬️ Gale | 3-4 | ~4k | Quick reviews |
+| 🔱 Trident | 5-8 | ~8-12k | Features, refactors |
+| 🌊 Maelstrom | 7-12 | ~15-20k | Architecture, security |
+| ⛈️ Tempest | 10-16 | ~30-50k | Catastrophic risk |
 
-The `staff-review` skill orchestrates 10 specialized lenses across five review modes and six prongs, supporting **Incremental Escalation** (upgrading review intensity mid-flight without restarting completed prongs) and the **Empirical Refutation Gate** (filtering false positives before Bedrock):
+> [!NOTE]
+> Reviews use 6 prongs: 🍄 Spores (width), 🍄 Mycelium (blast radius), 🌿 Roots (depth), 🌹 Thorns (adversarial), 🪨 Bedrock (verification gate), 🍂 Mulch (learning). See [staff-review SKILL.md](skills/staff-review/SKILL.md) for full prong details and escalation paths.
 
-| Mode | Rounds | Dispatches | Token Cost | Best For | Workflow |
-|:-----|:------:|:----------:|:----------:|:---------|:---------|
-| **Breeze** | 1 | 1–2 Flash | ~3–4k tokens | Known bugs, string renames, doc freshness, lint fixes | Targeted fix: Roots → Bedrock (skips Spores) |
-| **Gale** | 1 | 3–4 Flash | ~4k tokens | Routine reviews, known domains (Low risk) | Single-pass parallel fan-out → Staff synthesis |
-| **Trident** | 2–3 | 5–8 Flash | ~8–12k tokens | Architecture changes, high-risk refactors (Medium/High risk) | Progressive 3-prong: Spores → Roots → Bedrock |
-| **Maelstrom** | 3–4 | 7–12 Flash | ~15–20k tokens | Critical/Catastrophic risk, core governance, security-critical changes | Full adversarial: Spores → Roots → Thorns → Bedrock |
-| **Tempest** | 4–5 | 10–16 Flash | ~30–50k tokens | Catastrophic risk, infra, auth, schema migrations | Highest assurance: Spores → Mycelium → Roots → Thorns → Bedrock → Mulch |
+## Configuration
 
-#### Review Protocol Prongs (6):
-- **🍄 Spores (width)** — 3–4 Flash scouts survey codebase with orthogonal personas; identify problems and rank by severity (🔴 critical / ⚠️ warning / ℹ️ info); no fix proposals allowed.
-- **🍄 Mycelium (blast radius)** — Dependency and blast-radius mapping after Spores, before Roots. Traces import chains (max 2 hops), cross-repo state, and type consumers. Receives Spores findings and passes enriched context to Roots.
-- **🌿 Roots (depth)** — 1–2 Flash analysts receive deduplicated findings, investigate root cause, and propose concrete fixes with blast radius analysis.
-- **🌹 Thorns (adversarial)** — Falsification team (NASA IV&V tripartite) actively attempts to break/falsify proposed fixes with a 2-cycle revision cap.
-- **🪨 Bedrock (verification)** — Structural-only verification gate (read-only, does NOT run tests); validates proposed changes against test suites, callers, and the Empirical Refutation Gate; outputs a SHIP/BLOCK gate.
-- **🍂 Mulch (learning)** — Post-review learning extraction (runs on SHIP or BLOCK). Proposes taxonomy patterns, rule updates, and skill recipes. Read-only with circuit breaker preventing recursive governance reviews; proposals queued for next session.
+Copy [`steering.conf.example`](steering.conf.example) → `steering.conf` to customize team size, tech stack, git strategy, and approval chains.
 
-#### Key Governance Mechanisms:
-- **Empirical Refutation Gate**: Before accepting critical review findings, requires at least 2 of 3 criteria: (1) verified `file:line` citation (±5 lines), (2) executable reproduction command/test, (3) mechanical verification (grep/math check; omission claims satisfy this). Findings meeting 1 criterion become ⚠️ warning; 0 become ℹ️ info (eliminates ~80% false positives; Agarwal 2026).
-- **Incremental Escalation**: Upgrades review depth mid-flight across 7 paths (Breeze→Trident, Gale→Trident, Gale→Maelstrom, Gale→Tempest, Trident partial→Maelstrom, Trident full→Maelstrom, Maelstrom→Tempest) without re-running earlier prongs (requires clean `git status`).
-- **Human Gate (Tempest)**: `ask_question` confirmation required before Bedrock issues its SHIP/BLOCK verdict, ensuring human oversight for catastrophic-risk changes.
-- **Breeze BLOCK Handling**: Max 1 revision attempt on BLOCK; if unresolved, auto-escalates to Trident.
-- **Boundary Verification Protocol**: Orchestrator spot-checks subagent claims before acting with fuzzy ±5 line tolerance; demotes ungrounded claims rather than discarding them silently (IEEE GLOBECOM 2026).
-- **Orthogonal Persona Mandate**: Bans homogeneous reviewer fan-outs; assigns conflicting analytical incentives (e.g. correctness vs performance vs security) to prevent consensus bias (MAR/ICML 2026).
-- **Validated Concurrency Limits**: Benchmark-confirmed optimal ceilings (4 read-only scouts, 3 disjoint writers) maximizing recall before consensus degradation (MIT, Tencent, Coasty).
-
-**10 Review Lenses:** Architecture, Performance, Security, Compliance, Behavioral, Domain Research, Spec Synthesis, Visual, Governance Audit, Live Monitor.
-
-### Hooks & Automation
-
-Enforce governance mechanically — don't rely on the model remembering rules.
-
-| Hook / Script | Event / Trigger | What It Does |
-|:--------------|:----------------|:-------------|
-| `governance-monitor` (`governance_init.sh`) | `PreInvocation` | Non-blocking log export, pending governance alerts, **auto-preflight** (detects coding projects via `venv`, `package.json`, `Makefile`, `tests/`), and **domain detection** (game/automation/ML hints). |
-| `safety-gate` (`safety_gate.sh`) | `PreToolUse` | Gates `rm -rf /`, `git push -f`, `DROP TABLE`, `git add -A`. |
-| `session-close` (`session_close.sh`) | `Stop` | Exports logs and syncs repos. No data loss even on crashes. |
-| `governance_sweep.sh` | Periodic / CLI | Scans unreviewed sessions (>100 steps), tallies warning trends, recomputes metrics, flags active sessions. |
-
----
-
-## How It Works
-
-```
-SESSION START
-│
-├── PreInvocation hook (turn 1 + every 100th turn)
-│   ├── Exports conversation logs (async, non-blocking)
-│   ├── Checks for pending critical governance proposals
-│   └── Injects ephemeral alert if found
-│
-├── NORMAL WORK
-│   └── PreToolUse hook (every run_command)
-│       ├── Dangerous patterns → BLOCKED (force_ask)
-│       └── Everything else → allowed instantly
-│
-└── SESSION END
-    └── Stop hook → exports logs, syncs repos
-```
-
-### Where Everything Lives
-
-| What | Location |
-|:-----|:---------|
-| Live rules + skills | `~/.gemini/config/rules/`, `skills/` (symlinked) |
-| Hooks | `~/.gemini/config/plugins/governance/hooks.json` |
-| Hook scripts | `ai-steering-rules/scripts/` |
-| Audit trail | `ai-conversation-logs/governance/auto_applied_log.jsonl` |
-| Pattern taxonomy | `ai-conversation-logs/governance/taxonomy.json` (23 patterns, v2.1) |
-| Rule effectiveness | `ai-conversation-logs/governance/effectiveness.json` |
-
----
-
-## Installation Details
-
-### Gemini / Antigravity
-
-**Option A: Copy** (simple, manual updates)
 ```bash
-mkdir -p ~/.gemini/config/rules ~/.gemini/config/skills
-cp rules/*.md ~/.gemini/config/rules/
-cp -r skills/* ~/.gemini/config/skills/
+make info     # Show current configuration
+make doctor   # Verify installation health
 ```
 
-**Option B: Symlink** (stays synced with `git pull`)
+> [!IMPORTANT]
+> Run `make doctor` after installation to verify symlinks, hook registration, and rule loading.
+
+<details>
+<summary>Advanced Installation</summary>
+
+### Symlink Method (Gemini)
+
 ```bash
 ln -sf "$(pwd)/rules" ~/.gemini/config/rules
 ln -sf "$(pwd)/skills" ~/.gemini/config/skills
@@ -170,7 +121,7 @@ ln -sf "$(pwd)/skills" ~/.gemini/config/skills
 ### Kiro
 
 ```bash
-./install-kiro.sh
+make install-kiro
 ```
 
 Activate manual rules by typing `#testing`, `#documentation`, `#feature-specs`, etc.
@@ -178,63 +129,21 @@ Activate manual rules by typing `#testing`, `#documentation`, `#feature-specs`, 
 ### GitHub Copilot
 
 ```bash
-./install-copilot.sh global    # Merges all rules into ~/copilot-instructions.md
-./install-copilot.sh project   # Creates .github/instructions/*.instructions.md
+make install-copilot MODE=global    # Merges all rules into ~/copilot-instructions.md
+make install-copilot MODE=project   # Creates .github/instructions/*.instructions.md
 ```
 
-> Ensure "Enable custom instructions" is checked in your IDE's Copilot settings.
+Ensure "Enable custom instructions" is checked in your IDE's Copilot settings.
 
----
-
-## Team Configuration
-
-Copy `steering.conf.example` → `steering.conf` and customize for your environment:
-
-```bash
-make info   # Show current configuration
-```
-
-| Variable | Options | Effect |
-|:---------|:--------|:-------|
-| `TEAM_SIZE` | `solo`, `small`, `team`, `enterprise` | Branching strategy, approval requirements |
-| `GIT_STRATEGY` | `trunk`, `feature-branch`, `gitflow` | Git workflow overrides |
-| `AI_USAGE` | `individual`, `shared-repo`, `multi-team` | Context coordination guidance |
-| `TECH_STACK` | `python`, `node`, `go`, `rust`, `java`... | Environment checks, package manager, preflight |
-| `TEST_COMMAND` | any command | Override test runner auto-detection |
-| `RULES_SUBSET` | `all`, `core`, `minimal` | Control how many rules are installed |
-| `APPROVAL_CHAIN` | `none`, `peer`, `lead` | Destructive operation approval requirements |
-
-### Rule Subsets
-
-| Subset | Rules | Tokens | Best For |
-|:-------|:-----:|:------:|:---------|
-| `all` | 11 | ~3,500 | Full governance (default) |
-| `core` | 6 | ~2,800 | Balanced coverage without domain-specific rules |
-| `minimal` | 3 | ~2,000 | Token-constrained environments or quick experiments |
-
-## Customization
-
-These rules are opinionated. Fork and adjust:
-
-| What to Change | File to Edit |
-|:---------------|:-------------|
-| Token limits, subagent model tiers, FPSR targets | `cost-optimization.md` |
-| Entrypoint format (Makefile vs Justfile) | `polyglot-standards.md` |
-| Infrastructure preferences | `architectural-tenets.md` |
-| Priority hierarchy, diagnostic schemas | `providence.md` (all others defer) |
-
----
+</details>
 
 ## Deep Dives
 
 | Document | Contents |
 |:---------|:---------|
-| [Cost Analysis](docs/COST_ANALYSIS.md) | Per-file token costs, conditional loading math, ROI calculations |
-| [Evolution](docs/EVOLUTION.md) | How the approach evolved across 6 phases, from prescriptive to evidence-based |
-| [Scorecard](docs/SCORECARD.md) | Compliance scores, review history, current waste metrics |
-| [Experiments](docs/EXPERIMENTS.md) | Lightweight A/B testing framework (E1–E10) for data-driven governance evolution |
-
----
+| [Metrics & Token Economics](docs/METRICS.md) | Per-file token costs, compliance scores, waste analysis, ROI calculations |
+| [Evolution](docs/EVOLUTION.md) | How the approach evolved across 8 phases, from prescriptive to evidence-based |
+| [Experiments](docs/EXPERIMENTS.md) | A/B testing framework (E1–E10) for data-driven governance evolution |
 
 ## License
 
