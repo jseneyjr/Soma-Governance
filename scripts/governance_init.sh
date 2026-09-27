@@ -8,6 +8,7 @@ set -euo pipefail
 # Alert routing:
 #   🔴 Critical → LOUD alert, rotates pending_critical.md → last_critical.md
 #   ℹ️  Non-critical → quiet alert ONLY if genuinely new findings exist (cursor-based)
+#   ⚡ Preflight → coding project detected, prompt agent to run session-preflight
 #   {} → silent if nothing new
 
 INPUT=$(cat)
@@ -32,9 +33,80 @@ if [ -x "$EXPORT_SCRIPT" ]; then
     bash "$EXPORT_SCRIPT" > /dev/null 2>&1 &
 fi
 
-# Alert decision — concurrency-safe
+# ── Project Detection (Invocation 1 only, outside flock) ─────────────────
+PREFLIGHT_STEPS="[]"
+if [ "$INVOCATION_NUM" = "1" ]; then
+    PREFLIGHT_STEPS=$(echo "$INPUT" | python3 -c "
+import json, os, sys
+
+try:
+    data = json.load(sys.stdin)
+except Exception:
+    print('[]')
+    sys.exit(0)
+
+ws_list = data.get('workspacePaths', [])
+target = ws_list[0] if ws_list else ''
+steps = []
+
+# Skip governance repos and empty workspaces
+if not target or any(k in target for k in ['ai-steering-rules', 'ai-conversation-logs']):
+    print('[]')
+    sys.exit(0)
+
+# Detect coding project markers
+is_python = any(os.path.exists(os.path.join(target, f)) for f in ['venv', '.venv', 'requirements.txt', 'pyproject.toml'])
+is_node = os.path.exists(os.path.join(target, 'package.json'))
+has_makefile = os.path.exists(os.path.join(target, 'Makefile'))
+has_tests = os.path.exists(os.path.join(target, 'tests'))
+
+markers = []
+if is_python: markers.append('python')
+if is_node: markers.append('node')
+if has_makefile: markers.append('Makefile')
+if has_tests: markers.append('tests/')
+
+# E3: Auto-preflight for coding projects
+if is_python or is_node:
+    marker_str = ', '.join(markers)
+    steps.append({
+        'ephemeralMessage': f'⚡ PREFLIGHT: Coding project detected at {target} ({marker_str}). Per session-preflight skill, verify venv health, git status, and test suite before modifying files.'
+    })
+
+# E6: Domain researcher hint for game/automation projects
+domain_hint = ''
+target_lower = target.lower()
+if any(k in target_lower for k in ['tab', 'billions']):
+    domain_hint = 'They Are Billions'
+elif any(k in target_lower for k in ['dwarf', 'fortress']):
+    domain_hint = 'Dwarf Fortress'
+
+# Deep probe: check requirements.txt for automation libs
+if is_python and not domain_hint:
+    req_path = os.path.join(target, 'requirements.txt')
+    if os.path.exists(req_path):
+        try:
+            reqs = open(req_path).read().lower()
+            if any(lib in reqs for lib in ['pyautogui', 'pynput', 'xdotool', 'pygame']):
+                domain_hint = 'Game automation'
+            elif any(lib in reqs for lib in ['torch', 'stable-baselines', 'gymnasium', 'ray']):
+                domain_hint = 'RL/ML'
+        except Exception:
+            pass
+
+if domain_hint:
+    steps.append({
+        'ephemeralMessage': f'⚡ DOMAIN: {domain_hint} project detected. Domain preset available in domain-researcher skill for verified external lookups.'
+    })
+
+print(json.dumps(steps))
+" 2>/dev/null || echo "[]")
+fi
+
+# ── Governance Alert Checks (under flock) ────────────────────────────────
+GOV_STEPS="[]"
 if [ -d "$LOGS_REPO/governance" ]; then
-    (
+    GOV_STEPS=$(
         flock -x 200
 
         # 1. Check for critical findings
@@ -50,15 +122,7 @@ if [ -d "$LOGS_REPO/governance" ]; then
                 wc -l < "$AUTO_LOG" > "$CURSOR_FILE"
             fi
 
-            cat << RESPONSE
-{
-  "injectSteps": [
-    {
-      "ephemeralMessage": "🔴 GOVERNANCE: $FINDING_COUNT critical change(s) were AUTO-APPLIED to your steering rules. Review: cat $LAST_CRITICAL"
-    }
-  ]
-}
-RESPONSE
+            echo "[{\"ephemeralMessage\": \"🔴 GOVERNANCE: $FINDING_COUNT critical change(s) were AUTO-APPLIED to your steering rules. Review: cat $LAST_CRITICAL\"}]"
         else
             # 2. Check for genuinely new non-critical findings (cursor-based)
             NEW_FINDINGS=0
@@ -74,20 +138,27 @@ RESPONSE
             if [ "$NEW_FINDINGS" -gt 0 ]; then
                 # Update cursor
                 echo "$TOTAL_LINES" > "$CURSOR_FILE"
-                cat << RESPONSE
-{
-  "injectSteps": [
-    {
-      "ephemeralMessage": "ℹ️ Governance: $NEW_FINDINGS non-critical finding(s) auto-applied since last session. Audit: tail -$NEW_FINDINGS $AUTO_LOG"
-    }
-  ]
-}
-RESPONSE
+                echo "[{\"ephemeralMessage\": \"ℹ️ Governance: $NEW_FINDINGS non-critical finding(s) auto-applied since last session. Audit: tail -$NEW_FINDINGS $AUTO_LOG\"}]"
             else
-                echo '{}'
+                echo "[]"
             fi
         fi
     ) 200>"$LOCK_FILE"
 else
-    echo '{}'
+    GOV_STEPS="[]"
 fi
+
+# ── Merge all steps into single response ─────────────────────────────────
+MERGED=$(python3 -c "
+import json, sys
+preflight = json.loads(sys.argv[1])
+gov = json.loads(sys.argv[2])
+all_steps = preflight + gov
+if all_steps:
+    print(json.dumps({'injectSteps': all_steps}))
+else:
+    print('{}')
+" "$PREFLIGHT_STEPS" "$GOV_STEPS" 2>/dev/null || echo "{}")
+
+echo "$MERGED"
+

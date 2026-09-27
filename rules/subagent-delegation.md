@@ -38,6 +38,27 @@ Before parallelizing implementation:
 - **Concurrency Limits**: Fan out up to 4 read-only subagents (reviewers, researchers, auditors) concurrently. For coding lanes, limit to 3 concurrent writers with strict Disjoint Lane Protocol. Monitor waste rate — if it exceeds 8% after this change, revert to 2-3 concurrency.
 - **Fire-and-Forget**: Dispatch tasks clearly and wait for the subagents to report back with succinct summaries.
 
+### Context Pre-Seeding Protocol
+Every subagent prompt should prepend a compact context block (~200 tokens) to eliminate cold-start exploratory steps:
+
+```
+<!-- CONTEXT: [PROJECT_NAME] -->
+[PROJECT]: <Name> — <1-sentence core purpose>
+[STACK]: <Language> | <Key libs> | Test: `<test_command>`
+[LAYOUT]:
+  - `<dir>/`: <3-word role>
+[CONSTRAINTS]:
+  - <Critical invariant or known trap>
+[OUTPUT]: Max 5 bullets per section. Cite file:line.
+<!-- END CONTEXT -->
+```
+
+**Rules**:
+- Keep under 250 tokens — key-value structure, not prose
+- Paths only, never inline file contents
+- Include known traps to prevent rework (e.g., "Do NOT use ast.parse for linting")
+- Include test runner command so subagents can verify immediately
+
 ## 3. Cost & Workspace Isolation
 - **Model Downgrading**: Per the cost-optimization protocol.
 - **Branch Workspaces**: Only use `branch` workspace mode for subagents performing genuinely destructive operations (e.g., deleting files, rewriting core modules). The orchestrator must obtain user confirmation on the plan *before* dispatching destructive work to a subagent. For additive tasks like creating new files, writing tests, or generating boilerplate, use the default `inherit` workspace mode so files land directly in the project.
