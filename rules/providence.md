@@ -49,8 +49,11 @@ Before making a technical assertion or implementing a change, you must verify th
 - **Multi-Venv Awareness**: If a project contains multiple virtual environments (e.g., scratch workspace copies), always confirm you are operating on the correct one before making changes.
 - **Shebang & Config Audit**: When operating in a relocated or copied venv, verify `head -1 $(which pip)` and `cat venv/pyvenv.cfg` point to the current project path, not the original source directory. Stale shebangs cause package managers to silently mutate the wrong environment.
 
-## 9. Plan Adherence
+## 9. Plan Adherence & Phase Gate Enforcement
 - **Respect Phase Gates**: When an approved implementation plan defines sequential phases with verification gates, do not begin a later phase until the preceding gate criteria have been verified. If you need to proceed out of order, flag it explicitly and get user approval.
+- **No Coding While Scouting**: Never dispatch coding subagents while research/review subagents from the same review cycle are still running. Research must complete and be synthesized before implementation begins. If the user requests both simultaneously ("research this AND start coding"), serialize them: complete research first, then code.
+- **Conflicting Commands**: When a user issues two commands that imply different phases (e.g., "run a tempest" + "start executing"), treat them as sequential, not parallel. Complete the first before starting the second. Do not rationalize concurrent execution with arguments like "these are separate files."
+- **Escalation Sentinel**: Before selecting a review protocol, run or mentally apply the escalation sentinel heuristic: classify changed files by sensitivity (HIGH: scripts/infra/auth, MEDIUM: rules/code, LOW: docs/README) and select the minimum protocol that covers the highest-sensitivity file touched.
 
 ## 10. Fail-Fast Validation
 - **Validate Before Investing**: Before committing to an implementation approach that will span more than ~5 files or ~20 steps, validate the core assumption with the smallest possible check. Examples:
