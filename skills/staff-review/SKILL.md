@@ -26,6 +26,11 @@ Dispatch 2–3 **Flash-tier research subagents** with orthogonal review lenses. 
 | **Security** | OWASP Top 10, secrets exposure, input validation, auth flows, dependency vulnerabilities | When security is in scope |
 | **Compliance** | Rule adherence, convention alignment, style consistency, documentation coverage | When governance/standards matter |
 | **Behavioral** | Post-mortem waste patterns, rule effectiveness, agent behavior analysis | When reviewing agent sessions |
+| **Domain Research** | External docs, wikis, papers, verified facts for the project domain | When external knowledge is needed for the review |
+| **Spec Synthesis** | Cross-reference N artifacts → prioritized implementation plan | After reviews complete, before execution |
+| **Visual** | Screenshot analysis, UI state, coordinate calibration, threshold tuning | For game automation or UI-heavy reviews |
+| **Governance Audit** | Per-rule PASS/FAIL compliance check against session transcript | When verifying rule adherence mechanically |
+| **Live Monitor** | Ongoing waste tracking with periodic probes and trajectory alerts | When a session needs real-time observation |
 
 ### Phase 2: Synthesis (Staff-Level Review)
 
@@ -82,6 +87,20 @@ If critical findings exist, orchestrator must fix before continuing.
 - Each probe: ~1,000 Flash tokens
 - At 1 probe per 50 steps over a 500-step session: ~10,000 tokens total
 - ROI: prevents 50-150 steps of rework (50,000-150,000 tokens saved)
+
+## Specialist Skill Activation
+
+When a staff review identifies that specialist analysis is needed, the orchestrator can activate dedicated skills as additional reviewers:
+
+| Need | Skill | How |
+|:-----|:------|:----|
+| Domain knowledge gaps | `domain-researcher` | Dispatch with project context + specific questions |
+| Multiple reports need consolidation | `spec-synthesizer` | Dispatch with artifact list + constraints |
+| Active session needs monitoring | `session-monitor` | Activate with session ID + alert thresholds |
+| Rule compliance unclear | `governance-auditor` | Dispatch with transcript path |
+| Screenshot/UI evidence needed | `visual-analyst` | Dispatch with image paths |
+
+Specialists run as **Flash subagents** and report back like standard reviewers. The orchestrator synthesizes their findings alongside the standard lens results. Specialists may also be activated independently outside of a staff review when the user requests their specific capability.
 
 ## Anti-Patterns
 
