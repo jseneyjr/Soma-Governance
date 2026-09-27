@@ -9,6 +9,11 @@ governance/*.lock
 governance/*.log
 governance/mulch_queue.jsonl
 
+# Raw session logs & postmortem data (masked exports live in docs/, not here)
+agent-session-postmortem/
+session-logs/
+*.postmortem.jsonl
+
 # Python artifacts
 __pycache__/
 *.py[cod]
