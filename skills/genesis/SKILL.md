@@ -1,6 +1,6 @@
 ---
 name: Genesis — Codebase Onboarding Reconnaissance
-description: "4-stage read-only reconnaissance protocol for onboarding to unfamiliar codebases. Cartography (repo structure), Chronicle (git history intelligence), Codex (architecture extraction), Compass (governance synthesis). Produces a structured Genesis Report artifact with auto-generated Context Pre-Seeding block. Incremental — run any single stage or all four."
+description: "4-stage read-only reconnaissance protocol for onboarding to unfamiliar codebases. Canopy (repo structure), Rings (git history intelligence), Taproot (architecture extraction), Lichen (governance synthesis). Produces a structured Genesis Report artifact with auto-generated Context Pre-Seeding block. Incremental — run any single stage or all four."
 trigger: user_request
 aliases: ["genesis", "init", "onboard", "explore", "map this repo", "what is this codebase"]
 ---
@@ -13,10 +13,10 @@ aliases: ["genesis", "init", "onboard", "explore", "map this repo", "what is thi
 
 | Stage | Name | Subagent | Flash Dispatches | Focus |
 |:------|:-----|:---------|:----------------:|:------|
-| 1 | 🗺️ **Cartography** | Broad Repo Scanner | 1–2 | Tech stack, directory tree, dependencies, entry points, test framework |
-| 2 | 📜 **Chronicle** | Git History Analyst | 1 | Branch topology, commit frequency, churn heatmap, high-risk files |
-| 3 | 📖 **Codex** | Architecture Analyst | 1–2 | API surface, data models, config patterns, external integrations, cross-repo boundaries |
-| 4 | 🧭 **Compass** | Governance Advisor | 1 | Conventions, test patterns, deployment model, traps, governance config, Context Pre-Seeding |
+| 1 | 🗺️ **Canopy** | Broad Repo Scanner | 1–2 | Tech stack, directory tree, dependencies, entry points, test framework |
+| 2 | 📜 **Rings** | Git History Analyst | 1 | Branch topology, commit frequency, churn heatmap, high-risk files |
+| 3 | 📖 **Taproot** | Architecture Analyst | 1–2 | API surface, data models, config patterns, external integrations, cross-repo boundaries |
+| 4 | 🧭 **Lichen** | Governance Advisor | 1 | Conventions, test patterns, deployment model, traps, governance config, Context Pre-Seeding |
 
 **Total dispatches**: 4–6 Flash subagents across all stages.
 
@@ -26,11 +26,11 @@ Genesis stages are **incremental** — run any subset, in any order. Later stage
 
 | Need | Stages | Dispatches | When to Use |
 |:-----|:------:|:----------:|:------------|
-| Quick layout | Cartography only | 1–2 | "What is this repo?" — fast directory orientation |
-| Risk assessment | Cartography + Chronicle | 2–3 | "Where are the hot spots?" — churn + structure |
-| Architecture audit | Cartography + Codex | 2–4 | "How is this system designed?" — API and data model mapping |
+| Quick layout | Canopy only | 1–2 | "What is this repo?" — fast directory orientation |
+| Risk assessment | Canopy + Rings | 2–3 | "Where are the hot spots?" — churn + structure |
+| Architecture audit | Canopy + Taproot | 2–4 | "How is this system designed?" — API and data model mapping |
 | Full onboarding | All 4 stages | 4–6 | "Onboard me to this codebase" — complete reconnaissance |
-| Governance setup | Compass only (with prior report) | 1 | "Configure governance for this project" — re-run synthesis |
+| Governance setup | Lichen only (with prior report) | 1 | "Configure governance for this project" — re-run synthesis |
 
 ---
 
@@ -38,13 +38,13 @@ Genesis stages are **incremental** — run any subset, in any order. Later stage
 
 1. **Read-only**: Genesis NEVER modifies the repository. It produces artifacts only — no writes, no commits, no branch creation.
 2. **Incremental**: Any single stage can run standalone. Stages build on prior outputs when available but function independently.
-3. **Multi-repo**: Accepts multiple repo paths for multi-service architectures. Each repo gets its own stage passes; Compass synthesizes across all of them.
+3. **Multi-repo**: Accepts multiple repo paths for multi-service architectures. Each repo gets its own stage passes; Lichen synthesizes across all of them.
 4. **Cacheable**: Output persists as a governance artifact (`genesis-report-[project].md`). Subsequent runs diff against the previous report and highlight what changed.
-5. **Feeds downstream**: Cartography → Context Pre-Seeding. Chronicle → Spores priority ranking. Codex → Mycelium blast-radius context. Compass → governance configuration.
+5. **Feeds downstream**: Canopy → Context Pre-Seeding. Rings → Spores priority ranking. Taproot → Mycelium blast-radius context. Lichen → governance configuration.
 
 ---
 
-## Stage 1: Cartography (Repository Structure Mapping)
+## Stage 1: Canopy (Repository Structure Mapping)
 
 Dispatch 1–2 Flash broad repo scanners to map the repository's physical structure.
 
@@ -59,10 +59,10 @@ Dispatch 1–2 Flash broad repo scanners to map the repository's physical struct
 | Testing framework | Detect test runners (`jest`, `pytest`, `JUnit`, `go test`), test directories, config files | `{framework, runner_command, test_directory, config_file}` |
 | Monorepo detection | Check for workspace configs (`lerna.json`, `pnpm-workspace.yaml`, Nx, Turborepo) | `{is_monorepo, workspace_tool, package_count}` |
 
-### Cartography Prompt Template
+### Canopy Prompt Template
 
 ```
-<!-- CONTEXT: Genesis Cartography -->
+<!-- CONTEXT: Genesis Canopy -->
 You are a codebase reconnaissance scanner. Your job is to map the repository structure.
 You are READ-ONLY — do not modify any files.
 
@@ -117,7 +117,7 @@ scripts/     — automation
 
 ---
 
-## Stage 2: Chronicle (Git History Intelligence)
+## Stage 2: Rings (Git History Intelligence)
 
 Dispatch 1 Flash git history analyst to extract temporal intelligence from the repository's version control history.
 
@@ -132,10 +132,10 @@ Dispatch 1 Flash git history analyst to extract temporal intelligence from the r
 | Churn heatmap | `git log --pretty=format: --name-only -100 \| sort \| uniq -c \| sort -rn \| head -20` | Top 20 most-modified files in last 100 commits |
 | High-risk files | Cross-reference churn with file size/complexity | Files with both high churn AND high line count |
 
-### Chronicle Prompt Template
+### Rings Prompt Template
 
 ```
-<!-- CONTEXT: Genesis Chronicle -->
+<!-- CONTEXT: Genesis Rings -->
 You are a git history analyst. Your job is to extract temporal intelligence from version control.
 You are READ-ONLY — do not create branches, tags, or commits.
 
@@ -150,8 +150,8 @@ Run these commands (or equivalent) to gather data:
 - git log --diff-filter=M --since="3 months ago" --pretty=format: --name-only | sort | uniq -c | sort -rn | head -10
 
 [IF CARTOGRAPHY OUTPUT EXISTS]:
-Cross-reference churn heatmap against Cartography entry points and test files.
-[Cartography output summary]
+Cross-reference churn heatmap against Canopy entry points and test files.
+[Canopy output summary]
 [END IF]
 
 Deliver:
@@ -173,7 +173,7 @@ Deliver:
 - Average release interval: [N days/weeks]
 
 ### Churn Heatmap (top 10 most-modified files, last 100 commits)
-| File | Modifications | Role (from Cartography) |
+| File | Modifications | Role (from Canopy) |
 |:-----|:------------:|:------------------------|
 | [path] | [count] | [source / test / config / etc.] |
 
@@ -187,7 +187,7 @@ Deliver:
 
 ---
 
-## Stage 3: Codex (Architecture Extraction)
+## Stage 3: Taproot (Architecture Extraction)
 
 Dispatch 1–2 Flash architecture analysts to map the system's logical architecture from code.
 
@@ -201,10 +201,10 @@ Dispatch 1–2 Flash architecture analysts to map the system's logical architect
 | External integrations | Detect database drivers, queue clients, cache clients, HTTP clients | Service dependency map with connection patterns |
 | Cross-repo boundaries | Find shared contracts (proto files, OpenAPI specs, shared types) | Boundary inventory: `{shared_schemas: [], api_specs: [], proto_files: []}` |
 
-### Codex Prompt Template
+### Taproot Prompt Template
 
 ```
-<!-- CONTEXT: Genesis Codex -->
+<!-- CONTEXT: Genesis Taproot -->
 You are an architecture analyst. Your job is to extract the logical architecture from code.
 You are READ-ONLY — do not modify any files.
 
@@ -212,12 +212,12 @@ Analyze this repository: [REPO_PATH]
 
 [IF CARTOGRAPHY OUTPUT EXISTS]:
 Use this structure map to focus your search:
-[Cartography output summary — tech stack, directory tree, entry points]
+[Canopy output summary — tech stack, directory tree, entry points]
 [END IF]
 
 [IF CHRONICLE OUTPUT EXISTS]:
-Prioritize high-churn files from Chronicle:
-[Chronicle churn heatmap top 10]
+Prioritize high-churn files from Rings:
+[Rings churn heatmap top 10]
 [END IF]
 
 Scan for:
@@ -262,7 +262,7 @@ Deliver:
 
 ---
 
-## Stage 4: Compass (Contextual Synthesis & Recommendations)
+## Stage 4: Lichen (Contextual Synthesis & Recommendations)
 
 Dispatch 1 Flash governance advisor to synthesize all prior stage outputs into actionable governance configuration.
 
@@ -273,14 +273,14 @@ Dispatch 1 Flash governance advisor to synthesize all prior stage outputs into a
 | Coding conventions | Detect naming style, formatting, error handling patterns | Convention profile (camelCase vs snake_case, linter config, etc.) |
 | Testing patterns | Assess test structure, coverage indicators, test naming conventions | `{pattern: "unit+integration", coverage_tool: "", naming: ""}` |
 | Deployment model | Detect Dockerfiles, CI configs, IaC files (Terraform, Pulumi, CDK) | Deployment profile with detected tooling |
-| Known traps | Cross-reference Chronicle churn + Codex complexity → fragile areas | Trap list: `[{file, reason, recommendation}]` |
+| Known traps | Cross-reference Rings churn + Taproot complexity → fragile areas | Trap list: `[{file, reason, recommendation}]` |
 | Governance config | Recommend which rules to activate, review protocol level | `{rules: [], default_protocol: "", risk_areas: []}` |
 | Context Pre-Seeding | Auto-generate the ~200-token context header for future subagent prompts | Ready-to-use context block |
 
-### Compass Prompt Template
+### Lichen Prompt Template
 
 ```
-<!-- CONTEXT: Genesis Compass -->
+<!-- CONTEXT: Genesis Lichen -->
 You are a governance advisor. Your job is to synthesize codebase intelligence into
 actionable governance configuration. You are READ-ONLY.
 
@@ -302,7 +302,7 @@ Deliver:
 
 ### Testing Patterns
 - Strategy: [unit / integration / e2e / mixed]
-- Framework: [from Cartography]
+- Framework: [from Canopy]
 - Coverage tool: [if detected]
 - Test naming: [describe/it / test_ prefix / @Test / etc.]
 - Approximate test count: [count test files × avg tests per file]
@@ -314,7 +314,7 @@ Deliver:
 - Environments: [detected from config/env files]
 
 ### Known Traps & Gotchas
-[Cross-reference Chronicle churn heatmap with Codex architecture findings]
+[Cross-reference Rings churn heatmap with Taproot architecture findings]
 | File | Signal | Trap | Recommendation |
 |:-----|:-------|:-----|:---------------|
 | [path] | [high churn + complex] | [description] | [mitigation] |
@@ -333,7 +333,7 @@ Deliver:
 [LAYOUT]:
   - `[dir]/`: [3-word role]
 [CONSTRAINTS]:
-  - [Critical invariant or known trap from Compass analysis]
+  - [Critical invariant or known trap from Lichen analysis]
 [OUTPUT]: Max 5 bullets per section. Cite file:line.
 <!-- END CONTEXT -->
 ```
@@ -346,18 +346,18 @@ This block should be ~200 tokens and is used verbatim in all future subagent pro
 
 ## Multi-Repo Mode
 
-When provided multiple repository paths, Genesis runs Stages 1–3 independently for each repo, then runs a single Compass pass that synthesizes across all repositories.
+When provided multiple repository paths, Genesis runs Stages 1–3 independently for each repo, then runs a single Lichen pass that synthesizes across all repositories.
 
 ```
 genesis([repo_a, repo_b, repo_c])
 
-  Stage 1: Cartography(repo_a), Cartography(repo_b), Cartography(repo_c)  ← parallel
-  Stage 2: Chronicle(repo_a), Chronicle(repo_b), Chronicle(repo_c)        ← parallel
-  Stage 3: Codex(repo_a), Codex(repo_b), Codex(repo_c)                    ← parallel
-  Stage 4: Compass(all_outputs)                                            ← single synthesis
+  Stage 1: Canopy(repo_a), Canopy(repo_b), Canopy(repo_c)  ← parallel
+  Stage 2: Rings(repo_a), Rings(repo_b), Rings(repo_c)        ← parallel
+  Stage 3: Taproot(repo_a), Taproot(repo_b), Taproot(repo_c)                    ← parallel
+  Stage 4: Lichen(all_outputs)                                            ← single synthesis
 ```
 
-The Compass stage additionally identifies:
+The Lichen stage additionally identifies:
 - **Shared contracts** between repos (proto files, OpenAPI specs, shared packages)
 - **Deployment coupling** (do repos deploy independently or together?)
 - **Cross-repo churn correlation** (do changes in repo_a frequently accompany changes in repo_b?)
@@ -372,16 +372,16 @@ The Genesis Report is a structured markdown artifact persisted as `genesis-repor
 # Genesis Report — [Project Name]
 > Generated: [timestamp] | Stages: [list] | Repos: [count]
 
-## 🗺️ Cartography
+## 🗺️ Canopy
 [Stage 1 output — tech stack, directory tree, dependencies, entry points, testing]
 
-## 📜 Chronicle
+## 📜 Rings
 [Stage 2 output — branch topology, commit activity, churn heatmap, high-risk files]
 
-## 📖 Codex
+## 📖 Taproot
 [Stage 3 output — API surface, data models, config patterns, integrations, boundaries]
 
-## 🧭 Compass
+## 🧭 Lichen
 [Stage 4 output — conventions, testing patterns, deployment model, traps, governance config]
 
 ## Auto-Generated Context Block
@@ -400,12 +400,12 @@ The Genesis Report is a structured markdown artifact persisted as `genesis-repor
 |:---------|:---------|
 | First run | Full 4-stage scan, produces `genesis-report-[project].md` |
 | Subsequent run (same repo) | Re-runs selected stages, diffs against cached report, highlights changes |
-| Subsequent run (new files detected) | Re-runs Cartography + impacted stages, appends diff section |
+| Subsequent run (new files detected) | Re-runs Canopy + impacted stages, appends diff section |
 | Force full refresh | User says "genesis --fresh" or "re-scan everything" — ignores cache |
 
 The diff section uses standard diff formatting:
 ```diff
-## 🗺️ Cartography
+## 🗺️ Canopy
 - Dependencies: 42 direct, 18 dev
 + Dependencies: 45 direct, 19 dev
   [+3 new: @aws-sdk/client-s3, zod, vitest]
@@ -420,42 +420,42 @@ Genesis output feeds directly into multiple downstream skills and prongs:
 ```
   Genesis                         Downstream Consumer
   ┌─────────────────┐
-  │ 🗺️ Cartography  │ ──────────► Context Pre-Seeding (all subagent prompts)
+  │ 🗺️ Canopy  │ ──────────► Context Pre-Seeding (all subagent prompts)
   │                  │ ──────────► Session Preflight (env verification)
   ├─────────────────┤
-  │ 📜 Chronicle    │ ──────────► Spores (priority ranking by churn)
+  │ 📜 Rings    │ ──────────► Spores (priority ranking by churn)
   │                  │ ──────────► Post-Mortem (historical context)
   ├─────────────────┤
-  │ 📖 Codex        │ ──────────► Mycelium (blast-radius pre-computation)
+  │ 📖 Taproot        │ ──────────► Mycelium (blast-radius pre-computation)
   │                  │ ──────────► Security Audit (attack surface map)
   ├─────────────────┤
-  │ 🧭 Compass      │ ──────────► Staff Review (default protocol selection)
+  │ 🧭 Lichen      │ ──────────► Staff Review (default protocol selection)
   │                  │ ──────────► Governance Auditor (rule activation)
   └─────────────────┘
 ```
 
 | Genesis Stage | Feeds | How |
 |:-------------|:------|:----|
-| Cartography | Context Pre-Seeding | Auto-generated `<!-- CONTEXT -->` block used in all subagent prompts |
-| Cartography | Session Preflight | Tech stack and test runner inform environment verification |
-| Chronicle | Spores | Churn heatmap prioritizes which files scouts examine first |
-| Chronicle | Post-Mortem | Historical contributor and release context |
-| Codex | Mycelium | Pre-computed dependency graph accelerates blast-radius analysis |
-| Codex | Security Audit | API surface and external integrations define the attack surface |
-| Compass | Staff Review | Recommended protocol level becomes the session default |
-| Compass | Governance Auditor | Recommended rules are activated for the project |
+| Canopy | Context Pre-Seeding | Auto-generated `<!-- CONTEXT -->` block used in all subagent prompts |
+| Canopy | Session Preflight | Tech stack and test runner inform environment verification |
+| Rings | Spores | Churn heatmap prioritizes which files scouts examine first |
+| Rings | Post-Mortem | Historical contributor and release context |
+| Taproot | Mycelium | Pre-computed dependency graph accelerates blast-radius analysis |
+| Taproot | Security Audit | API surface and external integrations define the attack surface |
+| Lichen | Staff Review | Recommended protocol level becomes the session default |
+| Lichen | Governance Auditor | Recommended rules are activated for the project |
 
 ---
 
 ## Anti-Patterns
 
 - **Don't modify the repository** — Genesis is strictly read-only reconnaissance. If a stage subagent proposes a fix, discard it. Genesis observes; other skills act.
-- **Don't skip Cartography** — All other stages benefit from structure context. Running Chronicle or Codex without Cartography produces lower-quality output.
-- **Don't run Compass without at least one prior stage** — Compass synthesizes; it needs raw data to synthesize. Running Compass on an empty input produces generic boilerplate.
+- **Don't skip Canopy** — All other stages benefit from structure context. Running Rings or Taproot without Canopy produces lower-quality output.
+- **Don't run Lichen without at least one prior stage** — Lichen synthesizes; it needs raw data to synthesize. Running Lichen on an empty input produces generic boilerplate.
 - **Don't dispatch >2 subagents per stage** — Genesis stages are sequential and focused. Unlike Spores (which benefits from orthogonal lenses), Genesis stages have a single objective each.
 - **Don't cache across major version changes** — If the repo undergoes a major refactor (new framework, language migration), force a fresh Genesis run. Diffing against a stale baseline produces misleading deltas.
 - **Don't substitute Genesis for a review** — Genesis maps the terrain; it does not evaluate quality. Use Staff Review, Spores, or Adaptive Reviewer to assess code quality.
-- **Don't let Compass subagents apply governance config** — Compass *recommends* configuration. The orchestrator presents recommendations to the user, who decides what to activate.
+- **Don't let Lichen subagents apply governance config** — Lichen *recommends* configuration. The orchestrator presents recommendations to the user, who decides what to activate.
 
 ---
 
@@ -463,10 +463,10 @@ Genesis output feeds directly into multiple downstream skills and prongs:
 
 | Role | Model | Rationale |
 |:-----|:------|:----------|
-| Cartography scanner | `flash` | File-system traversal, manifest parsing, structured output |
-| Chronicle analyst | `flash` | Git command execution, quantitative analysis, heatmap generation |
-| Codex analyst | `flash` | Pattern matching on code (routes, schemas, configs), structured tables |
-| Compass advisor | `flash` | Synthesis of prior outputs, governance recommendation, template generation |
+| Canopy scanner | `flash` | File-system traversal, manifest parsing, structured output |
+| Rings analyst | `flash` | Git command execution, quantitative analysis, heatmap generation |
+| Taproot analyst | `flash` | Pattern matching on code (routes, schemas, configs), structured tables |
+| Lichen advisor | `flash` | Synthesis of prior outputs, governance recommendation, template generation |
 | Report synthesizer | orchestrator (self) | Cross-stage reconciliation, diff generation, artifact persistence |
 
 ---
@@ -475,10 +475,10 @@ Genesis output feeds directly into multiple downstream skills and prongs:
 
 - **"What is this codebase?"** — Full Genesis (all 4 stages)
 - **"Onboard me"** / **"I'm new to this repo"** — Full Genesis + present Context Pre-Seeding block
-- **"Map this repo"** / **"Show me the structure"** — Cartography only
-- **"Where are the hot spots?"** — Cartography + Chronicle
-- **"How is this system architected?"** — Cartography + Codex
-- **"Set up governance for this project"** — Full Genesis (Compass needs all prior stages for good recommendations)
+- **"Map this repo"** / **"Show me the structure"** — Canopy only
+- **"Where are the hot spots?"** — Canopy + Rings
+- **"How is this system architected?"** — Canopy + Taproot
+- **"Set up governance for this project"** — Full Genesis (Lichen needs all prior stages for good recommendations)
 - **"What changed since last scan?"** — Re-run Genesis with cache diff
 
 ## When NOT to Use

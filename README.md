@@ -72,7 +72,7 @@ flowchart LR
 | [adaptive-reviewer](skills/adaptive-reviewer/SKILL.md) | 🔬 Auto-escalating review orchestrator with subagent nesting (E11 — TESTING). |
 | [code-review](skills/code-review/SKILL.md) | Staff Engineer: architectural flaws, race conditions, SOLID violations. |
 | [domain-researcher](skills/domain-researcher/SKILL.md) | Compiles verified external facts (wikis, API docs, papers). |
-| [genesis](skills/genesis/SKILL.md) | 4-stage codebase onboarding: Cartography → Chronicle → Codex → Compass. |
+| [genesis](skills/genesis/SKILL.md) | 4-stage codebase onboarding: Canopy → Rings → Taproot → Lichen. |
 | [governance-auditor](skills/governance-auditor/SKILL.md) | Mechanical per-rule PASS/FAIL compliance checks. |
 | [incident-debug](skills/incident-debug/SKILL.md) | SRE: reproduce → isolate → diagnose → fix → verify. |
 | [performance-audit](skills/performance-audit/SKILL.md) | Hot-path allocations, O(n²) patterns, GC pressure. |

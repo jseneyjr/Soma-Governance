@@ -213,7 +213,7 @@ Analysis of 66 production sessions (618 user turns, 4,913 assistant turns, 4,945
 - Key finding: delegation was used only for context saving, never for adversarial second opinions, until governance skills were installed
 
 ### Genesis Skill (E18)
-- 4-stage codebase onboarding reconnaissance: Cartography → Chronicle → Codex → Compass
+- 4-stage codebase onboarding reconnaissance: Canopy → Rings → Taproot → Lichen
 - Read-only: produces structured intelligence artifact, never modifies the repo
 - Fills gap between session-preflight (env health) and Spores (problem survey) — Genesis surveys for *understanding*
 - Output feeds Context Pre-Seeding blocks, Spores priority, Mycelium blast-radius, and governance configuration
