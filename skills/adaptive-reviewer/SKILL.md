@@ -1,6 +1,6 @@
 ---
 name: Adaptive Review Orchestrator
-description: Autonomous review orchestrator with subagent nesting. Auto-selects protocol (Gale/Trident/Maelstrom/Tempest) based on Spores findings. Dispatches its own sub-subagents for each prong. Activate when running any review protocol — replaces manual protocol orchestration.
+description: "🔬 EXPERIMENTAL (E11 TESTING) — Autonomous review orchestrator with subagent nesting. Auto-selects protocol (Gale/Trident/Maelstrom/Tempest) based on Spores findings. Dispatches its own sub-subagents for each prong. Verify in next sweep."
 trigger: user_request
 ---
 

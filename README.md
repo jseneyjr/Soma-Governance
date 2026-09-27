@@ -69,7 +69,7 @@ flowchart LR
 
 | Skill | Purpose |
 |:------|:--------|
-| [adaptive-reviewer](skills/adaptive-reviewer/SKILL.md) | Auto-escalating review orchestrator with subagent nesting (E11). |
+| [adaptive-reviewer](skills/adaptive-reviewer/SKILL.md) | 🔬 Auto-escalating review orchestrator with subagent nesting (E11 — TESTING). |
 | [code-review](skills/code-review/SKILL.md) | Staff Engineer: architectural flaws, race conditions, SOLID violations. |
 | [domain-researcher](skills/domain-researcher/SKILL.md) | Compiles verified external facts (wikis, API docs, papers). |
 | [governance-auditor](skills/governance-auditor/SKILL.md) | Mechanical per-rule PASS/FAIL compliance checks. |
