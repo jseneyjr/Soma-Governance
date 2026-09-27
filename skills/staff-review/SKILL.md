@@ -288,13 +288,37 @@ If critical findings exist, orchestrator must fix before continuing.
 
 When a staff review identifies that specialist analysis is needed, the orchestrator can activate dedicated skills as additional reviewers:
 
+### Discovery & Context (activate during RECON)
+
 | Need | Skill | How |
 |:-----|:------|:----|
 | Domain knowledge gaps | `domain-researcher` | Dispatch with project context + specific questions |
-| Multiple reports need consolidation | `spec-synthesizer` | Dispatch with artifact list + constraints |
-| Active session needs monitoring | `session-monitor` | Activate with session ID + alert thresholds |
-| Rule compliance unclear | `governance-auditor` | Dispatch with transcript path |
 | Screenshot/UI evidence needed | `visual-analyst` | Dispatch with image paths |
+| Performance hot-paths suspected | `performance-audit` | Dispatch with hot-path file list + profiling data |
+| Environment/infra issues found | `session-preflight` | Activate to verify venv, git state, display health |
+
+### Depth & Fix Proposal (activate during Roots)
+
+| Need | Skill | How |
+|:-----|:------|:----|
+| Large restructuring needed | `refactoring-pilot` | Dispatch with Mikado graph + file list |
+| Live bug found during review | `incident-debug` | Dispatch with error logs + reproduction steps |
+| Multiple reports need consolidation | `spec-synthesizer` | Dispatch with artifact list + constraints |
+
+### Adversarial & Compliance (activate during Thorns)
+
+| Need | Skill | How |
+|:-----|:------|:----|
+| Security bypass vectors suspected | `security-audit` | Dispatch with OWASP focus + auth/input files |
+| Rule compliance unclear | `governance-auditor` | Dispatch with transcript path |
+
+### Post-Review (activate standalone)
+
+| Need | Skill | How |
+|:-----|:------|:----|
+| Active session needs monitoring | `session-monitor` | Activate with session ID + alert thresholds |
+| Retrospective analysis needed | `post-mortem` | Dispatch with session transcript + metrics |
+| Documentation refresh needed | `readme-writer` | Dispatch with changed file list + project context |
 
 Specialists run as **Flash subagents** and report back like standard reviewers. The orchestrator synthesizes their findings alongside the standard lens results. Specialists may also be activated independently outside of a staff review when the user requests their specific capability.
 
