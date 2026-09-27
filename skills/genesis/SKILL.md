@@ -18,7 +18,7 @@ aliases: ["genesis", "init", "onboard", "explore", "map this repo", "what is thi
 | 3 | 📖 **Taproot** | Architecture Analyst | 1–2 | API surface, data models, config patterns, external integrations, cross-repo boundaries |
 | 4 | 🧭 **Lichen** | Governance Advisor | 1 | Conventions, test patterns, deployment model, traps, governance config, Context Pre-Seeding |
 | 5 | 🔬 **Cytogenesis**| Cell Generator | 1 | Repo-specific cells: Vacuoles (traps), Cell Walls (boundaries), Membranes (escalation overrides) |
-| 5 | 🧫 **Cytogenesis** | Cell Generator | 1 | Vacuoles (traps), Cell Walls (boundaries), Membranes (overrides), Chloroplasts (personas) |
+| 5 | 🧫 **Cytogenesis** | Cell Generator | 1 | Vacuoles (traps), Cell Walls (boundaries), Membranes (overrides), Chloroplasts (personas), Plasmodesmata (connections) |
 
 **Total dispatches**: 5–7 Flash subagents across all stages.
 
@@ -401,6 +401,7 @@ Dispatch 1 Flash cytogenesis orchestrator to read the Lichen output and generate
 | Vacuoles (Traps) | For each identified trap/anti-pattern from Lichen | Generate a Vacuole cell in `.gemini/cells/vacuoles/trap-<slugified-name>.md` |
 | Cell Walls (Boundaries) | Detect security-sensitive paths (auth/, secrets/, .env files, config/credentials) | Generate a Cell Wall in `.gemini/cells/walls/wall-<slugified-name>.md` |
 | Membranes (Escalation) | Identify high-risk directories (migrations/, infrastructure/, deploy/) | Generate a Membrane in `.gemini/cells/membranes/membrane-<slugified-name>.md` |
+| Plasmodesmata (Connections) | Detect multi-service patterns (API clients, shared DBs, event channels, import references to other repos) | Generate a Plasmodesmata cell in `.gemini/cells/plasmodesmata/<connection-name>.md` |
 
 ### Cell Formats
 
@@ -466,6 +467,31 @@ fitness:
 ---
 ## Escalation Override: <area>
 <what gets escalated and why>
+```
+
+#### Plasmodesmata
+```yaml
+---
+type: plasmodesmata
+hypothesis: "This repo connects to <target> via <mechanism>"
+prediction: "Changes to <interface> may break <target>"
+falsification: "0 cross-repo incidents in 15 sessions → prune"
+expiry_sessions: 15
+expiry_days: 60
+created: <date>
+impact_weight: 1.3
+connection:
+  target_repo: "<repo name or service>"
+  mechanism: "REST API | shared DB | event bus | file import"
+  shared_resource: "<table name, API endpoint, topic, etc>"
+fitness:
+  triggers: 0
+  true_positives: 0
+  false_positives: 0
+  score: null
+---
+## Connection: <source> → <target>
+<description of the cross-repo relationship>
 ```
 
 ---

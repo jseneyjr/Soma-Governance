@@ -12,6 +12,7 @@ def main():
     parser.add_argument("--json", action="store_true", help="Output as JSON")
     parser.add_argument("--prune", action="store_true", help="List cells recommended for removal")
     parser.add_argument("--promote", action="store_true", help="List cells ready for cross-repo promotion")
+    parser.add_argument("--cross-repo", action="store_true", help="Aggregate fitness across multiple repos in METRICS_REPO")
     args = parser.parse_args()
 
     cells_dir = os.path.join(os.path.dirname(__file__), '..', '.gemini', 'cells')
@@ -79,6 +80,7 @@ def main():
         results.append({
             "cell": cell_name,
             "type": cell_type,
+            "hypothesis": metadata.get('hypothesis', ''),
             "triggers": triggers,
             "tp": tp,
             "fp": fp,
@@ -90,6 +92,86 @@ def main():
         results = [r for r in results if r['status'] in ("EXTINCT", "DORMANT")]
     elif args.promote:
         results = [r for r in results if r['score'] is not None and r['score'] > 0.7]
+
+    if args.cross_repo:
+        def resolve_workspace():
+            d = os.path.dirname(os.path.abspath(__file__))
+            while d != os.path.dirname(d):
+                if os.path.isdir(os.path.join(d, "rules")) and os.path.isdir(os.path.join(d, "skills")):
+                    return d
+                d = os.path.dirname(d)
+            return os.getcwd()
+            
+        def resolve_metrics_dir(workspace):
+            metrics_repo = os.environ.get("METRICS_REPO")
+            if not metrics_repo:
+                conf_path = os.path.join(workspace, "steering.conf")
+                if os.path.exists(conf_path):
+                    with open(conf_path) as f:
+                        for line in f:
+                            line = line.strip()
+                            if line.startswith("METRICS_REPO=") and not line.startswith("#"):
+                                metrics_repo = line.split("=", 1)[1].strip().strip('"').strip("'")
+                                break
+            if metrics_repo:
+                return os.path.expanduser(metrics_repo)
+            return os.path.join(workspace, "docs", "snapshots")
+            
+        workspace = resolve_workspace()
+        metrics_dir = resolve_metrics_dir(workspace)
+        
+        # Look for JSON files in metrics_dir that might be cell fitness snapshots
+        # A cell fitness snapshot is assumed to contain a list of objects with 'hypothesis', 'score', and 'repo'
+        # or we infer repo from filename if 'repo' is missing.
+        snapshots = glob.glob(os.path.join(metrics_dir, '**', '*.json'), recursive=True)
+        
+        # Group by hypothesis
+        hypothesis_stats = {}
+        for snap in snapshots:
+            try:
+                with open(snap, 'r') as f:
+                    data = json.load(f)
+                if not isinstance(data, list):
+                    continue
+                    
+                # Infer repo from filename if not in data: e.g. "repoA-fitness.json"
+                filename = os.path.basename(snap)
+                inferred_repo = filename.split('-')[0] if '-' in filename else filename.split('.')[0]
+                
+                for item in data:
+                    if 'hypothesis' in item and 'score' in item and item['score'] is not None:
+                        hyp = item['hypothesis']
+                        repo = item.get('repo', inferred_repo)
+                        if hyp not in hypothesis_stats:
+                            hypothesis_stats[hyp] = {'repos': set(), 'scores': []}
+                        hypothesis_stats[hyp]['repos'].add(repo)
+                        hypothesis_stats[hyp]['scores'].append(item['score'])
+            except Exception:
+                continue
+                
+        cross_repo_results = []
+        for hyp, stats in hypothesis_stats.items():
+            avg_score = sum(stats['scores']) / len(stats['scores']) if stats['scores'] else 0
+            repos_count = len(stats['repos'])
+            candidate = "Yes" if avg_score > 0.7 and repos_count >= 3 else "No"
+            cross_repo_results.append({
+                "hypothesis": hyp,
+                "repos": repos_count,
+                "avg_fitness": avg_score,
+                "candidate": candidate
+            })
+            
+        if args.json:
+            print(json.dumps(cross_repo_results, indent=2))
+        else:
+            print(f"{'Cell Hypothesis':<50} | {'Repos':<5} | {'Avg Fitness':<11} | {'Candidate?':<10}")
+            print("-" * 85)
+            for r in cross_repo_results:
+                hyp = r['hypothesis']
+                if len(hyp) > 47:
+                    hyp = hyp[:44] + "..."
+                print(f"{hyp:<50} | {r['repos']:<5} | {r['avg_fitness']:<11.2f} | {r['candidate']:<10}")
+        return
 
     if args.json:
         print(json.dumps(results, indent=2))

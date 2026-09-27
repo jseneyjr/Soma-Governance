@@ -323,9 +323,9 @@ For each cell in .gemini/cells/:
 
 ---
 
-## Phase 14: Evolutionary Dynamics — Cross-Repo Natural Selection *(Concept)*
+## Phase 14: Evolutionary Dynamics — Cross-Repo Natural Selection
 
-**Concept**: Phase 13 generates and evaluates cells within a single repo. Phase 14 extends this across repos and over time, enabling the system to discover its own universal rules. This phase only becomes meaningful when enough repos have cells with enough fitness history to identify convergent patterns.
+Phase 14 extends Phase 13's local cell generation across repos and over time, enabling the system to discover its own universal rules. This phase is fully implemented with 4 core components that build the feedback loops for natural selection.
 
 ### Evolutionary Mechanisms
 
