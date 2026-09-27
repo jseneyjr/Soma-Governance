@@ -89,7 +89,8 @@ case "$PLATFORM" in
 
   kiro)
     TARGET_RULES="$HOME/.kiro/steering"
-    mkdir -p "$TARGET_RULES"
+    TARGET_SKILLS="$HOME/.kiro/skills"
+    mkdir -p "$TARGET_RULES" "$TARGET_SKILLS"
 
     count=0; skipped=0
     for rule in "$SOURCE_DIR"/*.md; do
@@ -108,11 +109,30 @@ case "$PLATFORM" in
       count=$((count + 1))
     done
 
+    # Install skills (parity with Gemini)
+    skill_count=0
+    if [ -d "$SKILLS_SOURCE" ]; then
+      for skill in "$SKILLS_SOURCE"/*/; do
+        skill_name="$(basename "$skill")"
+        backup_dir "$TARGET_SKILLS/$skill_name"
+        # Remove existing to prevent nesting
+        [ -d "$TARGET_SKILLS/$skill_name" ] && rm -rf -- "$TARGET_SKILLS/$skill_name"
+        cp -r -- "$skill" "$TARGET_SKILLS/$skill_name"
+        log_info "skill/$skill_name"
+        skill_count=$((skill_count + 1))
+      done
+    fi
+
     # Team overrides (parity with Gemini)
     apply_team_overrides "$TARGET_RULES"
 
+    # Hooks (Kiro uses individual .kiro.hook files, not hooks.json)
+    if [ "$ENABLE_HOOKS" = "true" ]; then
+      install_hooks "$REPO_DIR" "$HOME/.kiro/hooks"
+    fi
+
     echo ""
-    echo "Done! Installed $count rules to $TARGET_RULES"
+    echo "Done! Installed $count rules, $skill_count skills to $TARGET_RULES"
     [ "$skipped" -gt 0 ] && echo "  ($skipped rules skipped — not in $RULES_SUBSET subset)"
     echo "Rules with 'inclusion: always' are active on every interaction."
     echo "Rules with 'inclusion: manual' can be referenced via #rulename."

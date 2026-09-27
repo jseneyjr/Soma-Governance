@@ -79,7 +79,13 @@ uninstall: ## Remove installed rules, skills, and hooks
 	  kiro) \
 	    echo "  Removing rules from ~/.kiro/steering/"; \
 	    rm -rf ~/.kiro/steering/; \
-	    echo "Done!"; \
+	    echo "  Removing skills from ~/.kiro/skills/"; \
+	    for skill in adaptive-reviewer code-review domain-researcher genesis governance-auditor incident-debug performance-audit post-mortem readme-writer refactoring-pilot security-audit session-monitor session-preflight spec-synthesizer staff-review visual-analyst; do \
+	      rm -rf ~/.kiro/skills/$$skill; \
+	    done; \
+	    echo "  Removing hooks from ~/.kiro/hooks/"; \
+	    rm -f ~/.kiro/hooks/hooks.json; \
+	    echo "Done! Rules, skills, and hooks removed."; \
 	    ;; \
 	  copilot) \
 	    echo "  Removing ~/copilot-instructions.md"; \
@@ -110,7 +116,12 @@ doctor: ## Verify installation health & dependencies
 	@case "$(STEERING_PLATFORM)" in \
 	  gemini) ls ~/.gemini/config/rules/*.md 2>/dev/null | while read f; do echo "  ✅ $$(basename $$f)"; done || echo "  (none)"; \
 	    if [ -f ~/.gemini/config/plugins/governance/hooks.json ]; then echo "  ✅ hooks.json installed"; else echo "  ⚠️  hooks.json not installed"; fi ;; \
-	  kiro) ls ~/.kiro/steering/*.md 2>/dev/null | while read f; do echo "  ✅ $$(basename $$f)"; done || echo "  (none)" ;; \
+	  kiro) ls ~/.kiro/steering/*.md 2>/dev/null | while read f; do echo "  ✅ $$(basename $$f)"; done || echo "  (none)"; \
+	    echo ""; \
+	    echo "Installed skills (kiro):"; \
+	    if [ -d ~/.kiro/skills ]; then \
+	      ls -d ~/.kiro/skills/*/ 2>/dev/null | while read d; do echo "  ✅ $$(basename $$d)"; done || echo "  (none)"; \
+	    else echo "  (none — ~/.kiro/skills/ not found)"; fi ;; \
 	  copilot) if [ -f ~/copilot-instructions.md ]; then echo "  ✅ ~/copilot-instructions.md"; else echo "  (none)"; fi ;; \
 	esac
 
@@ -140,7 +151,13 @@ status: ## Show installed vs repo diff
 	    elif diff -q "$$rule" "$$target" > /dev/null 2>&1; then echo "  ✅ $$name (in sync)"; \
 	    else echo "  ⚠️  $$name (modified)"; fi; \
 	  done ;; \
-	  *) echo "  Status check only supported for gemini platform" ;; \
+	  kiro) for rule in rules/*.md; do \
+	    name=$$(basename $$rule); \
+	    target=~/.kiro/steering/$$name; \
+	    if [ ! -f "$$target" ]; then echo "  ❌ $$name (not installed)"; \
+	    else echo "  ✅ $$name (installed)"; fi; \
+	  done ;; \
+	  *) echo "  Status check only supported for gemini and kiro platforms" ;; \
 	esac
 
 test: validate ## Run validation tests
