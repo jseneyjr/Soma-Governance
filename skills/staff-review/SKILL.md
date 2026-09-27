@@ -301,7 +301,7 @@ Output: {broken: [{fix_id, how, severity}], survived: [fix_ids]}
 | Feature | Trident | Spores + Roots + Bedrock | Blast radius check needed |
 | Architecture | Maelstrom | Spores + Roots + Thorns + Bedrock | High blast radius + adversarial edge cases |
 | Security/governance | Maelstrom | Spores + Roots + Thorns + Bedrock | Must verify no bypass vectors |
-| Schema migration / infra | Tempest | All 6 + Mycelium + Mulch | Cross-repo impact + post-ship learnings |
+| Schema migration / infra | Tempest | All 6 prongs | Cross-repo impact + post-ship learnings |
 | Post-mortem | Standalone | Spores only | Findings, not fixes |
 
 ---
