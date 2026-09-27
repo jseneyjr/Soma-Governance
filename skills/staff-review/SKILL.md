@@ -5,20 +5,28 @@ trigger: user_request
 ---
 # Staff Review Protocol
 
-> **Role**: Orchestrates expert reviews from independent perspectives, then synthesizes findings into a single fact-checked, actionable artifact. Supports two review modes based on depth requirements.
+> **Role**: Orchestrates expert reviews from independent perspectives, then synthesizes findings into a single fact-checked, actionable artifact. Supports multiple review modes based on depth requirements.
 
 ## Review Modes
 
-| Mode | Rounds | Flash Dispatches | Token Cost | When to Use |
-|:-----|:------:|:----------------:|:----------:|:------------|
-| **Standard** | 1 | 3–4 | ~4k tokens | Quick reviews, known domains, minor changes |
-| **Trident** | 2–3 | 5–8 | ~8–12k tokens | Architecture changes, unfamiliar code, high-risk refactors |
+| Mode | Alias | Rounds | Flash Dispatches | Token Cost | When to Use |
+|:-----|:------|:------:|:----------------:|:----------:|:------------|
+| **Salvo** | "salvo", "quick review" | 1 | 3–4 | ~4k tokens | Quick reviews, known domains, minor changes |
+| **Trident** | "trident", "deep review", "full review" | 2–3 | 5–8 | ~8–12k tokens | Architecture changes, unfamiliar code, high-risk refactors |
 
-The orchestrator selects the mode based on scope. When the user says "deep review", "full review", or "trident", use the Trident Protocol. Default to Standard for routine reviews.
+Individual Trident prongs can be run standalone:
+
+| Prong | Alias | What It Does |
+|:------|:------|:-------------|
+| **RECON** | "recon", "scout" | Broad parallel survey — finds problems, ranks by severity, no fixes |
+| **STRIKE** | "strike", "deep dive" | Focused analysis on specific findings — proposes concrete fixes |
+| **FORTIFY** | "fortify", "verify" | Verification gate — checks blast radius, pass/fail on proposed changes |
+
+The orchestrator selects the mode based on user request. Default to Salvo for routine reviews. When the user says "trident", "deep review", or "full review", use the Trident Protocol.
 
 ---
 
-## Standard Protocol (Single-Pass)
+## Salvo Protocol (Single-Pass)
 
 ### Phase 1: Fan-Out (Independent Analysis)
 
