@@ -38,6 +38,25 @@ Choose protocol by **failure severity**, not scope:
 
 The orchestrator selects the mode based on risk level. Default to Gale for routine reviews. Maelstrom for anything that could be exploited or bypassed.
 
+### Incremental Escalation
+
+When the user upgrades a review mid-session (e.g., "actually run a maelstrom"), **do not restart from scratch**. Map completed work to the new protocol's prongs and execute only the delta:
+
+| Already Done | Upgrade To | Execute Only |
+|:-------------|:-----------|:-------------|
+| Gale (fan-out) | Trident | Map fan-out → RECON, then run Roots + Bedrock |
+| Trident (RECON + Roots) | Maelstrom | Inject Thorns on existing Roots output, then Bedrock |
+| Trident (full) | Maelstrom | Inject Thorns, re-run Bedrock with adversarial context |
+
+### Empirical Refutation Gate
+
+Before accepting any critical finding from a review phase as actionable, require **at least one of**:
+- A concrete `file:line` citation verified against the actual codebase
+- An executable reproduction (failing test, script, or command)
+- Independent mechanical verification (math check, grep confirmation)
+
+Speculative findings without grounded evidence are logged as ℹ️ info, not promoted to 🔴 critical. This eliminates the ~80% false-positive rate observed in cooperative-only LLM review (Agarwal 2026).
+
 ---
 
 ## Gale Protocol (Single-Pass)

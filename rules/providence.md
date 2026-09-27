@@ -41,6 +41,7 @@ Before making a technical assertion or implementing a change, you must verify th
 ## 7. No Silent Workarounds
 - **Fix Root Causes**: Never patch application code to hide environment or infrastructure defects (e.g., wrapping imports in try/except to swallow broken dependencies). Always fix the underlying issue first.
 - **Workaround Disclosure**: If a workaround is truly the only option, explicitly flag it as a workaround, explain why the root fix is not possible, and get user approval before applying.
+- **Diagnose Before Repair**: Never write a fix until the root cause is identified. When debugging a failure, emit a structured diagnosis first (`failure_mode`, `root_cause`, `broken_invariant`, `fix_spec`) before drafting any code change. This prevents symptom-patching loops where agents add `try/except`, null checks, or retries without understanding the underlying defect.
 
 ## 8. Environment Identity Verification
 - **Verify Before Mutating**: Before running any package installation (`pip install`, `npm install`) or environment mutation, explicitly verify which environment/venv is being targeted by checking `which python`, `which pip`, or equivalent.

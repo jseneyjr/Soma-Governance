@@ -75,3 +75,20 @@ Every subagent prompt should prepend a compact context block (~200 tokens) to el
 - **Prompt Cleanup**: Kill completed subagents immediately upon receiving their completion debrief rather than deferring to a batch kill_all. If zero files were produced, explicitly state that and explain why.
 - **No Collateral Kills**: Never use `kill_all` when sibling subagents from the same fan-out are still running. Kill only the completed subagent by its `ConversationId`. Premature `kill_all` forces the orchestrator to redo in-flight work manually.
 - **Read-Only Awareness**: Research subagents cannot write files. Instruct them to return results via `send_message`, not file creation. Only subagents with write tools can create or modify files.
+
+## 6. Boundary Verification Protocol
+Before acting on subagent findings, the orchestrator **must verify claims against the actual codebase**:
+- **File existence**: Confirm cited file paths exist (`list_dir` or `view_file`)
+- **Line accuracy**: Spot-check that cited line numbers contain the claimed content
+- **Symbol validity**: Verify function/class names exist where claimed (`grep_search`)
+- **Numeric claims**: Independently verify any aggregate math (sums, percentages, counts)
+
+If a subagent cites a file:line that does not match reality, discard that finding and flag the subagent's report as partially ungrounded. Never propagate unverified claims downstream — hallucinations compound across agent boundaries.
+
+## 7. Orthogonal Persona Mandate
+When dispatching 2+ review subagents in the same phase, assign **conflicting analytical incentives**:
+- ❌ **Banned**: 3 reviewers all tasked with "review this code for issues"
+- ✅ **Required**: Orthogonal lenses (e.g., correctness verifier, performance minimalist, adversarial red-team)
+
+Homogeneous reviewers converge on the same findings via consensus bias, wasting tokens. Orthogonal personas with different success criteria (one rewarded for finding waste, another for finding bugs, another for finding security issues) maximize coverage per token spent.
+

@@ -18,8 +18,13 @@ trigger: always_on
 
 ## 3. Subagent Model Selection
 - See `subagent-delegation.md §3` for full model tiering protocol. Summary: Flash for research, Inherit for coding, Pro only for deep architectural reasoning.
+- **Mechanical Diff Application**: When Roots/Thorns has already produced exact before/after diffs, applying those diffs is syntactic — use `flash` tier, never `inherit` or `pro`.
 
 ## 4. Task Hygiene
 - **Kill Stale Tasks**: Before spawning a new background command for a task you've already attempted, kill the previous hanging/timed-out task first.
 - **No Task Accumulation**: Never allow more than 3 concurrent background tasks for the same logical operation.
 - **No Bulk Media in Brain**: Never copy large batches of media files or datasets (>10 files) into the brain scratch directory. Process media in-place or stage in a project-local temp directory.
+
+## 5. Efficiency Metrics
+- **Waste Rate**: Percentage of steps that produce no useful output (target: <5%).
+- **First-Pass Success Rate (FPSR)**: Percentage of initial code writes that pass tests without revision (target: >80%). Low FPSR indicates guess-and-check patterns, missing spec validation, or inadequate context gathering. When FPSR drops below 50%, stop coding and diagnose the root cause.
