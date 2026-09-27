@@ -141,6 +141,38 @@ Tempest #1–#4 and Gale review overhauled the build system, security gate, runt
 
 **Impact on rules:** Added Mandatory Mechanical Verification for Arithmetic (`providence.md §2`) and Mulch Execution Invariant (`subagent-delegation.md §5`). Consolidated model tiering authority in `cost-optimization.md §3`.
 
+## Phase 10: Autonomous Orchestration & Cross-Conversation Intelligence
+
+Tempest #5 cross-conversation analysis of 2 sessions (2,904 total steps) unlocked subagent nesting, adaptive protocol selection, and empirical experiment validation:
+
+### Subagent Nesting (E11)
+- **Discovery**: `define_subagent` supports `enable_subagent_tools: true` — subagents can dispatch their own sub-subagents. E11 was incorrectly marked BLOCKED for months.
+- **Breeze POC**: Review orchestrator autonomously dispatched Roots + Bedrock scouts, synthesized findings, and reported back. Zero parent context consumed on coordination.
+- **Maelstrom POC**: Adaptive reviewer ran full Spores → Roots → Thorns → Roots-Retry → Bedrock pipeline (8 dispatches) with auto-escalation based on finding severity. Thorns caught 3 broken + 5 weakened fixes before shipping.
+
+### Adaptive Review Orchestrator (E11 + E14)
+- **Auto-escalation**: Instead of manually selecting protocols, the orchestrator starts with Spores and decides escalation level based on empirical findings — 0 🔴 = Gale, any 🔴 = Trident, 2+ 🔴 or security = Maelstrom, infra/auth = Tempest.
+- **Self-healing**: If Bedrock returns BLOCK, orchestrator auto-revises via Roots-Retry (max 1 cycle) without parent intervention.
+- **Installed as skill**: `skills/adaptive-reviewer/SKILL.md` (🔬 EXPERIMENTAL, pending multi-project validation).
+
+### Escalation Sentinel (E14)
+- **`scripts/escalation_sentinel.sh`**: Zero-token hook classifying files by sensitivity (HIGH: scripts/infra/auth, MEDIUM: rules/code, LOW: docs/README) and recommending minimum protocol level.
+- **Phase Gate Enforcement**: `providence.md §9` strengthened with 3 concrete rules extracted from `f8b82d61` post-mortem — "No Coding While Scouting", "Conflicting Commands" serialization, and escalation sentinel integration.
+- **Empirical validation**: docs→GALE, scripts→MAELSTROM, single-file→BREEZE (100% correct on 3 test cases).
+
+### Maelstrom Security & Portability Hardening (13 fixes)
+- **Security**: Scoped `git add` staging (S1), safe config parser replacing `source` (S2), chained command gate bypass (S3), Python injection fix (S4), pre-truncation secret redaction (S5), JSON serialization via `python3 json.dumps` (S6).
+- **Portability**: `fuser`/`lsof` fallback (P1), 15 POSIX regex conversions (P2), `flock`/`mkdir` fallback across 3 scripts (P3), `date -Iseconds` → POSIX across 5 locations (P4), metadata regeneration gating (P5), `grep -P` removal (P6), dead code cleanup (P7).
+- **Thorns value proof**: Without adversarial testing, `git add .` would have permanently dropped governance data, config parser would have rejected quoted values, and gate logger would have leaked partial tokens at byte boundaries.
+
+### Cross-Conversation Analysis
+- **Experiment signals**: Analyzed E14/E15/E16/E17 across both sessions. Found E15 was write-only (governance_init.sh had zero mulch_queue.jsonl reading code). Added E16 (consumer) and E17 (max 2 Tempests/session).
+- **Diminishing returns proven**: Tempest #1 found 7 critical breaks; Tempests #2–#4 found 0. After the first Tempest, every subsequent review found only formatting and count synchronization.
+- **f8b82d61 post-mortem**: Phase inversion traced to Step 464 — 3 coding lanes launched while 5 research scouts were active. 16 files of dead code written against obsolete 8-protocol architecture. Led directly to E14 phase gate rules.
+- **15 skills, 17 experiments** (E1–E17), **9 scripts** (12th added: `escalation_sentinel.sh`).
+
+**Impact on rules:** Phase Gate Enforcement strengthened in `providence.md §9` with 3 concrete anti-patterns. `adaptive-reviewer` skill added. `escalation_sentinel.sh` script added. E11/E14 advanced to TESTING. E16/E17 proposed.
+
 ## The Compound Effect
 
 ```
@@ -161,9 +193,11 @@ Empirical Falsification & Research Grounding → Refutation Gate, Boundary Verif
 Spectrum Completion & Lifecycle Extraction → Breeze/Tempest, Mycelium/Mulch, 5 modes, 6 prongs, 7 escalation paths
     ↓
 Tempest Hardening → Unified installer, shared library, dynamic hooks, safety gate hardening, docs consolidation
+    ↓
+Autonomous Orchestration → Subagent nesting, adaptive auto-escalation, escalation sentinel, 15 skills, 17 experiments
 ```
 
-Compliance went from **7.8/10 to 9.8/10** and waste dropped from **~56% to 1.1%** in best-governed sessions — see [METRICS.md](METRICS.md) for the full breakdown. The rules now cover failure modes that no amount of upfront design would have predicted.
+Compliance went from **7.8/10 to 9.8/10** and waste dropped from **~56% to 1.1%** in best-governed sessions — see [METRICS.md](METRICS.md) for the full breakdown. The rules now cover failure modes that no amount of upfront design would have predicted. Phase 10 introduced self-evolving orchestration — the system now decides its own review depth and heals its own defective fixes autonomously.
 
 ## Design Principles (Emerged, Not Prescribed)
 
