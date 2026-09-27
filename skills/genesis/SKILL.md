@@ -17,7 +17,6 @@ aliases: ["genesis", "init", "onboard", "explore", "map this repo", "what is thi
 | 2 | 📜 **Rings** | Git History Analyst | 1 | Branch topology, commit frequency, churn heatmap, high-risk files |
 | 3 | 📖 **Taproot** | Architecture Analyst | 1–2 | API surface, data models, config patterns, external integrations, cross-repo boundaries |
 | 4 | 🧭 **Lichen** | Governance Advisor | 1 | Conventions, test patterns, deployment model, traps, governance config, Context Pre-Seeding |
-| 5 | 🔬 **Cytogenesis**| Cell Generator | 1 | Repo-specific cells: Vacuoles (traps), Cell Walls (boundaries), Membranes (escalation overrides) |
 | 5 | 🧫 **Cytogenesis** | Cell Generator | 1 | Vacuoles (traps), Cell Walls (boundaries), Membranes (overrides), Chloroplasts (personas), Plasmodesmata (connections) |
 
 **Total dispatches**: 5–7 Flash subagents across all stages.
