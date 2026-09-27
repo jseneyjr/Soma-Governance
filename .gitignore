@@ -8,6 +8,7 @@ hooks.json
 governance/*.lock
 governance/*.log
 governance/mulch_queue.jsonl
+docs/snapshots/
 
 # Raw session logs & postmortem data (masked exports live in docs/, not here)
 agent-session-postmortem/
@@ -31,3 +32,7 @@ Thumbs.db
 *.swp
 *~
 *.bak
+docs/postmortem-work-sessions.md
+
+# Cell fitness tracking (private telemetry)
+.gemini/cells/fitness.jsonl

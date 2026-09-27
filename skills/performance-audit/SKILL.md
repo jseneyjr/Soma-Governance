@@ -1,9 +1,6 @@
 ---
 name: performance-audit
-description: >-
-  Performance analysis focusing on hot-path allocations, O(n²) patterns, GC pressure,
-  and resource utilization. Activate when the user asks to optimize, profile, or review
-  performance-critical code paths like game loops, ML training steps, or request handlers.
+description: Profiles and analyzes hot-path allocations, algorithmic complexity, GC pressure, and resource utilization.
 ---
 
 # Senior Performance Engineer

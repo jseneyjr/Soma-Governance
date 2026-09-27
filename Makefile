@@ -15,7 +15,7 @@ ENABLE_HOOKS      ?= true
 export TEAM_SIZE GIT_STRATEGY APPROVAL_CHAIN
 export RULES_SUBSET ENABLE_HOOKS STEERING_PLATFORM
 
-.PHONY: help info install install-gemini install-kiro install-copilot \
+.PHONY: help info install install-gemini install-kiro install-copilot install-windows \
         uninstall doctor validate update status test
 
 help: ## Show available targets
@@ -57,39 +57,44 @@ install-kiro: ## Install rules for Kiro
 install-copilot: ## Install rules for GitHub Copilot
 	@bash install.sh copilot $(if $(MODE),$(MODE),global)
 
+install-windows: ## Install rules and skills for Windows using PowerShell
+	@powershell -ExecutionPolicy Bypass -File install.ps1 -Platform $(STEERING_PLATFORM)
+
 uninstall: ## Remove installed rules, skills, and hooks
 	@echo "Uninstalling steering rules for $(STEERING_PLATFORM)..."
 	@case "$(STEERING_PLATFORM)" in \
 	  gemini) \
-	    echo "  Removing rules from ~/.gemini/config/rules/"; \
-	    rm -f ~/.gemini/config/rules/providence.md ~/.gemini/config/rules/cost-optimization.md \
-	      ~/.gemini/config/rules/subagent-delegation.md ~/.gemini/config/rules/testing.md \
-	      ~/.gemini/config/rules/git-workflow.md ~/.gemini/config/rules/destructive-ops.md \
-	      ~/.gemini/config/rules/documentation.md ~/.gemini/config/rules/architectural-tenets.md \
-	      ~/.gemini/config/rules/feature-specs.md ~/.gemini/config/rules/polyglot-standards.md \
-	      ~/.gemini/config/rules/desktop-automation.md; \
+	    echo "  Removing rules from $(HOME)/.gemini/config/rules/"; \
+	    rm -f $(HOME)/.gemini/config/rules/providence.md $(HOME)/.gemini/config/rules/cost-optimization.md \
+	      $(HOME)/.gemini/config/rules/subagent-delegation.md $(HOME)/.gemini/config/rules/testing.md \
+	      $(HOME)/.gemini/config/rules/git-workflow.md $(HOME)/.gemini/config/rules/destructive-ops.md \
+	      $(HOME)/.gemini/config/rules/documentation.md $(HOME)/.gemini/config/rules/architectural-tenets.md \
+	      $(HOME)/.gemini/config/rules/feature-specs.md $(HOME)/.gemini/config/rules/polyglot-standards.md \
+	      $(HOME)/.gemini/config/rules/desktop-automation.md; \
 	    echo "  Removing hooks"; \
-	    rm -f ~/.gemini/config/plugins/governance/hooks.json; \
+	    rm -f $(HOME)/.gemini/config/plugins/governance/hooks.json; \
 	    echo "  Removing skills"; \
-	    for skill in adaptive-reviewer code-review domain-researcher governance-auditor incident-debug performance-audit post-mortem readme-writer refactoring-pilot security-audit session-monitor session-preflight spec-synthesizer staff-review visual-analyst; do \
-	      rm -rf ~/.gemini/config/skills/$$skill; \
+	    for skill_dir in skills/*/; do \
+	      skill=$$(basename "$$skill_dir"); \
+	      rm -rf $(HOME)/.gemini/config/skills/$$skill; \
 	    done; \
 	    echo "Done! Rules, hooks, and skills removed."; \
 	    ;; \
 	  kiro) \
-	    echo "  Removing rules from ~/.kiro/steering/"; \
-	    rm -rf ~/.kiro/steering/; \
-	    echo "  Removing skills from ~/.kiro/skills/"; \
-	    for skill in adaptive-reviewer code-review domain-researcher genesis governance-auditor incident-debug performance-audit post-mortem readme-writer refactoring-pilot security-audit session-monitor session-preflight spec-synthesizer staff-review visual-analyst; do \
-	      rm -rf ~/.kiro/skills/$$skill; \
+	    echo "  Removing rules from $(HOME)/.kiro/steering/"; \
+	    rm -rf $(HOME)/.kiro/steering/; \
+	    echo "  Removing skills from $(HOME)/.kiro/skills/"; \
+	    for skill_dir in skills/*/; do \
+	      skill=$$(basename "$$skill_dir"); \
+	      rm -rf $(HOME)/.kiro/skills/$$skill; \
 	    done; \
-	    echo "  Removing hooks from ~/.kiro/hooks/"; \
-	    rm -f ~/.kiro/hooks/hooks.json; \
+	    echo "  Removing hooks from $(HOME)/.kiro/hooks/"; \
+	    rm -f $(HOME)/.kiro/hooks/hooks.json; \
 	    echo "Done! Rules, skills, and hooks removed."; \
 	    ;; \
 	  copilot) \
-	    echo "  Removing ~/copilot-instructions.md"; \
-	    rm -f ~/copilot-instructions.md; \
+	    echo "  Removing $(HOME)/copilot-instructions.md"; \
+	    rm -f $(HOME)/copilot-instructions.md; \
 	    echo "Done!"; \
 	    ;; \
 	esac
@@ -114,15 +119,15 @@ doctor: ## Verify installation health & dependencies
 	@echo ""
 	@echo "Installed rules ($(STEERING_PLATFORM)):"
 	@case "$(STEERING_PLATFORM)" in \
-	  gemini) ls ~/.gemini/config/rules/*.md 2>/dev/null | while read f; do echo "  ✅ $$(basename $$f)"; done || echo "  (none)"; \
-	    if [ -f ~/.gemini/config/plugins/governance/hooks.json ]; then echo "  ✅ hooks.json installed"; else echo "  ⚠️  hooks.json not installed"; fi ;; \
-	  kiro) ls ~/.kiro/steering/*.md 2>/dev/null | while read f; do echo "  ✅ $$(basename $$f)"; done || echo "  (none)"; \
+	  gemini) ls $(HOME)/.gemini/config/rules/*.md 2>/dev/null | while read f; do echo "  ✅ $$(basename $$f)"; done || echo "  (none)"; \
+	    if [ -f $(HOME)/.gemini/config/plugins/governance/hooks.json ]; then echo "  ✅ hooks.json installed"; else echo "  ⚠️  hooks.json not installed"; fi ;; \
+	  kiro) ls $(HOME)/.kiro/steering/*.md 2>/dev/null | while read f; do echo "  ✅ $$(basename $$f)"; done || echo "  (none)"; \
 	    echo ""; \
 	    echo "Installed skills (kiro):"; \
-	    if [ -d ~/.kiro/skills ]; then \
-	      ls -d ~/.kiro/skills/*/ 2>/dev/null | while read d; do echo "  ✅ $$(basename $$d)"; done || echo "  (none)"; \
-	    else echo "  (none — ~/.kiro/skills/ not found)"; fi ;; \
-	  copilot) if [ -f ~/copilot-instructions.md ]; then echo "  ✅ ~/copilot-instructions.md"; else echo "  (none)"; fi ;; \
+	    if [ -d $(HOME)/.kiro/skills ]; then \
+	      ls -d $(HOME)/.kiro/skills/*/ 2>/dev/null | while read d; do echo "  ✅ $$(basename $$d)"; done || echo "  (none)"; \
+	    else echo "  (none — $(HOME)/.kiro/skills/ not found)"; fi ;; \
+	  copilot) if [ -f $(HOME)/copilot-instructions.md ]; then echo "  ✅ $(HOME)/copilot-instructions.md"; else echo "  (none)"; fi ;; \
 	esac
 
 validate: ## Check script syntax and config values
@@ -146,14 +151,14 @@ status: ## Show installed vs repo diff
 	@case "$(STEERING_PLATFORM)" in \
 	  gemini) for rule in rules/*.md; do \
 	    name=$$(basename $$rule); \
-	    target=~/.gemini/config/rules/$$name; \
+	    target=$(HOME)/.gemini/config/rules/$$name; \
 	    if [ ! -f "$$target" ]; then echo "  ❌ $$name (not installed)"; \
 	    elif diff -q "$$rule" "$$target" > /dev/null 2>&1; then echo "  ✅ $$name (in sync)"; \
 	    else echo "  ⚠️  $$name (modified)"; fi; \
 	  done ;; \
 	  kiro) for rule in rules/*.md; do \
 	    name=$$(basename $$rule); \
-	    target=~/.kiro/steering/$$name; \
+	    target=$(HOME)/.kiro/steering/$$name; \
 	    if [ ! -f "$$target" ]; then echo "  ❌ $$name (not installed)"; \
 	    else echo "  ✅ $$name (installed)"; fi; \
 	  done ;; \

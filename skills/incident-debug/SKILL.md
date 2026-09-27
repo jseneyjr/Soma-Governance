@@ -1,10 +1,6 @@
 ---
 name: incident-debug
-description: >-
-  Systematic incident debugging and root-cause analysis using SRE principles.
-  Follows a structured triage workflow: reproduce, isolate, diagnose, fix, verify.
-  Activate when the user reports a crash, error, hang, dependency conflict,
-  broken virtual environment, or unexpected behavior.
+description: Systematic incident debugging and root-cause analysis following structured reproduce, isolate, diagnose, fix, verify triage.
 ---
 
 # SRE Incident Debugger

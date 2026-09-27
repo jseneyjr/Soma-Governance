@@ -1,24 +1,26 @@
 ---
 name: Genesis — Codebase Onboarding Reconnaissance
-description: "4-stage read-only reconnaissance protocol for onboarding to unfamiliar codebases. Canopy (repo structure), Rings (git history intelligence), Taproot (architecture extraction), Lichen (governance synthesis). Produces a structured Genesis Report artifact with auto-generated Context Pre-Seeding block. Incremental — run any single stage or all four."
+description: Five-stage read-only reconnaissance protocol mapping structure, history, architecture, governance, and cytogenesis in unfamiliar codebases.
 trigger: user_request
 aliases: ["genesis", "init", "onboard", "explore", "map this repo", "what is this codebase"]
 ---
 
 # Genesis — Codebase Onboarding Reconnaissance
 
-> **Role**: Maps an unfamiliar codebase across four stages — structure, history, architecture, and governance fitness — then produces a persistent Genesis Report artifact. All stages are read-only. The output feeds downstream skills (Spores priority, Mycelium blast-radius, Context Pre-Seeding) so the governance system has situational awareness from the first interaction.
+> **Role**: Maps an unfamiliar codebase across five stages — structure, history, architecture, governance fitness, and cytogenesis — then produces a persistent Genesis Report artifact and repo-local cells. Stages 1-4 are read-only; Stage 5 is additive only. The output feeds downstream skills (Spores priority, Mycelium blast-radius, Context Pre-Seeding) so the governance system has situational awareness from the first interaction.
 
 ## Stages
 
 | Stage | Name | Subagent | Flash Dispatches | Focus |
 |:------|:-----|:---------|:----------------:|:------|
-| 1 | 🗺️ **Canopy** | Broad Repo Scanner | 1–2 | Tech stack, directory tree, dependencies, entry points, test framework |
+| 1 | 🗺️ **Canopy** | Broad Repo Scanner | 1–2 | Tech stack, directory tree, dependencies, entry points, test framework, dev environment probe |
 | 2 | 📜 **Rings** | Git History Analyst | 1 | Branch topology, commit frequency, churn heatmap, high-risk files |
 | 3 | 📖 **Taproot** | Architecture Analyst | 1–2 | API surface, data models, config patterns, external integrations, cross-repo boundaries |
 | 4 | 🧭 **Lichen** | Governance Advisor | 1 | Conventions, test patterns, deployment model, traps, governance config, Context Pre-Seeding |
+| 5 | 🔬 **Cytogenesis**| Cell Generator | 1 | Repo-specific cells: Vacuoles (traps), Cell Walls (boundaries), Membranes (escalation overrides) |
+| 5 | 🧫 **Cytogenesis** | Cell Generator | 1 | Vacuoles (traps), Cell Walls (boundaries), Membranes (overrides), Chloroplasts (personas) |
 
-**Total dispatches**: 4–6 Flash subagents across all stages.
+**Total dispatches**: 5–7 Flash subagents across all stages.
 
 ### Stage Selection
 
@@ -29,8 +31,8 @@ Genesis stages are **incremental** — run any subset, in any order. Later stage
 | Quick layout | Canopy only | 1–2 | "What is this repo?" — fast directory orientation |
 | Risk assessment | Canopy + Rings | 2–3 | "Where are the hot spots?" — churn + structure |
 | Architecture audit | Canopy + Taproot | 2–4 | "How is this system designed?" — API and data model mapping |
-| Full onboarding | All 4 stages | 4–6 | "Onboard me to this codebase" — complete reconnaissance |
-| Governance setup | Lichen only (with prior report) | 1 | "Configure governance for this project" — re-run synthesis |
+| Full onboarding | All 5 stages | 5–7 | "Onboard me to this codebase" — complete reconnaissance |
+| Governance setup | Lichen + Cytogenesis | 2 | "Configure governance for this project" — re-run synthesis |
 
 ---
 
@@ -59,6 +61,32 @@ Dispatch 1–2 Flash broad repo scanners to map the repository's physical struct
 | Testing framework | Detect test runners (`jest`, `pytest`, `JUnit`, `go test`), test directories, config files | `{framework, runner_command, test_directory, config_file}` |
 | Monorepo detection | Check for workspace configs (`lerna.json`, `pnpm-workspace.yaml`, Nx, Turborepo) | `{is_monorepo, workspace_tool, package_count}` |
 
+### Dev Environment Probe
+
+> [!NOTE]
+> Local environment blindness is the #4 source of wasted agent steps (120 steps). Canopy supplements repository structure mapping with a sanitized dev environment probe, establishing situational awareness before downstream tools execute build, lint, or test commands.
+
+> [!CAUTION]
+> **Privacy Invariant**: All probe outputs must be **sanitized aggregates** — versions and booleans, NOT raw command output.
+> - **NO file paths** (especially not `which python3` output, which leaks `/home/<user>/`)
+> - **NO usernames** (especially not `git config user.name`, which leaks real names)
+> - **NO raw environment variable values** (especially not `$SHELL`, `$TERM_PROGRAM`, `$CODESPACES`, or `$REMOTE_CONTAINERS_IPC`)
+> - **NO hostnames** (use `uname -s -m`, never `hostname` or `uname -n`)
+
+> [!IMPORTANT]
+> **Orchestrator Execution Mandate**: Research subagents have **read-only tools only** — probes requiring shell execution must be performed by the parent orchestrator before dispatch. The orchestrator gathers and sanitizes the probe values, then injects the clean aggregate block into the Canopy subagent prompt (or directly records it in the report artifact).
+
+| Probe | Method | Sanitized Output | Must NOT Output |
+|:------|:-------|:----------------|:---------------|
+| Shell version | `bash --version` | `shell: bash 5.x` | NOT `$SHELL` value |
+| OS & arch | `uname -s -m` | `os: linux, arch: x86_64` | NOT hostname |
+| Build tools | `command -v make cmake npm cargo go` | `tools: [make, npm, go]` | NOT full paths |
+| Container detection | Check `/.dockerenv` existence | `container: false` | NOT env var values |
+| IDE context | Check known env vars | `ide: antigravity 2.x` | NOT `$TERM_PROGRAM` raw value |
+| Python environment | Check for venv markers | `python: 3.11, venv: true` | NOT `which python3` path |
+| Git status | `git --version` | `git: 2.43, configured: true` | NOT `git config user.name` |
+| Package managers | `command -v brew apt choco` | `pkg: [apt]` | NOT full paths |
+
 ### Canopy Prompt Template
 
 ```
@@ -75,6 +103,11 @@ Read these files first (if they exist):
 - .github/workflows/*.yml / .gitlab-ci.yml / Jenkinsfile
 - docker-compose.yml / Dockerfile
 
+[IF DEV ENVIRONMENT INJECTED BY ORCHESTRATOR]:
+Include the parent-probed dev environment block in report delivery:
+[Sanitized Dev Environment Block]
+[END IF]
+
 Deliver:
 
 ### Tech Stack
@@ -82,6 +115,16 @@ Deliver:
 - Framework: [name + version]
 - Build system: [tool + command]
 - Package manager: [name]
+
+### Dev Environment (if provided by orchestrator)
+- Shell: [sanitized version]
+- OS & arch: [sanitized os, arch]
+- Build tools: [sanitized tool list]
+- Container: [container boolean]
+- IDE: [sanitized context]
+- Python: [version, venv boolean]
+- Git: [version, configured boolean]
+- Package managers: [sanitized pkg list]
 
 ### Directory Tree (annotated, max 3 levels)
 ```
@@ -275,7 +318,7 @@ Dispatch 1 Flash governance advisor to synthesize all prior stage outputs into a
 | Deployment model | Detect Dockerfiles, CI configs, IaC files (Terraform, Pulumi, CDK) | Deployment profile with detected tooling |
 | Known traps | Cross-reference Rings churn + Taproot complexity → fragile areas | Trap list: `[{file, reason, recommendation}]` |
 | Governance config | Recommend which rules to activate, review protocol level | `{rules: [], default_protocol: "", risk_areas: []}` |
-| Context Pre-Seeding | Auto-generate the ~200-token context header for future subagent prompts | Ready-to-use context block |
+| Context Pre-Seeding | Auto-generate context header for future subagent prompts (approx. ~200 tokens; measured via `token_census.py`) | Ready-to-use context block |
 
 ### Lichen Prompt Template
 
@@ -338,9 +381,140 @@ Deliver:
 <!-- END CONTEXT -->
 ```
 
-This block should be ~200 tokens and is used verbatim in all future subagent prompts.
+This block is nominally ~200 tokens (approximate target; ground-truth token count is measured via `scripts/token_census.py`) and is used verbatim in all future subagent prompts.
 <!-- END CONTEXT -->
 ```
+
+---
+
+## Stage 5: Cytogenesis (Adaptive Governance Generation)
+
+> **OPTIONAL**: Stage 5 is optional. Genesis can still run stages 1–4 independently without triggering Cytogenesis.
+> **INVARIANT**: Cells are additive only — they never override global governance rules.
+
+Dispatch 1 Flash cytogenesis orchestrator to read the Lichen output and generate repo-local governance cells.
+
+### Orchestrator Objectives
+
+| Objective | Method | Output |
+|:----------|:-------|:-------|
+| Vacuoles (Traps) | For each identified trap/anti-pattern from Lichen | Generate a Vacuole cell in `.gemini/cells/vacuoles/trap-<slugified-name>.md` |
+| Cell Walls (Boundaries) | Detect security-sensitive paths (auth/, secrets/, .env files, config/credentials) | Generate a Cell Wall in `.gemini/cells/walls/wall-<slugified-name>.md` |
+| Membranes (Escalation) | Identify high-risk directories (migrations/, infrastructure/, deploy/) | Generate a Membrane in `.gemini/cells/membranes/membrane-<slugified-name>.md` |
+
+### Cell Formats
+
+#### Vacuoles
+```yaml
+---
+type: vacuole
+hypothesis: "<what this trap catches>"
+prediction: "<what it will flag>"
+falsification: "0 findings in 10 sessions → prune"
+expiry_sessions: 10
+expiry_days: 30
+created: <date>
+impact_weight: 0.8
+fitness:
+  triggers: 0
+  true_positives: 0
+  false_positives: 0
+  score: null
+---
+## Trap: <trap name>
+<description of the anti-pattern and correct approach>
+```
+
+#### Cell Walls
+```yaml
+---
+type: wall
+hypothesis: "Changes to <path> require security review"
+prediction: "Will flag unreviewed changes to sensitive files"
+falsification: "0 findings in 15 sessions → prune"
+expiry_sessions: 15
+expiry_days: 60
+created: <date>
+impact_weight: 1.5
+fitness:
+  triggers: 0
+  true_positives: 0
+  false_positives: 0
+  score: null
+---
+## Boundary: <sensitive area>
+<what this protects and why>
+```
+
+#### Membranes
+```yaml
+---
+type: membrane
+hypothesis: "Changes to <path> need elevated review"
+prediction: "Escalation sentinel will apply minimum <mode>"
+falsification: "All escalated reviews are over-kill for 10 sessions → prune"
+expiry_sessions: 10
+expiry_days: 45
+created: <date>
+impact_weight: 1.2
+minimum_mode: trident
+fitness:
+  triggers: 0
+  true_positives: 0
+  false_positives: 0
+  score: null
+---
+## Escalation Override: <area>
+<what gets escalated and why>
+```
+
+---
+
+## Stage 5: Cytogenesis (Adaptive Governance Cell Generation)
+
+Dispatch 1 Flash cell generator to convert Lichen's synthesis into persistent governance cells.
+
+### Generator Objectives
+
+| Objective | Method | Output |
+|:----------|:-------|:-------|
+| Chloroplast generation | Analyze tech stack, API patterns, data models, test patterns, and dependency types | 2-3 repo-specific Personas |
+
+### Chloroplast Personas
+Genesis analyzes the repo's domain and generates 2-3 Chloroplast personas. These provide domain expertise that generic personas lack.
+- **Analysis inputs**:
+  - Tech stack (from Canopy stage)
+  - API patterns (REST, GraphQL, gRPC, event-driven)
+  - Data models (SQL, NoSQL, file-based, graph)
+  - Test patterns (unit-heavy, integration-heavy, E2E)
+  - Dependency types (monorepo, multi-service, standalone)
+- **Each Chloroplast file in `.gemini/cells/chloroplasts/`**:
+  ```yaml
+  ---
+  type: chloroplast
+  persona_name: "<descriptive name>"
+  hypothesis: "<what domain expertise this persona brings>"
+  prediction: "<what kinds of issues this persona catches>"
+  falsification: "0 unique findings in 10 sessions → prune"
+  expiry_sessions: 10
+  expiry_days: 45
+  created: <date>
+  impact_weight: 1.0
+  domain: "<tech domain>"
+  expertise: ["<area1>", "<area2>"]
+  fitness:
+    triggers: 0
+    true_positives: 0
+    false_positives: 0
+    score: null
+  ---
+  ## Persona: <name>
+  <persona description, what they look for, their expertise>
+
+  ### Review Focus
+  - <what this persona prioritizes>
+  - <domain-specific patterns they catch>
+  ```
 
 ---
 
@@ -375,6 +549,9 @@ The Genesis Report is a structured markdown artifact persisted as `genesis-repor
 ## 🗺️ Canopy
 [Stage 1 output — tech stack, directory tree, dependencies, entry points, testing]
 
+### Dev Environment
+[Sanitized environment aggregates: shell, OS/arch, build tools, container status, IDE, Python/venv, Git status, package managers. Note: Probed by parent orchestrator; research subagents have read-only tools only. Contains zero raw paths, usernames, or env vars.]
+
 ## 📜 Rings
 [Stage 2 output — branch topology, commit activity, churn heatmap, high-risk files]
 
@@ -384,8 +561,11 @@ The Genesis Report is a structured markdown artifact persisted as `genesis-repor
 ## 🧭 Lichen
 [Stage 4 output — conventions, testing patterns, deployment model, traps, governance config]
 
+## 🧫 Cytogenesis
+[Stage 5 output — generated cells]
+
 ## Auto-Generated Context Block
-[~200-token context pre-seeding block ready for copy-paste into subagent prompts]
+[Context pre-seeding block (~200 tokens approx, measured via `token_census.py`) ready for copy-paste into subagent prompts]
 
 ---
 ## Diff from Previous Report
@@ -437,7 +617,7 @@ Genesis output feeds directly into multiple downstream skills and prongs:
 | Genesis Stage | Feeds | How |
 |:-------------|:------|:----|
 | Canopy | Context Pre-Seeding | Auto-generated `<!-- CONTEXT -->` block used in all subagent prompts |
-| Canopy | Session Preflight | Tech stack and test runner inform environment verification |
+| Canopy | Session Preflight | Tech stack, test runner, and dev environment probe inform environment verification |
 | Rings | Spores | Churn heatmap prioritizes which files scouts examine first |
 | Rings | Post-Mortem | Historical contributor and release context |
 | Taproot | Mycelium | Pre-computed dependency graph accelerates blast-radius analysis |

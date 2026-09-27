@@ -12,10 +12,112 @@ readonly RED='\033[0;31m'
 readonly CYAN='\033[0;36m'
 readonly NC='\033[0m' # No Color
 
-log_info()  { echo -e "  ${GREEN}✅${NC} $*"; }
-log_warn()  { echo -e "  ${YELLOW}⚠${NC}  $*"; }
-log_skip()  { echo -e "  ${CYAN}⏭${NC}  $*"; }
-log_error() { echo -e "  ${RED}❌${NC} $*" >&2; }
+# ── Unicode & Formatting ─────────────────────────────────────────
+supports_unicode() {
+  [ "${NO_UNICODE:-0}" = "1" ] && return 1
+  local locale="${LC_ALL:-${LC_CTYPE:-${LANG:-}}}"
+  if [[ "$locale" =~ [Uu][Tt][Ff]-?8 ]]; then
+    return 0
+  fi
+  [ -n "${WT_SESSION:-}" ] && return 0
+  return 1
+}
+
+log_info()  {
+  if supports_unicode; then
+    echo -e "  ${GREEN}✅${NC} $*"
+  else
+    echo -e "  ${GREEN}[OK]${NC} $*"
+  fi
+}
+log_warn()  {
+  if supports_unicode; then
+    echo -e "  ${YELLOW}⚠${NC}  $*"
+  else
+    echo -e "  ${YELLOW}[WARN]${NC} $*"
+  fi
+}
+log_skip()  {
+  if supports_unicode; then
+    echo -e "  ${CYAN}⏭${NC}  $*"
+  else
+    echo -e "  ${CYAN}[SKIP]${NC} $*"
+  fi
+}
+log_error() {
+  if supports_unicode; then
+    echo -e "  ${RED}❌${NC} $*" >&2
+  else
+    echo -e "  ${RED}[ERROR]${NC} $*" >&2
+  fi
+}
+
+# ── OS & Path Resolution ──────────────────────────────────────────
+detect_os() {
+  if [ -f /proc/version ] && grep -qi microsoft /proc/version 2>/dev/null; then
+    echo "wsl"
+  elif uname -r 2>/dev/null | grep -qi microsoft; then
+    echo "wsl"
+  else
+    case "$(uname -s 2>/dev/null)" in
+      Darwin*)              echo "macos" ;;
+      Linux*)               echo "linux" ;;
+      MINGW*|MSYS*|CYGWIN*) echo "windows" ;;
+      *)
+        case "${OSTYPE:-}" in
+          darwin*)          echo "macos" ;;
+          linux*)           echo "linux" ;;
+          msys*|cygwin*)    echo "windows" ;;
+          *)                echo "linux" ;;
+        esac
+        ;;
+    esac
+  fi
+}
+
+resolve_home() {
+  local os="${1:-$(detect_os)}"
+  case "$os" in
+    wsl)
+      if command -v wslpath &>/dev/null && command -v cmd.exe &>/dev/null; then
+        local win_prof
+        win_prof="$(cmd.exe /C 'echo %USERPROFILE%' 2>/dev/null | tr -d '\r')"
+        if [ -n "$win_prof" ]; then
+          wslpath -u "$win_prof" 2>/dev/null && return 0
+        fi
+      fi
+      echo "${HOME:-~}"
+      ;;
+    windows)
+      if [ -n "${USERPROFILE:-}" ]; then
+        if command -v cygpath &>/dev/null; then
+          cygpath -u "$USERPROFILE"
+        else
+          echo "$USERPROFILE" | sed -e 's|\\|/|g' -e 's|^\([A-Za-z]\):|/\L\1|'
+        fi
+      else
+        echo "${HOME:-~}"
+      fi
+      ;;
+    macos|linux|*)
+      echo "${HOME:-~}"
+      ;;
+  esac
+}
+
+normalize_path() {
+  local p="$1"
+  local os="${2:-$(detect_os)}"
+  if [ "$os" = "windows" ]; then
+    if command -v cygpath &>/dev/null; then
+      cygpath -w "$p" 2>/dev/null || echo "$p" | sed 's|/|\\|g'
+    else
+      echo "$p" | sed -E 's|^/([a-zA-Z])/|\1:\\|' | sed 's|/|\\|g'
+    fi
+  else
+    echo "$p"
+  fi
+}
 
 # (P7: resolve_script_dir removed — zero callers confirmed repo-wide)
 
@@ -104,6 +206,7 @@ should_install() {
 # Creates a timestamped backup to prevent clobbering.
 backup_file() {
   local target="$1"
+  [ "${DRY_RUN:-false}" = "true" ] && return 0
   if [ -f "$target" ]; then
     local ts
     ts="$(date +%s 2>/dev/null || echo 'bak')"
@@ -117,6 +220,7 @@ backup_file() {
 # Removes existing .bak dir first to prevent recursive nesting.
 backup_dir() {
   local target="$1"
+  [ "${DRY_RUN:-false}" = "true" ] && return 0
   if [ -d "$target" ]; then
     local ts
     ts="$(date +%s 2>/dev/null || echo 'bak')"
@@ -150,9 +254,12 @@ apply_team_overrides() {
   local git_wf="$rules_dir/git-workflow.md"
   [ -f "$rules_dir/git-workflow.instructions.md" ] && git_wf="$rules_dir/git-workflow.instructions.md"
 
-  if [ "$TEAM_SIZE" != "solo" ] && { [ -f "$rules_dir/git-workflow.md" ] || [ -f "$rules_dir/git-workflow.instructions.md" ]; }; then
-    if ! grep -q "## Team Workflow Overrides" "$git_wf" 2>/dev/null; then
-      cat >> "$git_wf" << 'TEAM_OVERRIDE'
+  if [ "$TEAM_SIZE" != "solo" ]; then
+    if [ "${DRY_RUN:-false}" = "true" ]; then
+      log_info "[dry-run] would apply team branching override to $(basename "$git_wf")"
+    elif [ -f "$rules_dir/git-workflow.md" ] || [ -f "$rules_dir/git-workflow.instructions.md" ]; then
+      if ! grep -q "## Team Workflow Overrides" "$git_wf" 2>/dev/null; then
+        cat >> "$git_wf" << 'TEAM_OVERRIDE'
 
 ## Team Workflow Overrides (auto-generated)
 - **All changes via feature branches**: Direct commits to main are prohibited for teams.
@@ -160,21 +267,26 @@ apply_team_overrides() {
 - **Review required**: At least one peer review before merge.
 - **Branch naming**: Use `feature/<name>`, `fix/<name>`, `chore/<name>` prefixes.
 TEAM_OVERRIDE
-      log_info "$(basename "$git_wf"): team branching enforced"
+        log_info "$(basename "$git_wf"): team branching enforced"
+      fi
     fi
   fi
 
   # Gitflow override
-  if [ "$GIT_STRATEGY" = "gitflow" ] && { [ -f "$rules_dir/git-workflow.md" ] || [ -f "$rules_dir/git-workflow.instructions.md" ]; }; then
-    if ! grep -q "## Gitflow Overrides" "$git_wf" 2>/dev/null; then
-      cat >> "$git_wf" << 'GITFLOW_OVERRIDE'
+  if [ "$GIT_STRATEGY" = "gitflow" ]; then
+    if [ "${DRY_RUN:-false}" = "true" ]; then
+      log_info "[dry-run] would apply gitflow strategy override to $(basename "$git_wf")"
+    elif [ -f "$rules_dir/git-workflow.md" ] || [ -f "$rules_dir/git-workflow.instructions.md" ]; then
+      if ! grep -q "## Gitflow Overrides" "$git_wf" 2>/dev/null; then
+        cat >> "$git_wf" << 'GITFLOW_OVERRIDE'
 
 ## Gitflow Overrides (auto-generated)
 - **develop branch**: All feature branches merge to `develop`, not `main`.
 - **release branches**: Cut `release/<version>` from `develop` when preparing a release.
 - **hotfix branches**: Branch from `main` as `hotfix/<name>`, merge back to both `main` and `develop`.
 GITFLOW_OVERRIDE
-      log_info "$(basename "$git_wf"): gitflow strategy applied"
+        log_info "$(basename "$git_wf"): gitflow strategy applied"
+      fi
     fi
   fi
 
@@ -182,16 +294,20 @@ GITFLOW_OVERRIDE
   local dest_ops="$rules_dir/destructive-ops.md"
   [ -f "$rules_dir/destructive-ops.instructions.md" ] && dest_ops="$rules_dir/destructive-ops.instructions.md"
 
-  if [ "$APPROVAL_CHAIN" != "none" ] && { [ -f "$rules_dir/destructive-ops.md" ] || [ -f "$rules_dir/destructive-ops.instructions.md" ]; }; then
-    if ! grep -q "## Approval Chain Override" "$dest_ops" 2>/dev/null; then
-      local chain="$APPROVAL_CHAIN"
-      cat >> "$dest_ops" << APPROVAL_OVERRIDE
+  if [ "$APPROVAL_CHAIN" != "none" ]; then
+    if [ "${DRY_RUN:-false}" = "true" ]; then
+      log_info "[dry-run] would apply $APPROVAL_CHAIN approval chain override to $(basename "$dest_ops")"
+    elif [ -f "$rules_dir/destructive-ops.md" ] || [ -f "$rules_dir/destructive-ops.instructions.md" ]; then
+      if ! grep -q "## Approval Chain Override" "$dest_ops" 2>/dev/null; then
+        local chain="$APPROVAL_CHAIN"
+        cat >> "$dest_ops" << APPROVAL_OVERRIDE
 
 ## Approval Chain Override (auto-generated)
 - **Approval required**: All destructive operations require ${chain} approval before execution.
 - **Document approver**: When executing destructive ops, cite who approved and when.
 APPROVAL_OVERRIDE
-      log_info "$(basename "$dest_ops"): $APPROVAL_CHAIN approval chain enforced"
+        log_info "$(basename "$dest_ops"): $APPROVAL_CHAIN approval chain enforced"
+      fi
     fi
   fi
 }
@@ -207,6 +323,11 @@ install_hooks() {
 
   if [ ! -f "$template" ]; then
     log_warn "hooks.json.template not found, skipping hooks installation"
+    return 0
+  fi
+
+  if [ "${DRY_RUN:-false}" = "true" ]; then
+    log_info "[dry-run] would install hooks.json to $(normalize_path "$target_dir")/"
     return 0
   fi
 

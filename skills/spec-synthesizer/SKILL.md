@@ -1,6 +1,6 @@
 ---
 name: Spec Synthesizer
-description: Cross-references multiple reports, reviews, or analyses into a single prioritized implementation plan. Activate when the user has 2+ findings artifacts and wants them consolidated into actionable specs.
+description: Synthesizes multiple review reports and analyses into a single prioritized, actionable implementation plan.
 trigger: user_request
 ---
 

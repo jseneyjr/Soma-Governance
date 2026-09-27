@@ -43,11 +43,17 @@ MEDIUM_PATTERNS=(
 
 # LOW: Documentation, pure markdown, README
 LOW_PATTERNS=(
-  'docs/.*\.md$'
+  '(^|/)docs/'
   'README\.md$'
   'LICENSE$'
   'CHANGELOG|EVOLUTION|METRICS|EXPERIMENTS'
   '\.txt$|\.csv$|\.json$'
+)
+
+# TEST: Test files (test-only changes cap at Gale)
+TEST_PATTERNS=(
+  '\.test\.'
+  '_test\.'
 )
 
 # CRITICAL: Branch operations, force pushes, schema changes
@@ -104,6 +110,19 @@ classify() {
   echo "MEDIUM"
 }
 
+# ── Check Test Files ──────────────────────────────────────────────────
+
+is_test_file() {
+  local file="$1"
+  local pattern
+  for pattern in "${TEST_PATTERNS[@]}"; do
+    if echo "$file" | grep -qE "$pattern"; then
+      return 0
+    fi
+  done
+  return 1
+}
+
 # ── Diff Size Analysis ───────────────────────────────────────────────
 
 get_diff_size() {
@@ -152,6 +171,7 @@ main() {
 
   local total_files
   total_files=$(echo "$files" | wc -l)
+  local test_count=0
 
   while IFS= read -r file; do
     local level
@@ -164,6 +184,9 @@ main() {
       MEDIUM) medium_count=$((medium_count + 1)) ;;
       LOW)    low_count=$((low_count + 1)) ;;
     esac
+    if is_test_file "$file"; then
+      test_count=$((test_count + 1))
+    fi
   done <<< "$files"
 
   # Check for branch operations
@@ -211,16 +234,48 @@ main() {
     esac
   fi
 
-  # Rule 5: Pure docs → cap at Gale
+  # Rule 5: Pure docs → Breeze (docs changes do not need multi-lens review)
   if [ "$high_count" -eq 0 ] && [ "$medium_count" -eq 0 ] && [ "$low_count" -gt 0 ]; then
-    protocol="gale"
+    protocol="breeze"
     reasons="All changes are low-sensitivity (docs/README)"
   fi
 
+  # Rule 5b: Test-only changes → Gale (test-only changes don't need Trident)
+  if [ "$high_count" -eq 0 ] && [ "$test_count" -gt 0 ] && [ $((test_count + low_count)) -eq "$total_files" ]; then
+    protocol="gale"
+    reasons="Test-only changes (${test_count} test file(s); test changes do not need Trident)"
+  fi
+
   # Rule 6: Single known-location fix → Breeze
-  if [ "$total_files" -eq 1 ] && [ "$high_count" -eq 0 ]; then
+  if [ "$total_files" -eq 1 ] && [ "$high_count" -eq 0 ] && [ "$test_count" -eq 0 ]; then
     protocol="breeze"
     reasons="Single file, non-infrastructure change"
+  fi
+
+  # ── Membrane Overrides ──────────────────────────────────────────
+  if [ -d ".gemini/cells/membranes" ]; then
+    for membrane in .gemini/cells/membranes/*.md; do
+      [ -f "$membrane" ] || continue
+      local mem_mode
+      mem_mode=$(grep '^minimum_mode:' "$membrane" | awk '{print $2}' | tr -d '\r')
+      local mem_path
+      mem_path=$(grep -m 1 '^hypothesis:' "$membrane" | sed -E 's/.*Changes to ([^ ]+) .*/\1/' | sed -E 's/["'\'']//g')
+      
+      if [ -n "$mem_mode" ] && [ -n "$mem_path" ]; then
+        if echo "$files" | grep -qiE "$mem_path"; then
+          # Escalate if mem_mode > protocol
+          local current_rank=1
+          case "$protocol" in breeze) current_rank=1;; gale) current_rank=2;; trident) current_rank=3;; maelstrom) current_rank=4;; tempest) current_rank=5;; esac
+          local mem_rank=1
+          case "$mem_mode" in breeze) mem_rank=1;; gale) mem_rank=2;; trident) mem_rank=3;; maelstrom) mem_rank=4;; tempest) mem_rank=5;; esac
+          
+          if [ "$mem_rank" -gt "$current_rank" ]; then
+            protocol="$mem_mode"
+            reasons="Membrane escalation for $mem_path ($mem_mode)"
+          fi
+        fi
+      fi
+    done
   fi
 
   # ── Output ──────────────────────────────────────────────────────
@@ -231,13 +286,14 @@ main() {
   echo "FILES_HIGH=${high_count}"
   echo "FILES_MEDIUM=${medium_count}"
   echo "FILES_LOW=${low_count}"
+  echo "FILES_TEST=${test_count}"
   echo "DIFF_LINES=${diff_lines:-0}"
   echo "BRANCH_OPS=${branch_ops}"
 
   # Human-readable summary to stderr
   >&2 echo "⚡ Escalation Sentinel: ${protocol^^} recommended"
   >&2 echo "   ${reasons:-Default classification}"
-  >&2 echo "   Files: ${total_files} (${high_count} high, ${medium_count} medium, ${low_count} low)"
+  >&2 echo "   Files: ${total_files} (${high_count} high, ${medium_count} medium, ${low_count} low, ${test_count} test)"
 }
 
 main "$@"

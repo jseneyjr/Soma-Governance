@@ -1,6 +1,6 @@
 ---
 name: Visual Analyst
-description: Analyzes screenshots, game frames, and UI captures to extract actionable information — game state, UI element positions, error messages, visual regressions. Activate for screenshot-heavy debugging or game automation calibration.
+description: Analyzes screenshots, game frames, and UI captures to extract visual state, coordinates, and regressions.
 trigger: user_request
 ---
 

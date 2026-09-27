@@ -1,6 +1,6 @@
 ---
 name: Session Monitor
-description: Live monitoring of active Antigravity sessions. Tracks waste trajectory, dispatches periodic probes, and alerts on regression. Activate when the user wants ongoing observation of a running session.
+description: Real-time session monitoring tracking waste trajectory, dispatching periodic probes, and alerting on regressions.
 trigger: user_request
 ---
 

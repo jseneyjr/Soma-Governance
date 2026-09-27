@@ -1,6 +1,6 @@
 ---
 name: Domain Researcher
-description: Context-aware web researcher. Compiles verified external information for the active project — game wikis, API docs, technical papers, whitepapers. Activate when the user needs external knowledge grounded in a specific domain.
+description: Compiles verified external facts, API documentation, and technical literature grounded in the active project.
 trigger: user_request
 ---
 

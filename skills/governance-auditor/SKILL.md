@@ -1,6 +1,6 @@
 ---
 name: Governance Auditor
-description: Checks a session transcript against the governance rule suite and produces a per-rule PASS/FAIL verdict table. Activate when the user wants to verify that a session followed the established governance rules.
+description: Audits session transcripts against governance rules to produce a per-rule PASS/FAIL verdict table.
 trigger: user_request
 ---
 

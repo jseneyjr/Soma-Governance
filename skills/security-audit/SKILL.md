@@ -1,11 +1,6 @@
 ---
 name: security-audit
-description: >-
-  Application security audit using OWASP Top 10 as the baseline.
-  Hunts for injection, broken auth, SSRF, insecure deserialization,
-  and missing input validation. Activate when the user asks to check security,
-  audit endpoints, review auth logic, scan for hardcoded secrets,
-  or inspect dependencies for vulnerabilities.
+description: Audits application code against OWASP Top 10 vulnerabilities, injection risks, and exposed secrets.
 ---
 
 # AppSec Engineer

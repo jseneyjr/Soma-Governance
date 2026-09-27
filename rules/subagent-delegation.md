@@ -5,7 +5,7 @@ trigger: always_on
 ---
 # Delegation Protocol
 
-> **Role**: This rule mandates that the agent act as an orchestrator, aggressively delegating isolated or repetitive tasks to subagents to protect the main context window.
+> **Role**: Mandates aggressive task delegation to subagents to protect the main context window and parallelize execution.
 
 ## 1. Context Protection Mandate
 - **Protect the Context Window**: The primary conversation's context window is expensive and should only contain high-level reasoning and coordination. 
@@ -22,24 +22,24 @@ trigger: always_on
 
 ### Disjoint Lane Protocol
 Before parallelizing implementation:
-1. **Map file ownership**: List every file each task will read or write
-2. **Check intersection**: If any file appears in two tasks, serialize those tasks
-3. **Check interface coupling**: If Task A modifies a function that Task B calls, serialize them
-4. **Dispatch with explicit scope**: Each subagent prompt must list its owned files and explicitly state "do NOT modify files outside this list"
-5. **Merge verification**: After all lanes complete, run the test suite once to catch integration issues
+1. **Map file ownership**: List every file each task will read or write.
+2. **Check intersection**: If any file appears in two tasks, serialize those tasks.
+3. **Check interface coupling**: If Task A modifies a function that Task B calls, serialize them.
+4. **Dispatch with explicit scope**: Each prompt must list its owned files and state "do NOT modify files outside this list".
+5. **Merge verification**: After all lanes complete, run the test suite once to catch integration issues.
 
 **Parallelizable** (disjoint files, no shared interfaces):
-- Lane A edits `rules/git-workflow.md`, Lane B edits `rules/testing.md`, Lane C edits `rules/documentation.md`
+- Lane A edits `rules/git-workflow.md`, Lane B edits `rules/testing.md`
 
 **Must serialize** (shared interface):
-- Task 1 adds parameter to `log_finding.sh` → Task 2 calls `log_finding.sh` from `governance_init.sh`
+- Task 1 alters `log_finding.sh` signature → Task 2 calls `log_finding.sh` from `governance_init.sh`
 
-- **Review Sentinels**: For coding sessions exceeding ~75 steps, dispatch a lightweight Flash review probe after each logical unit of work. The probe reads recent diffs (`git diff`) and runs the test suite. This is NOT a full staff review — it's a 30-second sanity check that catches hallucinated symbols and regressions before they compound. See `staff-review` skill, Continuous Review section.
-- **Concurrency Limits**: Fan out up to 4 read-only subagents (reviewers, researchers, auditors) concurrently. For coding lanes, limit to 3 concurrent writers with strict Disjoint Lane Protocol. Monitor waste rate — if it exceeds 8% after this change, revert to 2-3 concurrency.
-- **Fire-and-Forget**: Dispatch tasks clearly and wait for the subagents to report back with succinct summaries.
+- **Review Sentinels**: For coding sessions exceeding ~75 steps, dispatch a lightweight Flash review probe (`git diff` + test suite) after each logical unit of work. This is a 30-second sanity check catching regressions before they compound (see `staff-review` Continuous Review).
+- **Concurrency Limits**: Fan out up to 4 read-only subagents concurrently; limit to 3 concurrent writers with strict Disjoint Lane Protocol. If waste exceeds 8%, revert to 2–3 concurrency.
+- **Fire-and-Forget**: Dispatch tasks clearly and await succinct summary debriefs.
 
 ### Context Pre-Seeding Protocol
-Every subagent prompt should prepend a compact context block (~200 tokens) to eliminate cold-start exploratory steps:
+Every subagent prompt should prepend a compact context block (~200 tokens, or ~300 tokens with Genesis) to eliminate cold-start exploratory steps:
 
 ```
 <!-- CONTEXT: [PROJECT_NAME] -->
@@ -49,22 +49,30 @@ Every subagent prompt should prepend a compact context block (~200 tokens) to el
   - `<dir>/`: <3-word role>
 [CONSTRAINTS]:
   - <Critical invariant or known trap>
+[GENESIS]: (Optional) <~100-token summary: stack + top 3 traps + key entry points from Genesis report>
 [OUTPUT]: Max 5 bullets per section. Cite file:line.
 <!-- END CONTEXT -->
 ```
 
 **Rules**:
-- Keep under 250 tokens — key-value structure, not prose
+- Keep under 250 tokens (or ~350 tokens when `[GENESIS]` is populated) — key-value structure, not prose
 - Paths only, never inline file contents
 - Include known traps to prevent rework (e.g., "Do NOT use ast.parse for linting")
 - Include test runner command so subagents can verify immediately
+- **Genesis Pre-Seeding**: When a Genesis report exists (`docs/genesis_report.md` or session artifact), auto-inject a ~100-token summary into `[GENESIS]` (tech stack + top 3 traps + entry points). Pre-seeding Genesis context saves ~2–3 cold-start steps per subagent by eliminating redundant codebase reconnaissance.
 
-## 3. Cost & Workspace Isolation
-- **Model Tiering**: See `cost-optimization.md §3` for the authoritative model selection protocol. Key rules:
-  - All review prongs (Spores through Mulch): `flash`
-  - Coding subagents: `inherit`
-  - Synthesis and design authority: orchestrator only
-- **Branch Workspaces**: Only use `branch` workspace mode for subagents performing genuinely destructive operations (e.g., deleting files, rewriting core modules). The orchestrator must obtain user confirmation on the plan *before* dispatching destructive work to a subagent. For additive tasks like creating new files, writing tests, or generating boilerplate, use the default `inherit` workspace mode so files land directly in the project.
+## 3. Model Tiering, Personas & Workspaces
+- **Tiering & Persona Protocol** (see `cost-optimization.md §3` for authoritative tiering):
+
+| Subagent Role | Model Tier | Persona Mandate | Workspace Mode |
+|:---|:---:|:---|:---:|
+| Review prongs (Spores–Mulch) | `flash` | **Orthogonal lenses required** (e.g., correctness, performance, red-team). Homogeneous reviewers banned. | `inherit` (read-only) |
+| Research / Audit | `flash` | Domain-focused scout | `inherit` (read-only) |
+| Coding lanes | `inherit` | Disjoint lane implementer | `inherit` (`branch` only for destructive ops) |
+| Architecture / Synthesis | Orchestrator only | Global arbiter | Parent workspace |
+
+- **Orthogonal Incentives**: Assign conflicting analytical goals (bugs vs. waste vs. security) to eliminate consensus bias. Exception: high-assurance single-domain subsystems may use multiple same-domain attack vectors.
+- **Branch Workspaces**: Use `branch` mode only for destructive operations (file deletion, core rewrites) after user plan approval; use `inherit` for additive tasks.
 
 ## 4. Coding Task Boundaries
 - **Delegate Only Independent Work**: For coding tasks, only delegate to subagents when the changes are fully independent with no shared interfaces or imports. Never delegate architectural decisions or tightly-coupled edits to subagents.
@@ -89,13 +97,4 @@ Before acting on subagent findings, the orchestrator **must spot-check claims ag
 - **Omission claims**: Findings about *missing* code (e.g., no auth middleware, no rate limiting) cannot cite a file:line. Accept these if the subagent specifies *where* the check should exist and a grep confirms absence.
 
 If a finding fails verification after fuzzy locality search, demote it to ℹ️ info (not silent discard) and flag the subagent's report as partially ungrounded. Never propagate unverified claims downstream — hallucinations compound across agent boundaries.
-
-## 7. Orthogonal Persona Mandate
-When dispatching 2+ review subagents in the same phase, assign **conflicting analytical incentives**:
-- ❌ **Banned**: 3 reviewers all tasked with "review this code for issues"
-- ✅ **Required**: Orthogonal lenses (e.g., correctness verifier, performance minimalist, adversarial red-team)
-
-Homogeneous reviewers converge on the same findings via consensus bias, wasting tokens. Orthogonal personas with different success criteria (one rewarded for finding waste, another for finding bugs, another for finding security issues) maximize coverage per token spent.
-
-**Exception**: High-assurance single-domain subsystems (cryptography, auth pipelines) may use multiple same-domain lenses exploring different attack vectors. The orchestrator serves as the arbiter when reviewers conflict.
 

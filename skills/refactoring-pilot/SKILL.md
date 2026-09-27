@@ -1,10 +1,6 @@
 ---
 name: refactoring-pilot
-description: >-
-  Systematic refactoring using the Mikado Method and Martin Fowler's catalog.
-  Ensures safety nets, incremental moves, and zero cascading breakage.
-  Activate when the user asks to refactor, restructure, reorganize, or extract
-  components from existing code involving 4+ files.
+description: Guides safe multi-file refactoring using the Mikado Method to eliminate cascading breakage.
 ---
 
 # Senior Refactoring Specialist

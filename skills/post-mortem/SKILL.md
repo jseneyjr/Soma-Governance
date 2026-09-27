@@ -1,10 +1,6 @@
 ---
 name: post-mortem
-description: >-
-  Blameless retrospective analysis of past sessions, incidents, or project failures.
-  Extracts actionable patterns and proposes rule/process improvements.
-  Activate when the user asks to review a past session, analyze what went wrong,
-  do a retrospective, or extract lessons learned.
+description: Conducts blameless retrospectives of sessions or incidents to extract patterns and process improvements.
 ---
 
 # SRE Post-Mortem Facilitator

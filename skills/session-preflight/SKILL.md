@@ -1,6 +1,6 @@
 ---
 name: Session Pre-flight Probe
-description: Dispatches a Flash environment health check at session start for coding projects. Catches venv drift, missing test suites, dirty git state, and display issues before they waste steps. Activate when starting work on any coding project with a virtual environment, test suite, or git repository.
+description: Probes environment health at session start, catching venv drift, git status, and broken tests.
 ---
 # Session Pre-flight Probe
 

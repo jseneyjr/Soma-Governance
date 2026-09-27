@@ -1,9 +1,6 @@
 ---
 name: readme-writer
-description: >-
-  Generates polished, developer-facing READMEs with clear structure,
-  quick-start guides, and visual hierarchy. Activate when the user asks
-  to write, improve, or review a README.
+description: Generates polished developer READMEs featuring quick-start guides, architecture overviews, and visual hierarchy.
 ---
 
 # Technical Writer — README Specialist

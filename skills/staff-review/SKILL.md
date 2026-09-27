@@ -1,7 +1,8 @@
 ---
 name: Staff Review Protocol
-description: Multi-lens review fan-out with staff-level synthesis. Five modes — Breeze (targeted fix), Gale (single-pass), Trident (progressive Spores → Roots → Bedrock), Maelstrom (full adversarial with Thorns), and Tempest (full assurance with Mycelium + Mulch). Activate when the user requests a comprehensive review, audit, or architectural assessment.
+description: Multi-lens review fan-out with staff-level synthesis across five modes from Breeze to Tempest.
 trigger: user_request
+aliases: ["review this code", "code review", "PR review"]
 ---
 # Staff Review Protocol
 
@@ -9,13 +10,16 @@ trigger: user_request
 
 ## Review Modes
 
-| Mode | Alias | Prongs | Flash Dispatches | Token Cost | When to Use |
-|:-----|:------|:------:|:----------------:|:----------:|:------------|
-| **Breeze** | "breeze", "quick fix" | Roots → Bedrock | 2 | ~3–4k tokens | Known defect, single-file fix, rename |
-| **Gale** | "gale", "quick review" | Spores → Synthesize | 3–4 | ~4k tokens | Quick reviews, minor changes |
-| **Trident** | "trident", "deep review" | Spores → Roots → Bedrock | 5–8 | ~8–12k tokens | Feature reviews, refactors |
-| **Maelstrom** | "maelstrom", "max review" | Spores → Roots → Thorns → Bedrock | 7–12 | ~15–20k tokens | Architecture, security, breaking changes |
-| **Tempest** | "tempest", "full assurance" | Spores → Mycelium → Roots → Thorns → Bedrock → Mulch | 8–12 | ~30–50k tokens | Catastrophic risk, infra, auth, schema migrations |
+| Mode | Alias | Prongs | Flash Dispatches | Output Budget | When to Use |
+|:-----|:------|:------:|:----------------:|:-------------:|:------------|
+| **Breeze** | "breeze", "quick fix" | Roots → Bedrock | 2 | ≤2k output | Known defect, single-file fix, rename |
+| **Gale** | "gale", "quick review", "review this code", "code review", "PR review" | Spores → Synthesize | 3–4 | ≤3k output | Quick reviews, PR reviews, code diffs, minor changes |
+| **Trident** | "trident", "deep review" | Spores → Roots → Bedrock | 5–8 | ≤6k output | Feature reviews, refactors |
+| **Maelstrom** | "maelstrom", "max review" | Spores → Roots → Thorns → Bedrock | 7–12 | ≤10k output | Architecture, security, breaking changes |
+| **Tempest** | "tempest", "full assurance" | Spores → Mycelium → Roots → Thorns → Bedrock → Mulch | 8–12 | ≤15k output | Catastrophic risk, infra, auth, schema migrations |
+
+> [!NOTE]
+> Subagents do **NOT** inherit parent rules. Each scout gets a clean context window with only its task prompt (~200 tokens pre-seeding). Total protocol cost = (N dispatches × per-scout input context) + total output. Parent rule cost is paid ONCE by the orchestrator, not per-scout.
 
 ### Risk-Based Protocol Selection
 
@@ -32,16 +36,16 @@ Choose protocol by **failure severity**, not scope:
 
 ### Individual Prongs (run standalone)
 
-| Prong | Alias | What It Does |
-|:------|:------|:-------------|
-| 🍄 **Spores** | "spores", "scout" | Broad parallel survey — finds problems, ranks by severity, no fixes |
-| 🍄 **Mycelium** | "mycelium", "dependencies" | Maps blast radius, cross-repo state, dependency chains — what does this change touch? |
-| 🌿 **Roots** | "roots", "deep dive" | Focused analysis on specific findings — proposes concrete fixes |
-| 🌹 **Thorns** | "thorns", "break it", "red team" | Adversarial falsification — actively tries to break proposed fixes |
-| 🪨 **Bedrock** | "bedrock", "verify" | Final verification gate — checks structural correctness, pass/fail |
-| 🍂 **Mulch** | "mulch", "learnings" | Post-ship decomposition — extracts patterns into taxonomy, rules, and skills |
+| Prong | Alias | Max Output Tokens | What It Does |
+|:------|:------|:-----------------|:-------------|
+| 🍄 **Spores** | "spores", "scout" | **500 tokens** (max 5 findings, ~100 each) | Broad parallel survey — finds problems, ranks by severity, no fixes |
+| 🍄 **Mycelium** | "mycelium", "dependencies" | **800 tokens** | Maps blast radius, cross-repo state, dependency chains — what does this change touch? |
+| 🌿 **Roots** | "roots", "deep dive" | **1,000 tokens** per finding | Focused analysis on specific findings — proposes concrete fixes |
+| 🌹 **Thorns** | "thorns", "break it", "red team" | **800 tokens** per fix tested | Adversarial falsification — actively tries to break proposed fixes |
+| 🪨 **Bedrock** | "bedrock", "verify" | **300 tokens** (SHIP/BLOCK + max 3 issues) | Final verification gate — checks structural correctness, pass/fail |
+| 🍂 **Mulch** | "mulch", "learnings" | **500 tokens** | Post-ship decomposition — extracts patterns into taxonomy, rules, and skills |
 
-The orchestrator selects the mode based on risk level. Default to Gale for routine reviews. Maelstrom for anything that could be exploited or bypassed.
+The orchestrator selects the mode based on risk level. Default to Gale for routine reviews, code reviews, PR reviews, or when asked to review or critique code, diffs, or implementation plans. Maelstrom for anything that could be exploited or bypassed.
 
 ### Incremental Escalation
 
@@ -92,6 +96,8 @@ Dispatch 1 Flash verifier to confirm the applied fix is structurally sound (impo
 ---
 
 ## Gale Protocol (Single-Pass)
+
+**When to use**: `"gale"`, `"quick review"`, `"review this code"`, `"code review"`, `"PR review"` — routine code reviews, diff audits, PR reviews, implementation plan critique, minor changes. Absorbs general code review triggers: activate when asked to review, audit, or critique code, plans, PRs, or diffs.
 
 ### Phase 1: Fan-Out (Independent Analysis)
 
@@ -168,11 +174,16 @@ Dispatch 3–4 Flash scouts with orthogonal lenses (same as Gale Protocol Phase 
 - Rank findings by severity (🔴 critical / ⚠️ warning / ℹ️ info)
 - Flag areas that need deeper investigation
 - Return max 5 findings each
+- **Output budget**: 500 tokens max (max 5 findings, ~100 tokens each)
+
+**Orthogonal Personas Note**:
+If `.gemini/cells/chloroplasts/` contains repo-specific personas, use them to supplement the built-in Orthogonal Personas. Chloroplasts provide domain expertise that generic personas lack.
 
 **Scout prompt suffix**:
 ```
 IMPORTANT: Your role is Spores only. Identify and rank problems.
 Do NOT propose solutions. Return your top 5 findings ranked by severity.
+Output budget: 500 tokens max (max 5 findings, ~100 tokens each).
 Format: 🔴/⚠️/ℹ️ [finding] — Evidence: [file:line]
 ```
 
@@ -191,12 +202,15 @@ Dispatch 1–2 Flash analysts on ONLY the critical findings from Spores.
 - Analysts propose **concrete fixes** (file, line, change)
 - Analysts may activate specialist skills (domain-researcher, visual-analyst) if needed
 - Each analyst owns a disjoint subset of findings (no overlap)
+- **Output budget**: 1,000 tokens per finding
 
 **Roots prompt template**:
 ```
 <!-- CONTEXT: [PROJECT] from Context Pre-Seeding Protocol -->
 
 ROOTS ANALYSIS — You are investigating these findings from the Spores round:
+
+Output budget: 1,000 tokens max per finding.
 
 1. 🔴 [finding summary] — Evidence: [file:line]
 2. 🔴 [finding summary] — Evidence: [file:line]
@@ -216,6 +230,8 @@ For each finding:
 
 Dispatch 1 Flash verifier that receives the proposed fixes from Roots.
 
+**Output budget**: 300 tokens (SHIP/BLOCK + max 3 issues).
+
 **Verifier checks** (structural, not execution-based — verifier is read-only):
 - Do the proposed fixes introduce new symbol collisions or import conflicts?
 - Are there missed dependencies or callers? (grep for usages)
@@ -224,7 +240,7 @@ Dispatch 1 Flash verifier that receives the proposed fixes from Roots.
 
 *Note: Bedrock does NOT execute test suites (read-only subagent). It verifies structural correctness. The orchestrator runs tests after applying fixes.*
 
-**Verifier output**: `{verdict: "SHIP" | "BLOCK", issues: [...]}`
+**Verifier output**: `{verdict: "SHIP" | "BLOCK", issues: [...]}` (capped at 300 tokens max, max 3 issues)
 
 If BLOCK: orchestrator reviews issues and either revises fixes or escalates to user.
 
@@ -250,10 +266,14 @@ Extends Trident with an adversarial **Thorns** prong. Use for changes where coop
 
 Dispatch 1–2 Flash breakers with **explicit falsification objectives**. Breakers receive Roots' proposed fixes and actively try to break them.
 
+**Output budget**: 800 tokens per fix tested.
+
 **Breaker mandate** (NASA IV&V tripartite):
 1. **Does it do what it should?** — Verify the fix actually addresses the root cause
 2. **Does it NOT do what it must NOT do?** — Test negative invariants (data leaks, regressions, side effects)
 3. **Does it handle adverse conditions?** — Edge cases, malformed input, truncated context, concurrent access
+
+*(Note: Chloroplast personas inform edge cases to test here. Use their domain expertise to identify project-specific vulnerabilities.)*
 
 **Key differences from Bedrock**:
 - Bedrock is cooperative ("does this look right?")
@@ -265,6 +285,7 @@ Dispatch 1–2 Flash breakers with **explicit falsification objectives**. Breake
 <!-- CONTEXT: [PROJECT] from Context Pre-Seeding Protocol -->
 
 THORNS ANALYSIS — You are an adversarial reviewer. Your job is to BREAK these fixes.
+Output budget: 800 tokens max per fix tested.
 
 Read ALL of these files for context:
 [explicit file list — same as Roots received]
@@ -338,6 +359,8 @@ The highest-assurance review mode. Extends Maelstrom with **Mycelium** (dependen
 
 Dispatch 1–2 Flash analysts to map the **blast radius** of the files and symbols identified by Spores. Mycelium receives the Spores findings (affected files, flagged symbols) and traces their dependency graph:
 
+**Output budget**: 800 tokens max.
+
 1. **Import/call chains**: What calls the flagged symbols? What do they call? (max 2 hops per direction)
 2. **Cross-repo state**: If the project spans multiple repos, check for shared schemas, configs, or contracts
 3. **Type consumers**: Who depends on the interfaces in the flagged files? List downstream consumers
@@ -348,6 +371,7 @@ Mycelium output is passed to Roots alongside Spores findings, so Roots analysts 
 **Mycelium prompt template**:
 ```
 MYCELIUM ANALYSIS — You are mapping the blast radius of flagged files/symbols.
+Output budget: 800 tokens max.
 
 Spores identified these files and issues:
 [Spores findings summary with file:line citations]
@@ -370,6 +394,8 @@ Output: {blast_radius: [{file, symbol, affected_files: [], affected_repos: [], r
 
 After Bedrock renders its verdict (**SHIP or BLOCK** — Mulch runs either way), dispatch 1 Flash analyst to decompose the review's findings into **proposed learnings**. Mulch is read-only; it proposes changes that the **orchestrator queues for the next session** (not applied immediately, to avoid triggering recursive governance reviews).
 
+**Output budget**: 500 tokens max.
+
 1. **Taxonomy patterns**: New failure modes not yet in `taxonomy.json` — propose `pattern_name`, `description`, `detection_rule`
 2. **Steering rules**: New invariants discovered — propose `rule_file`, `section`, `addition`
 3. **Skill recipes**: Successful repair patterns — propose `skill_name`, `trigger`, `steps`
@@ -380,6 +406,7 @@ After Bedrock renders its verdict (**SHIP or BLOCK** — Mulch runs either way),
 **Mulch prompt template**:
 ```
 MULCH ANALYSIS — You are extracting reusable learnings from this completed review.
+Output budget: 500 tokens max.
 
 Read the review artifacts:
 [Spores findings, Roots fixes, Thorns breakages, Bedrock verdict]
@@ -478,15 +505,15 @@ Specialists run as **Flash subagents** and report back like standard reviewers. 
 
 ## Model Selection
 
-| Role | Model | Rationale |
-|:-----|:------|:----------|
-| Spores scout | `flash` | Read-heavy, structured output, severity ranking |
-| Mycelium analyst | `flash` | Dependency tracing, grep-based, structured output |
-| Roots analyst | `flash` | Focused analysis, concrete fix proposals |
-| Thorns breaker | `flash` | Adversarial falsification, edge-case probing |
-| Bedrock verifier | `flash` | Checklist-based, pass/fail gate |
-| Mulch extractor | `flash` | Pattern extraction, structured taxonomy output |
-| Staff synthesizer | orchestrator (self) | Needs cross-cutting context, design authority, write access |
+| Role | Model | Max Output | Rationale |
+|:-----|:------|:----------:|:----------|
+| Spores scout | `flash` | 500 tokens | Read-heavy, structured output, max 5 findings |
+| Mycelium analyst | `flash` | 800 tokens | Dependency tracing, grep-based, blast radius map |
+| Roots analyst | `flash` | 1,000 tokens/finding | Focused analysis, concrete fix proposals |
+| Thorns breaker | `flash` | 800 tokens/fix | Adversarial falsification, edge-case probing |
+| Bedrock verifier | `flash` | 300 tokens | Checklist-based, SHIP/BLOCK + max 3 issues |
+| Mulch extractor | `flash` | 500 tokens | Pattern extraction, structured taxonomy output |
+| Staff synthesizer | orchestrator (self) | Uncapped | Needs cross-cutting context, design authority, write access |
 
 ## Example Prompt Template for Reviewers
 
@@ -498,6 +525,7 @@ Specialists run as **Flash subagents** and report back like standard reviewers. 
   - `<dir>/`: <3-word role>
 [CONSTRAINTS]:
   - <Critical invariant or known trap>
+[GENESIS]: (Optional) <~100-token summary: stack + top 3 traps + key entry points from Genesis report>
 [OUTPUT]: Max 5 bullets per section. Cite file:line.
 <!-- END CONTEXT -->
 

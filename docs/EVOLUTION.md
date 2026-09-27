@@ -232,6 +232,140 @@ Analysis of a new dataset of 66 masked and sanitized production sessions (618 us
 
 **Impact on rules:** Installer completeness fix. `make doctor` now verifies skills. Genesis skill added (16 skills total). 5 experiments proposed (E18–E22). Project renamed to Prism AI Steering.
 
+---
+
+## Phase 12: Measurement Integrity & Deep Optimization
+
+**Trigger**: Full Tempest review during Phase 12 planning revealed that all token baselines in METRICS.md were calculated using a word-count heuristic — a method that understated actual costs. A character-class recalibration (×1.97) overcorrected in the opposite direction. Neither was measured against the model's actual tokenizer.
+
+**Key Discovery**: The governance system is structurally sound. The contamination was limited to the token economics presentation layer — 83 values across 8 files. All 11 phases' core claims survived because they were built on step counts and behavioral patterns, not token math.
+
+### Changes
+- **Ground-truth token census**: `scripts/token_census.py` using calibrated measurement (ratio: 1.35). Phase 11 baseline: **4,378 tokens/turn idle overhead**
+- **Rule compression**: Providence, subagent-delegation, and cost-optimization compressed by 320 words (~431 tokens/turn) through prose dedup and example tightening. §10 (Fail-Fast Validation) preserved — was misidentified as desktop automation during planning
+- **Skill consolidation**: Legacy code review skill merged into `staff-review` (16 → 15 skills) with Gale aliases and trigger absorption; all 15 skill frontmatter descriptions compressed to ≤15 words. One skill, one escalation ladder
+- **Genesis env scanning**: Privacy-first dev environment probes (sanitized outputs only — versions and booleans, not raw paths or usernames)
+- **Cross-OS installers**: PowerShell installer (`install.ps1`) for Windows — deploys rules + skills only (hooks require bash)
+- **Metrics infrastructure**: `metrics_snapshot.sh` with privacy invariant, automated baselines, delta comparison
+- **ROI reframed**: Step-based instead of token-based. Steps are model-independent; token ROI varies by model and caching
+- **Cross-model data separation**: Governed sessions (Gemini) and 66 masked sessions (alternative model family) use different tokenizers — only step-based metrics are valid for cross-dataset comparison
+- **Documentation**: 8 cross-reference inconsistencies fixed, 83 contaminated token values replaced, Insight 4 corrected, E11 graduated
+
+**Impact on rules:** Rule compression without semantic loss. Privacy invariant strengthened. Measurement methodology established. 15 skills, 11 rules.
+
+---
+
+## Phase 13: Adaptive Governance — Cytogenesis with Integrated Selection *(Concept)*
+
+**Concept**: Genesis currently does observation — it scans a repo and reports. Phase 13 makes it do synthesis — it scans a repo and generates governance extensions tailored to it, **with fitness tracking built in from day one**. Lesson from Phase 12: measure first, then optimize. Don't generate cells and evaluate later — build the feedback loop immediately.
+
+### Naming Hierarchy
+```
+🌲 BIOME (Global)       → Modes: Breeze, Gale, Trident, Maelstrom, Tempest
+🍄 FOREST FLOOR          → Prongs: Spores, Mycelium, Roots, Thorns, Bedrock, Mulch
+🌱 CELL (Repo-Local)     → Chloroplast, Vacuole, Cell Wall, Membrane, Plasmodesmata
+```
+
+### Cell Types
+| Cell Structure | Repo-Specific Function | Example |
+|:--------------|:----------------------|:--------|
+| **Chloroplast** | Repo-specific review personas tuned to the domain | `chloroplast: schema-migration-guardian` |
+| **Vacuole** | Accumulated traps & anti-patterns for this codebase | `"This repo uses build.sh not make"` |
+| **Cell Wall** | Hard boundaries — things you must never do HERE | `"Never modify auth_config.yaml without security review"` |
+| **Membrane** | Escalation overrides — what gets auto-Breezed vs forced-Trident | `"Any change to /migrations/ → minimum Trident"` |
+| **Plasmodesmata** | Cross-repo connections in multi-service architectures | `"Service A feeds Service B via the events table"` |
+
+### Hypothesis Invariant (Design Principle §6)
+Every generated cell must be **self-testing**. When Genesis produces a cell, it must also produce:
+- **Hypothesis**: What the cell believes about this codebase
+- **Prediction**: What it should catch or prevent
+- **Falsification**: How to know it's NOT working (e.g., "0 findings in 10 sessions → prune")
+- **Expiry**: When to re-evaluate (sessions or calendar time)
+
+### Execution Order (Fitness-First)
+
+| Order | Component | Rationale |
+|:-----:|:----------|:----------|
+| 1 | **Fitness Infrastructure** | Build the scoring mechanism BEFORE generating anything — Phase 12's lesson |
+| 2 | **Vacuoles** (trap persistence) | Lowest risk, highest immediate value. Genesis already identifies traps — just persist them |
+| 3 | **Cell Walls + Membranes** (boundaries + escalation overrides) | Configuration, not generation. Simple and immediately useful |
+| 4 | **Chloroplasts** (personas) | The big experiment. Launches with fitness tracking already running |
+| 5 | **First Selection Cycle** | Immediate pruning pass — do Vacuoles and Chloroplasts actually help? |
+
+Genesis becomes the **Meristem** — the stem cell zone that produces all new differentiated cells. Cell outputs live in `.gemini/cells/` — additive only, never overriding global governance.
+
+### Fitness Function
+
+```
+fitness(cell) = (true_positive_catches / total_triggers) × impact_weight
+```
+
+Where:
+- **true_positive_catches**: Findings that led to actual code changes or prevented verified defects
+- **total_triggers**: All times the cell fired (including false positives)
+- **impact_weight**: Severity multiplier — catching a security defect > catching a style issue
+
+### Selection Cycles (Built Into Phase 13)
+
+```
+Every N sessions (or on-demand):
+    ↓
+For each cell in .gemini/cells/:
+    ├── fitness > 0.7           → SURVIVE (keep as-is)
+    ├── fitness 0.3–0.7         → ADAPT (refine hypothesis, narrow scope)
+    ├── fitness < 0.3           → EXTINCTION (prune)
+    └── 0 triggers in N cycles  → DORMANT → EXTINCTION after 1 more cycle
+```
+
+**Validation**: E23 (Chloroplast Effectiveness), E24 (Vacuole Trap Persistence), E25 (Fitness Function Accuracy). See [EXPERIMENTS.md](EXPERIMENTS.md).
+
+**Impact on rules:** Genesis expanded from 4 to 5 stages (Canopy, Rings, Taproot, Lichen, Cytogenesis). Additive repo-local governance layer with integrated self-pruning. 2 experiments proposed (E23–E24). Components 1 (Vacuoles) and 2 (Cell Walls + Membranes) are now implemented and wired into `governance_init.sh` and `escalation_sentinel.sh`.
+
+---
+
+## Phase 14: Evolutionary Dynamics — Cross-Repo Natural Selection *(Concept)*
+
+**Concept**: Phase 13 generates and evaluates cells within a single repo. Phase 14 extends this across repos and over time, enabling the system to discover its own universal rules. This phase only becomes meaningful when enough repos have cells with enough fitness history to identify convergent patterns.
+
+### Evolutionary Mechanisms
+
+| Mechanism | Biology | Governance Function |
+|:----------|:--------|:-------------------|
+| **Plasmodesmata** | Channels between cells | Cross-repo connections — how services relate in multi-repo architectures |
+| **Adaptation** | Organisms modify traits for better fit | Cells refine their scope, phrasing, or thresholds based on accumulated near-miss data |
+| **Speciation** | New species emerge from divergent populations | Repo-local cells that prove universal across ≥3 repos graduate to global forest-floor rules |
+| **Phylogenetics** | Tracking evolutionary lineage | Cell provenance — which Genesis scan generated it, which repo, version, and generation |
+
+### The Promotion Path (Speciation)
+When a cell proves universal — catching the same class of issues across multiple unrelated repos — it's no longer repo-specific. It's a universal governance pattern that should graduate:
+
+```
+.gemini/cells/chloroplast-schema-guardian.md (repo-local)
+    ↓ catches schema issues in Repo A, Repo B, Repo C
+    ↓ fitness > 0.7 in all three
+    ↓
+rules/schema-validation.md (global rule, trigger: model_decision)
+```
+
+Micro informs macro. Cells feed back into the forest floor. The system discovers its own rules.
+
+### Configurable Metrics Infrastructure (Prerequisite)
+Cross-repo Natural Selection requires a shared metrics store. Phase 14 includes configurable data paths via `steering.conf`:
+
+| Config Key | Purpose | Default |
+|:-----------|:--------|:--------|
+| `METRICS_REPO` | Private repo/directory for metrics snapshots, fitness data, cell telemetry | `docs/snapshots/` (gitignored) |
+| `CONVERSATION_LOG_DIR` | Where session transcripts live for sweep analysis | `~/.gemini/antigravity/brain` |
+| `GENESIS_REPORT_DIR` | Where Genesis reports are stored and loaded for pre-seeding | `docs/` |
+
+This separation ensures: governance rules are **public** (Apache 2.0 licensed), telemetry data is **private** (user-configurable repo, gitignored by default). Fitness data can be aggregated across repos via the shared `METRICS_REPO` path without exposing project-specific content.
+
+**Validation**: E26 (Promotion Path Validation). See [EXPERIMENTS.md](EXPERIMENTS.md).
+
+**Impact on rules:** Automated cross-repo governance evolution. Self-discovering rules. Configurable data separation. Promotion path from repo-local cells to global forest-floor rules. 2 experiments proposed (E25–E26).
+
+---
+
 ## The Compound Effect
 
 ```
@@ -256,6 +390,12 @@ Tempest Hardening → Unified installer, shared library, dynamic hooks, safety g
 Autonomous Orchestration → Subagent nesting, adaptive auto-escalation, escalation sentinel, 15 skills, 17 experiments
     ↓
 Expanded Dataset Analysis → Prism AI Steering, 66-session validation, Genesis onboarding, installer parity, 16 skills, 22 experiments
+    ↓
+Measurement Integrity → Ground-truth calibration, rule compression, ROI reframed as step-based, 83 contaminated values corrected, 15 skills
+    ↓
+Genesis Cytogenesis → Repo-specific cell generation: Chloroplast personas, Vacuole traps, Cell Wall boundaries, Membrane escalation, Plasmodesmata cross-repo
+    ↓
+Natural Selection → Fitness scoring, selection pressure, adaptation, speciation (cell → global rule promotion), extinction of unfit governance
 ```
 
 Compliance went from **7.8/10 to 9.8/10** and waste dropped from **~56% to 1.1%** in best-governed sessions — see [METRICS.md](METRICS.md) for the full breakdown. The rules now cover failure modes that no amount of upfront design would have predicted. Phase 11 validated the system against 66 real production sessions, proving that the governance gap between "rules present" and "skills present" is the highest-risk silent failure mode.
@@ -267,3 +407,4 @@ Compliance went from **7.8/10 to 9.8/10** and waste dropped from **~56% to 1.1%*
 3. **Rules as a system** — Cross-references between rules are intentional. Providence §3 mandates read-before-write; refactoring-pilot operationalizes it as a phased workflow.
 4. **Continuous validation** — Rules aren't "done" after review. Governance is a living system that evolves with each session.
 5. **Installation completeness** — Governance installed at partial fidelity provides false assurance. Every installer path must deploy rules, skills, and hooks with the same completeness.
+6. **Hypothesis-driven governance** — Every governance extension must carry its own falsifiability criteria. A rule, persona, or adaptation that cannot be tested has no place in the system. Generated extensions (Chloroplasts, Vacuoles) must specify what they predict, how to measure it, and when to prune if unvalidated. The scientific method is not just how we evolve the system — it IS the system.

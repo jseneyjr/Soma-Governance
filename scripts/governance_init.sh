@@ -100,6 +100,32 @@ if domain_hint:
         'ephemeralMessage': f'⚡ DOMAIN: {domain_hint} project detected. Domain preset available in domain-researcher skill for verified external lookups.'
     })
 
+# Component 1: Vacuoles
+vacuoles_dir = os.path.join(target, '.gemini/cells/vacuoles')
+if os.path.exists(vacuoles_dir):
+    vacuoles = []
+    import glob, re
+    for v in glob.glob(os.path.join(vacuoles_dir, '*.md')):
+        try:
+            with open(v) as f:
+                content = f.read()
+                m = re.search(r'^## Trap:\s*(.*)', content, re.MULTILINE)
+                if m:
+                    triggers = 0
+                    tm = re.search(r'triggers:\s*(\d+)', content)
+                    if tm:
+                        triggers = int(tm.group(1))
+                    vacuoles.append((triggers, m.group(1).strip()))
+        except Exception:
+            pass
+    if vacuoles:
+        vacuoles.sort(key=lambda x: x[0], reverse=True)
+        trap_names = [v[1] for v in vacuoles[:5]]
+        trap_str = ", ".join(f"[{t}]" for t in trap_names)
+        steps.append({
+            'ephemeralMessage': f'⚠️ KNOWN TRAPS: {trap_str}'
+        })
+
 print(json.dumps(steps))
 " 2>/dev/null || echo "[]")
 fi
