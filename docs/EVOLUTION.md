@@ -80,7 +80,14 @@ After achieving 5% waste in governance sessions, the focus shifted from *prevent
 
 With low baseline waste established, Phase 6 addressed review depth, context efficiency, and proactive mechanical detection:
 
-- **Trident Protocol**: Added progressive 3-prong deep review (RECON → STRIKE → FORTIFY) to `staff-review`. Separating reconnaissance scouts (problems only) from strike analysts (concrete fixes) and verifiers (SHIP/BLOCK gate) prevents confirmation bias and scope creep (~8–12k tokens vs ~80k for prevented rework).
+- **Trident Protocol**: Added progressive 3-prong deep review (RECON → Roots → Bedrock) to `staff-review`. Separating reconnaissance scouts (problems only) from root-cause analysts (concrete fixes) and structural verifiers (Bedrock SHIP/BLOCK gate; read-only, does NOT run tests) prevents confirmation bias and scope creep (~8–12k tokens vs ~80k for prevented rework).
+- **Maelstrom Protocol & Thorns (Adversarial Falsification)**: Introduced a full 4-stage adversarial review workflow (RECON → Roots → Thorns → Bedrock, ~15–20k tokens) for critical and catastrophic risk surfaces. Incorporates the **Thorns** prong (NASA IV&V tripartite falsification), where an adversarial falsification team actively attempts to break proposed fixes with a strict 2-cycle revision cap before passing to Bedrock.
+- **Nature-Themed Naming**: Unified review protocols and prongs under natural phenomena metaphors:
+  - Protocols: **Gale** (single-pass fan-out, was Salvo/Standard), **Trident** (progressive 3-prong), and **Maelstrom** (full adversarial, was Siege).
+  - Prongs: **RECON** (broad survey), **Roots** (root cause analysis, was STRIKE), **Thorns** (adversarial falsification, was BREACH), and **Bedrock** (structural-only verification gate, was FORTIFY).
+- **Risk-Based Protocol Selection**: Codified automated risk-tiered protocol routing: Low risk → Gale (~4k tokens), Medium/High risk → Trident (~8–12k tokens), and Critical/Catastrophic risk → Maelstrom (~15–20k tokens).
+- **First Successful Maelstrom Dogfood Run**: In its initial dogfood run, the Maelstrom protocol completed successfully; the Thorns adversarial prong caught 5 critical bugs that would have shipped broken under traditional review.
+- **Schema Bifurcation Fix in `governance_sweep.sh`**: Resolved schema bifurcation in `scripts/governance_sweep.sh`, reconciling disparate transcript field structures to accurately aggregate metrics across 17 sessions (7,015 total steps, 1,317 waste = 18.8% aggregate waste) under the 23-pattern taxonomy.
 - **5 Specialist Skills**: Expanded domain capabilities with `domain-researcher` (grounded external fact compilation), `spec-synthesizer` (cross-referencing multi-lens findings into prioritized plans), `session-monitor` (live trajectory and waste tracking), `governance-auditor` (transcript-level per-rule PASS/FAIL checks), and `visual-analyst` (screen and UI state calibration), bringing the suite to 13 skills total.
 - **10-Lens Staff Protocol**: Staff review expanded from ad-hoc analysis to 10 formal lenses covering Architecture, Performance, Security, Compliance, Behavioral, Domain Research, Spec Synthesis, Visual, Governance Audit, and Live Monitor.
 - **Auto-Preflight & Domain Detection**: Embedded automated project scanning into `governance_init.sh` hooks. Invocation 1 automatically identifies coding project markers (`venv`, `package.json`, `Makefile`, `tests/`) and domain patterns (game automation, ML/RL), injecting targeted prompts with 0 model tokens consumed.
@@ -89,7 +96,7 @@ With low baseline waste established, Phase 6 addressed review depth, context eff
 - **Concurrency Expansion**: Raised read-only concurrency limits from 3 to 4 subagents and implementation writers from 2 to 3 under the Disjoint Lane Protocol, lowering the delegation floor from 100 to 75 steps.
 - **Governance Sweep**: Introduced `scripts/governance_sweep.sh` to run periodic, non-blocking sweeps for unreviewed sessions (>100 steps), warning trend aggregation, and real-time session tracking without burning AI tokens (~500 tokens / local run).
 
-**Impact on rules:** Upgraded `skills/staff-review` to support Standard & Trident modes across 10 lenses; added 5 specialist skills (13 total); updated `subagent-delegation.md` with §2.1 Context Pre-Seeding, higher concurrency (4 readers, 3 writers), and a 75-step delegation floor; automated hooks in `scripts/governance_init.sh`; and established `scripts/governance_sweep.sh` and `docs/EXPERIMENTS.md`.
+**Impact on rules:** Upgraded `skills/staff-review` to support Gale, Trident, & Maelstrom modes across 10 lenses; added 5 specialist skills (13 total); updated `subagent-delegation.md` with §2.1 Context Pre-Seeding, higher concurrency (4 readers, 3 writers), and a 75-step delegation floor; automated hooks in `scripts/governance_init.sh`; and established `scripts/governance_sweep.sh` and `docs/EXPERIMENTS.md`.
 
 ## The Compound Effect
 
@@ -104,10 +111,10 @@ Continuous Monitor → catches new patterns as they emerge
     ↓
 Divide & Conquer → parallel lanes, preflight probe, review sentinels
     ↓
-Trident & Mechanized Guardrails → 10 lenses, 13 skills, auto-hooks, experiment framework
+Trident, Maelstrom & Mechanized Guardrails → Gale/Trident/Maelstrom, 10 lenses, 13 skills, auto-hooks
 ```
 
-Compliance went from **7.8/10 to 9.8/10**, waste rate dropped from **~56% to ~5% (latest session)**, and the rules now cover failure modes that no amount of upfront design would have predicted.
+Compliance went from **7.8/10 to 9.8/10**, waste rate dropped from **~56% to 18.8% across 17 sessions (7,015 steps)**, with best-governed sessions reaching **1.1% waste** (`0dc37064` across 1,325 steps), and the rules now cover failure modes that no amount of upfront design would have predicted.
 
 ## Design Principles (Emerged, Not Prescribed)
 

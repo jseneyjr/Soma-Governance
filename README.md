@@ -1,6 +1,6 @@
 # AI Steering Rules
 
-Battle-tested governance rules for AI coding assistants — forged from 5,500+ steps of real failures across 9 sessions, refined through 12 review phases, and enforced via lifecycle hooks.
+Battle-tested governance rules for AI coding assistants — forged from 7,015 steps of real failures across 17 sessions (18.8% waste), refined through 12 review phases, and enforced via lifecycle hooks.
 
 ## Why Use This?
 
@@ -71,22 +71,24 @@ Zero tokens until invoked.
 | `security-audit` | Check security or audit endpoints. AppSec Engineer: OWASP Top 10. |
 | `session-monitor` | Live session monitoring. Tracks waste trajectory, periodic probes, regression alerts. |
 | `spec-synthesizer` | Synthesize review reports. Cross-references multi-lens findings into a single prioritized plan. |
-| `staff-review` | Comprehensive review or audit. Multi-lens fan-out (10 lenses) with staff-level synthesis. Supports Standard & Trident modes. |
+| `staff-review` | Comprehensive review or audit. Multi-lens fan-out (10 lenses) with staff-level synthesis. Supports Gale, Trident, & Maelstrom modes. |
 | `visual-analyst` | Screen & UI analysis. Extracts game state, UI coordinates, error messages, and visual regressions. |
 
-### Review Protocols (Standard vs. Trident)
+### Review Protocols (Gale, Trident, Maelstrom)
 
-The `staff-review` skill orchestrates 10 specialized lenses in two review modes:
+The `staff-review` skill orchestrates 10 specialized lenses in three review modes:
 
 | Mode | Rounds | Dispatches | Token Cost | Best For | Workflow |
 |:-----|:------:|:----------:|:----------:|:---------|:---------|
-| **Standard** | 1 | 3–4 Flash | ~4k tokens | Routine reviews, known domains | Single-pass parallel fan-out → Staff synthesis |
-| **Trident** | 2–3 | 5–8 Flash | ~8–12k tokens | Architecture changes, high-risk refactors | Progressive 3-prong: RECON → STRIKE → FORTIFY |
+| **Gale** | 1 | 3–4 Flash | ~4k tokens | Routine reviews, known domains (Low risk) | Single-pass parallel fan-out → Staff synthesis |
+| **Trident** | 2–3 | 5–8 Flash | ~8–12k tokens | Architecture changes, high-risk refactors (Medium/High risk) | Progressive 3-prong: RECON → Roots → Bedrock |
+| **Maelstrom** | 3–4 | 7–12 Flash | ~15–20k tokens | Critical/Catastrophic risk, core governance, security-critical changes | Full adversarial: RECON → Roots → Thorns → Bedrock |
 
-#### Trident Protocol Prongs:
-- **Prong 1: RECON (width)** — 3–4 Flash scouts survey codebase; identify problems and rank by severity (🔴 critical / ⚠️ warning / ℹ️ info); no fix proposals allowed.
-- **Prong 2: STRIKE (depth)** — 1–2 Flash analysts receive deduplicated findings, investigate root cause, and propose concrete fixes with blast radius analysis.
-- **Prong 3: FORTIFY (verification)** — 1 Flash verifier validates proposed changes against test suites and callers; outputs a SHIP/BLOCK gate.
+#### Review Protocol Prongs:
+- **RECON (width)** — 3–4 Flash scouts survey codebase; identify problems and rank by severity (🔴 critical / ⚠️ warning / ℹ️ info); no fix proposals allowed.
+- **Roots (depth)** — 1–2 Flash analysts receive deduplicated findings, investigate root cause, and propose concrete fixes with blast radius analysis.
+- **Thorns (adversarial)** — Falsification team (NASA IV&V tripartite) actively attempts to break/falsify proposed fixes with a 2-cycle revision cap.
+- **Bedrock (verification)** — Structural-only verification gate (read-only, does NOT run tests); validates proposed changes against test suites and callers; outputs a SHIP/BLOCK gate.
 
 **10 Review Lenses:** Architecture, Performance, Security, Compliance, Behavioral, Domain Research, Spec Synthesis, Visual, Governance Audit, Live Monitor.
 
