@@ -71,28 +71,34 @@ Zero tokens until invoked.
 | `security-audit` | Check security or audit endpoints. AppSec Engineer: OWASP Top 10. |
 | `session-monitor` | Live session monitoring. Tracks waste trajectory, periodic probes, regression alerts. |
 | `spec-synthesizer` | Synthesize review reports. Cross-references multi-lens findings into a single prioritized plan. |
-| `staff-review` | Comprehensive review or audit. Multi-lens fan-out (10 lenses) with staff-level synthesis. Supports Gale, Trident, & Maelstrom modes, Incremental Escalation, and Empirical Refutation Gate. |
+| `staff-review` | Comprehensive review or audit. Multi-lens fan-out (10 lenses) with staff-level synthesis. Supports Breeze, Gale, Trident, Maelstrom, & Tempest modes, Incremental Escalation, and Empirical Refutation Gate. |
 | `visual-analyst` | Screen & UI analysis. Extracts game state, UI coordinates, error messages, and visual regressions. |
 
-### Review Protocols (Gale, Trident, Maelstrom)
+### Review Protocols (Breeze, Gale, Trident, Maelstrom, Tempest)
 
-The `staff-review` skill orchestrates 10 specialized lenses across three review modes, supporting **Incremental Escalation** (upgrading review intensity mid-flight without restarting completed prongs) and the **Empirical Refutation Gate** (filtering false positives before Bedrock):
+The `staff-review` skill orchestrates 10 specialized lenses across five review modes and six prongs, supporting **Incremental Escalation** (upgrading review intensity mid-flight without restarting completed prongs) and the **Empirical Refutation Gate** (filtering false positives before Bedrock):
 
 | Mode | Rounds | Dispatches | Token Cost | Best For | Workflow |
 |:-----|:------:|:----------:|:----------:|:---------|:---------|
+| **Breeze** | 1 | 1–2 Flash | ~3–4k tokens | Known bugs, string renames, doc freshness, lint fixes | Targeted fix: Roots → Bedrock (skips Spores) |
 | **Gale** | 1 | 3–4 Flash | ~4k tokens | Routine reviews, known domains (Low risk) | Single-pass parallel fan-out → Staff synthesis |
 | **Trident** | 2–3 | 5–8 Flash | ~8–12k tokens | Architecture changes, high-risk refactors (Medium/High risk) | Progressive 3-prong: Spores → Roots → Bedrock |
 | **Maelstrom** | 3–4 | 7–12 Flash | ~15–20k tokens | Critical/Catastrophic risk, core governance, security-critical changes | Full adversarial: Spores → Roots → Thorns → Bedrock |
+| **Tempest** | 4–5 | 10–16 Flash | ~30–50k tokens | Catastrophic risk, infra, auth, schema migrations | Highest assurance: Spores → Mycelium → Roots → Thorns → Bedrock → Mulch |
 
-#### Review Protocol Prongs:
+#### Review Protocol Prongs (6):
 - **🍄 Spores (width)** — 3–4 Flash scouts survey codebase with orthogonal personas; identify problems and rank by severity (🔴 critical / ⚠️ warning / ℹ️ info); no fix proposals allowed.
-- **Roots (depth)** — 1–2 Flash analysts receive deduplicated findings, investigate root cause, and propose concrete fixes with blast radius analysis.
-- **Thorns (adversarial)** — Falsification team (NASA IV&V tripartite) actively attempts to break/falsify proposed fixes with a 2-cycle revision cap.
-- **Bedrock (verification)** — Structural-only verification gate (read-only, does NOT run tests); validates proposed changes against test suites, callers, and the Empirical Refutation Gate; outputs a SHIP/BLOCK gate.
+- **🍄 Mycelium (blast radius)** — Dependency and blast-radius mapping after Spores, before Roots. Traces import chains (max 2 hops), cross-repo state, and type consumers. Receives Spores findings and passes enriched context to Roots.
+- **🌿 Roots (depth)** — 1–2 Flash analysts receive deduplicated findings, investigate root cause, and propose concrete fixes with blast radius analysis.
+- **🌹 Thorns (adversarial)** — Falsification team (NASA IV&V tripartite) actively attempts to break/falsify proposed fixes with a 2-cycle revision cap.
+- **🪨 Bedrock (verification)** — Structural-only verification gate (read-only, does NOT run tests); validates proposed changes against test suites, callers, and the Empirical Refutation Gate; outputs a SHIP/BLOCK gate.
+- **🍂 Mulch (learning)** — Post-review learning extraction (runs on SHIP or BLOCK). Proposes taxonomy patterns, rule updates, and skill recipes. Read-only with circuit breaker preventing recursive governance reviews; proposals queued for next session.
 
 #### Key Governance Mechanisms:
 - **Empirical Refutation Gate**: Before accepting critical review findings, requires at least 2 of 3 criteria: (1) verified `file:line` citation (±5 lines), (2) executable reproduction command/test, (3) mechanical verification (grep/math check; omission claims satisfy this). Findings meeting 1 criterion become ⚠️ warning; 0 become ℹ️ info (eliminates ~80% false positives; Agarwal 2026).
-- **Incremental Escalation**: Upgrades review depth mid-flight across 4 paths (Gale→Trident, Gale→Maelstrom, Trident partial→Maelstrom, Trident full→Maelstrom) without re-running earlier prongs (requires clean `git status`).
+- **Incremental Escalation**: Upgrades review depth mid-flight across 7 paths (Breeze→Trident, Gale→Trident, Gale→Maelstrom, Gale→Tempest, Trident partial→Maelstrom, Trident full→Maelstrom, Maelstrom→Tempest) without re-running earlier prongs (requires clean `git status`).
+- **Human Gate (Tempest)**: `ask_question` confirmation required before Bedrock issues its SHIP/BLOCK verdict, ensuring human oversight for catastrophic-risk changes.
+- **Breeze BLOCK Handling**: Max 1 revision attempt on BLOCK; if unresolved, auto-escalates to Trident.
 - **Boundary Verification Protocol**: Orchestrator spot-checks subagent claims before acting with fuzzy ±5 line tolerance; demotes ungrounded claims rather than discarding them silently (IEEE GLOBECOM 2026).
 - **Orthogonal Persona Mandate**: Bans homogeneous reviewer fan-outs; assigns conflicting analytical incentives (e.g. correctness vs performance vs security) to prevent consensus bias (MAR/ICML 2026).
 - **Validated Concurrency Limits**: Benchmark-confirmed optimal ceilings (4 read-only scouts, 3 disjoint writers) maximizing recall before consensus degradation (MIT, Tencent, Coasty).

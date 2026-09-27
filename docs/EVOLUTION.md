@@ -161,6 +161,50 @@ In **Maelstrom #2**, we incorporated state-of-the-art 2026 academic research and
 
 **Impact on rules:** Enforced empirical falsification in `staff-review`, codified Boundary Verification and Orthogonal Personas in `subagent-delegation.md`, established structured diagnosis in `providence.md`, added FPSR and mechanical diff tiering to `cost-optimization.md`, and validated subagent concurrency against top-tier 2026 benchmarks.
 
+## Phase 8: Spectrum Completion & Lifecycle Extraction ("Cover every risk tier, learn from every review")
+
+Maelstrom #3 expanded the review system in two dimensions: **breadth** (adding protocols at both ends of the risk spectrum) and **depth** (adding prongs for dependency mapping and post-review learning). Triple convergence from 3 Spores scouts, Thorns-verified (0/4 survived, all fixed), Bedrock SHIP.
+
+1. **Breeze Protocol (`staff-review` SKILL.md)**:
+   - Lightweight targeted-fix mode for known defects (~3–4k tokens). Skips Spores reconnaissance entirely, running only Roots → Bedrock.
+   - BLOCK handling: max 1 revision attempt; if unresolved, auto-escalates to Trident.
+   - Use cases: known bugs, string renames, doc freshness, lint fixes.
+   - Fills the gap below Gale for changes where the problem is already identified and only the fix needs verification.
+
+2. **Tempest Protocol (`staff-review` SKILL.md)**:
+   - Highest-assurance mode (~30–50k tokens). Full 6-prong pipeline: Spores → Mycelium → Roots → Thorns → Bedrock → Mulch.
+   - Introduces a **human gate** via `ask_question` before Bedrock issues its SHIP/BLOCK verdict, ensuring explicit human oversight for catastrophic-risk changes.
+   - Use cases: infrastructure changes, auth pipeline modifications, database schema migrations, cryptographic subsystems.
+   - Fills the gap above Maelstrom for changes where automated review alone is insufficient.
+
+3. **🍄 Mycelium Prong (`staff-review` SKILL.md)**:
+   - Blast-radius and dependency mapping stage inserted after Spores and before Roots.
+   - Traces import chains (max 2 hops), cross-repo state, and type consumers to build a dependency graph around affected code.
+   - Receives Spores findings as input and passes enriched dependency context to Roots, enabling more precise root-cause analysis.
+   - Prevents fixes that silently break downstream consumers.
+
+4. **🍂 Mulch Prong (`staff-review` SKILL.md)**:
+   - Post-review learning extraction stage that runs on both SHIP and BLOCK outcomes.
+   - Proposes taxonomy patterns, rule updates, and skill recipes based on review findings.
+   - Read-only with a circuit breaker preventing recursive governance reviews (Mulch never triggers a new review cycle).
+   - Proposals are queued for the next session, not applied immediately.
+   - Closes the feedback loop: reviews generate actionable governance improvements.
+
+5. **7 Escalation Paths (up from 4)**:
+   - Breeze → Trident (BLOCK escalation)
+   - Gale → Trident
+   - Gale → Maelstrom
+   - Gale → Tempest
+   - Trident partial → Maelstrom
+   - Trident full → Maelstrom
+   - Maelstrom → Tempest
+
+6. **5 Review Modes (up from 3)**: Breeze < Gale < Trident < Maelstrom < Tempest.
+
+7. **6 Prongs (up from 4)**: Spores, Mycelium, Roots, Thorns, Bedrock, Mulch.
+
+**Impact on rules:** Upgraded `staff-review` SKILL.md with Breeze and Tempest protocols, Mycelium and Mulch prongs, 7 escalation paths, and the Tempest human gate. Updated documentation across README.md, COST_ANALYSIS.md, and EVOLUTION.md.
+
 ## The Compound Effect
 
 ```
@@ -177,6 +221,8 @@ Divide & Conquer → parallel lanes, preflight probe, review sentinels
 Trident, Maelstrom & Mechanized Guardrails → Gale/Trident/Maelstrom, 10 lenses, 13 skills, auto-hooks
     ↓
 Empirical Falsification & Research Grounding → Refutation Gate, Boundary Verification, Orthogonal Personas, FPSR, Structured Diagnosis
+    ↓
+Spectrum Completion & Lifecycle Extraction → Breeze/Tempest, Mycelium/Mulch, 5 modes, 6 prongs, 7 escalation paths
 ```
 
 Compliance went from **7.8/10 to 9.8/10**, waste rate dropped from **~56% to 18.8% across 17 sessions (7,015 steps)**, with best-governed sessions reaching **1.1% waste** (`0dc37064` across 1,325 steps), and the rules now cover failure modes that no amount of upfront design would have predicted.

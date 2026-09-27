@@ -50,23 +50,36 @@ Detailed token costs, conditional loading savings, and ROI calculations for the 
 
 | Protocol / Component | Type | Token Cost | Savings / ROI |
 |:---------------------|:-----|:-----------|:--------------|
+| **Breeze Protocol** | Review (Targeted Fix) | ~3–4k tokens (1–2 Flash) | Fast-tracks known defects; BLOCK auto-escalates to Trident (~4–8k saved vs starting at Trident) |
 | **Gale Protocol** | Review (Single-Pass) | ~4k tokens (3–4 Flash) | ~80k tokens per prevented rework loop (20x ROI) |
 | **Trident Protocol** | Review (3-Prong) | ~8–12k tokens (5–8 Flash) | ~80k tokens per prevented architectural regression (7–10x ROI) |
 | **Maelstrom Protocol** | Adversarial Review (4-Stage) | ~15–20k tokens (7–12 Flash) | Prevents catastrophic failures; caught 5 critical bugs in dogfooding (5–7x ROI) |
+| **Tempest Protocol** | Full Assurance (6-Stage) | ~30–50k tokens (10–16 Flash) | Highest assurance for catastrophic risk; human gate before Bedrock verdict (3–5x ROI) |
+| **Mycelium Prong** | Blast Radius Mapping | ~2–4k tokens (1–2 Flash) | Traces 2-hop import chains and type consumers; prevents silent downstream breakage |
+| **Mulch Prong** | Learning Extraction | ~1–2k tokens (1 Flash) | Post-review taxonomy/rule proposals; read-only with recursive review circuit breaker |
 | **Empirical Refutation Gate** | Review Gate | **0 tokens** (structural check) | Eliminates ~80% false positives (Agarwal 2026); saves 15k–30k tokens per avoided phantom bug chase |
-| **Incremental Escalation** | Review Transition | **0 overhead** (pruning) | Saves 4k–8k tokens per review upgrade by preserving completed prongs across 4 paths |
+| **Incremental Escalation** | Review Transition | **0 overhead** (pruning) | Saves 4k–8k tokens per review upgrade by preserving completed prongs across 7 paths |
 | **Mechanical Diff Downgrade** | Subagent Execution | ~85% token reduction | Down-tiers exact diff application to Flash tier rather than Inherit/Pro |
 | **Auto-Preflight** | PreInvocation Hook | **0 tokens** (Bash) + ~900 tokens (if Flash probe dispatched) | Prevents 40–120 steps on venv/git drift (~160k–480k tokens) |
 | **Context Pre-Seeding** | Subagent Prompting | ~200 tokens / dispatch | Eliminates 2–3 exploratory steps (~8k–12k tokens saved) |
 | **Governance Sweep** | Periodic Scanner | ~500 tokens / run | Pure local Python (`sweep_session.py`), zero AI model tokens |
 
 ### Cost Breakdown Highlights:
-- **Review Protocols**:
+- **Review Protocols (5 modes)**:
+  - **Breeze Protocol**: Targeted-fix mode for known defects (~3–4k tokens). Skips Spores, runs Roots → Bedrock only. BLOCK handling: max 1 revision attempt, then auto-escalates to Trident. Ideal for string renames, doc freshness, lint fixes.
   - **Gale Protocol**: Single-pass parallel fan-out running 3–4 Flash reviewers (~4k tokens) for routine reviews and low-risk changes.
   - **Trident Protocol**: Progressive 3-prong review (Spores 3–4 scouts @ ~1k, Roots 1–2 analysts @ ~1.5k, Bedrock 1 structural verifier @ ~1k) + staff synthesis (~2k orchestrator tokens), costing ~8–12k tokens across 5–8 Flash dispatches for architecture changes and high-risk refactors. Bedrock is structural-only (read-only, does not run tests).
   - **Maelstrom Protocol**: Full adversarial review spanning 4 stages: Spores scouts, Roots root-cause analysts, Thorns adversarial falsification (NASA IV&V tripartite with 2-cycle revision cap), and Bedrock structural verification gate. Costs ~15–20k tokens across 7–12 Flash dispatches for critical and catastrophic risk surfaces.
-  - **Incremental Escalation**: Enables dynamic mid-session escalation (Gale→Trident, Gale→Maelstrom, Trident partial→Maelstrom, Trident full→Maelstrom) without throwing away already completed prongs, saving ~4k–8k tokens per review upgrade.
-  - **Empirical Refutation Gate**: Filters findings through a 2-of-3 evidentiary gate (citation ±5 lines, reproduction command, mechanical verification). Eliminates ~80% of false-positive claims (Agarwal 2026), preventing expensive investigative goose-chases.
+  - **Tempest Protocol**: Highest-assurance mode spanning 6 stages: Spores → Mycelium → Roots → Thorns → Bedrock → Mulch (~30–50k tokens across 10–16 Flash dispatches). Includes a human gate via `ask_question` before Bedrock verdict. For catastrophic risk: infra, auth, schema migrations.
+- **Prong Costs (6 prongs)**:
+  - **Spores**: ~1k tokens (3–4 scouts, width survey)
+  - **Mycelium**: ~2–4k tokens (1–2 Flash, blast-radius/dependency mapping, 2-hop import chain tracing)
+  - **Roots**: ~1.5k tokens (1–2 analysts, root-cause + fix proposals)
+  - **Thorns**: ~3–5k tokens (adversarial falsification, 2-cycle revision cap)
+  - **Bedrock**: ~1k tokens (structural-only verification gate, SHIP/BLOCK)
+  - **Mulch**: ~1–2k tokens (1 Flash, post-review learning extraction, taxonomy/rule/skill proposals)
+- **Incremental Escalation (7 paths)**: Enables dynamic mid-session escalation (Breeze→Trident, Gale→Trident, Gale→Maelstrom, Gale→Tempest, Trident partial→Maelstrom, Trident full→Maelstrom, Maelstrom→Tempest) without throwing away already completed prongs, saving ~4k–8k tokens per review upgrade.
+- **Empirical Refutation Gate**: Filters findings through a 2-of-3 evidentiary gate (citation ±5 lines, reproduction command, mechanical verification). Eliminates ~80% of false-positive claims (Agarwal 2026), preventing expensive investigative goose-chases.
 - **Mechanical Diff Downgrade**: When Roots or Thorns prongs have already produced exact, verified diffs, applying them is purely syntactic. Down-tiering implementation subagents to `flash` tier (rather than `inherit` Pro/Opus) reduces execution token cost by ~85% per editing task.
 - **Concurrency Validation**: Concurrency ceilings of 4 read-only subagents and 3 implementation writers (under the Disjoint Lane Protocol) are empirically validated against 2024–2026 industry benchmarks (MIT scaling studies, Tencent, Coasty, Devin, Cursor, Copilot). 4 readers hits the optimal recall knee before consensus degradation; 3 writers maximizes parallel throughput without branch locks or merge conflicts.
 - **Auto-Preflight**: Zero-cost detection runs via bash/JSON inspection in `governance_init.sh` on Invocation 1. If project markers (`venv`, `package.json`, `Makefile`, `tests/`) are found, the agent dispatches a ~900-token Flash probe, preventing 40–120 steps of environment defects.
