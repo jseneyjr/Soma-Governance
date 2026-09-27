@@ -45,17 +45,22 @@ When the user upgrades a review mid-session (e.g., "actually run a maelstrom"), 
 | Already Done | Upgrade To | Execute Only |
 |:-------------|:-----------|:-------------|
 | Gale (fan-out) | Trident | Map fan-out → RECON, then run Roots + Bedrock |
+| Gale (fan-out) | Maelstrom | Re-run RECON with security lens, then full Roots → Thorns → Bedrock |
 | Trident (RECON + Roots) | Maelstrom | Inject Thorns on existing Roots output, then Bedrock |
 | Trident (full) | Maelstrom | Inject Thorns, re-run Bedrock with adversarial context |
 
+**Caveat**: If code was modified between prongs, verify `git status` is clean before escalating. Stale Roots proposals against a drifted codebase produce invalid Thorns results.
+
 ### Empirical Refutation Gate
 
-Before accepting any critical finding from a review phase as actionable, require **at least one of**:
-- A concrete `file:line` citation verified against the actual codebase
-- An executable reproduction (failing test, script, or command)
-- Independent mechanical verification (math check, grep confirmation)
+Before accepting any critical finding from a review phase as actionable, require **at least 2 of 3**:
+1. A concrete `file:line` citation verified against the actual codebase (±5 lines)
+2. An executable reproduction (failing test, script, or command)
+3. Independent mechanical verification (math check, grep confirmation)
 
-Speculative findings without grounded evidence are logged as ℹ️ info, not promoted to 🔴 critical. This eliminates the ~80% false-positive rate observed in cooperative-only LLM review (Agarwal 2026).
+**Omission findings** (missing auth, missing validation, absent config) satisfy criterion 3 via grep-confirmed absence — they are not demoted for lacking a file:line citation.
+
+Speculative findings meeting only 1 criterion are logged as ⚠️ warning, not promoted to 🔴 critical. Findings meeting 0 criteria are logged as ℹ️ info.
 
 ---
 

@@ -28,3 +28,5 @@ trigger: always_on
 ## 5. Efficiency Metrics
 - **Waste Rate**: Percentage of steps that produce no useful output (target: <5%).
 - **First-Pass Success Rate (FPSR)**: Percentage of initial code writes that pass tests without revision (target: >80%). Low FPSR indicates guess-and-check patterns, missing spec validation, or inadequate context gathering. When FPSR drops below 50%, stop coding and diagnose the root cause.
+  - *Minimum sample*: Only evaluate FPSR after N≥5 code writes in a session. Single early failures do not trigger the halt.
+  - *TDD exception*: Intentional red-phase test failures (write test → watch fail → implement) are excluded from FPSR calculation.
