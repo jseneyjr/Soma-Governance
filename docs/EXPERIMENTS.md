@@ -30,7 +30,7 @@ Ideas to test. Pick the highest-signal, lowest-risk experiment next.
 | ID | Hypothesis | Result | Graduated? |
 |:---|:-----------|:-------|:-----------|
 | E1 | Higher concurrency reduces wall-clock time without waste regression | Fan-out raised to 4 readers / 3 writers. Waste held at [1.1%](METRICS.md#live-ab-validation) across 1,325 steps; wall-clock time improved ~2x on parallel lanes. | ✅ Yes — graduated to `subagent-delegation.md §2` |
-| E2 | Pre-seeding domain context reduces research steps | Context Pre-Seeding (~200 tokens/dispatch) eliminated 2–3 exploratory steps per subagent (~8k–12k tokens saved). See [METRICS.md](METRICS.md#conditional-loading-roi). | ✅ Yes — graduated to `subagent-delegation.md §2.1` |
+| E2 | Pre-seeding domain context reduces research steps | Context Pre-Seeding (~200 tokens/dispatch) eliminated 2–3 exploratory steps per subagent (~8k–12k tokens saved). See [METRICS.md](METRICS.md#conditional-loading-roi). | ✅ Yes — graduated to `subagent-delegation.md §2` (Context Pre-Seeding Protocol) |
 | E3 | Auto-activating session-preflight on coding projects catches env issues before step 10 | Auto-preflight in `governance_init.sh` prevented 40–120 steps of venv/env drift per session. Zero false triggers across 17 sessions. See [METRICS.md](METRICS.md#conditional-loading-roi). | ✅ Yes — graduated to `governance_init.sh` hook |
 | E6 | Dispatching domain-researcher at session start for game projects eliminates mid-session wiki lookups | Domain detection in `governance_init.sh` reduced wiki/search steps by ~90% after step 50. Desktop automation guessing dropped from [255 steps](METRICS.md#top-waste-sources-ranked) to near-zero in governed sessions. | ✅ Yes — graduated to `governance_init.sh` domain hints |
 
@@ -83,6 +83,10 @@ When an experiment (or a sweep, or a post-mortem) surfaces a non-obvious insight
 1. **Mental runtime trace > brute-force execution** — `0dc37064` caught 2 critical blockers via mental simulation that `5dd84eed` hit at runtime after 188 steps. Cost: ~5 Flash steps. Savings: ~180 steps.
 2. **Flash-only subagents eliminate the #1 cost driver** — `5dd84eed` used Opus for a 100-line script. `0dc37064` used 100% Flash. Credit savings: 88%.
 3. **ast.parse as lint target is a persistent footgun** — appears in every TAB AI session. Removing it from the Makefile is more durable than relying on the agent to resist it.
-4. **Governance overhead is <0.1% of session cost** — rules cost ~4,000 tokens/turn. A single prevented rework loop saves ~80,000 tokens. 
+4. **Governance overhead is <0.1% of session cost** — rules cost ~3,750 tokens/turn always-on. A single prevented rework loop saves ~80,000 tokens. 
 5. **Waste rate decreases over session length** — early setup steps have higher waste density than later productive steps. Sessions >500 steps converge toward true waste rate.
 6. **Schema bifurcation is now fixed** — Polymorphic extraction handles both flat and nested log formats. Baseline measurements from pre-fix sessions should be re-evaluated against the corrected extractor.
+7. **Subagent nesting eliminates orchestration overhead** — `enable_subagent_tools: true` allows review orchestrators to dispatch their own scouts. Parent context consumption drops to 1 turn (dispatch + receive) per review cycle. (E11, Phase 10)
+8. **Thorns adversarial testing catches ~60% defective fixes** — In the Maelstrom POC, 8/13 proposed fixes were broken or weakened. Without Thorns, 3 critical security defects would have shipped. (Phase 10)
+9. **Sequential Tempests show diminishing returns** — Tempest #1 found 7 critical breaks; Tempests #2–#4 found 0 functional issues. Cap at 2 Tempests/session. (E17, Phase 10)
+10. **Phase inversion is the highest-cost failure mode** — `f8b82d61` launched 3 coding lanes while 5 research scouts were active. 16 files of dead code were written against an obsolete architecture. Led to E14 phase gate rules. (Phase 10)

@@ -25,7 +25,7 @@ trigger: user_request
 | **cost-optimization §3 (model tiers)** | Check subagent dispatches (`invoke_subagent`) to verify proper model tiering (`flash` for research, etc.) |
 | **subagent-delegation §2 (parallel)** | Check for concurrent subagents targeting overlapping or identical files |
 | **git-workflow §2 (pre-push gate)** | Check if `make test` / `pytest` ran and succeeded before any `git push` |
-| **testing §6 (no ast.parse)** | Check for `ast.parse` or syntax-only checks without subsequent test execution |
+| **testing §4 (no ast.parse)** | Check for `ast.parse` or syntax-only checks without subsequent test execution |
 | **destructive-ops §1 (dry-run)** | Check for `rm -rf` / `DROP TABLE` or destructive mutations without preceding dry-run / user confirmation |
 | **desktop-automation §2 (coordinates)** | Check for hardcoded UI coordinates without screenshot verification or UI bounds checks |
 
@@ -38,7 +38,7 @@ trigger: user_request
 |:-----|:-------:|:---------|:------|
 | providence §2 | ✅ PASS | No unverified package installs | — |
 | providence §3 | ✅ PASS | All target files viewed before mutation | 12, 18, 34 |
-| testing §6 | ❌ FAIL | ast.parse executed at steps 61-62 without subsequent test run | 61, 62 |
+| testing §4 | ❌ FAIL | ast.parse executed at steps 61-62 without subsequent test run | 61, 62 |
 | desktop-automation §2 | ➖ N/A | Non-GUI project; desktop automation not applicable | — |
 
 **Overall Score**: 8/9 applicable rules passed (88.9%)

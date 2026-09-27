@@ -100,7 +100,7 @@ flowchart LR
 
 ## Configuration
 
-Copy [`steering.conf.example`](steering.conf.example) → `steering.conf` to customize git strategy, and approval chains.
+Copy [`steering.conf.example`](steering.conf.example) → `steering.conf` to customize platform, team size, git strategy, and approval chains.
 
 ```bash
 make info     # Show current configuration

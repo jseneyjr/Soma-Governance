@@ -169,7 +169,7 @@ Tempest #5 cross-conversation analysis of 2 sessions (2,904 total steps) unlocke
 - **Experiment signals**: Analyzed E14/E15/E16/E17 across both sessions. Found E15 was write-only (governance_init.sh had zero mulch_queue.jsonl reading code). Added E16 (consumer) and E17 (max 2 Tempests/session).
 - **Diminishing returns proven**: Tempest #1 found 7 critical breaks; Tempests #2–#4 found 0. After the first Tempest, every subsequent review found only formatting and count synchronization.
 - **f8b82d61 post-mortem**: Phase inversion traced to Step 464 — 3 coding lanes launched while 5 research scouts were active. 16 files of dead code written against obsolete 8-protocol architecture. Led directly to E14 phase gate rules.
-- **15 skills, 17 experiments** (E1–E17), **9 scripts** (12th added: `escalation_sentinel.sh`).
+- **15 skills, 17 experiments** (E1–E17, 15 allocated), **9 scripts in `scripts/`** (8 `.sh` + 1 `.py`; `escalation_sentinel.sh` added in E14).
 
 **Impact on rules:** Phase Gate Enforcement strengthened in `providence.md §9` with 3 concrete anti-patterns. `adaptive-reviewer` skill added. `escalation_sentinel.sh` script added. E11/E14 advanced to TESTING. E16/E17 proposed.
 

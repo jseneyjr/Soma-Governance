@@ -33,7 +33,7 @@ Unified metrics for the AI Steering Rules governance system — token costs, emp
 
 ### Skills (Idle vs Active)
 
-14 skills — zero cost until auto-activated:
+15 skills — zero cost until auto-activated:
 
 | Skill | Idle Cost | Full Cost (when activated) |
 |:------|:----------|:--------------------------|
@@ -51,13 +51,14 @@ Unified metrics for the AI Steering Rules governance system — token costs, emp
 | `performance-audit` | ~65 | ~496 |
 | `spec-synthesizer` | ~50 | ~460 |
 | `session-preflight` | ~50 | ~900 |
-| **Subtotal** | **~772** | **~10,682** |
+| `adaptive-reviewer` | ~48 | ~871 |
+| **Subtotal** | **~820** | **~11,553** |
 
 ### Review Protocol Costs (5 Modes + 6 Prongs)
 
 | Protocol | Dispatches | Token Cost | ROI |
 |:---------|:----------:|:-----------|:----|
-| **Breeze** | 1–2 Flash | ~3–4k | Fast-tracks known defects; BLOCK auto-escalates to Trident |
+| **Breeze** | 2 Flash | ~3–4k | Fast-tracks known defects; BLOCK auto-escalates to Trident |
 | **Gale** | 3–4 Flash | ~4k | ~80k per prevented rework loop (20x ROI) |
 | **Trident** | 5–8 Flash | ~8–12k | ~80k per prevented architectural regression (7–10x ROI) |
 | **Maelstrom** | 7–12 Flash | ~15–20k | Caught 5 critical bugs in dogfooding (5–7x ROI) |
@@ -82,12 +83,12 @@ Unified metrics for the AI Steering Rules governance system — token costs, emp
 
 | Approach | Tokens/Turn |
 |:---------|:------------|
-| **Naive** — all 11 rules + 14 skills always loaded | ~18,428 |
-| **Optimized** — conditional rules + skills idle | ~4,727 |
-| **Savings** | **~13,701 tokens/turn (74.3%)** |
+| **Naive** — all 11 rules + 15 skills always loaded | ~15,508 |
+| **Optimized** — conditional rules + skills idle | ~4,775 |
+| **Savings** | **~10,733 tokens/turn (69.2%)** |
 
 > [!NOTE]
-> The 74.3% figure pools rules and skills. Rules-only savings (excluding skills, which are natively deferred by the platform) = **~52%**. Both numbers are valid; the distinction matters for comparing against other governance systems.
+> The 69.2% figure pools rules and skills. Rules-only savings (excluding skills, which are natively deferred by the platform) = **~52%**. Both numbers are valid; the distinction matters for comparing against other governance systems.
 
 **Additional automation savings:**
 
@@ -124,7 +125,7 @@ Unified metrics for the AI Steering Rules governance system — token costs, emp
 | 4 | providence §8 | Environment blindness / venv drift | 120 | 9% |
 | 5 | providence §13 | Metric rationalization | 70 | 5% |
 | 6 | providence §1 | Hallucination (APIs, keybindings) | 55 | 4% |
-| 7 | testing §6 | Syntax-only verification (ast.parse) | 55 | 4% |
+| 7 | testing §4 | Syntax-only verification (ast.parse) | 55 | 4% |
 | 8 | cost-optimization §4 | Zombie accumulation | 50 | 4% |
 
 > [!IMPORTANT]
@@ -220,3 +221,4 @@ Each loop costs **~20–25 steps** of wasted context. Compound effect: rework fi
 - **Tempest #3** — Governance meta-review (8 files). Config precedence fix, JSON serialization safety, model tiering consolidation.
 - **Tempest #4** — Final capstone + first operational Mulch (12 files). Validated E14/E15, codified Mechanical Arithmetic and Mulch Invariant.
 - **Gale Review** — Git hygiene, 13→14 skill sync, branch modernization (`master` → `main`).
+- **Tempest #5** — Cross-conversation analysis (2 sessions, 2,904 steps). E11 subagent nesting unblocked, adaptive reviewer POC, 13 Maelstrom security/portability fixes (Thorns caught 8 defective), escalation sentinel (E14), 14→15 skill sync.

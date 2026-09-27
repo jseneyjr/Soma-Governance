@@ -99,7 +99,7 @@ doctor: ## Verify installation health & dependencies
 	@command -v awk >/dev/null 2>&1 && echo "  ✅ awk" || echo "  ❌ awk not found"
 	@echo ""
 	@echo "Scripts:"
-	@for s in scripts/common.sh scripts/governance_init.sh scripts/safety_gate.sh scripts/session_close.sh; do \
+	@for s in scripts/*.sh; do \
 	  if [ -f "$$s" ]; then echo "  ✅ $$s"; else echo "  ❌ $$s missing"; fi; \
 	done
 	@echo ""
@@ -116,11 +116,9 @@ doctor: ## Verify installation health & dependencies
 
 validate: ## Check script syntax and config values
 	@echo "Validating..."
-	@bash -n install.sh && echo "  ✅ install.sh" || echo "  ❌ install.sh"
-	@bash -n scripts/common.sh && echo "  ✅ scripts/common.sh" || echo "  ❌ scripts/common.sh"
-	@bash -n scripts/governance_init.sh && echo "  ✅ scripts/governance_init.sh" || echo "  ❌ scripts/governance_init.sh"
-	@bash -n scripts/safety_gate.sh && echo "  ✅ scripts/safety_gate.sh" || echo "  ❌ scripts/safety_gate.sh"
-	@bash -n scripts/session_close.sh && echo "  ✅ scripts/session_close.sh" || echo "  ❌ scripts/session_close.sh"
+	@for s in install.sh install-*.sh scripts/*.sh; do \
+	  if [ -f "$$s" ]; then bash -n "$$s" && echo "  ✅ $$s" || echo "  ❌ $$s"; fi; \
+	done
 	@if command -v python3 >/dev/null 2>&1; then \
 	  python3 -m json.tool hooks.json.template > /dev/null 2>&1 && echo "  ✅ hooks.json.template (valid JSON)" || echo "  ❌ hooks.json.template (invalid JSON)"; \
 	fi
