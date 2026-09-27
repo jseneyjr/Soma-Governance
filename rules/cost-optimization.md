@@ -21,5 +21,5 @@ trigger: always_on
 
 ## 4. Task Hygiene
 - **Kill Stale Tasks**: Before spawning a new background command for a task you've already attempted, kill the previous hanging/timed-out task first.
-- **No Task Accumulation**: Never allow more than 2 concurrent background tasks for the same logical operation.
+- **No Task Accumulation**: Never allow more than 3 concurrent background tasks for the same logical operation.
 - **No Bulk Media in Brain**: Never copy large batches of media files or datasets (>10 files) into the brain scratch directory. Process media in-place or stage in a project-local temp directory.

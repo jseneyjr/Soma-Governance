@@ -14,7 +14,7 @@ trigger: always_on
   2. Broad codebase research or dependency mapping.
   3. Isolated refactors or boilerplate generation that do not require full system context.
   4. Bulk media triage, visual dataset exploration, or screenshot classification across >5 images.
-- **Delegation Floor**: For engineering tasks exceeding ~100 steps, the orchestrator must have delegated at least one standalone module to a subagent. If step 100 is reached with zero delegations, halt and decompose.
+- **Delegation Floor**: For engineering tasks exceeding ~75 steps, the orchestrator must have delegated at least one standalone module to a subagent. If step 75 is reached with zero delegations, halt and decompose.
 
 ## 2. Parallel Execution
 - **Fan-Out Research**: When multiple independent research tasks exist, dispatch Flash subagents concurrently.
@@ -35,6 +35,7 @@ Before parallelizing implementation:
 - Task 1 adds parameter to `log_finding.sh` → Task 2 calls `log_finding.sh` from `governance_init.sh`
 
 - **Review Sentinels**: For coding sessions exceeding ~75 steps, dispatch a lightweight Flash review probe after each logical unit of work. The probe reads recent diffs (`git diff`) and runs the test suite. This is NOT a full staff review — it's a 30-second sanity check that catches hallucinated symbols and regressions before they compound. See `staff-review` skill, Continuous Review section.
+- **Concurrency Limits**: Fan out up to 4 read-only subagents (reviewers, researchers, auditors) concurrently. For coding lanes, limit to 3 concurrent writers with strict Disjoint Lane Protocol. Monitor waste rate — if it exceeds 8% after this change, revert to 2-3 concurrency.
 - **Fire-and-Forget**: Dispatch tasks clearly and wait for the subagents to report back with succinct summaries.
 
 ## 3. Cost & Workspace Isolation
