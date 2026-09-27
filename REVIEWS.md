@@ -169,8 +169,28 @@ Additional changes:
 
 ---
 
+## Round 3: Editorial Revisions
+
+Applied remaining suggestions from Reviewers 4 and 5:
+
+| # | Reviewer | Suggestion | Change Made |
+|:-:|:--------:|:-----------|:------------|
+| 1 | R4 | Define "waste rate" inline on first mention | Added: "waste rates — non-productive, hallucinatory, or reworked execution steps —" |
+| 2 | R5 | Remove mode/prong names from abstract | Removed "(Breeze through Tempest)" and "(Spores through Mulch)" |
+| 3 | R5 | Remove prong-specific names (Thorns, Refutation Gate) | Generalized to "adversarial testing prong" and "refutation gate" |
+| 4 | R5 | Compress privacy invariant paragraph | Merged with overhead metrics into single sentence |
+| 5 | R5 | Compress dogfooding paragraph | Reduced from 2 sentences to 1 |
+
+Word count reduction: ~520 → ~430 words.
+
+---
+
 ## Final Status
 
-The abstract received **Accept** from Reviewer 4 and **Minor Revision** from Reviewer 5. The remaining suggestions from R5 are editorial (length, nomenclature density) rather than substantive — appropriate for a GitHub-published extended abstract, which is not bound by conference word limits.
+| Round | Reviewers | Outcome |
+|:-----:|:---------:|:--------|
+| **Round 1** | R1, R2, R3 | 7 substantive issues found → all corrected |
+| **Round 2** | R4, R5 | **Accept** (R4), **Minor Revision** (R5, editorial only) |
+| **Round 3** | — | R4/R5 editorial suggestions applied |
 
-All factual claims have been verified against the codebase. All overclaiming identified in Round 1 has been corrected. The limitations section was praised by both Round 2 reviewers for its intellectual honesty.
+All factual claims have been verified against the codebase. All overclaiming identified in Round 1 has been corrected. The limitations section was praised by both Round 2 reviewers for its intellectual honesty. Round 3 editorial changes tightened language and reduced jargon density per R5's recommendations.
