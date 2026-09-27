@@ -81,12 +81,12 @@ Unified metrics for the AI Steering Rules governance system — token costs, emp
 
 | Approach | Tokens/Turn |
 |:---------|:------------|
-| **Naive** — all 11 rules + 13 skills always loaded | ~17,114 |
-| **Optimized** — conditional rules + skills idle | ~4,213 |
-| **Savings** | **~12,901 tokens/turn (75%)** |
+| **Naive** — all 11 rules + 13 skills always loaded | ~17,528 |
+| **Optimized** — conditional rules + skills idle | ~4,627 |
+| **Savings** | **~12,901 tokens/turn (73.6%)** |
 
 > [!NOTE]
-> The 75% figure pools rules and skills. Rules-only savings (excluding skills, which are natively deferred by the platform) = **~52%**. Both numbers are valid; the distinction matters for comparing against other governance systems.
+> The 73.6% figure pools rules and skills. Rules-only savings (excluding skills, which are natively deferred by the platform) = **~52%**. Both numbers are valid; the distinction matters for comparing against other governance systems.
 
 **Additional automation savings:**
 
@@ -123,8 +123,8 @@ Unified metrics for the AI Steering Rules governance system — token costs, emp
 | 4 | providence §8 | Environment blindness / venv drift | 120 | 9% |
 | 5 | providence §13 | Metric rationalization | 70 | 5% |
 | 6 | providence §1 | Hallucination (APIs, keybindings) | 55 | 4% |
-| 7 | cost-optimization §4 | Zombie accumulation | 50 | 4% |
-| 8 | testing §6 | Syntax-only verification (ast.parse) | 55 | 4% |
+| 7 | testing §6 | Syntax-only verification (ast.parse) | 55 | 4% |
+| 8 | cost-optimization §4 | Zombie accumulation | 50 | 4% |
 
 > [!IMPORTANT]
 > Top 3 rules target **54% of all waste**. Providence dominates because most waste stems from acting without verification.
@@ -213,3 +213,6 @@ Each loop costs **~20–25 steps** of wasted context. Compound effect: rework fi
 
 - **Maelstrom #1** — Caught 5 bugs pre-ship (circular symlink, polyglot conditional, cost-opt dedup, git add gate, async export)
 - **Maelstrom #2** — Added 6 research-backed governance upgrades (Empirical Refutation Gate, Incremental Escalation, Boundary Verification Protocol, Orthogonal Persona Mandate, Validated Concurrency Limits, Spores rename)
+- **Maelstrom #3** — Added Breeze, Tempest, Mycelium, Mulch modes. 4-prong verification.
+- **Tempest #1** — Build system overhaul (16 files, 1080 insertions). Unified installer, shared library, safety gate hardening.
+- **Tempest #2** — Documentation modernization. README rewrite (242→150 lines), METRICS.md merge, EVOLUTION dedup.

@@ -4,9 +4,11 @@ Lightweight A/B experiments on the governance system. Each experiment changes on
 
 ## Active Experiments
 
-| ID | Hypothesis | Change | Metric | Baseline | Status |
-|:---|:-----------|:-------|:-------|:---------|:-------|
-| — | No active experiments | — | — | — | — |
+| ID | Hypothesis | Change | Metric | Baseline | Risk | Status |
+|:---|:-----------|:-------|:-------|:---------|:-----|:-------|
+| E14 | A zero-token local hook script checking git diff line count, dependency depth, and sensitive directory patterns will accurately recommend protocol escalation (Breeze→Trident→Maelstrom/Tempest) | Add auto-escalation sentinel hook | Escalation precision (true positive rate); escape defect count on un-escalated commits | — | Low-Medium | 🔬 PROPOSED |
+| E15 | Persisting Mulch proposals to `mulch_queue.jsonl` and surfacing repeated patterns at session start via governance_init.sh will increase rule evolution velocity by 3x | Add Mulch accumulator pipeline | Days/sessions from defect occurrence to rule ratification; proposal discard rate | — | Low | 🔬 PROPOSED |
+| E11 | Delegating multi-prong orchestration to a dedicated review_orchestrator subagent will reduce parent context growth by >70% without reducing defect catch rate | Add review_orchestrator subagent type | Parent token delta per review; critical finding parity vs manual baseline | — | Medium-High (subagent nesting limits) | 🔬 PROPOSED |
 
 ## Experiment Backlog
 

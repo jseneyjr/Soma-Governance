@@ -1,9 +1,9 @@
 # 🎯 AI Steering Rules
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue?style=flat-square)](LICENSE)
-[![Rules](https://img.shields.io/badge/Rules-11-green?style=flat-square)](#-rules)
-[![Skills](https://img.shields.io/badge/Skills-13-purple?style=flat-square)](#-skills)
-[![Review Modes](https://img.shields.io/badge/Review_Modes-5-orange?style=flat-square)](#-review-protocols)
+[![Rules](https://img.shields.io/badge/Rules-11-green?style=flat-square)](#rules)
+[![Skills](https://img.shields.io/badge/Skills-13-purple?style=flat-square)](#skills)
+[![Review Modes](https://img.shields.io/badge/Review_Modes-5-orange?style=flat-square)](#review-protocols)
 [![Platforms](https://img.shields.io/badge/Gemini_%7C_Kiro_%7C_Copilot-black?style=flat-square)](#quick-start)
 
 > **7,015+** steps analyzed · **~65%** token savings · **80%** fewer false positives · **5** review modes · **6** prongs
@@ -17,7 +17,7 @@ Battle-tested governance rules for AI coding assistants — forged from 17 real 
 ```bash
 git clone https://github.com/nseney1/ai-steering-rules.git
 cd ai-steering-rules
-cp steering.conf.example steering.conf   # Optional: customize for your team/stack
+cp steering.conf.example steering.conf   # Optional: customize for your team
 make install                              # Gemini / Antigravity (default)
 # make install-kiro                       # Kiro alternative
 # make install-copilot                    # GitHub Copilot alternative
@@ -29,7 +29,7 @@ Rules take effect on your next conversation turn. No restart needed.
 
 ```mermaid
 flowchart LR
-    subgraph Session Lifecycle
+    subgraph SLC ["Session Lifecycle"]
         A[User Prompt] --> B{PreInvocation}
         B --> C[Agent Processing]
         C --> D{PreToolUse}
@@ -37,10 +37,10 @@ flowchart LR
         D -->|Dangerous| F[BLOCKED]
         E --> G[Response]
     end
-    subgraph Always Active
-        H[providence.md] -.-> B
-        I[cost-optimization.md] -.-> B
-        J[subagent-delegation.md] -.-> B
+    subgraph AA ["Always Active"]
+        H["providence.md"] -.-> B
+        I["cost-optimization.md"] -.-> B
+        J["subagent-delegation.md"] -.-> B
     end
 ```
 
@@ -63,7 +63,7 @@ flowchart LR
 | [desktop-automation.md](rules/desktop-automation.md) | model_decision | PyAutoGUI/xdotool safety: focus verification, coordinate clamping. |
 
 > [!TIP]
-> `always_on` rules load every turn (~2,980 tokens). `model_decision` rules load full content only when relevant (~30 tokens idle). See [METRICS.md](docs/METRICS.md) for per-file token costs.
+> `always_on` rules load every turn (~3,750 tokens). `model_decision` rules load full content only when relevant (~30 tokens idle). See [METRICS.md](docs/METRICS.md) for per-file token costs.
 
 ## 🧠 Skills
 
@@ -91,14 +91,14 @@ flowchart LR
 | 🌬️ Gale | 3-4 | ~4k | Quick reviews |
 | 🔱 Trident | 5-8 | ~8-12k | Features, refactors |
 | 🌊 Maelstrom | 7-12 | ~15-20k | Architecture, security |
-| ⛈️ Tempest | 10-16 | ~30-50k | Catastrophic risk |
+| ⛈️ Tempest | 7-12 | ~30-50k | Catastrophic risk |
 
 > [!NOTE]
 > Reviews use 6 prongs: 🍄 Spores (width), 🍄 Mycelium (blast radius), 🌿 Roots (depth), 🌹 Thorns (adversarial), 🪨 Bedrock (verification gate), 🍂 Mulch (learning). See [staff-review SKILL.md](skills/staff-review/SKILL.md) for full prong details and escalation paths.
 
 ## Configuration
 
-Copy [`steering.conf.example`](steering.conf.example) → `steering.conf` to customize team size, tech stack, git strategy, and approval chains.
+Copy [`steering.conf.example`](steering.conf.example) → `steering.conf` to customize git strategy, and approval chains.
 
 ```bash
 make info     # Show current configuration

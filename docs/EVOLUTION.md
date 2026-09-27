@@ -72,7 +72,7 @@ After achieving 5% waste in governance sessions, the focus shifted from *prevent
 - **Session Pre-flight Probe**: A Flash subagent checks venv health, test suite, git state, and display environment at session start — eliminating the #2 and #3 waste categories before any code is written (~500 tokens, <10s).
 - **Review Sentinel**: Lightweight Flash reviewer dispatched every ~50 coding steps catches regressions before they compound. In `5dd84eed`, a hallucinated `total_mem` survived 188 steps; with sentinels, it would have been caught at step 73.
 - **Disjoint Lane Protocol**: When approved changes touch separate files, parallel subagents execute simultaneously with explicit file ownership. Wall-clock time reduced 2-3x with zero merge conflicts.
-- **Configurable Team Profiles**: `steering.conf` lets teams customize rules for their stack, team size, git strategy, and approval chains — making the system distributable without forking.
+- **Configurable Team Profiles**: `steering.conf` lets teams customize rules for their team size, git strategy, and approval chain — making the system distributable without forking.
 
 **Impact on rules:** Added `session-preflight` skill, Continuous Review to `staff-review`, Disjoint Lane Protocol to `subagent-delegation §2`, and Makefile-based installation with `steering.conf`.
 
@@ -125,6 +125,19 @@ Maelstrom #3 expanded the review system in two dimensions: **breadth** (Breeze a
 
 **Impact on rules:** Upgraded `staff-review` with Breeze, Tempest, Mycelium, and Mulch. Updated documentation across README.md and METRICS.md.
 
+## Phase 9: Tempest Hardening — Portability, Security & Documentation
+
+Tempest #1 and #2 overhauled the build system, security gate, and documentation to make the governance framework portable and self-verifying:
+
+- **Unified installer** replacing 3 duplicated platform scripts with a single `scripts/common.sh`-backed `install.sh`
+- **Shared library** (`scripts/common.sh`) eliminating ~95 lines of duplicated path resolution, error handling, and color output
+- **Dynamic `hooks.json.template`** replacing hardcoded scratch paths with `{{RULES_DIR}}` placeholders resolved at install time
+- **6 new Make targets**: `uninstall`, `doctor`, `validate`, `update`, `status` (plus existing `install`, `test`)
+- **Safety gate hardened**: fail-closed default, 15+ dangerous patterns, regex bypass fixes for edge cases
+- **Documentation consolidated**: METRICS.md merge (token economics + telemetry + benchmarks), README rewrite (242→150 lines), EVOLUTION dedup
+
+**Impact on rules:** No rule text changes — this phase improved the delivery and verification infrastructure around the rules.
+
 ## The Compound Effect
 
 ```
@@ -143,6 +156,8 @@ Trident, Maelstrom & Mechanized Guardrails → Gale/Trident/Maelstrom, 10 lenses
 Empirical Falsification & Research Grounding → Refutation Gate, Boundary Verification, Orthogonal Personas, FPSR, Structured Diagnosis
     ↓
 Spectrum Completion & Lifecycle Extraction → Breeze/Tempest, Mycelium/Mulch, 5 modes, 6 prongs, 7 escalation paths
+    ↓
+Tempest Hardening → Unified installer, shared library, dynamic hooks, safety gate hardening, docs consolidation
 ```
 
 Compliance went from **7.8/10 to 9.8/10** and waste dropped from **~56% to 1.1%** in best-governed sessions — see [METRICS.md](METRICS.md) for the full breakdown. The rules now cover failure modes that no amount of upfront design would have predicted.

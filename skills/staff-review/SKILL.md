@@ -15,7 +15,7 @@ trigger: user_request
 | **Gale** | "gale", "quick review" | Spores → Synthesize | 3–4 | ~4k tokens | Quick reviews, minor changes |
 | **Trident** | "trident", "deep review" | Spores → Roots → Bedrock | 5–8 | ~8–12k tokens | Feature reviews, refactors |
 | **Maelstrom** | "maelstrom", "max review" | Spores → Roots → Thorns → Bedrock | 7–12 | ~15–20k tokens | Architecture, security, breaking changes |
-| **Tempest** | "tempest", "full assurance" | Spores → Mycelium → Roots → Thorns → Bedrock → Mulch | 10–16 | ~30–50k tokens | Catastrophic risk, infra, auth, schema migrations |
+| **Tempest** | "tempest", "full assurance" | Spores → Mycelium → Roots → Thorns → Bedrock → Mulch | 7–12 | ~30–50k tokens | Catastrophic risk, infra, auth, schema migrations |
 
 ### Risk-Based Protocol Selection
 
@@ -308,7 +308,11 @@ Output: {broken: [{fix_id, how, severity}], survived: [fix_ids]}
 
 ## Tempest Protocol (Full Assurance)
 
-The highest-assurance review mode. Extends Maelstrom with **Mycelium** (dependency impact mapping) after Spores and **Mulch** (learning extraction) after Bedrock. For catastrophic-risk changes: infrastructure, auth pipelines, schema migrations, core governance.
+The highest-assurance review mode. Extends Maelstrom with **Mycelium** (dependency impact mapping) after Spores and **Mulch** (learning extraction) after Bedrock. For catastrophic-risk changes: infrastructure, auth pipelines, schema migrations, core governance. Uses 7–12 dispatches across 4 turns (optimized from 6 turns via parallel execution).
+
+**Optimization**: Mycelium may run in parallel with Spores when target files are known upfront. Thorns may run concurrently with Bedrock.
+
+**Flash mandate**: All review prongs (Spores, Mycelium, Roots, Thorns, Bedrock, Mulch) use strictly Flash-tier models. No inherit/pro for diff proposers — reserve heavyweight models for orchestrator synthesis only.
 
 **Human gate**: Before Bedrock issues final verdict, the orchestrator presents the Thorns findings and proposed fixes via `ask_question` for explicit user approval. User may approve, reject, or request revision.
 
@@ -468,7 +472,7 @@ Specialists run as **Flash subagents** and report back like standard reviewers. 
 - **Don't let reviewers see each other's work** — independence prevents confirmation bias (scouts in Spores are independent; Roots analysts receive scout findings but not each other's)
 - **Don't skip fact-checking** — reviewer claims must be verified against actual data before presenting to user
 - **Don't fan out >4 reviewers per prong** — diminishing returns; 4 orthogonal lenses catch ~98% of issues
-- **Don't use inherit/pro for reviewers** — Flash is sufficient for read-only analysis; reserve heavyweight models for synthesis
+- **Don't use inherit/pro for reviewers** — Flash is sufficient for read-only analysis; reserve heavyweight models for synthesis. This is a strict mandate for all prongs including diff proposers (see E14, E15 experiments)
 - **Don't let scouts propose fixes** (Trident) — separation of concerns keeps Spores fast and unbiased
 - **Don't let Roots analysts find new problems** (Trident) — scope creep; if new issues surface, log them for the next review cycle
 

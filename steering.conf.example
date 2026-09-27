@@ -30,9 +30,9 @@ GIT_STRATEGY=trunk
 # ─── Installation ─────────────────────────────────────────────────
 
 # RULES_SUBSET: all | core | minimal
-#   all     = full 11-rule suite (~3,000 tokens always-on)
-#   core    = 6 rules: providence, cost-opt, delegation, testing, git-workflow, destructive-ops (~2,800 tokens)
-#   minimal = 3 rules: providence, delegation, destructive-ops (~2,000 tokens)
+#   all     = full 11-rule suite (~3,750 tokens always-on)
+#   core    = 6 rules: providence, cost-opt, delegation, testing, git-workflow, destructive-ops (~3,750 tokens always-on)
+#   minimal = 3 rules: providence, delegation, destructive-ops (~3,200 tokens always-on)
 RULES_SUBSET=all
 
 # ENABLE_HOOKS: true | false

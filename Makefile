@@ -70,7 +70,11 @@ uninstall: ## Remove installed rules, skills, and hooks
 	      ~/.gemini/config/rules/desktop-automation.md; \
 	    echo "  Removing hooks"; \
 	    rm -f ~/.gemini/config/plugins/governance/hooks.json; \
-	    echo "Done! Rules and hooks removed."; \
+	    echo "  Removing skills"; \
+	    for skill in code-review domain-researcher governance-auditor incident-debug performance-audit post-mortem readme-writer refactoring-pilot security-audit session-monitor spec-synthesizer staff-review visual-analyst; do \
+	      rm -rf ~/.gemini/config/skills/$$skill; \
+	    done; \
+	    echo "Done! Rules, hooks, and skills removed."; \
 	    ;; \
 	  kiro) \
 	    echo "  Removing rules from ~/.kiro/steering/"; \
