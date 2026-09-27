@@ -34,10 +34,11 @@ This rule set has been through **3 formal review iterations**, multiple session 
 
 | Metric | Value |
 |:-------|:------|
-| Total steps analyzed | 5,561 |
-| Sessions analyzed | 9 |
-| Overall waste rate | 23.7% (1,320 / 5,561 steps) |
+| Total steps analyzed | 7,015 |
+| Sessions analyzed | 17 (8 deep, 9 sweep) |
+| Overall waste rate | 18.8% (1,317 / 7,015 steps) |
 | Waste patterns tracked | 23 (taxonomy v2.1) |
+| Schema extraction | Polymorphic (handles both flat and nested — bifurcation fixed) |
 | Rule sections monitored | 13 |
 | Rules with EFFECTIVE verdict | 2 (providence §11, §8) |
 | Rules with INEFFECTIVE verdict | 3 (needs mechanical enforcement) |
@@ -60,6 +61,11 @@ Top 3 rules target **54% of all waste**.
 ## Live Validation
 
 Session `0dc37064` (TAB AI, same project as `5dd84eed`) is the first live A/B test of the full governance suite:
-- Waste rate: **3.2%** at step 92 (vs 27.6% predecessor)
+- Waste rate: **1.1%** over 1,325 steps (vs 27.6% predecessor)
 - Credit usage: **~12%** of predecessor
 - First successful `make train`: step 36 (predecessor: never achieved)
+
+## Staff Review Impact
+
+- **Maelstrom #1** — Caught 5 bugs pre-ship (circular symlink, polyglot conditional, cost-opt dedup, git add gate, async export)
+- **Maelstrom #2** — Added 6 research-backed governance upgrades (Empirical Refutation Gate, Incremental Escalation, Boundary Verification Protocol, Orthogonal Persona Mandate, Validated Concurrency Limits, Spores rename)
