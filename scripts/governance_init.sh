@@ -26,7 +26,8 @@ LAST_CRITICAL="$LOGS_REPO/governance/last_critical.md"
 AUTO_LOG="$LOGS_REPO/governance/auto_applied_log.jsonl"
 CURSOR_FILE="$LOGS_REPO/governance/.last_seen_audit_lines"
 LOCK_FILE="$LOGS_REPO/governance/.governance.lock"
-EXPORT_SCRIPT="$HOME/.gemini/antigravity/scratch/ai-steering-rules/scripts/export_logs.sh"
+SCRIPT_DIR="$(cd -P "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+EXPORT_SCRIPT="$SCRIPT_DIR/export_logs.sh"
 
 # Run log export async (non-blocking)
 if [ -x "$EXPORT_SCRIPT" ]; then
