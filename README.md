@@ -2,7 +2,7 @@
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue?style=flat-square)](LICENSE)
 [![Rules](https://img.shields.io/badge/Rules-11-green?style=flat-square)](#rules)
-[![Skills](https://img.shields.io/badge/Skills-13-purple?style=flat-square)](#skills)
+[![Skills](https://img.shields.io/badge/Skills-14-purple?style=flat-square)](#skills)
 [![Review Modes](https://img.shields.io/badge/Review_Modes-5-orange?style=flat-square)](#review-protocols)
 [![Platforms](https://img.shields.io/badge/Gemini_%7C_Kiro_%7C_Copilot-black?style=flat-square)](#quick-start)
 
@@ -79,6 +79,7 @@ flowchart LR
 | [refactoring-pilot](skills/refactoring-pilot/SKILL.md) | Mikado Method, incremental moves across 4+ files. |
 | [security-audit](skills/security-audit/SKILL.md) | AppSec Engineer: OWASP Top 10, hardcoded secrets. |
 | [session-monitor](skills/session-monitor/SKILL.md) | Live waste trajectory tracking, periodic probes. |
+| [session-preflight](skills/session-preflight/SKILL.md) | Pre-flight: venv health, git state, test suite verification. |
 | [spec-synthesizer](skills/spec-synthesizer/SKILL.md) | Cross-references multi-lens findings into prioritized plans. |
 | [staff-review](skills/staff-review/SKILL.md) | Multi-lens fan-out (10 lenses) with staff-level synthesis. |
 | [visual-analyst](skills/visual-analyst/SKILL.md) | Screen & UI analysis: game state, coordinates, regressions. |

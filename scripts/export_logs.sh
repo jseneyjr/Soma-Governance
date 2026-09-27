@@ -77,7 +77,7 @@ find "$REPO_DIR/conversations" -name "transcript.jsonl" -exec \
 if [ -n "$(git status --porcelain)" ]; then
     git add .
     git commit -m "Log export: $(date -Iseconds) | $(find conversations -name 'metadata.json' | wc -l) conversations"
-    git push origin master
+    git push origin "$(git symbolic-ref --short -q HEAD 2>/dev/null || echo main)"
     echo "Pushed to GitHub."
 else
     echo "No changes to push."

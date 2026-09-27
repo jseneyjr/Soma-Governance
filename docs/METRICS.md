@@ -33,7 +33,7 @@ Unified metrics for the AI Steering Rules governance system — token costs, emp
 
 ### Skills (Idle vs Active)
 
-13 skills — zero cost until auto-activated:
+14 skills — zero cost until auto-activated:
 
 | Skill | Idle Cost | Full Cost (when activated) |
 |:------|:----------|:--------------------------|

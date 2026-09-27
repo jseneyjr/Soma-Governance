@@ -39,7 +39,7 @@ if [ -d "$STEERING_REPO/.git" ]; then
     # Safe branch detection (Thorns fix #10): skip push if detached HEAD
     CURRENT_BRANCH=$(git symbolic-ref --short -q HEAD 2>/dev/null || true)
     if [ -n "$CURRENT_BRANCH" ] && [ -n "$(git status --porcelain 2>/dev/null)" ]; then
-        git add . && git commit -m "Auto-sync on session close: $(date -Iseconds)" && git push origin "$CURRENT_BRANCH" 2>/dev/null || true
+        git add . && git commit -m "chore(sync): auto-sync on session close: $(date -u +"%Y-%m-%dT%H:%M:%SZ" 2>/dev/null || date +"%Y-%m-%dT%H:%M:%S")" && git push origin "$CURRENT_BRANCH" 2>/dev/null || true
     fi
 fi
 
