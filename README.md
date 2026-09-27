@@ -1,22 +1,22 @@
-# 🎯 AI Steering Rules
+# 🔮 Prism AI Steering
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue?style=flat-square)](LICENSE)
 [![Rules](https://img.shields.io/badge/Rules-11-green?style=flat-square)](#rules)
-[![Skills](https://img.shields.io/badge/Skills-15-purple?style=flat-square)](#skills)
+[![Skills](https://img.shields.io/badge/Skills-16-purple?style=flat-square)](#skills)
 [![Review Modes](https://img.shields.io/badge/Review_Modes-5-orange?style=flat-square)](#review-protocols)
 [![Platforms](https://img.shields.io/badge/Gemini_%7C_Kiro_%7C_Copilot-black?style=flat-square)](#quick-start)
 
 > **7,015+** steps analyzed · **~65%** token savings · **80%** fewer false positives · **5** review modes · **6** prongs
 
-Battle-tested governance rules for AI coding assistants — forged from 17 real sessions and enforced via lifecycle hooks.
+Battle-tested governance rules for AI coding assistants — forged from 17+ real sessions and validated across 66 production sessions. Enforced via lifecycle hooks.
 
 ## Quick Start
 
 > **Prerequisites:** `git`, `make`, and one of: [Gemini/Antigravity](https://github.com/google-gemini/antigravity), [Kiro](https://kiro.dev), or [GitHub Copilot](https://github.com/features/copilot)
 
 ```bash
-git clone https://github.com/nseney1/ai-steering-rules.git
-cd ai-steering-rules
+git clone https://github.com/nseney1/prism-ai-steering.git
+cd prism-ai-steering
 cp steering.conf.example steering.conf   # Optional: customize for your team
 make install                              # Gemini / Antigravity (default)
 # make install-kiro                       # Kiro alternative
@@ -72,6 +72,7 @@ flowchart LR
 | [adaptive-reviewer](skills/adaptive-reviewer/SKILL.md) | 🔬 Auto-escalating review orchestrator with subagent nesting (E11 — TESTING). |
 | [code-review](skills/code-review/SKILL.md) | Staff Engineer: architectural flaws, race conditions, SOLID violations. |
 | [domain-researcher](skills/domain-researcher/SKILL.md) | Compiles verified external facts (wikis, API docs, papers). |
+| [genesis](skills/genesis/SKILL.md) | 4-stage codebase onboarding: Cartography → Chronicle → Codex → Compass. |
 | [governance-auditor](skills/governance-auditor/SKILL.md) | Mechanical per-rule PASS/FAIL compliance checks. |
 | [incident-debug](skills/incident-debug/SKILL.md) | SRE: reproduce → isolate → diagnose → fix → verify. |
 | [performance-audit](skills/performance-audit/SKILL.md) | Hot-path allocations, O(n²) patterns, GC pressure. |

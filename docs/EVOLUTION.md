@@ -197,7 +197,68 @@ Tempest Hardening → Unified installer, shared library, dynamic hooks, safety g
 Autonomous Orchestration → Subagent nesting, adaptive auto-escalation, escalation sentinel, 15 skills, 17 experiments
 ```
 
-Compliance went from **7.8/10 to 9.8/10** and waste dropped from **~56% to 1.1%** in best-governed sessions — see [METRICS.md](METRICS.md) for the full breakdown. The rules now cover failure modes that no amount of upfront design would have predicted. Phase 10 introduced self-evolving orchestration — the system now decides its own review depth and heals its own defective fixes autonomously.
+## Phase 11: Cross-Platform Field Validation & Genesis (Prism AI Steering)
+
+Analysis of 66 production sessions (618 user turns, 4,913 assistant turns, 4,945 tool calls) from an external field deployment — masked and sanitized to remove all organization, product, domain, and user-identifying information — validated governance effectiveness and exposed critical installer gaps:
+
+### Installer Platform Parity Fix
+- **Root cause**: `install.sh` for one platform target deployed 11 rules but 0 skills. The `doctor` target checked rules but never verified that the skills those rules referenced were installed.
+- **Impact**: Security-sensitive code changes executed without any review protocol, when the risk table called for Maelstrom.
+- **Fix**: All platform targets now install rules, skills, and hooks with the same fidelity. `doctor` and `status` targets extended for full platform parity.
+
+### 66-Session Field Validation Dataset
+- Date range: 2026-08-10 to 2026-09-27 (~7 weeks)
+- Tool distribution: 30.6% execute_bash, 12.4% read_file, 9.2% str_replace
+- Delegation evolution: 0 subagents (sessions 1–24) → selective context-gatherers (25–53) → full orchestrated review with 14 subagents (session 53)
+- Key finding: delegation was used only for context saving, never for adversarial second opinions, until governance skills were installed
+
+### Genesis Skill (E18)
+- 4-stage codebase onboarding reconnaissance: Cartography → Chronicle → Codex → Compass
+- Read-only: produces structured intelligence artifact, never modifies the repo
+- Fills gap between session-preflight (env health) and Spores (problem survey) — Genesis surveys for *understanding*
+- Output feeds Context Pre-Seeding blocks, Spores priority, Mycelium blast-radius, and governance configuration
+
+### New Anti-Patterns Discovered
+- **Unbounded file ingestion**: Reading large files without line limits crashes context in seconds (Session 001)
+- **Terminal echo churn**: Multi-line bash commands failing in interactive shells (Sessions 009, 024, 029)
+- **Exit code masking**: Piping to `tail`/`head` masking build failures (Session 053)
+- **Silent dead starts**: Sessions with zero execution and no error feedback (Sessions 041, 052)
+- **Cross-session amnesia**: Same environmental traps re-discovered independently across sessions
+
+### Project Rename
+- `ai-steering-rules` → `prism-ai-steering` (Prism AI Steering)
+- Metaphor: a prism refracts a single interaction into a spectrum of review lenses
+- 5 new experiments registered (E18–E22), bringing total to 22
+
+**Impact on rules:** Installer platform parity fix. `make doctor` now verifies skills. Genesis skill added (16 skills total). 5 experiments proposed (E18–E22). Project renamed to Prism AI Steering.
+
+## The Compound Effect
+
+```
+Prescriptive Rules → caught obvious gaps but missed real failure modes
+    ↓
+Evidence-Based → extracted rules from 1,339 steps of real waste
+    ↓
+Cross-Conversation → proved patterns are systemic, not one-off
+    ↓
+Continuous Monitor → catches new patterns as they emerge
+    ↓
+Divide & Conquer → parallel lanes, preflight probe, review sentinels
+    ↓
+Trident, Maelstrom & Mechanized Guardrails → Gale/Trident/Maelstrom, 10 lenses, 14 skills, auto-hooks
+    ↓
+Empirical Falsification & Research Grounding → Refutation Gate, Boundary Verification, Orthogonal Personas, FPSR, Structured Diagnosis
+    ↓
+Spectrum Completion & Lifecycle Extraction → Breeze/Tempest, Mycelium/Mulch, 5 modes, 6 prongs, 7 escalation paths
+    ↓
+Tempest Hardening → Unified installer, shared library, dynamic hooks, safety gate hardening, docs consolidation
+    ↓
+Autonomous Orchestration → Subagent nesting, adaptive auto-escalation, escalation sentinel, 15 skills, 17 experiments
+    ↓
+Cross-Platform Field Validation → Prism AI Steering, 66-session validation, Genesis onboarding, installer parity, 16 skills, 22 experiments
+```
+
+Compliance went from **7.8/10 to 9.8/10** and waste dropped from **~56% to 1.1%** in best-governed sessions — see [METRICS.md](METRICS.md) for the full breakdown. The rules now cover failure modes that no amount of upfront design would have predicted. Phase 11 validated the system against 66 real production sessions, proving that the governance gap between "rules present" and "skills present" is the highest-risk silent failure mode.
 
 ## Design Principles (Emerged, Not Prescribed)
 
@@ -205,3 +266,4 @@ Compliance went from **7.8/10 to 9.8/10** and waste dropped from **~56% to 1.1%*
 2. **Accuracy over speed** — The agent must never sacrifice correctness to save tokens.
 3. **Rules as a system** — Cross-references between rules are intentional. Providence §3 mandates read-before-write; refactoring-pilot operationalizes it as a phased workflow.
 4. **Continuous validation** — Rules aren't "done" after review. Governance is a living system that evolves with each session.
+5. **Platform parity** — Governance installed at partial fidelity provides false assurance. Every platform target must deploy rules, skills, and hooks with the same completeness.

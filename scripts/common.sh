@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# AI Steering Rules — Shared Library
+# Prism AI Steering — Shared Library
 # Sourced by install.sh and platform wrappers.
 # Provides config loading, validation, backup, and formatting utilities.
 

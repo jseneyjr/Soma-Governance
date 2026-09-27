@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# Unified Installer — ai-steering-rules
+# Unified Installer — prism-ai-steering
 # Replaces install-gemini.sh, install-kiro.sh, install-copilot.sh
 # Usage: bash install.sh [platform] [mode]
 #   platform: gemini (default) | kiro | copilot
@@ -185,7 +185,7 @@ case "$PLATFORM" in
 
       echo "# Copilot Global Instructions" > "$TARGET_FILE"
       echo "" >> "$TARGET_FILE"
-      echo "> Auto-generated from ai-steering-rules. Do not edit directly." >> "$TARGET_FILE"
+      echo "> Auto-generated from prism-ai-steering. Do not edit directly." >> "$TARGET_FILE"
       echo "" >> "$TARGET_FILE"
 
       count=0; skipped=0

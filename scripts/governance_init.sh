@@ -51,7 +51,7 @@ target = ws_list[0] if ws_list else ''
 steps = []
 
 # Skip governance repos and empty workspaces
-if not target or any(k in target for k in ['ai-steering-rules', 'ai-conversation-logs']):
+if not target or any(k in target for k in ['prism-ai-steering', 'ai-conversation-logs']):
     print('[]')
     sys.exit(0)
 

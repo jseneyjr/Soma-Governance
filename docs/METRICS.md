@@ -1,6 +1,6 @@
 # Metrics & Token Economics
 
-Unified metrics for the AI Steering Rules governance system — token costs, empirical telemetry, and quality benchmarks.
+Unified metrics for the Prism AI Steering governance system — token costs, empirical telemetry, and quality benchmarks.
 
 ---
 
@@ -222,3 +222,45 @@ Each loop costs **~20–25 steps** of wasted context. Compound effect: rework fi
 - **Tempest #4** — Final capstone + first operational Mulch (12 files). Validated E14/E15, codified Mechanical Arithmetic and Mulch Invariant.
 - **Gale Review** — Git hygiene, 13→14 skill sync, branch modernization (`master` → `main`).
 - **Tempest #5** — Cross-conversation analysis (2 sessions, 2,904 steps). E11 subagent nesting unblocked, adaptive reviewer POC, 13 Maelstrom security/portability fixes (Thorns caught 8 defective), escalation sentinel (E14), 14→15 skill sync.
+
+---
+
+## Cross-Platform Field Validation (Phase 11)
+
+Comparison dataset from 66 production sessions in an external field deployment. All session data was masked and sanitized to remove organization, product, domain, and user-identifying information prior to analysis. The deployment ran rules derived from our Phase 1 governance set but **without skills installed** due to an installer gap in one platform target.
+
+### Dataset Summary
+
+| Metric | Work Sessions | Governed Sessions |
+|:-------|:-------------|:------------------|
+| Sessions analyzed | 66 | 17 |
+| Date range | 2026-08-10 to 2026-09-27 (~7 weeks) | 2026-09-25 to 2026-09-27 (~2 days) |
+| User turns (total) | 618 | N/A |
+| Assistant turns (total) | 4,913 | 7,015+ steps |
+| Tool calls (total) | 4,945 | N/A |
+| Tool calls/session (avg) | 74.9 | 412.6 |
+| Sub-agent executions | 275 | N/A |
+| Sub-agents/session (avg) | 4.2 | Varies by review mode |
+| Review protocol rounds | 0 (no skills installed) | 8 (Gale through Tempest) |
+
+### Tool Distribution Comparison
+
+| Tool | Work Sessions | Notes |
+|:-----|:-------------|:------|
+| `execute_bash` / `run_command` | 30.6% | Higher than governed; implies more manual exploration vs structured read tools |
+| `read_file` / `view_file` | 12.4% | Lower than governed baseline; suggests less read-before-write discipline |
+| `str_replace` / `replace_file_content` | 9.2% | Comparable; direct edits are universal |
+| `write_to_file` | 5.2% | Similar to governed |
+| `list_directory` / `list_dir` | 7.3% | Higher; more undirected exploration |
+| `search_files` / `grep_search` | 6.8% | Comparable |
+| `sub-agent dispatch` | 5.6% | Lower than governed; delegation was context-saving only |
+
+### Key Findings
+
+> [!IMPORTANT]
+> The 66-session dataset proves that **rules without skills provide incomplete governance**. All 11 rules were deployed, but review protocol references (Spores→Mulch) were unresolvable because skills weren't installed. The `doctor` target gave false assurance.
+
+> [!NOTE]
+> **Delegation evolves in 3 phases**: zero delegation → context-saving delegation → adversarial second-opinion delegation. The transition from phase 2 to phase 3 requires governance skills, not just rules.
+
+See [postmortem-work-sessions.md](postmortem-work-sessions.md) for the full analysis.
