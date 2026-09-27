@@ -80,11 +80,11 @@ After achieving 5% waste in governance sessions, the focus shifted from *prevent
 
 With low baseline waste established, Phase 6 addressed review depth, context efficiency, and proactive mechanical detection:
 
-- **Trident Protocol**: Added progressive 3-prong deep review (RECON → Roots → Bedrock) to `staff-review`. Separating reconnaissance scouts (problems only) from root-cause analysts (concrete fixes) and structural verifiers (Bedrock SHIP/BLOCK gate; read-only, does NOT run tests) prevents confirmation bias and scope creep (~8–12k tokens vs ~80k for prevented rework).
-- **Maelstrom Protocol & Thorns (Adversarial Falsification)**: Introduced a full 4-stage adversarial review workflow (RECON → Roots → Thorns → Bedrock, ~15–20k tokens) for critical and catastrophic risk surfaces. Incorporates the **Thorns** prong (NASA IV&V tripartite falsification), where an adversarial falsification team actively attempts to break proposed fixes with a strict 2-cycle revision cap before passing to Bedrock.
+- **Trident Protocol**: Added progressive 3-prong deep review (Spores → Roots → Bedrock) to `staff-review`. Separating reconnaissance scouts (problems only) from root-cause analysts (concrete fixes) and structural verifiers (Bedrock SHIP/BLOCK gate; read-only, does NOT run tests) prevents confirmation bias and scope creep (~8–12k tokens vs ~80k for prevented rework).
+- **Maelstrom Protocol & Thorns (Adversarial Falsification)**: Introduced a full 4-stage adversarial review workflow (Spores → Roots → Thorns → Bedrock, ~15–20k tokens) for critical and catastrophic risk surfaces. Incorporates the **Thorns** prong (NASA IV&V tripartite falsification), where an adversarial falsification team actively attempts to break proposed fixes with a strict 2-cycle revision cap before passing to Bedrock.
 - **Nature-Themed Naming**: Unified review protocols and prongs under natural phenomena metaphors:
   - Protocols: **Gale** (single-pass fan-out, was Salvo/Standard), **Trident** (progressive 3-prong), and **Maelstrom** (full adversarial, was Siege).
-  - Prongs: **RECON** (broad survey), **Roots** (root cause analysis, was STRIKE), **Thorns** (adversarial falsification, was BREACH), and **Bedrock** (structural-only verification gate, was FORTIFY).
+  - Prongs: **Spores** (broad survey, was RECON), **Roots** (root cause analysis, was STRIKE), **Thorns** (adversarial falsification, was BREACH), and **Bedrock** (structural-only verification gate, was FORTIFY).
 - **Risk-Based Protocol Selection**: Codified automated risk-tiered protocol routing: Low risk → Gale (~4k tokens), Medium/High risk → Trident (~8–12k tokens), and Critical/Catastrophic risk → Maelstrom (~15–20k tokens).
 - **First Successful Maelstrom Dogfood Run**: In its initial dogfood run, the Maelstrom protocol completed successfully; the Thorns adversarial prong caught 5 critical bugs that would have shipped broken under traditional review.
 - **Schema Bifurcation Fix in `governance_sweep.sh`**: Resolved schema bifurcation in `scripts/governance_sweep.sh`, reconciling disparate transcript field structures to accurately aggregate metrics across 17 sessions (7,015 total steps, 1,317 waste = 18.8% aggregate waste) under the 23-pattern taxonomy.
@@ -142,9 +142,9 @@ In **Maelstrom #2**, we incorporated state-of-the-art 2026 academic research and
 
 6. **Incremental Escalation (`staff-review` SKILL.md)**:
    - Eliminates redundant work when upgrading review intensity mid-session across 4 transition paths:
-     - Gale (fan-out) → Trident (maps fan-out to RECON, then runs Roots + Bedrock)
-     - Gale (fan-out) → Maelstrom (adds security lens RECON, then full Roots → Thorns → Bedrock)
-     - Trident (RECON + Roots) → Maelstrom (injects Thorns adversarial testing on existing Roots, then Bedrock)
+     - Gale (fan-out) → Trident (maps fan-out to Spores, then runs Roots + Bedrock)
+     - Gale (fan-out) → Maelstrom (adds security lens Spores, then full Roots → Thorns → Bedrock)
+     - Trident (Spores + Roots) → Maelstrom (injects Thorns adversarial testing on existing Roots, then Bedrock)
      - Trident (full) → Maelstrom (injects Thorns, re-verifies via Bedrock with adversarial context)
    - Incorporates a **dirty-tree caveat** (`git status` check) to guarantee that code has not drifted before running subsequent adversarial prongs.
    - **Source**: Extracted from live session post-mortem `f8b82d61`.

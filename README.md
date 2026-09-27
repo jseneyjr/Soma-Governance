@@ -81,11 +81,11 @@ The `staff-review` skill orchestrates 10 specialized lenses across three review 
 | Mode | Rounds | Dispatches | Token Cost | Best For | Workflow |
 |:-----|:------:|:----------:|:----------:|:---------|:---------|
 | **Gale** | 1 | 3–4 Flash | ~4k tokens | Routine reviews, known domains (Low risk) | Single-pass parallel fan-out → Staff synthesis |
-| **Trident** | 2–3 | 5–8 Flash | ~8–12k tokens | Architecture changes, high-risk refactors (Medium/High risk) | Progressive 3-prong: RECON → Roots → Bedrock |
-| **Maelstrom** | 3–4 | 7–12 Flash | ~15–20k tokens | Critical/Catastrophic risk, core governance, security-critical changes | Full adversarial: RECON → Roots → Thorns → Bedrock |
+| **Trident** | 2–3 | 5–8 Flash | ~8–12k tokens | Architecture changes, high-risk refactors (Medium/High risk) | Progressive 3-prong: Spores → Roots → Bedrock |
+| **Maelstrom** | 3–4 | 7–12 Flash | ~15–20k tokens | Critical/Catastrophic risk, core governance, security-critical changes | Full adversarial: Spores → Roots → Thorns → Bedrock |
 
 #### Review Protocol Prongs:
-- **RECON (width)** — 3–4 Flash scouts survey codebase with orthogonal personas; identify problems and rank by severity (🔴 critical / ⚠️ warning / ℹ️ info); no fix proposals allowed.
+- **🍄 Spores (width)** — 3–4 Flash scouts survey codebase with orthogonal personas; identify problems and rank by severity (🔴 critical / ⚠️ warning / ℹ️ info); no fix proposals allowed.
 - **Roots (depth)** — 1–2 Flash analysts receive deduplicated findings, investigate root cause, and propose concrete fixes with blast radius analysis.
 - **Thorns (adversarial)** — Falsification team (NASA IV&V tripartite) actively attempts to break/falsify proposed fixes with a 2-cycle revision cap.
 - **Bedrock (verification)** — Structural-only verification gate (read-only, does NOT run tests); validates proposed changes against test suites, callers, and the Empirical Refutation Gate; outputs a SHIP/BLOCK gate.
