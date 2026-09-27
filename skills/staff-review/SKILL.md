@@ -15,7 +15,7 @@ trigger: user_request
 | **Gale** | "gale", "quick review" | Spores → Synthesize | 3–4 | ~4k tokens | Quick reviews, minor changes |
 | **Trident** | "trident", "deep review" | Spores → Roots → Bedrock | 5–8 | ~8–12k tokens | Feature reviews, refactors |
 | **Maelstrom** | "maelstrom", "max review" | Spores → Roots → Thorns → Bedrock | 7–12 | ~15–20k tokens | Architecture, security, breaking changes |
-| **Tempest** | "tempest", "full assurance" | Spores → Mycelium → Roots → Thorns → Bedrock → Mulch | 7–12 | ~30–50k tokens | Catastrophic risk, infra, auth, schema migrations |
+| **Tempest** | "tempest", "full assurance" | Spores → Mycelium → Roots → Thorns → Bedrock → Mulch | 8–12 | ~30–50k tokens | Catastrophic risk, infra, auth, schema migrations |
 
 ### Risk-Based Protocol Selection
 
@@ -308,7 +308,7 @@ Output: {broken: [{fix_id, how, severity}], survived: [fix_ids]}
 
 ## Tempest Protocol (Full Assurance)
 
-The highest-assurance review mode. Extends Maelstrom with **Mycelium** (dependency impact mapping) after Spores and **Mulch** (learning extraction) after Bedrock. For catastrophic-risk changes: infrastructure, auth pipelines, schema migrations, core governance. Uses 7–12 dispatches across 4 turns (optimized from 6 turns via parallel execution).
+The highest-assurance review mode. Extends Maelstrom with **Mycelium** (dependency impact mapping) after Spores and **Mulch** (learning extraction) after Bedrock. For catastrophic-risk changes: infrastructure, auth pipelines, schema migrations, core governance. Uses 8–12 dispatches across 4 turns (optimized from 6 turns via parallel execution).
 
 **Optimization**: Mycelium may run in parallel with Spores when target files are known upfront. Thorns may run concurrently with Bedrock.
 

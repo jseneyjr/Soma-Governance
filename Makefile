@@ -16,7 +16,7 @@ export TEAM_SIZE GIT_STRATEGY APPROVAL_CHAIN
 export RULES_SUBSET ENABLE_HOOKS STEERING_PLATFORM
 
 .PHONY: help info install install-gemini install-kiro install-copilot \
-        uninstall doctor validate update status
+        uninstall doctor validate update status test
 
 help: ## Show available targets
 	@echo "AI Steering Rules"
@@ -144,3 +144,6 @@ status: ## Show installed vs repo diff
 	  done ;; \
 	  *) echo "  Status check only supported for gemini platform" ;; \
 	esac
+
+test: validate ## Run validation tests
+	@echo "All tests passed."

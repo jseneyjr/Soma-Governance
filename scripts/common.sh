@@ -149,9 +149,12 @@ apply_team_overrides() {
   local rules_dir="$1"
 
   # Team branching override
-  if [ "$TEAM_SIZE" != "solo" ] && [ -f "$rules_dir/git-workflow.md" ]; then
-    if ! grep -q "## Team Workflow Overrides" "$rules_dir/git-workflow.md" 2>/dev/null; then
-      cat >> "$rules_dir/git-workflow.md" << 'TEAM_OVERRIDE'
+  local git_wf="$rules_dir/git-workflow.md"
+  [ -f "$rules_dir/git-workflow.instructions.md" ] && git_wf="$rules_dir/git-workflow.instructions.md"
+
+  if [ "$TEAM_SIZE" != "solo" ] && { [ -f "$rules_dir/git-workflow.md" ] || [ -f "$rules_dir/git-workflow.instructions.md" ]; }; then
+    if ! grep -q "## Team Workflow Overrides" "$git_wf" 2>/dev/null; then
+      cat >> "$git_wf" << 'TEAM_OVERRIDE'
 
 ## Team Workflow Overrides (auto-generated)
 - **All changes via feature branches**: Direct commits to main are prohibited for teams.
@@ -159,35 +162,38 @@ apply_team_overrides() {
 - **Review required**: At least one peer review before merge.
 - **Branch naming**: Use `feature/<name>`, `fix/<name>`, `chore/<name>` prefixes.
 TEAM_OVERRIDE
-      log_info "git-workflow.md: team branching enforced"
+      log_info "$(basename "$git_wf"): team branching enforced"
     fi
   fi
 
   # Gitflow override
-  if [ "$GIT_STRATEGY" = "gitflow" ] && [ -f "$rules_dir/git-workflow.md" ]; then
-    if ! grep -q "## Gitflow Overrides" "$rules_dir/git-workflow.md" 2>/dev/null; then
-      cat >> "$rules_dir/git-workflow.md" << 'GITFLOW_OVERRIDE'
+  if [ "$GIT_STRATEGY" = "gitflow" ] && { [ -f "$rules_dir/git-workflow.md" ] || [ -f "$rules_dir/git-workflow.instructions.md" ]; }; then
+    if ! grep -q "## Gitflow Overrides" "$git_wf" 2>/dev/null; then
+      cat >> "$git_wf" << 'GITFLOW_OVERRIDE'
 
 ## Gitflow Overrides (auto-generated)
 - **develop branch**: All feature branches merge to `develop`, not `main`.
 - **release branches**: Cut `release/<version>` from `develop` when preparing a release.
 - **hotfix branches**: Branch from `main` as `hotfix/<name>`, merge back to both `main` and `develop`.
 GITFLOW_OVERRIDE
-      log_info "git-workflow.md: gitflow strategy applied"
+      log_info "$(basename "$git_wf"): gitflow strategy applied"
     fi
   fi
 
   # Approval chain override (quoted heredoc — Thorns fix: prevents prompt injection)
-  if [ "$APPROVAL_CHAIN" != "none" ] && [ -f "$rules_dir/destructive-ops.md" ]; then
-    if ! grep -q "## Approval Chain Override" "$rules_dir/destructive-ops.md" 2>/dev/null; then
+  local dest_ops="$rules_dir/destructive-ops.md"
+  [ -f "$rules_dir/destructive-ops.instructions.md" ] && dest_ops="$rules_dir/destructive-ops.instructions.md"
+
+  if [ "$APPROVAL_CHAIN" != "none" ] && { [ -f "$rules_dir/destructive-ops.md" ] || [ -f "$rules_dir/destructive-ops.instructions.md" ]; }; then
+    if ! grep -q "## Approval Chain Override" "$dest_ops" 2>/dev/null; then
       local chain="$APPROVAL_CHAIN"
-      cat >> "$rules_dir/destructive-ops.md" << APPROVAL_OVERRIDE
+      cat >> "$dest_ops" << APPROVAL_OVERRIDE
 
 ## Approval Chain Override (auto-generated)
 - **Approval required**: All destructive operations require ${chain} approval before execution.
 - **Document approver**: When executing destructive ops, cite who approved and when.
 APPROVAL_OVERRIDE
-      log_info "destructive-ops.md: $APPROVAL_CHAIN approval chain enforced"
+      log_info "$(basename "$dest_ops"): $APPROVAL_CHAIN approval chain enforced"
     fi
   fi
 }

@@ -26,7 +26,7 @@ trigger: model_decision
 ## 4. Headless & Display Environment
 - **DISPLAY Variable**: When running on Linux, verify `$DISPLAY` is set and points to a valid X11 display before importing GUI libraries.
 - **Xvfb Fallback**: For headless environments, configure Xvfb with explicit resolution: `Xvfb :99 -screen 0 1920x1080x24`.
-- **Xauthority**: Handle `Xlib.XauthorError` by checking `$XAUTHORITY` and `~/.Xauthority` existence before attempting X11 connections.
+- **Xauthority**: Handle `Xlib.error.XauthError` by checking `$XAUTHORITY` and `~/.Xauthority` existence before attempting X11 connections.
 
 ## 5. Testing Integration
 - **Mock by Default**: Per `testing.md` Hardware & External System Mocking — tests asserting on `xdotool`, `pygetwindow`, `pyautogui`, or OS window managers must include mock fixtures.

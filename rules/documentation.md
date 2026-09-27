@@ -30,4 +30,4 @@ trigger: model_decision
 - **Diagrams over Text**: Default to generating `mermaid.js` diagrams for state machines, sequence flows, or system architectures instead of writing walls of text. It is faster to comprehend and easier to maintain.
 
 ## 5. README Modularization
-- **Size Threshold**: When a root README exceeds ~250 lines, extract deep-dive content (cost analysis, evolution narrative, scorecards, historical data) into a `docs/` subdirectory. Keep the README focused on: why → quick start → what's included → installation → customization → links to deep dives.
+- **Size Threshold**: When a root README exceeds ~250 lines, extract deep-dive content (metrics & token economics, evolution narrative, experiments, historical data) into a `docs/` subdirectory. Keep the README focused on: why → quick start → what's included → installation → customization → links to deep dives.

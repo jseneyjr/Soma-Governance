@@ -18,12 +18,14 @@ REPO_DIR="$(cd -P "$(dirname "$PRG")" && pwd)"
 
 source "$REPO_DIR/scripts/common.sh"
 
-PLATFORM="${1:-${STEERING_PLATFORM:-gemini}}"
-MODE="${2:-global}"  # Only used by copilot
-
+# Load config FIRST so steering.conf values are available
 load_config "$REPO_DIR"
-# Override platform if passed as arg
-STEERING_PLATFORM="$PLATFORM"
+
+# CLI arg > steering.conf > default
+STEERING_PLATFORM="${1:-$STEERING_PLATFORM}"
+PLATFORM="$STEERING_PLATFORM"  # alias for use in case statement
+MODE="${2:-global}"
+
 validate_config
 resolve_subset
 

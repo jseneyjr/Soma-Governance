@@ -143,8 +143,28 @@ if [ ! -d "$GATE_LOG_DIR" ]; then
     mkdir -p "$GATE_LOG_DIR" 2>/dev/null || true
 fi
 
+# Safe JSON logger — prevents command injection via python3 json.dumps
+log_gate_event() {
+  local decision="$1" reason="${2:-}" cmd_snippet
+  cmd_snippet="$(echo "$CMD" | head -c 200)"
+  if command -v python3 &>/dev/null; then
+    python3 -c "
+import json, sys
+obj = {'timestamp': sys.argv[1], 'command': sys.argv[2], 'decision': sys.argv[3]}
+if sys.argv[4]: obj['reason'] = sys.argv[4]
+print(json.dumps(obj))
+" "$(date -u +"%Y-%m-%dT%H:%M:%SZ" 2>/dev/null || date +"%Y-%m-%dT%H:%M:%S")" "$cmd_snippet" "$decision" "$reason" >> "$GATE_LOG" 2>/dev/null || true
+  else
+    # Fallback: escape double quotes manually
+    cmd_snippet="$(echo "$cmd_snippet" | sed 's/"/\\"/g')"
+    local ts
+    ts="$(date -u +"%Y-%m-%dT%H:%M:%SZ" 2>/dev/null || date +"%Y-%m-%dT%H:%M:%S")"
+    echo "{\"timestamp\":\"$ts\",\"command\":\"$cmd_snippet\",\"decision\":\"$decision\",\"reason\":\"${reason:-}\"}" >> "$GATE_LOG" 2>/dev/null || true
+  fi
+}
+
 if [ "$BLOCKED" = true ]; then
-    echo "{\"timestamp\":\"$(date -Iseconds)\",\"command\":\"$(echo "$CMD" | head -c 200)\",\"decision\":\"BLOCKED\",\"reason\":\"$REASON\"}" >> "$GATE_LOG" 2>/dev/null || true
+    log_gate_event "BLOCKED" "$REASON"
     cat <<RESPONSE
 {
   "decision": "force_ask",
@@ -152,6 +172,6 @@ if [ "$BLOCKED" = true ]; then
 }
 RESPONSE
 else
-    echo "{\"timestamp\":\"$(date -Iseconds)\",\"command\":\"$(echo "$CMD" | head -c 200)\",\"decision\":\"ALLOWED\"}" >> "$GATE_LOG" 2>/dev/null || true
+    log_gate_event "ALLOWED" ""
     echo '{"decision": "allow"}'
 fi

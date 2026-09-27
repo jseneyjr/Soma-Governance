@@ -17,7 +17,11 @@ trigger: always_on
 - **No Full File Outputs**: Never re-output entire functions or files in chat unless explicitly requested by the user.
 
 ## 3. Subagent Model Selection
-- See `subagent-delegation.md §3` for full model tiering protocol. Summary: Flash for research, Inherit for coding, Pro only for deep architectural reasoning.
+- **Model Tiering Protocol** (authoritative source — `subagent-delegation.md §3` defers here):
+  - `flash`: Research, audit, review prongs (Spores/Roots/Thorns/Bedrock/Mulch), diff proposing, verification
+  - `flash`: Mechanical diff application from pre-computed before/after blocks
+  - `inherit`: Independent coding lanes under Disjoint Lane Protocol
+  - `orchestrator only`: Synthesis, architecture, design authority (never delegated to subagents)
 - **Mechanical Diff Application**: When Roots/Thorns has already produced exact before/after diffs, applying those diffs is syntactic — use `flash` tier, never `inherit` or `pro`.
 
 ## 4. Task Hygiene

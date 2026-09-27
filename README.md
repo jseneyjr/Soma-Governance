@@ -91,7 +91,7 @@ flowchart LR
 | 🌬️ Gale | 3-4 | ~4k | Quick reviews |
 | 🔱 Trident | 5-8 | ~8-12k | Features, refactors |
 | 🌊 Maelstrom | 7-12 | ~15-20k | Architecture, security |
-| ⛈️ Tempest | 7-12 | ~30-50k | Catastrophic risk |
+| ⛈️ Tempest | 8-12 | ~30-50k | Catastrophic risk |
 
 > [!NOTE]
 > Reviews use 6 prongs: 🍄 Spores (width), 🍄 Mycelium (blast radius), 🌿 Roots (depth), 🌹 Thorns (adversarial), 🪨 Bedrock (verification gate), 🍂 Mulch (learning). See [staff-review SKILL.md](skills/staff-review/SKILL.md) for full prong details and escalation paths.
@@ -142,7 +142,7 @@ Ensure "Enable custom instructions" is checked in your IDE's Copilot settings.
 | Document | Contents |
 |:---------|:---------|
 | [Metrics & Token Economics](docs/METRICS.md) | Per-file token costs, compliance scores, waste analysis, ROI calculations |
-| [Evolution](docs/EVOLUTION.md) | How the approach evolved across 8 phases, from prescriptive to evidence-based |
+| [Evolution](docs/EVOLUTION.md) | How the approach evolved across 9 phases, from prescriptive to evidence-based |
 | [Experiments](docs/EXPERIMENTS.md) | A/B testing framework (E1–E10) for data-driven governance evolution |
 
 ## License

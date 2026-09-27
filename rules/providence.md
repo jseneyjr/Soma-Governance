@@ -18,6 +18,7 @@ Before making a technical assertion or implementing a change, you must verify th
 1. **Dependencies**: Ensure the package/library is explicitly defined in the project's dependency file (e.g., `package.json`, `requirements.txt`, `go.mod`). Do not introduce new dependencies without explicit permission.
 2. **Internal Conventions**: Before writing new helper functions, use global search to check if a similar utility already exists in the codebase (e.g., in `utils/`, `helpers/`, `shared/`).
 3. **Data Models**: When interacting with databases or APIs, ground your types and schemas in existing definitions. Do not infer schema structures blindly.
+4. **Mechanical Arithmetic**: Never compute table sums, token budgets, step counts, or percentages via mental reasoning in documentation or review artifacts. All quantitative metrics must be verified using an executable command (`python3 -c`, `bc`, `awk`) before writing.
 
 ## 3. The "Read-Before-Write" Mandate
 - **Context Gathering**: You must read the relevant files before proposing modifications. 

@@ -60,7 +60,10 @@ Every subagent prompt should prepend a compact context block (~200 tokens) to el
 - Include test runner command so subagents can verify immediately
 
 ## 3. Cost & Workspace Isolation
-- **Model Downgrading**: Per the cost-optimization protocol.
+- **Model Tiering**: See `cost-optimization.md §3` for the authoritative model selection protocol. Key rules:
+  - All review prongs (Spores through Mulch): `flash`
+  - Coding subagents: `inherit`
+  - Synthesis and design authority: orchestrator only
 - **Branch Workspaces**: Only use `branch` workspace mode for subagents performing genuinely destructive operations (e.g., deleting files, rewriting core modules). The orchestrator must obtain user confirmation on the plan *before* dispatching destructive work to a subagent. For additive tasks like creating new files, writing tests, or generating boilerplate, use the default `inherit` workspace mode so files land directly in the project.
 
 ## 4. Coding Task Boundaries
@@ -75,6 +78,7 @@ Every subagent prompt should prepend a compact context block (~200 tokens) to el
 - **Prompt Cleanup**: Kill completed subagents immediately upon receiving their completion debrief rather than deferring to a batch kill_all. If zero files were produced, explicitly state that and explain why.
 - **No Collateral Kills**: Never use `kill_all` when sibling subagents from the same fan-out are still running. Kill only the completed subagent by its `ConversationId`. Premature `kill_all` forces the orchestrator to redo in-flight work manually.
 - **Read-Only Awareness**: Research subagents cannot write files. Instruct them to return results via `send_message`, not file creation. Only subagents with write tools can create or modify files.
+- **Mulch Execution Invariant**: In Tempest reviews, Mulch must be dispatched as an unskippable post-Bedrock learning extraction step. If Mulch is omitted, the orchestrator must explicitly document the omission rationale before session close. Mulch output should be persisted to `governance/mulch_queue.jsonl` for cross-session learning.
 
 ## 6. Boundary Verification Protocol
 Before acting on subagent findings, the orchestrator **must spot-check claims against the actual codebase** (not exhaustively — protect context window):

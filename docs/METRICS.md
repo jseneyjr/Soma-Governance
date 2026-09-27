@@ -60,7 +60,7 @@ Unified metrics for the AI Steering Rules governance system — token costs, emp
 | **Gale** | 3–4 Flash | ~4k | ~80k per prevented rework loop (20x ROI) |
 | **Trident** | 5–8 Flash | ~8–12k | ~80k per prevented architectural regression (7–10x ROI) |
 | **Maelstrom** | 7–12 Flash | ~15–20k | Caught 5 critical bugs in dogfooding (5–7x ROI) |
-| **Tempest** | 10–16 Flash | ~30–50k | Highest assurance; human gate before verdict (3–5x ROI) |
+| **Tempest** | 8–12 Flash | ~30–50k | Highest assurance; human gate before verdict (3–5x ROI) |
 
 | Prong | Cost | Role |
 |:------|:-----|:-----|

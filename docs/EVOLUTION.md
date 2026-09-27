@@ -131,7 +131,7 @@ Tempest #1 and #2 overhauled the build system, security gate, and documentation 
 
 - **Unified installer** replacing 3 duplicated platform scripts with a single `scripts/common.sh`-backed `install.sh`
 - **Shared library** (`scripts/common.sh`) eliminating ~95 lines of duplicated path resolution, error handling, and color output
-- **Dynamic `hooks.json.template`** replacing hardcoded scratch paths with `{{RULES_DIR}}` placeholders resolved at install time
+- **Dynamic `hooks.json.template`** replacing hardcoded scratch paths with `{{SCRIPTS_DIR}}` placeholders resolved at install time
 - **6 new Make targets**: `uninstall`, `doctor`, `validate`, `update`, `status` (plus existing `install`, `test`)
 - **Safety gate hardened**: fail-closed default, 15+ dangerous patterns, regex bypass fixes for edge cases
 - **Documentation consolidated**: METRICS.md merge (token economics + telemetry + benchmarks), README rewrite (242→150 lines), EVOLUTION dedup
