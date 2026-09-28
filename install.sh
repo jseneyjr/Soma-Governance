@@ -89,8 +89,12 @@ write_manifest() {
   local backup_path=${BACKUP_DIR:-null}
   [ "$backup_path" != "null" ] && backup_path="\"$backup_path\""
   
+  local version
+  version=$(cat "$REPO_DIR/VERSION" 2>/dev/null || echo "unknown")
+  
   cat > "$target_json" <<EOF
 {
+  "version": "$version",
   "installed_at": "$ts",
   "platform": "$PLATFORM",
   "rules_subset": "$RULES_SUBSET",

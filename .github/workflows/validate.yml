@@ -1,0 +1,51 @@
+name: Validate
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      
+      - name: Run validation
+        run: make validate
+      
+      - name: Check for hardcoded paths
+        run: |
+          if grep -rn '/home/' scripts/ rules/ skills/ docs/ README.md 2>/dev/null; then
+            echo "ERROR: Hardcoded paths found"
+            exit 1
+          fi
+          echo "No hardcoded paths found"
+      
+      - name: Verify script counts
+        run: |
+          SCRIPT_COUNT=$(ls scripts/*.py scripts/*.sh | wc -l)
+          echo "Scripts found: $SCRIPT_COUNT"
+          if [ "$SCRIPT_COUNT" -lt 16 ]; then
+            echo "ERROR: Expected at least 16 scripts in scripts/"
+            exit 1
+          fi
+      
+      - name: Verify privacy invariant
+        run: |
+          if grep -rn 'os\.getenv\|os\.environ\|subprocess\.check_output.*which' scripts/*.py 2>/dev/null | grep -v 'METRICS_REPO\|TEAM_REPO\|ORG_REPO\|TEAM_MEMBER_ID\|STEERING_PLATFORM\|GEMINI_API_KEY\|RULES_SUBSET\|ENABLE_HOOKS\|GIT_STRATEGY\|TEAM_SIZE\|APPROVAL_CHAIN\|CONVERSATION_LOG_DIR\|GENESIS_REPORT_DIR'; then
+            echo "WARNING: Potential privacy invariant violation - unexpected env var access"
+          fi
+          echo "Privacy check complete"
+
+      - name: Dry-run install
+        run: bash install.sh gemini --dry-run
+
+      - name: Dry-run uninstall
+        run: bash uninstall.sh gemini --dry-run --force
