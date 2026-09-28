@@ -7,6 +7,7 @@
 [![Phases](https://img.shields.io/badge/Phases-17-blue?style=flat-square)](docs/EVOLUTION.md)
 [![Cells](https://img.shields.io/badge/Cells-5-orange?style=flat-square)](#adaptive-governance-cells)
 [![Version](https://img.shields.io/badge/Version-0.20.0-informational?style=flat-square)](docs/CHANGELOG.md)
+[![Blog Post](https://img.shields.io/badge/Blog-dev.to-black?style=flat-square&logo=devdotto)](https://dev.to/nseney1/rules-that-cant-prove-themselves-die-adaptive-governance-for-ai-coding-agents-25bn)
 
 Prism AI Steering is an adaptive governance framework that generates, measures, and evolves its own rules based on observed agent behavior. Built on top of continuous feedback loops and biological natural selection principles, it ensures agents remain grounded, efficient, and safe across different repositories. See the [NOTICE](NOTICE) file for our full local-only Data Privacy Statement.
 
@@ -296,6 +297,7 @@ You can also use `--dry-run` to see what will be removed, and `--keep-config` to
 
 | Document | Description |
 |:---------|:------------|
+| [**Blog Post**](https://dev.to/nseney1/rules-that-cant-prove-themselves-die-adaptive-governance-for-ai-coding-agents-25bn) | "Rules That Can't Prove Themselves Die" — full introduction on dev.to |
 | [CHANGELOG](docs/CHANGELOG.md) | Release history |
 | [EVOLUTION](docs/EVOLUTION.md) | Phase-by-phase development narrative |
 | [SCRIPTS](docs/SCRIPTS.md) | Full script catalog (37 scripts) |
