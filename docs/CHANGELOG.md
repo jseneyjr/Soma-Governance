@@ -3,6 +3,23 @@
 All notable changes to Prism AI Steering are documented here.
 This project uses [Semantic Versioning](https://semver.org/).
 
+## [0.17.0] — 2026-09-27
+
+### Added
+- GA crossover operator (`cell_crossover.py`) — merges complementary cell hypotheses
+- Tournament selection (`cell_tournament.py`) — diversity-preserving cell selection
+- Cell metamorphosis (`cell_metamorphose.py`) — vacuole → wall → rule maturity paths
+- Horizontal gene transfer (`cell_transfer.sh`) — cross-project cell sharing with fitness reset
+- Fitness landscape visualization (`fitness_landscape.py`) — ASCII governance dashboard
+- Confidence half-life decay in `cell_fitness.py` — stale cells fade naturally
+- Effector/memory cell flags in `cell_create.sh` — incident response patterns
+- Incident response templates (`templates/incident-response/`)
+- `CELL_HALF_LIFE_DAYS` configuration in `steering.conf.example`
+
+### Changed
+- Script count: 20 → 25
+- `cell_signal.sh` now records `last_trigger_date` for half-life calculation
+
 ## [0.16.0] — 2026-09-27
 
 ### Added

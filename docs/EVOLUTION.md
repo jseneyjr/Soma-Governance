@@ -406,7 +406,7 @@ Natural Selection → Fitness scoring, selection pressure, adaptation, speciatio
 Team Topology → Shared repo convergence, org-wide promotion path, backup/restore lifecycle
 ```
 
-Compliance went from **7.8/10 to 9.8/10** and waste dropped from **~56% to 1.1%** in best-governed sessions (with Phase 15 expanding this to multi-developer teams and clean uninstalls, reaching 20 scripts with zero added idle token overhead) — see [METRICS.md](METRICS.md) for the full breakdown. The rules now cover failure modes that no amount of upfront design would have predicted. Phase 11 validated the system against 66 real production sessions, proving that the governance gap between "rules present" and "skills present" is the highest-risk silent failure mode.
+Compliance went from **7.8/10 to 9.8/10** and waste dropped from **~56% to 1.1%** in best-governed sessions (with Phase 15 expanding this to multi-developer teams and clean uninstalls, reaching 25 scripts with zero added idle token overhead) — see [METRICS.md](METRICS.md) for the full breakdown. The rules now cover failure modes that no amount of upfront design would have predicted. Phase 11 validated the system against 66 real production sessions, proving that the governance gap between "rules present" and "skills present" is the highest-risk silent failure mode.
 
 ## Design Principles (Emerged, Not Prescribed)
 
@@ -435,3 +435,16 @@ Compliance went from **7.8/10 to 9.8/10** and waste dropped from **~56% to 1.1%*
 - **Liveness Sentinel**: Added `liveness_sentinel.sh` to monitor subagent health after discovering silent deadlocks during cross-domain multi-agent orchestration (e.g., RL training sessions).
 - **Enhanced Lichen Magic Number Detection**: Added explicit detection for high-density hardcoded numeric literals (coordinates, ports, timeouts) to identify structural brittleness for Vacuole generation.
 - **Enhanced Plasmodesmata Detection**: Added explicit patterns for multi-service connections, including `pip install -e` sibling references, shared DBs, and protobuf/gRPC imports.
+
+### Phase 17: Evolutionary Computation (v0.17.0)
+
+Formalized Prism's implicit genetic algorithm with explicit operators from evolutionary computation, immunology, and confidence theory:
+
+- **GA Operators**: Crossover merges complementary cell hypotheses; tournament selection preserves population diversity during pruning.
+- **Confidence Half-Life**: Cell fitness decays exponentially unless reinforced by new evidence. A cell with fitness 0.85 that hasn't triggered in 60 days decays to 0.21 — automatic extinction without hard expiry dates.
+- **Cell Metamorphosis**: Cells mature between types through proof. Vacuoles harden into Cell Walls after 20 sessions at fitness > 0.8. Walls graduate to Rules after 25 sessions at fitness > 0.85.
+- **Horizontal Gene Transfer**: Cells can be copied across projects with fitness reset. Transferred cells get a 5-session probation — they must prove themselves in the new context or self-prune.
+- **Immune System Pattern**: Effector cells provide acute, aggressive protection during incidents (3 sessions, 3x weight, Tempest review). Memory cells provide permanent dormant protection that activates on re-exposure.
+- **Fitness Landscape Visualization**: ASCII dashboard showing decayed fitness across all active cells — making governance ROI measurable and visual.
+
+This phase brought the script count to 25 and established Prism as a formal evolutionary computation system operating on natural language hypotheses.

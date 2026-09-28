@@ -3,7 +3,7 @@
 [![License: Apache 2.0](https://img.shields.io/badge/License-Apache_2.0-blue?style=flat-square)](LICENSE)
 [![Rules](https://img.shields.io/badge/Rules-11-green?style=flat-square)](#rules)
 [![Skills](https://img.shields.io/badge/Skills-15-purple?style=flat-square)](#skills)
-[![Scripts](https://img.shields.io/badge/Scripts-20-red?style=flat-square)](#scripts)
+[![Scripts](https://img.shields.io/badge/Scripts-25-red?style=flat-square)](#scripts)
 [![Phases](https://img.shields.io/badge/Phases-15-blue?style=flat-square)](docs/EVOLUTION.md)
 [![Cells](https://img.shields.io/badge/Cells-4-orange?style=flat-square)](#adaptive-governance-cells)
 
@@ -123,7 +123,7 @@ You can manually trigger these via: `python3 scripts/cell_fitness.py`, `scripts/
 
 ## 📜 Scripts
 
-Refer to [docs/SCRIPTS.md](docs/SCRIPTS.md) for full documentation of the 20 system scripts. Highlights include:
+Refer to [docs/SCRIPTS.md](docs/SCRIPTS.md) for full documentation of the 25 system scripts. Highlights include:
 - `cell_selection.sh`: Main entrypoint for evaluating cell fitness.
 - `cell_signal.sh`: External fitness signal API for CI/CD and monitoring integration.
 - `cell_create.sh`: Programmatic cell creation from automated systems.
@@ -179,6 +179,7 @@ Prism AI Steering has evolved across 15 measured phases, from manually written l
 - Phase 13: Cytogenesis — Local governance and cell generation.
 - Phase 14: Natural Selection — Evolutionary scaling and cross-repo speciation.
 - Phase 15: Team Topology & Clean Uninstaller.
+- Phase 17: Evolutionary Computation — GA operators, half-life decay, metamorphosis, horizontal gene transfer.
 
 Read the [EVOLUTION.md](docs/EVOLUTION.md) for a comprehensive breakdown, driven by 6 core Design Principles ensuring empirical, adaptive, hypothesis-driven, system-first governance.
 

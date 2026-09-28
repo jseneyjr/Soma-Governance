@@ -77,3 +77,10 @@ ENABLE_HOOKS=true
 # If set, team_sync.sh also pushes/pulls from the org level.
 # Hierarchy: Individual → TEAM_REPO → ORG_REPO
 # ORG_REPO=~/repos/prism-ai-org
+
+# ─── Data & Metrics ───────────────────────────────────────────────
+
+# CELL_HALF_LIFE_DAYS: number of days for fitness confidence to halve.
+# Cells that stop being triggered decay naturally. Default: 30.
+# Set higher for slow-moving projects, lower for fast iteration.
+# CELL_HALF_LIFE_DAYS=30

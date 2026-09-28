@@ -16,6 +16,11 @@ WEIGHT="1.0"
 TAGS=""
 EXPIRY_SESSIONS="15"
 EXPIRY_DAYS="60"
+RESPONSE_TYPE=""
+MINIMUM_MODE=""
+ACTIVATION=""
+EFFECTOR=false
+MEMORY=false
 
 # Parse arguments
 while [[ $# -gt 0 ]]; do
@@ -52,6 +57,14 @@ while [[ $# -gt 0 ]]; do
       EXPIRY_DAYS="$2"
       shift 2
       ;;
+    --effector)
+      EFFECTOR=true
+      shift
+      ;;
+    --memory)
+      MEMORY=true
+      shift
+      ;;
     *)
       echo "Unknown option: $1"
       exit 1
@@ -63,6 +76,26 @@ if [[ -z "$TYPE" || -z "$HYPOTHESIS" || -z "$PREDICTION" || -z "$FALSIFICATION" 
   echo "Error: Missing required arguments."
   echo "Usage: $0 --type <type> --hypothesis <hypothesis> --prediction <prediction> --falsification <falsification>"
   exit 1
+fi
+
+if [[ "$EFFECTOR" == "true" && "$MEMORY" == "true" ]]; then
+  echo "Error: --effector and --memory are mutually exclusive."
+  exit 1
+fi
+
+if [[ "$EFFECTOR" == "true" ]]; then
+  EXPIRY_SESSIONS=3
+  WEIGHT="3.0"
+  RESPONSE_TYPE="effector"
+  MINIMUM_MODE="tempest"
+fi
+
+if [[ "$MEMORY" == "true" ]]; then
+  EXPIRY_SESSIONS="null"
+  WEIGHT="1.5"
+  RESPONSE_TYPE="memory"
+  MINIMUM_MODE="maelstrom"
+  ACTIVATION="dormant"
 fi
 
 TYPE=$(echo "$TYPE" | tr '[:upper:]' '[:lower:]')
@@ -122,6 +155,18 @@ if [[ -n "$TAGS" ]]; then
   TAGS_YAML+="]"
 fi
 
+# Build optional fields
+OPTIONAL_YAML=""
+if [[ -n "$RESPONSE_TYPE" ]]; then
+  OPTIONAL_YAML+="response_type: $RESPONSE_TYPE"$'\n'
+fi
+if [[ -n "$MINIMUM_MODE" ]]; then
+  OPTIONAL_YAML+="minimum_mode: $MINIMUM_MODE"$'\n'
+fi
+if [[ -n "$ACTIVATION" ]]; then
+  OPTIONAL_YAML+="activation: $ACTIVATION"$'\n'
+fi
+
 cat > "$FILE_PATH" << EOF
 ---
 type: $TYPE
@@ -133,7 +178,7 @@ expiry_days: $EXPIRY_DAYS
 created: "$DATE"
 impact_weight: $WEIGHT
 tags: $TAGS_YAML
-fitness:
+${OPTIONAL_YAML}fitness:
   triggers: 0
   true_positives: 0
   false_positives: 0

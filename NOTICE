@@ -23,8 +23,8 @@ directory. It does not operate as a service and has no server component.
 ### What This Software Does
 
 - ✅ Installs markdown rule files and skill files (15 skills) to your local filesystem
-- ✅ Runs local bash scripts (20 scripts) for installation, validation, and metrics
-- ✅ Collects **aggregate counts only** (e.g., "11 rules", "15 skills", "20 scripts", "1.1% waste rate")
+- ✅ Runs local bash scripts (25 scripts) for installation, validation, and metrics
+- ✅ Collects **aggregate counts only** (e.g., "11 rules", "15 skills", "25 scripts", "1.1% waste rate")
 - ✅ All metrics are local-only and gitignored by default
 
 ### Network Access Disclosure

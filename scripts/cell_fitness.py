@@ -7,6 +7,13 @@ import json
 import yaml
 from datetime import datetime
 
+def decayed_fitness(raw_score, last_trigger_date, half_life_days=30):
+    if last_trigger_date is None or raw_score is None:
+        return raw_score
+    days_since = (datetime.now() - last_trigger_date).days
+    decay_factor = 0.5 ** (days_since / half_life_days)
+    return round(raw_score * decay_factor, 4)
+
 def main():
     parser = argparse.ArgumentParser(description="Compute fitness of governance cells")
     parser.add_argument("--json", action="store_true", help="Output as JSON")
@@ -53,14 +60,26 @@ def main():
         else:
             score = (tp / triggers) * impact_weight
             
+        last_trigger_date_str = fitness.get('last_trigger_date')
+        last_trigger_date = None
+        if last_trigger_date_str:
+            try:
+                # Handle ISO format strings
+                last_trigger_date = datetime.fromisoformat(last_trigger_date_str.replace('Z', '+00:00')).replace(tzinfo=None)
+            except Exception:
+                pass
+                
+        half_life_days = int(os.environ.get('CELL_HALF_LIFE_DAYS', 30))
+        dec_score = decayed_fitness(score, last_trigger_date, half_life_days)
+            
         expiry_days = metadata.get('expiry_days')
         created_str = metadata.get('created')
         status = "NEW"
         
-        if score is not None:
-            if score > 0.7:
+        if dec_score is not None:
+            if dec_score > 0.7:
                 status = "SURVIVE"
-            elif 0.3 <= score <= 0.7:
+            elif 0.3 <= dec_score <= 0.7:
                 status = "ADAPT"
             else:
                 status = "EXTINCT"
@@ -85,6 +104,7 @@ def main():
             "tp": tp,
             "fp": fp,
             "score": score,
+            "decayed_score": dec_score,
             "status": status
         })
 
@@ -185,11 +205,12 @@ def main():
     if args.json:
         print(json.dumps(results, indent=2))
     else:
-        print(f"{'Cell':<20} | {'Type':<12} | {'Triggers':<8} | {'TP':<4} | {'FP':<4} | {'Score':<6} | {'Status':<10}")
-        print("-" * 75)
+        print(f"{'Cell':<20} | {'Type':<12} | {'Triggers':<8} | {'TP':<4} | {'FP':<4} | {'Raw':<6} | {'Decayed':<7} | {'Status':<10}")
+        print("-" * 85)
         for r in results:
             score_str = f"{r['score']:.2f}" if r['score'] is not None else "null"
-            print(f"{r['cell']:<20} | {r['type']:<12} | {r['triggers']:<8} | {r['tp']:<4} | {r['fp']:<4} | {score_str:<6} | {r['status']:<10}")
+            dec_score_str = f"{r['decayed_score']:.2f}" if r['decayed_score'] is not None else "null"
+            print(f"{r['cell']:<20} | {r['type']:<12} | {r['triggers']:<8} | {r['tp']:<4} | {r['fp']:<4} | {score_str:<6} | {dec_score_str:<7} | {r['status']:<10}")
 
 if __name__ == "__main__":
     main()

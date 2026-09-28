@@ -131,6 +131,7 @@ fitness['triggers'] = triggers
 fitness['true_positives'] = tp
 fitness['false_positives'] = fp
 fitness['score'] = new_score
+fitness['last_trigger_date'] = datetime.utcnow().isoformat() + "Z"
 
 metadata['fitness'] = fitness
 
