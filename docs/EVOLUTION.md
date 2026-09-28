@@ -406,7 +406,7 @@ Natural Selection → Fitness scoring, selection pressure, adaptation, speciatio
 Team Topology → Shared repo convergence, org-wide promotion path, backup/restore lifecycle
 ```
 
-Compliance went from **7.8/10 to 9.8/10** and waste dropped from **~56% to 1.1%** in best-governed sessions (with Phase 15 expanding this to multi-developer teams and clean uninstalls, reaching 17 scripts with zero added idle token overhead) — see [METRICS.md](METRICS.md) for the full breakdown. The rules now cover failure modes that no amount of upfront design would have predicted. Phase 11 validated the system against 66 real production sessions, proving that the governance gap between "rules present" and "skills present" is the highest-risk silent failure mode.
+Compliance went from **7.8/10 to 9.8/10** and waste dropped from **~56% to 1.1%** in best-governed sessions (with Phase 15 expanding this to multi-developer teams and clean uninstalls, reaching 18 scripts with zero added idle token overhead) — see [METRICS.md](METRICS.md) for the full breakdown. The rules now cover failure modes that no amount of upfront design would have predicted. Phase 11 validated the system against 66 real production sessions, proving that the governance gap between "rules present" and "skills present" is the highest-risk silent failure mode.
 
 ## Design Principles (Emerged, Not Prescribed)
 
@@ -430,3 +430,8 @@ Compliance went from **7.8/10 to 9.8/10** and waste dropped from **~56% to 1.1%*
 - Restore-on-uninstall: reinstates previous config if desired
 - Integration: cell_promote.py auto-syncs to TEAM_REPO, metrics_snapshot.sh uses TEAM_REPO, cell_fitness.py scans team snapshots
 - Privacy: only cell hypotheses/scores flow — never file content, paths, or PII
+
+### Phase 15.1: Cross-Domain Insights (RL Training & Production Gaps)
+- **Liveness Sentinel**: Added `liveness_sentinel.sh` to monitor subagent health after discovering silent deadlocks during cross-domain multi-agent orchestration (e.g., RL training sessions).
+- **Enhanced Lichen Magic Number Detection**: Added explicit detection for high-density hardcoded numeric literals (coordinates, ports, timeouts) to identify structural brittleness for Vacuole generation.
+- **Enhanced Plasmodesmata Detection**: Added explicit patterns for multi-service connections, including `pip install -e` sibling references, shared DBs, and protobuf/gRPC imports.

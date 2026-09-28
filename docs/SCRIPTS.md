@@ -1,6 +1,6 @@
 # Scripts Reference
 
-This document catalogs the 17 executable scripts that power the Prism AI Steering framework.
+This document catalogs the 18 executable scripts that power the Prism AI Steering framework.
 
 ## Lifecycle Scripts (Hooks)
 These scripts are invoked automatically by the IDE or terminal environment.
@@ -8,6 +8,9 @@ These scripts are invoked automatically by the IDE or terminal environment.
 * **`safety_gate.sh`**: PreToolUse hook that screens commands for destructive or globally scoped operations (e.g., `rm -rf /`, `git push -f`).
 * **`session_close.sh`**: Post-session cleanup hook that synthesizes learning from the session and triggers local reporting.
 * **`escalation_sentinel.sh`**: Scans diffs to recommend protocol escalation levels (e.g., Breeze vs Trident vs Tempest) based on directory and file path sensitivity.
+
+## Agent Health
+* **`liveness_sentinel.sh`**: Monitors subagent dispatch health during multi-agent orchestration. Detects stalled or deadlocked agents.
 
 ## Cell Evolutionary Lifecycle Scripts
 These scripts run the Cytogenesis selection and speciation pipeline. They respect `METRICS_REPO` configuration for tracking across repositories.

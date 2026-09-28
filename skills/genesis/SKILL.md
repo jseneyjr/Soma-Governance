@@ -316,6 +316,7 @@ Dispatch 1 Flash governance advisor to synthesize all prior stage outputs into a
 | Testing patterns | Assess test structure, coverage indicators, test naming conventions | `{pattern: "unit+integration", coverage_tool: "", naming: ""}` |
 | Deployment model | Detect Dockerfiles, CI configs, IaC files (Terraform, Pulumi, CDK) | Deployment profile with detected tooling |
 | Known traps | Cross-reference Rings churn + Taproot complexity → fragile areas | Trap list: `[{file, reason, recommendation}]` |
+| Magic Numbers | Scan for density of hardcoded numeric literals (screen coordinates like `1920`, `1080`, pixel positions, port numbers, timeout values). High density of magic numbers indicates structural brittleness. Flag files with >10 hardcoded numeric literals as candidates for Vacuole generation. | List of brittle files with high magic number density |
 | Governance config | Recommend which rules to activate, review protocol level | `{rules: [], default_protocol: "", risk_areas: []}` |
 | Context Pre-Seeding | Auto-generate context header for future subagent prompts (approx. ~200 tokens; measured via `token_census.py`) | Ready-to-use context block |
 
@@ -357,6 +358,8 @@ Deliver:
 
 ### Known Traps & Gotchas
 [Cross-reference Rings churn heatmap with Taproot architecture findings]
+- **Magic Numbers & Hardcoded Coordinates**: Scan for density of hardcoded numeric literals (screen coordinates like `1920`, `1080`, pixel positions, port numbers, timeout values). High density of magic numbers indicates structural brittleness. Flag files with >10 hardcoded numeric literals as candidates for Vacuole generation.
+
 | File | Signal | Trap | Recommendation |
 |:-----|:-------|:-----|:---------------|
 | [path] | [high churn + complex] | [description] | [mitigation] |
@@ -398,9 +401,10 @@ Dispatch 1 Flash cytogenesis orchestrator to read the Lichen output and generate
 | Objective | Method | Output |
 |:----------|:-------|:-------|
 | Vacuoles (Traps) | For each identified trap/anti-pattern from Lichen | Generate a Vacuole cell in `.prism/cells/vacuoles/trap-<slugified-name>.md` |
+| Vacuoles (Traps) | High density of hardcoded numeric literals (coordinates, ports, timeouts) | Generate a Vacuole cell in `.prism/cells/vacuoles/trap-magic-numbers.md` |
 | Cell Walls (Boundaries) | Detect security-sensitive paths (auth/, secrets/, .env files, config/credentials) | Generate a Cell Wall in `.prism/cells/walls/wall-<slugified-name>.md` |
 | Membranes (Escalation) | Identify high-risk directories (migrations/, infrastructure/, deploy/) | Generate a Membrane in `.prism/cells/membranes/membrane-<slugified-name>.md` |
-| Plasmodesmata (Connections) | Detect multi-service patterns (API clients, shared DBs, event channels, import references to other repos) | Generate a Plasmodesmata cell in `.prism/cells/plasmodesmata/<connection-name>.md` |
+| Plasmodesmata (Connections) | Detect multi-service patterns: `pip install -e` references to sibling repos, shared database connections, event bus channels, protobuf/gRPC imports, API client libraries importing from other repos | Generate a Plasmodesmata cell in `.prism/cells/plasmodesmata/<connection-name>.md` |
 
 ### Cell Formats
 
@@ -502,7 +506,7 @@ created: <date>
 impact_weight: 1.3
 connection:
   target_repo: "<repo name or service>"
-  mechanism: "REST API | shared DB | event bus | file import"
+  mechanism: "REST API | shared DB | event bus | file import | pip install -e"
   shared_resource: "<table name, API endpoint, topic, etc>"
 fitness:
   triggers: 0

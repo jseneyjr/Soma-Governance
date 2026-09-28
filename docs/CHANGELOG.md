@@ -3,6 +3,13 @@
 All notable changes to Prism AI Steering are documented here.
 This project uses [Semantic Versioning](https://semver.org/).
 
+## [0.15.1] — 2026-09-27
+
+### Added
+- Liveness sentinel script (`liveness_sentinel.sh`) for subagent health monitoring
+- Enhanced Genesis Lichen phase with magic number / hardcoded coordinate detection
+- Enhanced Plasmodesmata detection with explicit patterns (pip install -e, shared DBs, protobuf imports)
+
 ## [0.15.0] — 2026-09-27
 
 ### Added
