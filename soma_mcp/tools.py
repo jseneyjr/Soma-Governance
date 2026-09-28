@@ -3,9 +3,13 @@ import sys
 import glob
 import json
 import re
+from datetime import datetime
 
 # Ensure soma_sdk is importable
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
+# Import JIT engine (always available — stdlib only)
+from soma_mcp.jit_engine import express as jit_express, get_git_diff_files
 
 # Try importing Governance SDK (requires pyyaml); fall back to stdlib-only impl
 try:
@@ -182,15 +186,52 @@ TOOL_DEFINITIONS = [
     },
     {
         "name": "soma_scan",
-        "description": "Runs cell scan against current diff and returns results.",
+        "description": (
+            "CALL THIS BEFORE MAKING CHANGES. Returns governance guidance relevant to "
+            "the specific files you are about to modify. Provides 2-3 focused rules "
+            "based on your current git diff, ranked by proven effectiveness. "
+            "Includes safety gates, known anti-patterns, and project-specific conventions."
+        ),
         "inputSchema": {
             "type": "object",
-            "properties": {}
+            "properties": {
+                "files": {
+                    "type": "array",
+                    "items": {"type": "string"},
+                    "description": "Optional list of files being changed. Auto-detects from git diff if omitted."
+                }
+            }
+        }
+    },
+    {
+        "name": "soma_report_outcome",
+        "description": (
+            "Report the outcome of your work for fitness scoring. "
+            "Call after completing a task to improve future governance guidance."
+        ),
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "cells_used": {
+                    "type": "array",
+                    "items": {"type": "string"},
+                    "description": "Names of cells that influenced your work"
+                },
+                "outcome": {
+                    "type": "string",
+                    "enum": ["success", "partial", "failure"],
+                    "description": "Overall outcome of the task"
+                },
+                "tests_passed": {"type": "boolean", "description": "Did tests pass?"},
+                "rework_count": {"type": "integer", "description": "How many times you redid work"},
+                "notes": {"type": "string", "description": "Optional notes on what helped or didn't"}
+            },
+            "required": ["outcome"]
         }
     },
     {
         "name": "soma_grade",
-        "description": "Returns governance report card.",
+        "description": "Returns governance report card with fitness grades.",
         "inputSchema": {
             "type": "object",
             "properties": {}
@@ -198,7 +239,7 @@ TOOL_DEFINITIONS = [
     },
     {
         "name": "soma_coverage",
-        "description": "Returns cell coverage report.",
+        "description": "Returns cell coverage report showing which files are governed.",
         "inputSchema": {
             "type": "object",
             "properties": {}
@@ -206,7 +247,7 @@ TOOL_DEFINITIONS = [
     },
     {
         "name": "soma_fitness",
-        "description": "Returns fitness landscape.",
+        "description": "Returns fitness landscape showing cell health and evolution.",
         "inputSchema": {
             "type": "object",
             "properties": {
@@ -246,15 +287,41 @@ def execute_tool(name: str, args: dict):
         return {"error": "soma_sdk requires pyyaml. Install with: pip install pyyaml"}
     
     if name == "soma_scan":
-        return gov.scan()
-        
+        # v0.23: JIT expression — returns only relevant cells, not everything
+        workspace = resolve_workspace()
+        files = args.get('files', None)
+        return jit_express(workspace, changed_files=files)
+
+    elif name == "soma_report_outcome":
+        # v0.23: Agent reports execution outcome for fitness scoring
+        workspace = resolve_workspace()
+        outcome = {
+            'timestamp': datetime.utcnow().strftime('%Y-%m-%dT%H:%M:%SZ'),
+            'cells_used': args.get('cells_used', []),
+            'outcome': args.get('outcome', 'unknown'),
+            'tests_passed': args.get('tests_passed'),
+            'rework_count': args.get('rework_count', 0),
+            'notes': args.get('notes', '')
+        }
+        outcomes_file = os.path.join(workspace, '.soma', 'outcomes.jsonl')
+        os.makedirs(os.path.dirname(outcomes_file), exist_ok=True)
+        with open(outcomes_file, 'a') as f:
+            f.write(json.dumps(outcome) + '\n')
+        return {'status': 'recorded', 'outcome': outcome}
+
     elif name == "soma_grade":
+        if not gov:
+            return {"error": "soma_sdk requires pyyaml. Install with: pip install pyyaml"}
         return gov.grade()
         
     elif name == "soma_coverage":
+        if not gov:
+            return {"error": "soma_sdk requires pyyaml. Install with: pip install pyyaml"}
         return gov.coverage_report()
         
     elif name == "soma_fitness":
+        if not gov:
+            return {"error": "soma_sdk requires pyyaml. Install with: pip install pyyaml"}
         return gov.fitness_landscape(bayesian=args.get("bayesian", False))
         
     else:

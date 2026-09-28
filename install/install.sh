@@ -4,9 +4,9 @@ set -euo pipefail
 # Unified Installer — soma
 # Replaces install-gemini.sh, install-kiro.sh, install-copilot.sh
 # Usage: bash install.sh [platform] [mode] [--dry-run] [--local]
-#   platform: gemini (default) | kiro | copilot | claude
+#   platform: gemini (default) | kiro | copilot | claude | mcp
 #   mode:     global (default) | project  (copilot only)
-#   options:  --dry-run, -n, --local
+#   options:  --dry-run, -n, --local, --jit (v0.23 MCP-first mode)
 
 # Symlink-safe resolution (Thorns fix #3)
 PRG="${BASH_SOURCE[0]}"
@@ -25,6 +25,7 @@ load_config "$REPO_DIR"
 # Parse CLI flags & positional arguments
 DRY_RUN=false
 LOCAL_INSTALL=false
+JIT_MODE=false
 POSITIONAL_ARGS=()
 
 for arg in "$@"; do
@@ -37,6 +38,9 @@ for arg in "$@"; do
       ;;
     --hooks)
       INSTALL_GIT_HOOKS=true
+      ;;
+    --jit)
+      JIT_MODE=true
       ;;
     *)
       POSITIONAL_ARGS+=("$arg")
@@ -158,6 +162,7 @@ SKILLS_SOURCE="$REPO_DIR/organs"
 echo "Installing Soma for $PLATFORM (OS: $DETECTED_OS, Kernel: $(uname -s))..."
 echo "  Source: $(normalize_path "$SOURCE_DIR")"
 echo "  Config: TEAM_SIZE=$TEAM_SIZE GIT_STRATEGY=$GIT_STRATEGY RULES_SUBSET=$RULES_SUBSET"
+[ "$JIT_MODE" = "true" ] && echo "  Mode:   JIT (v0.23 — MCP-first, 1 meta-rule)"
 [ "$DRY_RUN" = "true" ] && echo "  Mode:   DRY-RUN (no files will be modified)"
 echo ""
 

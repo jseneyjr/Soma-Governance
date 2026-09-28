@@ -51,42 +51,9 @@ fi
 
 echo '{}'
 
-# --- Cell Feedback Prompt ---
-CELLS_DIR="$STEERING_REPO/.soma/cells"
-if [ -t 0 ] && [ -d "$CELLS_DIR" ] && [ "$(find "$CELLS_DIR" -type f -name "*.md" | wc -l)" -gt 0 ]; then
-    echo -e "\n=== Immune Cell Feedback ==="
-    read -p "Did any cells help this session? [y/n/skip]: " feedback_resp
-    if [[ "$feedback_resp" == "y" || "$feedback_resp" == "n" ]]; then
-        read -p "Which cell? (enter name without .md): " cell_name
-        cell_file=$(find "$CELLS_DIR" -type f -name "${cell_name}.md" | head -n 1)
-        if [ -n "$cell_file" ]; then
-            useful="false"
-            if [[ "$feedback_resp" == "y" ]]; then useful="true"; fi
-            
-            # Log to fitness.jsonl
-            timestamp=$(date -u +"%Y-%m-%dT%H:%M:%SZ" 2>/dev/null || date +"%Y-%m-%dT%H:%M:%S")
-            echo "{\"timestamp\": \"$timestamp\", \"cell\": \"$cell_name\", \"triggered\": true, \"useful\": $useful}" >> "$CELLS_DIR/fitness.jsonl"
-            
-            # Update frontmatter fitness counters
-            python3 -c "
-import sys, re
-fpath = sys.argv[1]
-useful = sys.argv[2] == 'true'
-with open(fpath, 'r') as f: content = f.read()
-def inc(m): return f'{m.group(1)}{int(m.group(2)) + 1}'
-content = re.sub(r'(triggers:\s*)(\d+)', inc, content)
-if useful:
-    content = re.sub(r'(true_positives:\s*)(\d+)', inc, content)
-else:
-    content = re.sub(r'(false_positives:\s*)(\d+)', inc, content)
-with open(fpath, 'w') as f: f.write(content)
-" "$cell_file" "$useful"
-            echo "Cell fitness updated."
-        else
-            echo "Cell not found: $cell_name"
-        fi
-    fi
-fi
+# === Automated Outcome Feedback ===
+echo "Running outcome engine..."
+python3 "$SCRIPTS_DIR/outcome_engine.py" 2>/dev/null || true
 
 # === Automated Cell Evolution ===
 echo "Running cell evolution..."

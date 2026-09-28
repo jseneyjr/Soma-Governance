@@ -1,4 +1,5 @@
 ---
+non_standard: true
 name: Cost & Token Optimization
 description: Forces extreme token efficiency and cost-saving measures in AI output and subagent model selection.
 trigger: always_on
