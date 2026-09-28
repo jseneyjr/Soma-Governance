@@ -16,7 +16,7 @@ import os, sys, re, json, datetime, shutil
 execute_mode = len(sys.argv) > 1 and sys.argv[1] == '--execute'
 script_dir = sys.argv[2] if len(sys.argv) > 2 else os.getcwd()
 repo_root = os.path.dirname(script_dir)
-cells_dir = os.path.join(repo_root, ".gemini", "cells")
+cells_dir = os.path.join(repo_root, ".prism", "cells")
 archive_dir = os.path.join(cells_dir, ".archive")
 fitness_log = os.path.join(cells_dir, "fitness.jsonl")
 

@@ -22,7 +22,7 @@ def main():
     parser.add_argument("--cross-repo", action="store_true", help="Aggregate fitness across multiple repos in METRICS_REPO")
     args = parser.parse_args()
 
-    cells_dir = os.path.join(os.path.dirname(__file__), '..', '.gemini', 'cells')
+    cells_dir = os.path.join(os.path.dirname(__file__), '..', '.prism', 'cells')
     cell_files = glob.glob(os.path.join(cells_dir, '**', '*.md'), recursive=True)
 
     results = []

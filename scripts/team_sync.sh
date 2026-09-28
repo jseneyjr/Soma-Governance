@@ -46,7 +46,7 @@ team_repo = sys.argv[2]
 org_repo = sys.argv[3] if len(sys.argv) > 3 else ''
 member_id = sys.argv[4]
 
-cells_dir = os.path.join(repo_dir, '.gemini', 'cells')
+cells_dir = os.path.join(repo_dir, '.prism', 'cells')
 promoted_dir = os.path.join(team_repo, 'cells', 'promoted')
 
 # 1. Cells
@@ -125,7 +125,7 @@ repo_dir = sys.argv[1]
 team_repo = sys.argv[2]
 org_repo = sys.argv[3] if len(sys.argv) > 3 else ''
 
-local_cells_dir = os.path.join(repo_dir, '.gemini', 'cells')
+local_cells_dir = os.path.join(repo_dir, '.prism', 'cells')
 os.makedirs(local_cells_dir, exist_ok=True)
 
 existing_cells = set()
@@ -174,7 +174,7 @@ team_repo = sys.argv[2]
 org_repo = sys.argv[3] if len(sys.argv) > 3 else ''
 
 local_cells = 0
-local_cells_dir = os.path.join(repo_dir, '.gemini', 'cells')
+local_cells_dir = os.path.join(repo_dir, '.prism', 'cells')
 for root, _, files in os.walk(local_cells_dir):
     local_cells += sum(1 for f in files if f.endswith('.md'))
 

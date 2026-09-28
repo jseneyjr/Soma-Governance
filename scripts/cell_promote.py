@@ -44,7 +44,7 @@ def main():
     candidates = []
     
     if args.local:
-        cells_dir = os.path.join(workspace, '.gemini', 'cells')
+        cells_dir = os.path.join(workspace, '.prism', 'cells')
         cell_files = glob.glob(os.path.join(cells_dir, '**', '*.md'), recursive=True)
         for file_path in cell_files:
             if os.path.basename(file_path) == 'README.md': continue
@@ -165,10 +165,10 @@ This rule was promoted from local cell {cand['cell_name']} after demonstrating h
                 # We'll copy the original cell since the folder is 'cells/promoted'
                 # or the rule? I'll just copy the cell file (which makes sense for cell promotion sharing)
                 # Actually, the instructions say "copy the promoted rule". I'll copy the cell file itself since that's what team_sync.sh pulls.
-                cell_path = os.path.join(workspace, '.gemini', 'cells', cand['cell_name'])
+                cell_path = os.path.join(workspace, '.prism', 'cells', cand['cell_name'])
                 if not os.path.exists(cell_path):
                     # fallback to find it
-                    for root, _, files in os.walk(os.path.join(workspace, '.gemini', 'cells')):
+                    for root, _, files in os.walk(os.path.join(workspace, '.prism', 'cells')):
                         if cand['cell_name'] in files:
                             cell_path = os.path.join(root, cand['cell_name'])
                             break

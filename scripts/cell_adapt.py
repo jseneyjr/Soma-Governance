@@ -14,7 +14,7 @@ def main():
     args = parser.parse_args()
 
     workspace_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
-    cells_dir = os.path.join(workspace_dir, '.gemini', 'cells')
+    cells_dir = os.path.join(workspace_dir, '.prism', 'cells')
     cell_files = glob.glob(os.path.join(cells_dir, '**', '*.md'), recursive=True)
 
     metrics_repo = os.environ.get("METRICS_REPO")
