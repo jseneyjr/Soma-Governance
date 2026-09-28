@@ -5,7 +5,7 @@ set -uo pipefail
 
 # Resolve scripts directory
 SCRIPT_DIR=""
-for candidate in "vendor/soma/scripts" ".soma/../vendor/soma/scripts" "enzymes"; do
+for candidate in "vendor/soma/enzymes" ".soma/../vendor/soma/enzymes" "enzymes"; do
     if [ -d "$candidate" ]; then
         SCRIPT_DIR="$candidate"
         break
@@ -13,7 +13,7 @@ for candidate in "vendor/soma/scripts" ".soma/../vendor/soma/scripts" "enzymes";
 done
 
 if [ -z "$SCRIPT_DIR" ]; then
-    exit 0  # No Prism installation found, skip silently
+    exit 0  # No Soma installation found, skip silently
 fi
 
 # Run cell scan
@@ -21,7 +21,7 @@ TRIGGERED=$(python3 "$SCRIPT_DIR/cell_scan.py" --json 2>/dev/null || echo '[]')
 COUNT=$(echo "$TRIGGERED" | python3 -c "import sys,json; print(len(json.load(sys.stdin)))" 2>/dev/null || echo 0)
 
 if [ "$COUNT" -gt 0 ]; then
-    echo "🧬 Prism: $COUNT immune cell(s) triggered by this commit"
+    echo "🧬 Soma: $COUNT governance cell(s) triggered by this commit"
     python3 "$SCRIPT_DIR/cell_scan.py" 2>/dev/null
     python3 "$SCRIPT_DIR/cell_quorum.py" 2>/dev/null
 fi

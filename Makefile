@@ -1,4 +1,4 @@
-# AI Steering Rules — Makefile
+# Soma — Makefile
 # Reads soma.conf for team/workflow configuration.
 # Without soma.conf, all defaults apply (solo/trunk/all).
 
@@ -19,7 +19,7 @@ export RULES_SUBSET ENABLE_HOOKS SOMA_PLATFORM
         uninstall doctor validate update status test
 
 help: ## Show available targets
-	@echo "AI Steering Rules"
+	@echo "Soma — Adaptive Governance"
 	@echo ""
 	@echo "Workflow:"
 	@echo "  1. cp soma.conf.example soma.conf"
@@ -34,16 +34,16 @@ help: ## Show available targets
 
 
 info: ## Show current configuration
-	@echo "┌─────────────────────────────────────┐"
-	@echo "│  AI Steering Rules — Configuration  │"
-	@echo "├─────────────────────────────────────┤"
+	@echo "┌───────────────────────────────┐"
+	@echo "│  Soma — Configuration         │"
+	@echo "├───────────────────────────────┤"
 	@echo "│  Platform:        $(SOMA_PLATFORM)"
 	@echo "│  Team Size:       $(TEAM_SIZE)"
 	@echo "│  Git Strategy:    $(GIT_STRATEGY)"
 	@echo "│  Approval Chain:  $(APPROVAL_CHAIN)"
 	@echo "│  Rules Subset:    $(RULES_SUBSET)"
 	@echo "│  Hooks Enabled:   $(ENABLE_HOOKS)"
-	@echo "└─────────────────────────────────────┘"
+	@echo "└───────────────────────────────┘"
 
 install: ## Install for configured platform (SOMA_PLATFORM)
 	@bash install/install.sh $(SOMA_PLATFORM)
@@ -60,8 +60,8 @@ install-copilot: ## Install rules for GitHub Copilot (alias)
 install-windows: ## Install rules and skills for Windows using PowerShell
 	@powershell -ExecutionPolicy Bypass -File install/install.ps1 -Platform $(SOMA_PLATFORM)
 
-uninstall: ## Remove installed rules, skills, and hooks
-	@echo "Uninstalling steering rules for $(SOMA_PLATFORM)..."
+uninstall: ## Remove installed genome, organs, and hooks
+	@echo "Uninstalling Soma for $(SOMA_PLATFORM)..."
 	@case "$(SOMA_PLATFORM)" in \
 	  gemini) \
 	    echo "  Removing rules from $(HOME)/.gemini/config/genome/"; \
@@ -117,7 +117,7 @@ doctor: ## Verify installation health & dependencies
 	@echo "Hook template:"
 	@if [ -f install/hooks.json.template ]; then echo "  ✅ install/hooks.json.template"; else echo "  ❌ install/hooks.json.template missing"; fi
 	@echo ""
-	@echo "Installed rules ($(SOMA_PLATFORM)):"
+	@echo "Installed genome ($(SOMA_PLATFORM)):"
 	@case "$(SOMA_PLATFORM)" in \
 	  gemini) ls $(HOME)/.gemini/config/genome/*.md 2>/dev/null | while read f; do echo "  ✅ $$(basename $$f)"; done || echo "  (none)"; \
 	    if [ -f $(HOME)/.gemini/config/plugins/governance/hooks.json ]; then echo "  ✅ hooks.json installed"; else echo "  ⚠️  hooks.json not installed"; fi ;; \

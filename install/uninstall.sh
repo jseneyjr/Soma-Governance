@@ -51,7 +51,7 @@ BACKUP_DIR=""
 
 if [ "$MANIFEST_EXISTS" = "true" ]; then
   echo "Found manifest at $MANIFEST_PATH. Reading paths..."
-  BACKUP_DIR=$(python3 -c "import json, sys; d=json.load(open('$MANIFEST_PATH')); print(d.get('backup_dir', ''))" 2>/dev/null || true)
+  BACKUP_DIR=$(python3 -c "import json, sys; d=json.load(open('$MANIFEST_PATH')); print(d.get('backup_dir') or '')" 2>/dev/null || true)
   
   while IFS= read -r f; do
     if [[ "$f" == *"/copilot-instructions.md" ]]; then
@@ -81,6 +81,7 @@ else
         [ -d "$d" ] && DIRS_TO_REMOVE+=("$d")
       done
       [ -d "$RESOLVED_HOME/.gemini/config/plugins/governance" ] && DIRS_TO_REMOVE+=("$RESOLVED_HOME/.gemini/config/plugins/governance")
+      [ -d "$RESOLVED_HOME/.gemini/config/plugins/immune_system" ] && DIRS_TO_REMOVE+=("$RESOLVED_HOME/.gemini/config/plugins/immune_system")
       ;;
     kiro)
       for f in "$RESOLVED_HOME"/.kiro/steering/*.md; do
@@ -155,7 +156,7 @@ for m in "${MODIFY_FILES[@]}"; do
     # Removes everything between # Copilot Global Instructions and the end (or just deletes the auto-gen stuff)
     # The install script appends to it with a comment "> Auto-generated from soma."
     # We will just remove lines starting from "# Copilot Global Instructions" to the end of the file.
-    sed -i '/^# Copilot Global Instructions/,$d' "$m"
+    sed -i.bak '/^# Copilot Global Instructions/,$d' "$m" && rm -f "$m.bak"
     echo "Cleaned $m"
   fi
 done
@@ -170,13 +171,13 @@ if [ -n "$BACKUP_DIR" ] && [ -d "$BACKUP_DIR" ]; then
     echo "Restore mapping:"
     case "$PLATFORM" in
       gemini)
-        echo "  $BACKUP_DIR/rules -> $RESOLVED_HOME/.gemini/config/rules"
-        echo "  $BACKUP_DIR/skills -> $RESOLVED_HOME/.gemini/config/skills"
+        echo "  $BACKUP_DIR/genome -> $RESOLVED_HOME/.gemini/config/rules"
+        echo "  $BACKUP_DIR/organs -> $RESOLVED_HOME/.gemini/config/skills"
         echo "  $BACKUP_DIR/governance -> $RESOLVED_HOME/.gemini/config/plugins/governance"
         ;;
       kiro)
-        echo "  $BACKUP_DIR/steering -> $RESOLVED_HOME/.kiro/steering"
-        echo "  $BACKUP_DIR/skills -> $RESOLVED_HOME/.kiro/skills"
+        echo "  $BACKUP_DIR/genome -> $RESOLVED_HOME/.kiro/steering"
+        echo "  $BACKUP_DIR/organs -> $RESOLVED_HOME/.kiro/skills"
         echo "  $BACKUP_DIR/hooks -> $RESOLVED_HOME/.kiro/hooks"
         ;;
       copilot)

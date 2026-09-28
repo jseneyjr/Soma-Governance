@@ -152,10 +152,10 @@ write_manifest() {
 EOF
 }
 
-SOURCE_DIR="$REPO_DIR/rules"
-SKILLS_SOURCE="$REPO_DIR/skills"
+SOURCE_DIR="$REPO_DIR/genome"
+SKILLS_SOURCE="$REPO_DIR/organs"
 
-echo "Installing steering rules for $PLATFORM (OS: $DETECTED_OS, Kernel: $(uname -s))..."
+echo "Installing Soma for $PLATFORM (OS: $DETECTED_OS, Kernel: $(uname -s))..."
 echo "  Source: $(normalize_path "$SOURCE_DIR")"
 echo "  Config: TEAM_SIZE=$TEAM_SIZE GIT_STRATEGY=$GIT_STRATEGY RULES_SUBSET=$RULES_SUBSET"
 [ "$DRY_RUN" = "true" ] && echo "  Mode:   DRY-RUN (no files will be modified)"
@@ -165,27 +165,27 @@ BACKUP_TS=$(date -u +"%Y-%m-%dT%H-%M-%S")
 BACKUP_DIR="$RESOLVED_HOME/.soma/backup/$BACKUP_TS"
 
 if [ "$DRY_RUN" = "false" ]; then
+  # Keep only the most recent backup — safely recreate
+  rm -rf "$RESOLVED_HOME/.soma/backup"
   mkdir -p "$RESOLVED_HOME/.soma/backup"
-  # Keep only the most recent backup
-  rm -rf "$RESOLVED_HOME/.soma/backup/"*
   mkdir -p "$BACKUP_DIR"
   
   case "$PLATFORM" in
     gemini)
       if [ "$LOCAL_INSTALL" = "true" ]; then
-        [ -d "$(pwd)/.soma/rules" ] && cp -r "$(pwd)/.soma/rules" "$BACKUP_DIR/rules"
-        [ -d "$(pwd)/.soma/skills" ] && cp -r "$(pwd)/.soma/skills" "$BACKUP_DIR/skills"
+        [ -d "$(pwd)/.soma/genome" ] && cp -r "$(pwd)/.soma/genome" "$BACKUP_DIR/genome"
+        [ -d "$(pwd)/.soma/organs" ] && cp -r "$(pwd)/.soma/organs" "$BACKUP_DIR/organs"
         [ -d "$(pwd)/.soma/plugins/governance" ] && cp -r "$(pwd)/.soma/plugins/governance" "$BACKUP_DIR/governance"
         [ -d "$(pwd)/.soma/cells" ] && cp -r "$(pwd)/.soma/cells" "$BACKUP_DIR/cells"
       else
-        [ -d "$RESOLVED_HOME/.gemini/config/rules" ] && cp -r "$RESOLVED_HOME/.gemini/config/rules" "$BACKUP_DIR/rules"
-        [ -d "$RESOLVED_HOME/.gemini/config/skills" ] && cp -r "$RESOLVED_HOME/.gemini/config/skills" "$BACKUP_DIR/skills"
+        [ -d "$RESOLVED_HOME/.gemini/config/rules" ] && cp -r "$RESOLVED_HOME/.gemini/config/rules" "$BACKUP_DIR/genome"
+        [ -d "$RESOLVED_HOME/.gemini/config/skills" ] && cp -r "$RESOLVED_HOME/.gemini/config/skills" "$BACKUP_DIR/organs"
         [ -d "$RESOLVED_HOME/.gemini/config/plugins/governance" ] && cp -r "$RESOLVED_HOME/.gemini/config/plugins/governance" "$BACKUP_DIR/governance"
       fi
       ;;
     kiro)
-      [ -d "$RESOLVED_HOME/.kiro/steering" ] && cp -r "$RESOLVED_HOME/.kiro/steering" "$BACKUP_DIR/steering"
-      [ -d "$RESOLVED_HOME/.kiro/skills" ] && cp -r "$RESOLVED_HOME/.kiro/skills" "$BACKUP_DIR/skills"
+      [ -d "$RESOLVED_HOME/.kiro/steering" ] && cp -r "$RESOLVED_HOME/.kiro/steering" "$BACKUP_DIR/genome"
+      [ -d "$RESOLVED_HOME/.kiro/skills" ] && cp -r "$RESOLVED_HOME/.kiro/skills" "$BACKUP_DIR/organs"
       [ -d "$RESOLVED_HOME/.kiro/hooks" ] && cp -r "$RESOLVED_HOME/.kiro/hooks" "$BACKUP_DIR/hooks"
       ;;
     copilot)
@@ -219,7 +219,7 @@ case "$PLATFORM" in
       if [ "$DRY_RUN" = "true" ]; then
         log_info "[dry-run] would install $name -> $(normalize_path "$TARGET_RULES/$name")"
       else
-        backup_file "$TARGET_RULES/$name"
+        rm -f "$TARGET_RULES/$name"  # Remove any existing symlink before copy
         cp -- "$rule" "$TARGET_RULES/$name"
         log_info "$name"
       fi

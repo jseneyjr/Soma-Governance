@@ -296,7 +296,7 @@ function Apply-TeamOverrides {
 }
 
 # ── Installation Banner ───────────────────────────────────────────
-Write-Host "Installing steering rules for $Platform (OS: Windows, PowerShell)..."
+Write-Host "Installing Soma for $Platform (OS: Windows, PowerShell)..."
 Write-Host "  Source: $SourceRules"
 Write-Host "  Config: TEAM_SIZE=$($Config['TEAM_SIZE']) GIT_STRATEGY=$($Config['GIT_STRATEGY']) RULES_SUBSET=$($Config['RULES_SUBSET'])"
 if ($DryRun) {
