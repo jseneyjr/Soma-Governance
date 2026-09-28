@@ -33,6 +33,33 @@ bash install/install.sh kiro       # AWS Kiro
 bash install/install.sh copilot    # GitHub Copilot
 ```
 
+### SDK Installation
+
+```bash
+# Python
+pip install prism-steering
+
+# JavaScript / TypeScript  
+npm install prism-steering
+```
+
+```python
+from prism_sdk import Governance
+
+gov = Governance(project_root='.')
+landscape = gov.fitness_landscape(bayesian=True)
+coverage = gov.coverage_report()
+grade = gov.grade()
+gov.signal('wall-gae-truncation', 'tp', metric={'survival_day': 12})
+```
+
+```javascript
+const { Governance } = require('prism-steering');
+const gov = new Governance('.');
+const grade = await gov.grade();
+const entropy = await gov.entropy();
+```
+
 ### Onboarding
 
 After installation, open your AI assistant in your project and prompt:
@@ -40,6 +67,16 @@ After installation, open your AI assistant in your project and prompt:
 > *Run the genesis skill to inspect this repository and seed governance cells.*
 
 Genesis scans your stack (languages, frameworks, dependencies) and creates tailored `.prism/cells/` in seconds. Domain templates (`templates/`) are auto-detected based on your project type.
+
+### Natural Language Cell Creation
+
+Create cells by describing your concern in plain English:
+
+```bash
+bash scripts/cell_create.sh --from-description "PPO clip ratio must stay between 0.1 and 0.3"
+```
+
+Requires a Gemini API key configured via environment variable, `steering.conf`, or `.prism/credentials.conf`.
 
 ## Architecture
 
@@ -153,6 +190,29 @@ Generate → Score (Half-Life) → Adapt / Crossover → Metamorphose → Prune 
 - **Horizontal Gene Transfer** (`cell_transfer.sh`): Cross-project cell sharing with 5-session probation
 - **Lineage Tracking**: Phylogenetic provenance (`parent_id`, `created_by`, `generation`)
 
+**Research-Grade Analysis** (v0.19.0+):
+- **Bayesian Fitness** (`cell_fitness.py --bayesian`): Beta-Binomial posterior with Jeffrey's prior and credible intervals
+- **Quorum Sensing** (`cell_quorum.py`): Detects systemic issues when ≥3 cells trigger on the same diff
+- **Coverage Maps** (`cell_coverage.py`): Visualize which files have governance cell coverage
+- **Governance Replay** (`governance_replay.py`): Retrospective analysis — "Would today's cells have caught this bug?"
+- **Counterfactual ROI** (`--counterfactual --cell <name>`): Dollar-value estimation against historical commits
+- **Adversarial Testing** (`cell_adversarial.py`): Probes cells for bypass vulnerabilities (rename, config, import, staleness)
+- **Entropy Rate** (`governance_entropy.py`): Shannon entropy to detect fossilization vs active adaptation
+- **Report Card** (`governance_grade.py`): Single letter grade (A+ through F) across 5 dimensions
+
+**Platform Features** (v0.19.1+):
+- **Pre-Commit Hook** (`install/hooks/pre-commit`): Advisory cell scanning on every git commit
+- **Cell Dependencies** (`cell_deps.py`): Co-trigger relationship graph with Mermaid output
+- **Dormant Spores**: Pruned cells saved to `.spores.jsonl`, auto-reactivated on pattern match
+- **Stochastic Genesis**: Diversity injection from domain templates every N sessions
+- **Mulch→Cell Pipeline**: Tempest findings automatically create vacuole cells
+
+**Security Hardening** (v0.19.0+):
+- **Wall Extinction Immunity**: Walls can never be killed by apoptosis (APOPTOSIS_WARNING instead)
+- **Specificity Penalty**: Anti-Goodhart measure — cells triggering >80% of sessions are penalized
+- **Antifragile Bonus**: +5% fitness per survived Tempest/Maelstrom review
+- **SNR Quality Metric**: Signal-to-noise ratio in dB per cell
+
 A background **fitness function** monitors the success rate (true positives) of each cell against its disruption rate (false positives). Overperforming cells are kept (or promoted globally), and underperforming ones are autonomously adapted or driven to extinction. 
 
 You can manually trigger these via: `python3 scripts/cell_fitness.py`, `scripts/cell_selection.sh`, `python3 scripts/cell_adapt.py`, `python3 scripts/cell_promote.py`, `scripts/cell_signal.sh`, `scripts/cell_create.sh`, `python3 scripts/cell_scan.py`, `python3 scripts/fitness_landscape.py`, `python3 scripts/cell_crossover.py`, `python3 scripts/cell_metamorphose.py`, `scripts/cell_transfer.sh`.
@@ -160,19 +220,14 @@ You can manually trigger these via: `python3 scripts/cell_fitness.py`, `scripts/
 ## 📜 Scripts
 
 Refer to [docs/SCRIPTS.md](docs/SCRIPTS.md) for full documentation of the 37 system scripts. Highlights include:
-- `cell_scan.py`: Automated diff→cell triggering via git diff and target_paths matching
-- `fitness_landscape.py`: ASCII governance fitness dashboard with half-life decay
-- `cell_crossover.py`: GA crossover operator for hypothesis merging
-- `cell_metamorphose.py`: Cell type transformation through maturity proof
-- `prism_resolve.py`: Centralized workspace resolution (CWD-first, vendor-safe)
-- `cell_selection.sh`: Main entrypoint for evaluating cell fitness.
-- `cell_signal.sh`: External fitness signal API for CI/CD and monitoring integration.
-- `cell_create.sh`: Programmatic cell creation from automated systems.
-- `cell_demote.py`: Reverse promotion for cells causing issues in new contexts.
-- `escalation_sentinel.sh`: Predicts escalation necessity.
-- `governance_init.sh`: Seeds contexts, domain hints and tests.
-- `metrics_snapshot.sh`: Snapshots environment metrics telemetry.
-- `token_census.py`: Uses Gemini SDK to validate token budgets.
+
+**Cell Lifecycle**: `cell_fitness.py`, `cell_selection.sh`, `cell_adapt.py`, `cell_scan.py`, `cell_signal.sh`, `cell_create.sh`, `cell_crossover.py`, `cell_metamorphose.py`, `cell_promote.py`, `cell_transfer.sh`
+
+**Analysis & Research**: `cell_quorum.py`, `cell_coverage.py`, `governance_replay.py`, `governance_trends.py`, `governance_grade.py`, `governance_entropy.py`, `cell_adversarial.py`, `cell_deps.py`
+
+**AI-Assisted**: `cell_create_nl.py` (natural language cell creation via Gemini)
+
+**Infrastructure**: `governance_init.sh`, `session_close.sh`, `escalation_sentinel.sh`, `prism_resolve.py`, `safety_gate.sh`, `team_sync.sh`, `metrics_snapshot.sh`, `token_census.py`
 
 ## Configuration
 
@@ -189,6 +244,9 @@ Key `steering.conf` options (see `install/steering.conf.example` for full refere
 | `CELL_HALF_LIFE_WALL` | `null` | Walls (invariants) never decay |
 | `TEAM_SIZE` | `solo` | Team topology configuration |
 | `PRISM_ROOT` | (auto) | Override workspace resolution |
+| `GEMINI_API_KEY` | (none) | API key for natural language cell creation |
+| `STOCHASTIC_GENESIS_INTERVAL` | `10` | Sessions between diversity injection |
+| `TOTAL_SESSIONS` | `30` | Session counter for specificity penalty |
 
 ### Cross-OS Support Matrix
 
@@ -232,6 +290,7 @@ You can also use `--dry-run` to see what will be removed, and `--keep-config` to
 | **Cross-repo learning** | No | Copy-paste | No | **Horizontal gene transfer** |
 | **Context cost** | Zero | Fixed overhead | Extra inference | **Tiered loading (3.4% idle)** |
 | **Failure modes caught** | Syntax/types | Generic guidelines | Unsafe strings | **Rework loops, hallucinations, waste** |
+| **SDK available** | No | No | Sometimes | **Yes — Python + npm** |
 
 ## Documentation
 
@@ -239,7 +298,7 @@ You can also use `--dry-run` to see what will be removed, and `--keep-config` to
 |:---------|:------------|
 | [CHANGELOG](docs/CHANGELOG.md) | Release history |
 | [EVOLUTION](docs/EVOLUTION.md) | Phase-by-phase development narrative |
-| [SCRIPTS](docs/SCRIPTS.md) | Full script catalog (27 scripts) |
+| [SCRIPTS](docs/SCRIPTS.md) | Full script catalog (37 scripts) |
 | [BENCHMARK](docs/BENCHMARK.md) | Reproducible governance effectiveness protocol |
 | [METRICS](docs/METRICS.md) | Empirical measurement methodology |
 | [ABSTRACT](docs/ABSTRACT.md) | Research paper abstract |
@@ -256,6 +315,9 @@ Prism AI Steering has evolved across 17 measured phases, from manually written l
 - Phase 15: Team Topology & Clean Uninstaller.
 - Phase 16: Automated Workflows — CI/CD integration and automated cell triggering.
 - Phase 17: Evolutionary Computation — GA operators, half-life decay, metamorphosis, horizontal gene transfer.
+- Phase 18: Research Integration — Bayesian fitness, quorum sensing, coverage maps, governance replay.
+- Phase 19: Platform Grade — Pre-commit hooks, report card, adversarial testing, entropy rate.
+- Phase 20: SDK & AI-Assisted — Python/npm SDKs, natural language cell creation, counterfactual ROI.
 
 Read the [EVOLUTION.md](docs/EVOLUTION.md) for a comprehensive breakdown, driven by 6 core Design Principles ensuring empirical, adaptive, hypothesis-driven, system-first governance.
 
@@ -278,6 +340,9 @@ See [BENCHMARK.md](docs/BENCHMARK.md) for the standardized governance effectiven
 ## Next Steps
 
 - 🚀 **Try Prism**: `make install` and run Genesis on your repository
+- 📦 **Use the SDK**: `pip install prism-steering` or `npm install prism-steering`
+- 🔮 **NL Cell Creation**: `cell_create.sh --from-description "your concern here"`
+- 📊 **Report Card**: `python3 scripts/governance_grade.py` for instant governance health
 - 📊 **Run the Benchmark**: Measure governance effectiveness with [BENCHMARK.md](docs/BENCHMARK.md)
 - 🧬 **Explore Templates**: Browse domain packs in [templates/](templates/README.md)
 - 📄 **Read the Research**: Review the [Abstract](docs/ABSTRACT.md) and [Evolution](docs/EVOLUTION.md)
