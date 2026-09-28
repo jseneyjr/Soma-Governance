@@ -103,16 +103,25 @@ def main():
             return os.getcwd()
             
         def resolve_metrics_dir(workspace):
+            team_repo = os.environ.get("TEAM_REPO")
+            team_member = os.environ.get("TEAM_MEMBER_ID", "local_user")
             metrics_repo = os.environ.get("METRICS_REPO")
-            if not metrics_repo:
+            if not team_repo or not metrics_repo:
                 conf_path = os.path.join(workspace, "steering.conf")
                 if os.path.exists(conf_path):
                     with open(conf_path) as f:
                         for line in f:
                             line = line.strip()
-                            if line.startswith("METRICS_REPO=") and not line.startswith("#"):
+                            if line.startswith("TEAM_REPO=") and not line.startswith("#"):
+                                team_repo = line.split("=", 1)[1].strip().strip('"').strip("'")
+                            elif line.startswith("TEAM_MEMBER_ID=") and not line.startswith("#"):
+                                team_member = line.split("=", 1)[1].strip().strip('"').strip("'")
+                            elif line.startswith("METRICS_REPO=") and not line.startswith("#"):
                                 metrics_repo = line.split("=", 1)[1].strip().strip('"').strip("'")
-                                break
+            if team_repo:
+                # We return the root of snapshots so we can scan */*
+                path = os.path.join(os.path.expanduser(team_repo), "snapshots")
+                return path
             if metrics_repo:
                 return os.path.expanduser(metrics_repo)
             return os.path.join(workspace, "docs", "snapshots")

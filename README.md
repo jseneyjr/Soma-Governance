@@ -144,6 +144,29 @@ It includes a `METRICS_REPO` configuration for storing telemetry distinct from t
 | **Windows (Git Bash)** | Bash | `make install` | ✅ | ✅ | ✅ | Full support via bash runtime |
 | **Windows (PowerShell)** | PowerShell | `.\install.ps1` | ✅ | ✅ | ❌ | Rules + skills only; hooks require bash |
 
+## Team Setup
+
+Prism AI Steering supports team-level governance through a shared Git repository. To set this up, define `TEAM_REPO` in your `steering.conf`.
+
+```bash
+# Sync local cells and metrics to the team repo
+bash scripts/team_sync.sh push
+
+# Pull new cells from other team members
+bash scripts/team_sync.sh pull
+```
+
+## Uninstalling
+
+To remove all Prism AI Steering files from your system:
+
+```bash
+bash uninstall.sh gemini
+```
+
+You can also use `--dry-run` to see what will be removed, and `--keep-config` to preserve `steering.conf`.
+
+
 ## Evolution
 Prism AI Steering has evolved across 14 measured phases, from manually written logic into a self-adapting machine:
 - Phases 1-5: Prescriptive logic extraction and optimization.

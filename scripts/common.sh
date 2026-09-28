@@ -139,7 +139,7 @@ load_config() {
         # Strip surrounding quotes
         [[ "$val" =~ ^\"(.*)\"$ || "$val" =~ ^\'(.*)\'$ ]] && val="${BASH_REMATCH[1]}"
         case "$key" in
-          STEERING_PLATFORM|TEAM_SIZE|APPROVAL_CHAIN|GIT_STRATEGY|RULES_SUBSET|ENABLE_HOOKS)
+          STEERING_PLATFORM|TEAM_SIZE|APPROVAL_CHAIN|GIT_STRATEGY|RULES_SUBSET|ENABLE_HOOKS|TEAM_REPO|TEAM_MEMBER_ID|ORG_REPO|METRICS_REPO)
             [ -z "${!key:-}" ] && export "$key=$val" ;;
         esac
       fi
@@ -154,6 +154,10 @@ load_config() {
   ENABLE_HOOKS="${ENABLE_HOOKS:-true}"
   # Thorns fix #6: namespaced to avoid Docker/CI PLATFORM collision
   STEERING_PLATFORM="${STEERING_PLATFORM:-gemini}"
+  TEAM_REPO="${TEAM_REPO:-}"
+  TEAM_MEMBER_ID="${TEAM_MEMBER_ID:-}"
+  ORG_REPO="${ORG_REPO:-}"
+  METRICS_REPO="${METRICS_REPO:-}"
 }
 
 # ── Enum Validation ──────────────────────────────────────────────

@@ -34,20 +34,28 @@ def resolve_workspace():
     return os.getcwd()
 
 def resolve_metrics_dir(workspace):
-    """Resolve where metrics snapshots are stored. Respects METRICS_REPO from env or steering.conf."""
-    # Environment variable takes precedence
+    """Resolve where metrics snapshots are stored. Respects TEAM_REPO or METRICS_REPO."""
+    team_repo = os.environ.get("TEAM_REPO")
+    team_member = os.environ.get("TEAM_MEMBER_ID", "local_user")
     metrics_repo = os.environ.get("METRICS_REPO")
 
-    # Fall back to steering.conf
-    if not metrics_repo:
+    if not team_repo or not metrics_repo:
         conf_path = os.path.join(workspace, "steering.conf")
         if os.path.exists(conf_path):
             with open(conf_path) as f:
                 for line in f:
                     line = line.strip()
-                    if line.startswith("METRICS_REPO=") and not line.startswith("#"):
+                    if line.startswith("TEAM_REPO=") and not line.startswith("#"):
+                        team_repo = line.split("=", 1)[1].strip().strip('"').strip("'")
+                    elif line.startswith("TEAM_MEMBER_ID=") and not line.startswith("#"):
+                        team_member = line.split("=", 1)[1].strip().strip('"').strip("'")
+                    elif line.startswith("METRICS_REPO=") and not line.startswith("#"):
                         metrics_repo = line.split("=", 1)[1].strip().strip('"').strip("'")
-                        break
+
+    if team_repo:
+        path = os.path.join(os.path.expanduser(team_repo), "snapshots", team_member)
+        os.makedirs(path, exist_ok=True)
+        return path
 
     if metrics_repo:
         metrics_repo = os.path.expanduser(metrics_repo)

@@ -50,6 +50,62 @@ resolve_subset
 DETECTED_OS="$(detect_os)"
 RESOLVED_HOME="$(resolve_home "$DETECTED_OS")"
 
+write_manifest() {
+  if [ "$DRY_RUN" = "true" ]; then return 0; fi
+  local manifest_dir="$RESOLVED_HOME/.prism-ai-steering"
+  mkdir -p "$manifest_dir"
+  local target_json="$manifest_dir/manifest.json"
+  
+  local t_repo=${TEAM_REPO:-null}
+  [ "$t_repo" != "null" ] && t_repo="\"$t_repo\""
+  
+  local o_repo=${ORG_REPO:-null}
+  [ "$o_repo" != "null" ] && o_repo="\"$o_repo\""
+  
+  local m_repo=${METRICS_REPO:-null}
+  [ "$m_repo" != "null" ] && m_repo="\"$m_repo\""
+  
+  local files_arr="[]"
+  local skills_arr="[]"
+  local hooks_arr="[]"
+  
+  if [ -n "${TARGET_RULES:-}" ] && [ -d "$TARGET_RULES" ]; then
+    files_arr="[$(find "$TARGET_RULES" -maxdepth 1 -type f -name "*.md" 2>/dev/null | awk '{print "\""$0"\""}' | tr '\n' ',' | sed 's/,$//')]"
+  elif [ -n "${TARGET_DIR:-}" ] && [ -d "$TARGET_DIR" ]; then
+    files_arr="[$(find "$TARGET_DIR" -maxdepth 1 -type f -name "*.instructions.md" 2>/dev/null | awk '{print "\""$0"\""}' | tr '\n' ',' | sed 's/,$//')]"
+  elif [ -n "${TARGET_FILE:-}" ] && [ -f "$TARGET_FILE" ]; then
+    files_arr="[\"$TARGET_FILE\"]"
+  fi
+  
+  if [ -n "${TARGET_SKILLS:-}" ] && [ -d "$TARGET_SKILLS" ]; then
+    skills_arr="[$(find "$TARGET_SKILLS" -maxdepth 1 -mindepth 1 -type d 2>/dev/null | awk '{print "\""$0"\""}' | tr '\n' ',' | sed 's/,$//')]"
+  fi
+  
+  if [ -n "${TARGET_HOOKS:-}" ] && [ -d "$TARGET_HOOKS" ]; then
+    hooks_arr="[$(find "$TARGET_HOOKS" -maxdepth 1 -type f 2>/dev/null | awk '{print "\""$0"\""}' | tr '\n' ',' | sed 's/,$//')]"
+  fi
+  
+  local ts=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+  local backup_path=${BACKUP_DIR:-null}
+  [ "$backup_path" != "null" ] && backup_path="\"$backup_path\""
+  
+  cat > "$target_json" <<EOF
+{
+  "installed_at": "$ts",
+  "platform": "$PLATFORM",
+  "rules_subset": "$RULES_SUBSET",
+  "source_repo": "$REPO_DIR",
+  "team_repo": $t_repo,
+  "org_repo": $o_repo,
+  "metrics_repo": $m_repo,
+  "backup_dir": $backup_path,
+  "files": $files_arr,
+  "skills": $skills_arr,
+  "hooks": $hooks_arr
+}
+EOF
+}
+
 SOURCE_DIR="$REPO_DIR/rules"
 SKILLS_SOURCE="$REPO_DIR/skills"
 
@@ -58,6 +114,32 @@ echo "  Source: $(normalize_path "$SOURCE_DIR")"
 echo "  Config: TEAM_SIZE=$TEAM_SIZE GIT_STRATEGY=$GIT_STRATEGY RULES_SUBSET=$RULES_SUBSET"
 [ "$DRY_RUN" = "true" ] && echo "  Mode:   DRY-RUN (no files will be modified)"
 echo ""
+
+BACKUP_TS=$(date -u +"%Y-%m-%dT%H-%M-%S")
+BACKUP_DIR="$RESOLVED_HOME/.prism-ai-steering/backup/$BACKUP_TS"
+
+if [ "$DRY_RUN" = "false" ]; then
+  mkdir -p "$RESOLVED_HOME/.prism-ai-steering/backup"
+  # Keep only the most recent backup
+  rm -rf "$RESOLVED_HOME/.prism-ai-steering/backup/"*
+  mkdir -p "$BACKUP_DIR"
+  
+  case "$PLATFORM" in
+    gemini)
+      [ -d "$RESOLVED_HOME/.gemini/config/rules" ] && cp -r "$RESOLVED_HOME/.gemini/config/rules" "$BACKUP_DIR/rules"
+      [ -d "$RESOLVED_HOME/.gemini/config/skills" ] && cp -r "$RESOLVED_HOME/.gemini/config/skills" "$BACKUP_DIR/skills"
+      [ -d "$RESOLVED_HOME/.gemini/config/plugins/governance" ] && cp -r "$RESOLVED_HOME/.gemini/config/plugins/governance" "$BACKUP_DIR/governance"
+      ;;
+    kiro)
+      [ -d "$RESOLVED_HOME/.kiro/steering" ] && cp -r "$RESOLVED_HOME/.kiro/steering" "$BACKUP_DIR/steering"
+      [ -d "$RESOLVED_HOME/.kiro/skills" ] && cp -r "$RESOLVED_HOME/.kiro/skills" "$BACKUP_DIR/skills"
+      [ -d "$RESOLVED_HOME/.kiro/hooks" ] && cp -r "$RESOLVED_HOME/.kiro/hooks" "$BACKUP_DIR/hooks"
+      ;;
+    copilot)
+      [ -f "$RESOLVED_HOME/copilot-instructions.md" ] && cp "$RESOLVED_HOME/copilot-instructions.md" "$BACKUP_DIR/"
+      ;;
+  esac
+fi
 
 case "$PLATFORM" in
   gemini)
@@ -115,6 +197,7 @@ case "$PLATFORM" in
     if [ "$DRY_RUN" = "true" ]; then
       echo "Dry-run complete. Would install $count rules, $skill_count skills to $(normalize_path "$TARGET_RULES")"
     else
+      write_manifest
       echo "Done! Installed $count rules, $skill_count skills"
       echo "These will take effect on your next Gemini conversation."
     fi
@@ -180,6 +263,7 @@ case "$PLATFORM" in
     if [ "$DRY_RUN" = "true" ]; then
       echo "Dry-run complete. Would install $count rules, $skill_count skills to $(normalize_path "$TARGET_RULES")"
     else
+      write_manifest
       echo "Done! Installed $count rules, $skill_count skills to $(normalize_path "$TARGET_RULES")"
       echo "Rules with 'inclusion: always' are active on every interaction."
       echo "Rules with 'inclusion: manual' can be referenced via #rulename."
@@ -222,6 +306,7 @@ case "$PLATFORM" in
       if [ "$DRY_RUN" = "true" ]; then
         echo "Dry-run complete. Would install $count instruction files to $(normalize_path "$TARGET_DIR")"
       else
+        write_manifest
         echo "Done! Installed $count instruction files to $(normalize_path "$TARGET_DIR")"
         echo "Commit .github/instructions/ to share with your team."
       fi
@@ -266,6 +351,7 @@ case "$PLATFORM" in
       if [ "$DRY_RUN" = "true" ]; then
         echo "Dry-run complete. Would merge $count rules into $(normalize_path "$TARGET_FILE")"
       else
+        write_manifest
         echo "Done! All rules merged into $(normalize_path "$TARGET_FILE")"
         echo "Enable 'Custom Instructions' in your IDE's Copilot settings."
       fi

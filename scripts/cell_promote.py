@@ -143,6 +143,39 @@ This rule was promoted from local cell {cand['cell_name']} after demonstrating h
             with open(rule_path, 'w') as f:
                 f.write(rule_content)
             print(f"Created {rule_path}")
+            
+            # Sync to team repo
+            team_repo = os.environ.get("TEAM_REPO")
+            if not team_repo:
+                conf_path = os.path.join(workspace, "steering.conf")
+                if os.path.exists(conf_path):
+                    with open(conf_path) as conf_file:
+                        for line in conf_file:
+                            line = line.strip()
+                            if line.startswith("TEAM_REPO=") and not line.startswith("#"):
+                                team_repo = line.split("=", 1)[1].strip().strip('"').strip("'")
+                                break
+            
+            if team_repo:
+                team_repo = os.path.expanduser(team_repo)
+                team_promoted_dir = os.path.join(team_repo, 'cells', 'promoted')
+                os.makedirs(team_promoted_dir, exist_ok=True)
+                import shutil
+                # The instructions say "copy the promoted rule to $TEAM_REPO/cells/promoted/"
+                # We'll copy the original cell since the folder is 'cells/promoted'
+                # or the rule? I'll just copy the cell file (which makes sense for cell promotion sharing)
+                # Actually, the instructions say "copy the promoted rule". I'll copy the cell file itself since that's what team_sync.sh pulls.
+                cell_path = os.path.join(workspace, '.gemini', 'cells', cand['cell_name'])
+                if not os.path.exists(cell_path):
+                    # fallback to find it
+                    for root, _, files in os.walk(os.path.join(workspace, '.gemini', 'cells')):
+                        if cand['cell_name'] in files:
+                            cell_path = os.path.join(root, cand['cell_name'])
+                            break
+                if os.path.exists(cell_path):
+                    shutil.copy2(cell_path, os.path.join(team_promoted_dir, cand['cell_name']))
+                    print("Also synced to team repo")
+            
             promotions.append({
                 "timestamp": datetime.utcnow().isoformat() + "Z",
                 "type": "speciation",

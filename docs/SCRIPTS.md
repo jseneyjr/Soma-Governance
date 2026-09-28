@@ -29,3 +29,11 @@ These scripts run the Cytogenesis selection and speciation pipeline. They respec
 
 ## Privacy Note
 All scripts are constrained by the **Privacy Invariant**: No script may output, log, or transmit raw file paths, usernames, hostnames, directory structures, diffs, or code patches. Only aggregate counts, booleans, and sanitized strings are permitted.
+
+## `team_sync.sh`
+Syncs local promoted cells and metrics snapshots to a shared team repository. Enables multi-developer governance convergence.
+Usage: `bash scripts/team_sync.sh [push|pull|status]`
+
+## `uninstall.sh`
+Removes Prism AI Steering files from the system. Reverses the install process safely, using the generated manifest.
+Usage: `bash uninstall.sh [platform] [--dry-run] [--keep-config] [--force]`
