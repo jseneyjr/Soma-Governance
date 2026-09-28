@@ -4,7 +4,7 @@ build-backend = "setuptools.backends._legacy:_Backend"
 
 [project]
 name = "prism-steering"
-version = "0.19.1"
+version = "0.20.0"
 description = "Adaptive governance framework for AI coding assistants"
 readme = "README.md"
 license = {text = "Apache-2.0"}

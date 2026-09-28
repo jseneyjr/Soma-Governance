@@ -58,7 +58,7 @@ def main():
                 if line.startswith("TOTAL_SESSIONS="):
                     try:
                         total_sessions = int(line.strip().split("=")[1])
-                    except:
+                    except Exception:
                         pass
 
     cells_dir = os.path.join(workspace, '.prism', 'cells')
@@ -285,7 +285,7 @@ def main():
                     if line.startswith("TOTAL_SESSIONS="):
                         try:
                             total_sessions = int(line.strip().split("=")[1])
-                        except:
+                        except Exception:
                             pass
 
             metrics_dir = resolve_metrics_dir(workspace)

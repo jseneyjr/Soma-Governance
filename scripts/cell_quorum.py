@@ -55,10 +55,10 @@ def main():
                     'name': os.path.splitext(os.path.basename(cell_file))[0],
                     'type': fm.get('type', 'unknown'),
                     'minimum_mode': fm.get('minimum_mode', 'breeze'),
-                    'fitness': fm.get('fitness', {}).get('score'),
+                    'fitness': (fm.get('fitness') or {}).get('score'),
                     'hypothesis': hypothesis[:80]
                 })
-        except: pass
+        except Exception: pass
     
     if len(triggered) >= args.threshold:
         modes = {'breeze': 0, 'gale': 1, 'trident': 2, 'maelstrom': 3, 'tempest': 4}

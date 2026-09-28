@@ -84,7 +84,7 @@ while [[ $# -gt 0 ]]; do
       MINIMUM_MODE="$2"
       shift 2
       ;;
-    --id)
+    -n|--name|--id)
       ID_OVERRIDE="$2"
       shift 2
       ;;
@@ -120,10 +120,18 @@ if [ -n "$DESCRIPTION" ]; then
     exit $?
 fi
 
-if [[ -z "$TYPE" || -z "$HYPOTHESIS" || -z "$PREDICTION" || -z "$FALSIFICATION" ]]; then
+if [[ -z "$TYPE" || -z "$HYPOTHESIS" ]]; then
   echo "Error: Missing required arguments."
-  echo "Usage: $0 --type <type> --hypothesis <hypothesis> --prediction <prediction> --falsification <falsification>"
+  echo "Usage: $0 --type <type> --hypothesis <hypothesis> [--prediction <prediction>] [--falsification <falsification>]"
   exit 1
+fi
+
+if [[ -z "$PREDICTION" ]]; then
+  PREDICTION="Behavior conforms to hypothesis: ${HYPOTHESIS}"
+fi
+
+if [[ -z "$FALSIFICATION" ]]; then
+  FALSIFICATION="Behavior violates hypothesis: ${HYPOTHESIS}"
 fi
 
 if [[ "$EFFECTOR" == "true" && "$MEMORY" == "true" ]]; then

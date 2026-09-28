@@ -35,8 +35,8 @@ def main():
                             events['quorum'].append(data)
                         else:
                             events['signals'].append(data)
-                    except: pass
-        except: pass
+                    except Exception: pass
+        except Exception: pass
     
     # Count cells
     cells_dir = os.path.join(workspace, '.prism', 'cells')
@@ -53,7 +53,7 @@ def main():
                     fm = yaml.safe_load(content[3:content.find('---', 3)])
                     ct = fm.get('type', 'unknown')
                     cell_types[ct] = cell_types.get(ct, 0) + 1
-            except: pass
+            except Exception: pass
     
     if args.json:
         print(json.dumps({

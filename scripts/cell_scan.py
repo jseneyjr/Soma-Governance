@@ -14,7 +14,7 @@ except ImportError:
 def run_cmd(cmd, cwd):
     try:
         return subprocess.check_output(cmd, cwd=cwd, shell=True, text=True).strip().split('\n')
-    except:
+    except Exception:
         return []
 
 changed_files = run_cmd("git diff --name-only HEAD", workspace)
@@ -55,7 +55,7 @@ for f in cells:
                 'minimum_mode': fm.get('minimum_mode', ''),
                 'hypothesis': hypothesis
             })
-    except: pass
+    except Exception: pass
 
 # Check dormant spores for reactivation
 spores_file = os.path.join(workspace, '.prism', 'cells', '.spores.jsonl')
@@ -70,7 +70,7 @@ if os.path.exists(spores_file):
                         print(f"   Hypothesis: {spore['hypothesis'][:80]}")
                         print(f"   Peak fitness: {spore.get('peak_fitness', 'unknown')}")
                         break
-            except:
+            except Exception:
                 pass
 
 if '--json' in sys.argv:

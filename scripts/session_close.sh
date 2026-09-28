@@ -53,7 +53,7 @@ echo '{}'
 
 # --- Cell Feedback Prompt ---
 CELLS_DIR="$STEERING_REPO/.prism/cells"
-if [ -d "$CELLS_DIR" ] && [ "$(find "$CELLS_DIR" -type f -name "*.md" | wc -l)" -gt 0 ]; then
+if [ -t 0 ] && [ -d "$CELLS_DIR" ] && [ "$(find "$CELLS_DIR" -type f -name "*.md" | wc -l)" -gt 0 ]; then
     echo -e "\n=== Governance Cell Feedback ==="
     read -p "Did any cells help this session? [y/n/skip]: " feedback_resp
     if [[ "$feedback_resp" == "y" || "$feedback_resp" == "n" ]]; then
@@ -113,7 +113,7 @@ for f in cells:
         score = fm.get('fitness',{}).get('score')
         if score and score > 0.5:
             high_fitness.append(os.path.splitext(os.path.basename(f))[0])
-    except: pass
+    except Exception: pass
 if len(high_fitness) >= 2:
     import random
     pair = random.sample(high_fitness, 2)
@@ -146,7 +146,7 @@ for f in cells:
             print(f'  Metamorphosis candidate: {name} (vacuole→wall, fitness={score}, triggers={triggers})')
         elif ctype == 'wall' and score and score >= 0.85 and triggers >= 25:
             print(f'  Metamorphosis candidate: {name} (wall→rule, fitness={score}, triggers={triggers})')
-    except: pass
+    except Exception: pass
 " 2>/dev/null || true
 
 # === Stochastic Genesis (Diversity Injection) ===
@@ -160,8 +160,10 @@ if [ -f "$MULCH_QUEUE" ] && [ -s "$MULCH_QUEUE" ]; then
     while IFS= read -r line; do
         NAME=$(echo "$line" | python3 -c "import sys,json; print(json.load(sys.stdin).get('name','mulch-cell'))" 2>/dev/null || echo 'mulch-cell')
         HYPO=$(echo "$line" | python3 -c "import sys,json; print(json.load(sys.stdin).get('hypothesis',''))" 2>/dev/null || echo '')
+        PRED=$(echo "$line" | python3 -c "import sys,json; print(json.load(sys.stdin).get('prediction','Mulch hypothesis will reduce defect recurrence'))" 2>/dev/null || echo 'Mulch hypothesis will reduce defect recurrence')
+        FALS=$(echo "$line" | python3 -c "import sys,json; print(json.load(sys.stdin).get('falsification','Defect pattern recurs with equal frequency'))" 2>/dev/null || echo 'Defect pattern recurs with equal frequency')
         if [ -n "$HYPO" ]; then
-            bash "$SCRIPTS_DIR/cell_create.sh" --name "$NAME" --type vacuole --hypothesis "$HYPO" 2>/dev/null && MULCH_COUNT=$((MULCH_COUNT + 1)) || true
+            bash "$SCRIPTS_DIR/cell_create.sh" --id "$NAME" --type vacuole --hypothesis "$HYPO" --prediction "$PRED" --falsification "$FALS" 2>/dev/null && MULCH_COUNT=$((MULCH_COUNT + 1)) || true
         fi
     done < "$MULCH_QUEUE"
     mv "$MULCH_QUEUE" "$MULCH_QUEUE.processed"
@@ -189,7 +191,7 @@ for f in cells:
             active += 1
         else:
             extinct += 1
-    except: pass
+    except Exception: pass
 
 print()
 print('\u2554' + '\u2550'*50 + '\u2557')

@@ -28,7 +28,7 @@ def main():
             paths = fm.get('target_paths', [])
             name = os.path.splitext(os.path.basename(cell_file))[0]
             cell_patterns.append({'name': name, 'patterns': paths, 'type': fm.get('type', '')})
-        except: pass
+        except Exception: pass
     
     # Compute coverage
     covered_files = set()

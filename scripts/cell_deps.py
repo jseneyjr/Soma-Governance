@@ -25,7 +25,7 @@ def main():
                 'type': fm.get('type', ''),
                 'target_paths': fm.get('target_paths', []),
             })
-        except: pass
+        except Exception: pass
     
     # Find overlapping target_paths between cell pairs
     import json

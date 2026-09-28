@@ -40,7 +40,7 @@ for f in glob.glob(f'{cells_dir}/**/*.md', recursive=True):
         if c.startswith('---'):
             fm = yaml.safe_load(c[3:c.find('---',3)])
             patterns.extend(fm.get('target_paths', []))
-    except: pass
+    except Exception: pass
 uncovered = []
 for nf in sys.stdin.read().strip().split('\n'):
     if nf and not any(fnmatch(nf, p) for p in patterns):

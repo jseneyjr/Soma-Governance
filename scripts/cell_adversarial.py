@@ -69,7 +69,7 @@ def test_indirect_import(cell, workspace):
                 if f'import {basename}' in content or f'from {module}' in content:
                     importers += 1
                     break
-        except: pass
+        except Exception: pass
     
     if importers > 0:
         return {'test': 'Indirect import bypass', 'result': 'VULNERABLE',
@@ -169,7 +169,7 @@ def main():
                 fm = yaml.safe_load(content[3:content.find('---', 3)])
                 fm['_name'] = os.path.splitext(os.path.basename(cell_file))[0]
                 cells_to_test.append(fm)
-            except: pass
+            except Exception: pass
     
     all_results = []
     tests = [test_rename_bypass, test_indirect_import, test_config_bypass, test_test_bypass, test_hypothesis_staleness]

@@ -73,20 +73,18 @@ class Governance:
                 fm['_name'] = cell_file.stem
                 fm['_path'] = str(cell_file.relative_to(self.root))
                 cells.append(fm)
-            except: pass
+            except Exception: pass
         return cells
     
     def create_cell(self, hypothesis, type='vacuole', target_paths=None,
                     minimum_mode='breeze', tags=None, cell_id=None):
         """Create a new governance cell."""
-        args = ['--name', cell_id or hypothesis[:40], '--type', type,
+        args = ['--id', cell_id or hypothesis[:40], '--type', type,
                 '--hypothesis', hypothesis]
         if target_paths:
             args.extend(['--target-paths', ','.join(target_paths)])
         if minimum_mode != 'breeze':
             args.extend(['--minimum-mode', minimum_mode])
-        if cell_id:
-            args.extend(['--id', cell_id])
         
         return self._run_script('cell_create.sh', *args, json_output=False)
     

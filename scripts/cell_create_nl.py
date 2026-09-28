@@ -72,7 +72,7 @@ def create_cell_from_description(description, domain_hint=None, cell_type=None):
                     content = f.read()
                 if content.startswith('---'):
                     examples.append(content[:500])  # Truncate for context
-            except: pass
+            except Exception: pass
     
     example_text = '\n---\n'.join(examples[:3]) if examples else 'No existing cells found.'
     

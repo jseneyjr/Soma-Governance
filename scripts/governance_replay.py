@@ -32,7 +32,7 @@ def main():
                 'minimum_mode': fm.get('minimum_mode', 'breeze'),
                 'fitness': fm.get('fitness', {})
             })
-        except: pass
+        except Exception: pass
     
     if args.counterfactual:
         if not args.cell:
@@ -79,7 +79,7 @@ def main():
         
         # Estimate ROI
         tp_rate = 0.78  # default estimate, or use cell's actual TP rate
-        fitness = target_cell.get('fitness', {})
+        fitness = target_cell.get('fitness') or {}
         if fitness:
             tp = fitness.get('true_positives', 0)
             fp = fitness.get('false_positives', 0)

@@ -224,7 +224,7 @@ else:
                 rate = data.get('waste_rate', data.get('waste_pct'))
                 if rate is not None:
                     rates.append(float(rate))
-        except: pass
+        except Exception: pass
     if rates:
         avg = sum(rates) / len(rates)
         if avg < 5:

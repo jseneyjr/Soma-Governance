@@ -17,11 +17,15 @@ def main():
     
     os.makedirs(metrics_dir, exist_ok=True)
     
+    counter = {'sessions': 0, 'last_stochastic': 0}
     if os.path.exists(counter_file):
-        with open(counter_file) as f:
-            counter = json.load(f)
-    else:
-        counter = {'sessions': 0, 'last_stochastic': 0}
+        try:
+            with open(counter_file) as f:
+                loaded = json.load(f)
+                if isinstance(loaded, dict):
+                    counter.update(loaded)
+        except Exception:
+            pass
     
     counter['sessions'] += 1
     

@@ -219,7 +219,7 @@ try:
         data = json.loads(res.stdout)
         eligible = [item['cell'] for item in data if item.get('score') is not None and item.get('score') > 0.85]
         print(f'Cells eligible for promotion: {len(eligible)}')
-except:
+except Exception:
     pass
 " "$REPO_DIR" "$TEAM_REPO" "${ORG_REPO:-}"
     ;;

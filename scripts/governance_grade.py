@@ -34,7 +34,7 @@ def main():
             if not content.startswith('---'): continue
             fm = yaml.safe_load(content[3:content.find('---', 3)])
             cells.append(fm | {'_name': os.path.splitext(os.path.basename(cell_file))[0]})
-        except: pass
+        except Exception: pass
     
     if not cells:
         print('No cells found. Run Genesis first.')
@@ -55,7 +55,7 @@ def main():
     coverage_pct = (covered / len(all_files) * 100) if all_files else 0
     
     # 2. Avg Fitness
-    scores = [c.get('fitness', {}).get('score') for c in cells if c.get('fitness', {}).get('score') is not None]
+    scores = [(c.get('fitness') or {}).get('score') for c in cells if (c.get('fitness') or {}).get('score') is not None]
     avg_fitness = (sum(scores) / len(scores)) if scores else 0
     fitness_pct = avg_fitness * 100
     
@@ -73,12 +73,12 @@ def main():
         diversity = 0
     
     # 4. Staleness (cells with no triggers in 30 days - approximate by triggers=0)
-    stale = sum(1 for c in cells if c.get('fitness', {}).get('triggers', 0) == 0)
+    stale = sum(1 for c in cells if (c.get('fitness') or {}).get('triggers', 0) == 0)
     staleness_pct = 100 - (stale / len(cells) * 100) if cells else 100
     
     # 5. Wall Integrity
     walls = [c for c in cells if c.get('type') == 'wall']
-    healthy_walls = sum(1 for w in walls if w.get('fitness', {}).get('score', 0) > 0.3)
+    healthy_walls = sum(1 for w in walls if ((w.get('fitness') or {}).get('score') is not None and (w.get('fitness') or {}).get('score', 0) > 0.3))
     wall_pct = (healthy_walls / len(walls) * 100) if walls else 100
     
     # Overall

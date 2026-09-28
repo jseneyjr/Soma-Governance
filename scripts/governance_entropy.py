@@ -25,11 +25,11 @@ def main():
             cells.append({
                 'name': os.path.splitext(os.path.basename(cell_file))[0],
                 'type': fm.get('type', ''),
-                'triggers': fm.get('fitness', {}).get('triggers', 0),
-                'tp': fm.get('fitness', {}).get('true_positives', 0),
-                'fp': fm.get('fitness', {}).get('false_positives', 0),
+                'triggers': (fm.get('fitness') or {}).get('triggers', 0),
+                'tp': (fm.get('fitness') or {}).get('true_positives', 0),
+                'fp': (fm.get('fitness') or {}).get('false_positives', 0),
             })
-        except: pass
+        except Exception: pass
     
     if not cells:
         print('No cells found.')

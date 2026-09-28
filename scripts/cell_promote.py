@@ -48,7 +48,7 @@ def main():
             
             try:
                 metadata = yaml.safe_load(content[3:end_idx].strip())
-            except: continue
+            except Exception: continue
             
             fitness = metadata.get('fitness', {})
             triggers = fitness.get('triggers', 0)
@@ -87,7 +87,7 @@ def main():
                             }
                         hypothesis_stats[hyp]['repos'].add(repo)
                         hypothesis_stats[hyp]['scores'].append(item['score'])
-            except: continue
+            except Exception: continue
             
         for hyp, stats in hypothesis_stats.items():
             avg_score = sum(stats['scores']) / len(stats['scores']) if stats['scores'] else 0
