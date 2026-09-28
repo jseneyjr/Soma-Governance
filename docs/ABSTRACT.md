@@ -1,4 +1,4 @@
-# Prism AI Steering: Adaptive Governance Framework
+# Soma: Adaptive Governance Framework
 
 **Author**: Nicholas Seney
 **Date**: September 2026
@@ -8,7 +8,7 @@
 
 ## Abstract
 
-We present Prism AI Steering, an adaptive governance framework for AI coding assistants that generates, measures, and prunes its own rules via fitness-based selection. While developed for AI-assisted coding, its core mechanism—hypothesis-driven fitness with selection pressure—is domain-agnostic. It addresses a fundamental challenge: ungoverned AI agents exhibit waste rates exceeding 50% due to cross-session, systemic failure modes.
+We present Soma, an adaptive governance framework for AI coding assistants that generates, measures, and prunes its own rules via fitness-based selection. While developed for AI-assisted coding, its core mechanism—hypothesis-driven fitness with selection pressure—is domain-agnostic. It addresses a fundamental challenge: ungoverned AI agents exhibit waste rates exceeding 50% due to cross-session, systemic failure modes.
 
 Rather than prescribing static best practices, Prism AI extracts rules from empirical failure patterns. Analysis of 83 sessions (12,000+ execution steps) showed fully-governed sessions reduce waste from ~56% to 18.8% (best-case 1.1%), eliminating rework loops and hallucinations. 
 

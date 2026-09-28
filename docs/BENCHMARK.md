@@ -40,7 +40,7 @@ Provide a reproducible benchmark so any team can measure Prism's impact and cont
      - Survival rate (cells alive at session 30 / total created)
      - Generation depth (max lineage.generation)
    - Fitness landscape (per-cell and aggregate)
-10. Generate fitness landscape visualization: `python3 scripts/fitness_landscape.py`
+10. Generate fitness landscape visualization: `python3 enzymes/fitness_landscape.py`
 
 ### Phase 5: Reporting
 11. Report:
@@ -59,7 +59,7 @@ Provide a reproducible benchmark so any team can measure Prism's impact and cont
 
 ## Domain Configurations
 
-| Domain | Suggested Sessions | Half-Life | Notes |
+| Domain | Suggested Sessions | Telomere Shortening | Notes |
 |:-------|:-----------------:|:---------:|:------|
 | Web Backend | 30 | 60 days | Stable patterns |
 | RL Training | 30 | 30 days | Fast iteration |
@@ -71,7 +71,7 @@ Provide a reproducible benchmark so any team can measure Prism's impact and cont
 
 - Record Prism version (`cat VERSION`)
 - Record platform and OS
-- Record `steering.conf` settings (sanitized)
+- Record `soma.conf` settings (sanitized)
 - Use `metrics_snapshot.sh` from session 1
 - Do not modify cells manually during governed sessions
 - Report all cell lineage data for phylogenetic analysis

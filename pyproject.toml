@@ -3,14 +3,14 @@ requires = ["setuptools>=68.0", "wheel"]
 build-backend = "setuptools.backends._legacy:_Backend"
 
 [project]
-name = "prism-steering"
-version = "0.20.0"
+name = "soma-steering"
+version = "0.22.0"
 description = "Adaptive governance framework for AI coding assistants"
 readme = "README.md"
 license = {text = "Apache-2.0"}
 requires-python = ">=3.9"
 authors = [
-    {name = "Prism AI Steering Contributors"}
+    {name = "Soma Contributors"}
 ]
 keywords = [
     "ai-governance", "agent-alignment", "evolutionary-rules",
@@ -29,15 +29,18 @@ dependencies = [
 
 [project.optional-dependencies]
 ai = ["google-genai>=1.0"]
+gemini = ["google-genai>=1.0"]
+anthropic = ["anthropic>=0.30"]
+openai = ["openai>=1.0"]
 dev = ["pytest", "ruff"]
 
 [project.urls]
-Homepage = "https://github.com/nseney1/prism-ai-steering"
-Documentation = "https://github.com/nseney1/prism-ai-steering/tree/main/docs"
-Changelog = "https://github.com/nseney1/prism-ai-steering/blob/main/docs/CHANGELOG.md"
+Homepage = "https://github.com/nseney1/soma"
+Documentation = "https://github.com/nseney1/soma/tree/main/docs"
+Changelog = "https://github.com/nseney1/soma/blob/main/docs/CHANGELOG.md"
 
 [tool.setuptools.packages.find]
-include = ["prism_sdk*"]
+include = ["soma_sdk*"]
 
 [tool.setuptools.package-data]
-prism_sdk = ["py.typed"]
+soma_sdk = ["py.typed"]

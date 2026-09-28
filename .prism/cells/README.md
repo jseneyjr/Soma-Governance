@@ -1,6 +1,6 @@
 # Governance Cells
 
-This directory contains Prism AI Steering governance cells. Cells are atomic, modular components that inject specialized constraints, heuristics, or environmental adaptations into the agent's context.
+This directory contains Soma governance cells. Cells are atomic, modular components that inject specialized constraints, heuristics, or environmental adaptations into the agent's context.
 
 ## Cell Types
 - **Vacuole**: Traps and anti-patterns. Prevents the agent from falling into common pitfalls (e.g., using incorrect build tools, deprecated APIs).

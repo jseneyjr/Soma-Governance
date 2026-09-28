@@ -10,7 +10,7 @@ while [ -h "$PRG" ]; do
 done
 REPO_DIR="$(cd -P "$(dirname "$PRG")/.." && pwd)"
 
-source "$REPO_DIR/scripts/common.sh"
+source "$REPO_DIR/enzymes/common.sh"
 load_config "$REPO_DIR"
 
 DRY_RUN=false
@@ -27,13 +27,13 @@ for arg in "$@"; do
   esac
 done
 
-PLATFORM="${POSITIONAL_ARGS[0]:-${STEERING_PLATFORM:-gemini}}"
+PLATFORM="${POSITIONAL_ARGS[0]:-${SOMA_PLATFORM:-gemini}}"
 
 DETECTED_OS="$(detect_os)"
 RESOLVED_HOME="$(resolve_home "$DETECTED_OS")"
-MANIFEST_PATH="$RESOLVED_HOME/.prism-ai-steering/manifest.json"
-if [ -f "$(pwd)/.prism/manifest.json" ]; then
-  MANIFEST_PATH="$(pwd)/.prism/manifest.json"
+MANIFEST_PATH="$RESOLVED_HOME/.soma/manifest.json"
+if [ -f "$(pwd)/.soma/manifest.json" ]; then
+  MANIFEST_PATH="$(pwd)/.soma/manifest.json"
 fi
 
 MANIFEST_EXISTS=false
@@ -41,7 +41,7 @@ if [ -f "$MANIFEST_PATH" ]; then
   MANIFEST_EXISTS=true
 fi
 
-echo "Uninstalling Prism AI Steering ($PLATFORM)..."
+echo "Uninstalling Soma ($PLATFORM)..."
 [ "$DRY_RUN" = "true" ] && echo "Mode: DRY-RUN (no files will be deleted)"
 
 FILES_TO_REMOVE=()
@@ -63,7 +63,7 @@ if [ "$MANIFEST_EXISTS" = "true" ]; then
   
   while IFS= read -r d; do
     [ -n "$d" ] && DIRS_TO_REMOVE+=("$d")
-  done < <(python3 -c "import json, sys; d=json.load(open('$MANIFEST_PATH')); print('\n'.join(d.get('skills', [])))")
+  done < <(python3 -c "import json, sys; d=json.load(open('$MANIFEST_PATH')); print('\n'.join(d.get('organs', [])))")
   
   while IFS= read -r h; do
     [ -n "$h" ] && FILES_TO_REMOVE+=("$h")
@@ -74,10 +74,10 @@ else
   echo "No manifest found. Falling back to known patterns..."
   case "$PLATFORM" in
     gemini)
-      for f in "$RESOLVED_HOME"/.gemini/config/rules/*.md; do
+      for f in "$RESOLVED_HOME"/.gemini/config/genome/*.md; do
         [ -f "$f" ] && FILES_TO_REMOVE+=("$f")
       done
-      for d in "$RESOLVED_HOME"/.gemini/config/skills/*; do
+      for d in "$RESOLVED_HOME"/.gemini/config/organs/*; do
         [ -d "$d" ] && DIRS_TO_REMOVE+=("$d")
       done
       [ -d "$RESOLVED_HOME/.gemini/config/plugins/governance" ] && DIRS_TO_REMOVE+=("$RESOLVED_HOME/.gemini/config/plugins/governance")
@@ -86,7 +86,7 @@ else
       for f in "$RESOLVED_HOME"/.kiro/steering/*.md; do
         [ -f "$f" ] && FILES_TO_REMOVE+=("$f")
       done
-      for d in "$RESOLVED_HOME"/.kiro/skills/*; do
+      for d in "$RESOLVED_HOME"/.kiro/organs/*; do
         [ -d "$d" ] && DIRS_TO_REMOVE+=("$d")
       done
       [ -d "$RESOLVED_HOME/.kiro/hooks" ] && DIRS_TO_REMOVE+=("$RESOLVED_HOME/.kiro/hooks")
@@ -101,8 +101,8 @@ else
 fi
 
 # Local cell data
-if [ -d "$REPO_DIR/.prism/cells" ]; then
-  for f in "$REPO_DIR"/.prism/cells/*; do
+if [ -d "$REPO_DIR/.soma/cells" ]; then
+  for f in "$REPO_DIR"/.soma/cells/*; do
     [ -e "$f" ] && FILES_TO_REMOVE+=("$f")
   done
 fi
@@ -115,8 +115,8 @@ if [ -d "$REPO_DIR/docs/snapshots" ]; then
   done
 fi
 
-if [ "$KEEP_CONFIG" = "false" ] && [ -f "$REPO_DIR/steering.conf" ]; then
-  FILES_TO_REMOVE+=("$REPO_DIR/steering.conf")
+if [ "$KEEP_CONFIG" = "false" ] && [ -f "$REPO_DIR/soma.conf" ]; then
+  FILES_TO_REMOVE+=("$REPO_DIR/soma.conf")
 fi
 
 echo ""
@@ -153,7 +153,7 @@ done
 for m in "${MODIFY_FILES[@]}"; do
   if [ -f "$m" ]; then
     # Removes everything between # Copilot Global Instructions and the end (or just deletes the auto-gen stuff)
-    # The install script appends to it with a comment "> Auto-generated from prism-ai-steering."
+    # The install script appends to it with a comment "> Auto-generated from soma."
     # We will just remove lines starting from "# Copilot Global Instructions" to the end of the file.
     sed -i '/^# Copilot Global Instructions/,$d' "$m"
     echo "Cleaned $m"

@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# Unified Installer — prism-ai-steering
+# Unified Installer — soma
 # Replaces install-gemini.sh, install-kiro.sh, install-copilot.sh
 # Usage: bash install.sh [platform] [mode] [--dry-run] [--local]
 #   platform: gemini (default) | kiro | copilot
@@ -17,9 +17,9 @@ while [ -h "$PRG" ]; do
 done
 REPO_DIR="$(cd -P "$(dirname "$PRG")/.." && pwd)"
 
-source "$REPO_DIR/scripts/common.sh"
+source "$REPO_DIR/enzymes/common.sh"
 
-# Load config FIRST so steering.conf values are available
+# Load config FIRST so soma.conf values are available
 load_config "$REPO_DIR"
 
 # Parse CLI flags & positional arguments
@@ -46,9 +46,9 @@ done
 export DRY_RUN
 export LOCAL_INSTALL
 
-# CLI arg > steering.conf > default
-STEERING_PLATFORM="${POSITIONAL_ARGS[0]:-$STEERING_PLATFORM}"
-PLATFORM="$STEERING_PLATFORM"  # alias for use in case statement
+# CLI arg > soma.conf > default
+SOMA_PLATFORM="${POSITIONAL_ARGS[0]:-$SOMA_PLATFORM}"
+PLATFORM="$SOMA_PLATFORM"  # alias for use in case statement
 MODE="${POSITIONAL_ARGS[1]:-global}"
 
 validate_config
@@ -58,12 +58,40 @@ resolve_subset
 DETECTED_OS="$(detect_os)"
 RESOLVED_HOME="$(resolve_home "$DETECTED_OS")"
 
+# ── Migration: .prism/ → .soma/ ──
+# Auto-detect and migrate existing Prism installations
+migrate_prism_to_soma() {
+  local target_dir="$1"
+  local old_dir="$target_dir/.prism"
+  local new_dir="$target_dir/.soma"
+  
+  if [ -d "$old_dir" ] && [ ! -d "$new_dir" ]; then
+    log_info "Detected legacy .prism/ directory — migrating to .soma/"
+    if [ "$DRY_RUN" = "true" ]; then
+      log_info "[DRY-RUN] Would rename $old_dir → $new_dir"
+    else
+      mv "$old_dir" "$new_dir"
+      # Leave a symlink for backward compatibility during transition
+      ln -sf ".soma" "$old_dir" 2>/dev/null || true
+      log_info "✅ Migrated .prism/ → .soma/"
+    fi
+  elif [ -d "$old_dir" ] && [ -d "$new_dir" ]; then
+    log_warn "Both .prism/ and .soma/ exist. Using .soma/ — remove .prism/ manually if no longer needed."
+  fi
+}
+
+# Run migration for global home and local project
+migrate_prism_to_soma "$RESOLVED_HOME"
+if [ "$LOCAL_INSTALL" = "true" ]; then
+  migrate_prism_to_soma "$(pwd)"
+fi
+
 write_manifest() {
   if [ "$DRY_RUN" = "true" ]; then return 0; fi
-  local manifest_dir="$RESOLVED_HOME/.prism-ai-steering"
+  local manifest_dir="$RESOLVED_HOME/.soma"
   local scope="global"
   if [ "$LOCAL_INSTALL" = "true" ] && [ "$PLATFORM" = "gemini" ]; then
-    manifest_dir="$(pwd)/.prism"
+    manifest_dir="$(pwd)/.soma"
     scope="local"
   fi
   mkdir -p "$manifest_dir"
@@ -118,7 +146,7 @@ write_manifest() {
   "metrics_repo": $m_repo,
   "backup_dir": $backup_path,
   "files": $files_arr,
-  "skills": $skills_arr,
+  "organs": $skills_arr,
   "hooks": $hooks_arr
 }
 EOF
@@ -134,21 +162,21 @@ echo "  Config: TEAM_SIZE=$TEAM_SIZE GIT_STRATEGY=$GIT_STRATEGY RULES_SUBSET=$RU
 echo ""
 
 BACKUP_TS=$(date -u +"%Y-%m-%dT%H-%M-%S")
-BACKUP_DIR="$RESOLVED_HOME/.prism-ai-steering/backup/$BACKUP_TS"
+BACKUP_DIR="$RESOLVED_HOME/.soma/backup/$BACKUP_TS"
 
 if [ "$DRY_RUN" = "false" ]; then
-  mkdir -p "$RESOLVED_HOME/.prism-ai-steering/backup"
+  mkdir -p "$RESOLVED_HOME/.soma/backup"
   # Keep only the most recent backup
-  rm -rf "$RESOLVED_HOME/.prism-ai-steering/backup/"*
+  rm -rf "$RESOLVED_HOME/.soma/backup/"*
   mkdir -p "$BACKUP_DIR"
   
   case "$PLATFORM" in
     gemini)
       if [ "$LOCAL_INSTALL" = "true" ]; then
-        [ -d "$(pwd)/.prism/rules" ] && cp -r "$(pwd)/.prism/rules" "$BACKUP_DIR/rules"
-        [ -d "$(pwd)/.prism/skills" ] && cp -r "$(pwd)/.prism/skills" "$BACKUP_DIR/skills"
-        [ -d "$(pwd)/.prism/plugins/governance" ] && cp -r "$(pwd)/.prism/plugins/governance" "$BACKUP_DIR/governance"
-        [ -d "$(pwd)/.prism/cells" ] && cp -r "$(pwd)/.prism/cells" "$BACKUP_DIR/cells"
+        [ -d "$(pwd)/.soma/rules" ] && cp -r "$(pwd)/.soma/rules" "$BACKUP_DIR/rules"
+        [ -d "$(pwd)/.soma/skills" ] && cp -r "$(pwd)/.soma/skills" "$BACKUP_DIR/skills"
+        [ -d "$(pwd)/.soma/plugins/governance" ] && cp -r "$(pwd)/.soma/plugins/governance" "$BACKUP_DIR/governance"
+        [ -d "$(pwd)/.soma/cells" ] && cp -r "$(pwd)/.soma/cells" "$BACKUP_DIR/cells"
       else
         [ -d "$RESOLVED_HOME/.gemini/config/rules" ] && cp -r "$RESOLVED_HOME/.gemini/config/rules" "$BACKUP_DIR/rules"
         [ -d "$RESOLVED_HOME/.gemini/config/skills" ] && cp -r "$RESOLVED_HOME/.gemini/config/skills" "$BACKUP_DIR/skills"
@@ -169,9 +197,9 @@ fi
 case "$PLATFORM" in
   gemini)
     if [ "$LOCAL_INSTALL" = "true" ]; then
-      TARGET_RULES="$(pwd)/.prism/rules"
-      TARGET_SKILLS="$(pwd)/.prism/skills"
-      TARGET_HOOKS="$(pwd)/.prism/plugins/governance"
+      TARGET_RULES="$(pwd)/.soma/rules"
+      TARGET_SKILLS="$(pwd)/.soma/skills"
+      TARGET_HOOKS="$(pwd)/.soma/plugins/governance"
     else
       TARGET_RULES="$RESOLVED_HOME/.gemini/config/rules"
       TARGET_SKILLS="$RESOLVED_HOME/.gemini/config/skills"
@@ -231,7 +259,7 @@ case "$PLATFORM" in
       write_manifest
       echo "Done! Installed $count rules, $skill_count skills"
       if [ "$LOCAL_INSTALL" = "true" ]; then
-        echo "Installed locally to $(pwd)/.prism/ — these rules apply only to this project."
+        echo "Installed locally to $(pwd)/.soma/ — these rules apply only to this project."
       else
         echo "These will take effect on your next Gemini conversation."
       fi
@@ -358,7 +386,7 @@ case "$PLATFORM" in
 
         echo "# Copilot Global Instructions" > "$TARGET_FILE"
         echo "" >> "$TARGET_FILE"
-        echo "> Auto-generated from prism-ai-steering. Do not edit directly." >> "$TARGET_FILE"
+        echo "> Auto-generated from soma. Do not edit directly." >> "$TARGET_FILE"
         echo "" >> "$TARGET_FILE"
       fi
 

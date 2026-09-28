@@ -1,4 +1,4 @@
-# Contributing to Prism AI Steering
+# Contributing to Soma
 
 Thank you for your interest in contributing!
 
@@ -18,15 +18,15 @@ Thank you for your interest in contributing!
 
 ### Contributing Cells
 If your Genesis scan produced useful cells, you can contribute them:
-1. Run `python3 scripts/cell_fitness.py` to verify fitness > 0.7
-2. Submit the cell file via PR to `.prism/cells/`
+1. Run `python3 enzymes/cell_fitness.py` to verify fitness > 0.7
+2. Submit the cell file via PR to `.soma/cells/`
 3. Include the cell's hypothesis and fitness data
 
 ### Contributing Rules
 New global rules must:
 - Trace back to observed failure patterns (Design Principle §1)
 - Include a falsifiable hypothesis (Design Principle §6)
-- Be measured by `scripts/token_census.py` for token impact
+- Be measured by `enzymes/token_census.py` for token impact
 - Pass `make validate`
 
 ## Contributor License Agreement

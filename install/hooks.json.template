@@ -3,7 +3,7 @@
     "PreInvocation": [
       {
         "type": "command",
-        "command": "{{SCRIPTS_DIR}}/governance_init.sh",
+        "command": "{{SCRIPTS_DIR}}/immune_init.sh",
         "timeout": 15
       }
     ]

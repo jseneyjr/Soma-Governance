@@ -1,6 +1,6 @@
 # Peer Review Record — ABSTRACT.md
 
-> This document records the peer review process for the Prism AI Steering research abstract.
+> This document records the peer review process for the Soma research abstract.
 > Two rounds of review were conducted with 5 independent reviewers across 4 specializations.
 
 ---
@@ -26,7 +26,7 @@
 **PASS** (Claims that check out):
 - "comprising over 7,000 execution steps" — supported and conservative; METRICS.md shows 7,015 steps in governed sessions alone
 - "waste rates as low as 1.1%, compared to approximately 56%" — matches live A/B validation in METRICS.md
-- "14 phases of empirical refinement" — fully supported by EVOLUTION.md
+- "14 phases of empirical refinement" — fully supported by PHYLOGENY.md
 - "4,380 tokens per turn using a calibrated tokenizer (ratio 1.35)" — confirmed via `token_census.py`
 - Dogfooding claim — accurately scoped; states cells *"would have caught"* bugs, not that they caught them live
 - File counts (11 rules, 15 skills) — verified against filesystem

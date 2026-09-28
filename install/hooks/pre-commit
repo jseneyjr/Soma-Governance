@@ -1,11 +1,11 @@
 #!/bin/bash
-# Prism AI Steering — Git Pre-Commit Hook
+# Soma — Git Pre-Commit Hook
 # Advisory only: informs about governance triggers but never blocks commits.
 set -uo pipefail
 
 # Resolve scripts directory
 SCRIPT_DIR=""
-for candidate in "vendor/prism-ai-steering/scripts" ".prism/../vendor/prism-ai-steering/scripts" "scripts"; do
+for candidate in "vendor/soma/scripts" ".soma/../vendor/soma/scripts" "enzymes"; do
     if [ -d "$candidate" ]; then
         SCRIPT_DIR="$candidate"
         break
@@ -21,13 +21,13 @@ TRIGGERED=$(python3 "$SCRIPT_DIR/cell_scan.py" --json 2>/dev/null || echo '[]')
 COUNT=$(echo "$TRIGGERED" | python3 -c "import sys,json; print(len(json.load(sys.stdin)))" 2>/dev/null || echo 0)
 
 if [ "$COUNT" -gt 0 ]; then
-    echo "🧬 Prism: $COUNT governance cell(s) triggered by this commit"
+    echo "🧬 Prism: $COUNT immune cell(s) triggered by this commit"
     python3 "$SCRIPT_DIR/cell_scan.py" 2>/dev/null
     python3 "$SCRIPT_DIR/cell_quorum.py" 2>/dev/null
 fi
 
 # Run mechanical enforcement checks
-ENFORCEMENT_DIR=".prism/enforcement"
+ENFORCEMENT_DIR=".soma/enforcement"
 if [ -d "$ENFORCEMENT_DIR" ]; then
     for check in "$ENFORCEMENT_DIR"/check-*.sh; do
         [ -f "$check" ] && bash "$check" 2>/dev/null
@@ -40,7 +40,7 @@ if [ -n "$NEW_FILES" ]; then
     python3 -c "
 import sys, glob, yaml
 from fnmatch import fnmatch
-cells_dir = '.prism/cells'
+cells_dir = '.soma/cells'
 patterns = []
 for f in glob.glob(f'{cells_dir}/**/*.md', recursive=True):
     try:

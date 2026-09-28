@@ -1,4 +1,4 @@
-Prism AI Steering
+Soma
 Copyright 2026 Nicholas Seney
 
 This product is licensed under the Apache License, Version 2.0.
@@ -8,7 +8,7 @@ See the LICENSE file for the full license text.
 
 ## Data Privacy Statement
 
-Prism AI Steering is a **local-only governance framework**. It installs
+Soma is a **local-only governance framework**. It installs
 configuration files (rules, skills, hooks) into your local AI assistant
 directory. It does not operate as a service and has no server component.
 
@@ -29,7 +29,7 @@ directory. It does not operate as a service and has no server component.
 
 ### Network Access Disclosure
 
-The optional `scripts/token_census.py` script calls the **Google Gemini API**
+The optional `enzymes/token_census.py` script calls the **Google Gemini API**
 (`client.models.count_tokens`) to measure accurate token counts for governance
 files. This sends the content of rule and skill files (which are part of this
 open-source repository) to the Gemini API for tokenization measurement only.

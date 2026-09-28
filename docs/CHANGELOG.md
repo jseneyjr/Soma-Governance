@@ -1,17 +1,50 @@
 # Changelog
 
-All notable changes to Prism AI Steering are documented here.
+All notable changes to Soma are documented here.
 This project uses [Semantic Versioning](https://semver.org/).
+
+## [0.22.0] — 2026-09-28 — "Soma Rebirth"
+
+### Breaking Changes
+- **Project renamed**: Prism AI Steering → **Soma**
+- **Repository**: `prism-ai-steering` → `soma`
+- **SDK packages**: `prism-steering` → `soma-steering` (Python + npm)
+- **Config**: `steering.conf` → `soma.conf`
+- **Directory**: `.prism/` → `.soma/` (auto-migrated on install)
+
+### Added — Biological Naming Unification
+- `rules/` → `genome/` — Rules are now **Genes** in the organism's **Genome**
+- `skills/` → `organs/` — Skills are now **Organs** (complex multi-cell structures)
+- `scripts/` → `enzymes/` — Scripts are now **Enzymes** (catalytic reactions)
+- `governance/` → `immune_system/` — Governance is the **Immune System**
+- `EVOLUTION.md` → `PHYLOGENY.md` — Project history as evolutionary tree
+- Half-Life → Telomere Shortening — Biological aging mechanism
+- `governance_*.py` → `immune_*.py` — All governance scripts renamed
+- Auto-migration in `install.sh`: detects `.prism/` and renames to `.soma/`
+
+### Added — Host-Agent Delegation (Provider Abstraction)
+- `enzymes/inference_provider.py` — Multi-provider inference abstraction
+- Supports Gemini, Anthropic, OpenAI, and prompt-only mode
+- `--provider` flag on `cell_create_nl.py`: `auto|gemini|anthropic|openai|prompt-only`
+- `SOMA_INFERENCE_PROVIDER` config key in `soma.conf`
+- No API key required when running inside an AI agent via MCP
+
+### Added — MCP Stdio Server
+- `soma_mcp/` — Model Context Protocol server for host-agent delegation
+- Tools: `soma_create_cell`, `soma_scan`, `soma_grade`, `soma_coverage`, `soma_fitness`, `soma_list_cells`
+- `soma_create_cell` delegates LLM reasoning to the host agent — zero API key needed
+- Runnable as `python -m soma_mcp` or configured in any agent's MCP settings
+- Works with Gemini Antigravity, Claude Code, Cursor, and any MCP-compatible agent
 
 ## [0.21.1] — 2026-09-28
 
 ### Added
 - `cell_enforce.py`: Auto-generates enforcement artifacts for promoted cells
-- Mechanical cells generate pre-commit hook checks in `.prism/enforcement/`
-- Gate cells generate runtime assertion classes in `.prism/enforcement/`
+- Mechanical cells generate pre-commit hook checks in `.soma/enforcement/`
+- Gate cells generate runtime assertion classes in `.soma/enforcement/`
 - `enforcement_artifact` field links cells to their generated artifacts
 - Coverage map now shows enforcement tier per directory
-- Pre-commit hook runs mechanical checks from `.prism/enforcement/`
+- Pre-commit hook runs mechanical checks from `.soma/enforcement/`
 - Auto-trigger enforcement generation on tier promotion
 - Script count: 38 → 39
 
@@ -30,10 +63,10 @@ This project uses [Semantic Versioning](https://semver.org/).
 
 ### Added
 - Natural language cell creation (`cell_create_nl.py`) via Gemini API with multi-source API key resolution
-- Python SDK (`prism_sdk/`): `pip install prism-steering` for programmatic governance access
+- Python SDK (`soma_sdk/`): `pip install soma-steering` for programmatic governance access
 - Counterfactual replay (`--counterfactual --cell <name>`): ROI estimation against historical commits
 - Adversarial cell testing (`cell_adversarial.py`): probe cells for bypass vulnerabilities
-- Governance entropy rate (`governance_entropy.py`): fossilization detection via Shannon entropy
+- Governance entropy rate (`immune_entropy.py`): fossilization detection via Shannon entropy
 - `pyproject.toml` for PyPI packaging
 - Script count: 34 → 37
 
@@ -41,13 +74,13 @@ This project uses [Semantic Versioning](https://semver.org/).
 
 ### Fixed
 - `cell_create.sh`: Added `--minimum-mode` and `--id` flags
-- `cell_coverage.py`: Excludes .prism/, vendor/, .git/ from coverage counts
+- `cell_coverage.py`: Excludes .soma/, vendor/, .git/ from coverage counts
 - `cell_fitness.py`: Fixed UnboundLocalError in --bayesian mode
 
 ### Added
 - `install/hooks/pre-commit`: Git pre-commit hook for automatic cell scanning
 - `cell_deps.py`: Cell dependency graph with Mermaid output
-- `governance_grade.py`: Single-grade governance report card
+- `immune_grade.py`: Single-grade governance report card
 - Script count: 32 → 34
 
 ## [0.19.0] — 2026-09-27
@@ -60,8 +93,8 @@ This project uses [Semantic Versioning](https://semver.org/).
 - Signal-to-noise ratio (SNR dB) per cell in fitness output
 - `cell_quorum.py`: Detect systemic issues when ≥3 cells trigger simultaneously
 - `cell_coverage.py`: Visualize governance blind spots across codebase
-- `governance_replay.py`: Retrospective "would cells have caught this?" analysis
-- `governance_trends.py`: Cross-session trend dashboard with Shannon diversity index
+- `immune_replay.py`: Retrospective "would cells have caught this?" analysis
+- `immune_trends.py`: Cross-session trend dashboard with Shannon diversity index
 - Dormant spore archive (pruned cells saved to `.spores.jsonl`, reactivated on match)
 - `cell_genesis_stochastic.py`: Random template injection every N sessions
 - Mulch→Cell pipeline: Tempest findings auto-create vacuole cells
@@ -70,33 +103,33 @@ This project uses [Semantic Versioning](https://semver.org/).
 ## [0.18.1] — 2026-09-27
 
 ### Fixed
-- Wire `escalation_sentinel.sh` into `governance_init.sh` (was orphaned)
+- Wire `escalation_sentinel.sh` into `immune_init.sh` (was orphaned)
 - Escalation sentinel now scans walls AND membranes for `minimum_mode`
 - Thorns terminology disambiguation in README
 
 ### Added
 - `cell_scan.py`: Automated diff→cell triggering via git diff and target_paths
 - `target_paths` field in cell YAML schema
-- `DEFAULT_REVIEW_MODE` and `MINIMUM_REVIEW_MODE` in steering.conf
+- `DEFAULT_REVIEW_MODE` and `MINIMUM_REVIEW_MODE` in soma.conf
 - Session fitness dashboard in session_close.sh
 
 ## [0.18.0] — 2026-09-27
 
 ### Added
-- Centralized workspace resolution (`prism_resolve.py`) — CWD-first, vendor-safe
+- Centralized workspace resolution (`soma_resolve.py`) — CWD-first, vendor-safe
 - Automated evolutionary loop in `session_close.sh`
 - Apoptotic fast-kill in `cell_fitness.py` (FP > 2×TP)
-- Homeostatic governance intensity in `governance_init.sh`
+- Homeostatic governance intensity in `immune_init.sh`
 
 ### Changed
-- All scripts use `prism_resolve.py` instead of inline resolution
+- All scripts use `soma_resolve.py` instead of inline resolution
 - Script count: 25 → 26
 
 ## [0.17.1] — 2026-09-27
 
 ### Added
 - Cell lineage tracking (`lineage` block in YAML) — phylogenetic tree support
-- Per-type half-life configuration (`CELL_HALF_LIFE_WALL`, etc.)
+- Per-type telomere shortening configuration (`CELL_TELOMERE_WALL`, etc.)
 - Effector→Memory auto-transition via `decay_to` field
 - Benchmark protocol (`docs/BENCHMARK.md`)
 
@@ -108,14 +141,14 @@ This project uses [Semantic Versioning](https://semver.org/).
 - Cell metamorphosis (`cell_metamorphose.py`) — vacuole → wall → rule maturity paths
 - Horizontal gene transfer (`cell_transfer.sh`) — cross-project cell sharing with fitness reset
 - Fitness landscape visualization (`fitness_landscape.py`) — ASCII governance dashboard
-- Confidence half-life decay in `cell_fitness.py` — stale cells fade naturally
+- Confidence telomere shortening decay in `cell_fitness.py` — stale cells fade naturally
 - Effector/memory cell flags in `cell_create.sh` — incident response patterns
 - Incident response templates (`templates/incident-response/`)
-- `CELL_HALF_LIFE_DAYS` configuration in `steering.conf.example`
+- `CELL_TELOMERE_DAYS` configuration in `soma.conf.example`
 
 ### Changed
 - Script count: 20 → 25
-- `cell_signal.sh` now records `last_trigger_date` for half-life calculation
+- `cell_signal.sh` now records `last_trigger_date` for telomere shortening calculation
 
 ## [0.16.0] — 2026-09-27
 
@@ -143,7 +176,7 @@ This project uses [Semantic Versioning](https://semver.org/).
 - Team topology: `TEAM_REPO` and `ORG_REPO` configuration for multi-developer governance convergence
 - `team_sync.sh` for push/pull/status of shared cells and metrics
 - Clean uninstaller (`uninstall.sh`) with backup/restore and manifest tracking
-- Install manifest (`~/.prism-ai-steering/manifest.json`) for safe uninstall
+- Install manifest (`~/.soma/manifest.json`) for safe uninstall
 - Backup-on-install: archives existing config before overwriting
 - Peer-reviewed research abstract (`ABSTRACT.md`) with 5-reviewer record (`REVIEWS.md`)
 - GitHub Actions CI workflow
@@ -165,7 +198,7 @@ This project uses [Semantic Versioning](https://semver.org/).
 ## [0.13.0] — 2026-09-27
 
 ### Added
-- Cytogenesis infrastructure (`.prism/cells/`)
+- Cytogenesis infrastructure (`.soma/cells/`)
 - Cell fitness scoring (`cell_fitness.py`)
 - Cell selection lifecycle (`cell_selection.sh`)
 - Four cell types: Vacuole, Chloroplast, Cell Wall, Membrane
@@ -191,7 +224,7 @@ This project uses [Semantic Versioning](https://semver.org/).
 - Unified installer (`install.sh`) replacing per-platform scripts
 
 ### Changed
-- Renamed project from internal naming to Prism AI Steering
+- Renamed project from internal naming to Soma
 
 ## [0.10.0] — 2026-09-26
 

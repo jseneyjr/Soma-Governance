@@ -1,4 +1,4 @@
-# Prism AI Steering — Native Windows PowerShell Installer
+# Soma — Native Windows PowerShell Installer
 # Deploys steering rules and skills for Gemini, Kiro, and Copilot.
 # NOTE: Hooks require bash (Git Bash, WSL, or MSYS2) and cannot run via native PowerShell.
 #
@@ -24,7 +24,7 @@ param (
 )
 
 if ($Help) {
-    Write-Host "Prism AI Steering — Windows PowerShell Installer"
+    Write-Host "Soma — Windows PowerShell Installer"
     Write-Host "Usage: .\install.ps1 [[-Platform] <gemini|kiro|copilot>] [[-Mode] <global|project>] [-DryRun]"
     Write-Host ""
     Write-Host "Parameters:"
@@ -50,9 +50,9 @@ if (-not $ScriptDir) {
     $ScriptDir = (Get-Location).Path
 }
 $RepoDir = (Resolve-Path $ScriptDir).Path
-$SourceRules = Join-Path $RepoDir "rules"
-$SourceSkills = Join-Path $RepoDir "skills"
-$ConfigFile = Join-Path $RepoDir "steering.conf"
+$SourceRules = Join-Path $RepoDir "genome"
+$SourceSkills = Join-Path $RepoDir "organs"
+$ConfigFile = Join-Path $RepoDir "soma.conf"
 
 # ── Logging Functions ─────────────────────────────────────────────
 function Write-LogInfo {
@@ -77,7 +77,7 @@ function Write-LogError {
 
 # ── Configuration Loading ─────────────────────────────────────────
 $Config = @{
-    STEERING_PLATFORM = "gemini"
+    SOMA_PLATFORM = "gemini"
     TEAM_SIZE         = "solo"
     GIT_STRATEGY      = "trunk"
     APPROVAL_CHAIN    = "none"
@@ -105,7 +105,7 @@ if (Test-Path $ConfigFile) {
 }
 
 # Environment variables take precedence over config file
-foreach ($key in @("STEERING_PLATFORM", "TEAM_SIZE", "GIT_STRATEGY", "APPROVAL_CHAIN", "RULES_SUBSET", "ENABLE_HOOKS")) {
+foreach ($key in @("SOMA_PLATFORM", "TEAM_SIZE", "GIT_STRATEGY", "APPROVAL_CHAIN", "RULES_SUBSET", "ENABLE_HOOKS")) {
     $envVal = [Environment]::GetEnvironmentVariable($key)
     if ($envVal) {
         $Config[$key] = $envVal
@@ -114,9 +114,9 @@ foreach ($key in @("STEERING_PLATFORM", "TEAM_SIZE", "GIT_STRATEGY", "APPROVAL_C
 
 # CLI argument takes precedence over environment / config
 if ($Platform) {
-    $Config["STEERING_PLATFORM"] = $Platform
+    $Config["SOMA_PLATFORM"] = $Platform
 }
-$Platform = $Config["STEERING_PLATFORM"].ToLower()
+$Platform = $Config["SOMA_PLATFORM"].ToLower()
 $Mode = $Mode.ToLower()
 
 # ── Enum Validation ───────────────────────────────────────────────
@@ -136,7 +136,7 @@ Assert-Enum -Name "TEAM_SIZE" -Value $Config["TEAM_SIZE"] -Allowed @("solo", "sm
 Assert-Enum -Name "GIT_STRATEGY" -Value $Config["GIT_STRATEGY"] -Allowed @("trunk", "feature-branch", "gitflow")
 Assert-Enum -Name "APPROVAL_CHAIN" -Value $Config["APPROVAL_CHAIN"] -Allowed @("none", "peer", "lead")
 Assert-Enum -Name "RULES_SUBSET" -Value $Config["RULES_SUBSET"] -Allowed @("all", "core", "minimal")
-Assert-Enum -Name "STEERING_PLATFORM" -Value $Platform -Allowed @("gemini", "kiro", "copilot")
+Assert-Enum -Name "SOMA_PLATFORM" -Value $Platform -Allowed @("gemini", "kiro", "copilot")
 Assert-Enum -Name "MODE" -Value $Mode -Allowed @("global", "project")
 
 # ── Subset Resolution ─────────────────────────────────────────────
@@ -510,7 +510,7 @@ switch ($Platform) {
                 $header = @(
                     "# Copilot Global Instructions",
                     "",
-                    "> Auto-generated from prism-ai-steering. Do not edit directly.",
+                    "> Auto-generated from soma. Do not edit directly.",
                     ""
                 )
                 Set-Content -Path $targetFile -Value $header -Encoding UTF8

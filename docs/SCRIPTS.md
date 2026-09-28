@@ -1,10 +1,10 @@
 # Scripts Reference
 
-This document catalogs the 39 executable scripts that power the Prism AI Steering framework.
+This document catalogs the 39 executable scripts that power the Soma framework.
 
 ## Lifecycle Scripts (Hooks)
 These scripts are invoked automatically by the IDE or terminal environment.
-* **`governance_init.sh`**: PreInvocation hook that sets up the workspace, seeds contexts, injects domain hints and runs the pre-flight scan.
+* **`immune_init.sh`**: PreInvocation hook that sets up the workspace, seeds contexts, injects domain hints and runs the pre-flight scan.
 * **`safety_gate.sh`**: PreToolUse hook that screens commands for destructive or globally scoped operations (e.g., `rm -rf /`, `git push -f`).
 * **`session_close.sh`**: Post-session cleanup hook that synthesizes learning from the session and triggers local reporting.
 * **`escalation_sentinel.sh`**: Scans diffs to recommend protocol escalation levels (e.g., Breeze vs Trident vs Tempest) based on directory and file path sensitivity.
@@ -15,7 +15,7 @@ These scripts are invoked automatically by the IDE or terminal environment.
 ## Cell Evolutionary Lifecycle Scripts
 These scripts run the Cytogenesis selection and speciation pipeline. They respect `METRICS_REPO` configuration for tracking across repositories.
 * **`cell_selection.sh`**: Main entrypoint for evaluating local cell fitness, calling the python scripts below.
-* **`cell_fitness.py`**: Computes the fitness score of each cell in `.prism/cells/` based on true positives, false positives, and triggers. Respects `METRICS_REPO`.
+* **`cell_fitness.py`**: Computes the fitness score of each cell in `.soma/cells/` based on true positives, false positives, and triggers. Respects `METRICS_REPO`.
 * **`cell_adapt.py`**: Modifies underperforming cells (score 0.3 - 0.7) by refining their hypotheses and targeting to improve signal-to-noise ratios. Respects `METRICS_REPO`.
 * **`cell_promote.py`**: Identifies high-performing local cells (score > 0.7) running in multiple repositories and promotes them into global forest-floor rules. Respects `METRICS_REPO`.
 
@@ -39,40 +39,40 @@ These scripts run the Cytogenesis selection and speciation pipeline. They respec
 | `fitness_landscape.py` | Governance fitness visualization. ASCII chart of all cells with decayed fitness scores. |
 
 ## Telemetry & Metrics
-* **`token_census.py`**: Validates the token costs of active rules and skills via the Gemini SDK (or fallback estimation). Evaluates `METRICS_REPO`. **Privacy:** Only tokenizes local open-source rules/skills; never exfiltrates codebase files.
+* **`token_census.py`**: Validates the token costs of active rules and skills via the Gemini SDK (or fallback estimation). Evaluates `METRICS_REPO`. **Privacy:** Only tokenizes local open-source genome/skills; never exfiltrates codebase files.
 * **`metrics_snapshot.sh`**: Saves automated baselines and ROI deltas into `METRICS_REPO` (defaults to `docs/snapshots/`).
 * **`export_logs.sh`**: Prepares logs and transcripts for post-mortem analysis.
 
 ## Governance & Maintenance
 * **`common.sh`**: A shared bash library used across scripts to standardize output, error handling, and path resolutions.
-* **`prism_resolve.py`**: Centralized workspace resolution (CWD-first, vendor-safe) used across scripts.
-* **`governance_sweep.sh`**: Performs local scans across past session transcripts to extract waste patterns and identify missed traps.
-* **`sweep_session.py`**: Companion python script for `governance_sweep.sh` that classifies waste and scores compliance per session.
+* **`soma_resolve.py`**: Centralized workspace resolution (CWD-first, vendor-safe) used across scripts.
+* **`immune_sweep.sh`**: Performs local scans across past session transcripts to extract waste patterns and identify missed traps.
+* **`sweep_session.py`**: Companion python script for `immune_sweep.sh` that classifies waste and scores compliance per session.
 * **`log_finding.sh`**: Appends specific anti-patterns or successful catches into the `mulch_queue.jsonl` database for evolutionary learning.
 
 ## Analysis & Research
 * **`cell_escaped_defects.py`**: Tracks defects that escaped governance coverage from CI/tests/crashes.
 * **`cell_enforce.py`**: Auto-generates enforcement artifacts for promoted cells.
 * **`cell_quorum.py`**: Quorum sensing — detects when ≥3 cells trigger simultaneously on the same diff, indicating systemic issues. Auto-escalates review mode.
-* **`cell_coverage.py`**: Cell coverage map — visualizes which files/directories have governance cell coverage and highlights blind spots.
+* **`cell_coverage.py`**: Cell coverage map — visualizes which files/directories have immune cell coverage and highlights blind spots.
 * **`cell_deps.py`**: Cell dependency graph: visualize co-trigger relationships
-* **`governance_grade.py`**: Governance report card: single-grade summary
-* **`governance_replay.py`**: Governance replay — retrospectively tests current cells against historical commits to evaluate "would today's cells have caught this?"
-* **`governance_trends.py`**: Cross-session trend dashboard — aggregates metrics over a configurable window with Shannon diversity index for cell-type monoculture detection.
+* **`immune_grade.py`**: Governance report card: single-grade summary
+* **`immune_replay.py`**: Governance replay — retrospectively tests current cells against historical commits to evaluate "would today's cells have caught this?"
+* **`immune_trends.py`**: Cross-session trend dashboard — aggregates metrics over a configurable window with Shannon diversity index for cell-type monoculture detection.
 * **`cell_genesis_stochastic.py`**: Stochastic genesis — probabilistic diversity injection from domain templates every N sessions to prevent evolutionary stagnation.
 
 ## Privacy Note
 All scripts are constrained by the **Privacy Invariant**: No script may output, log, or transmit raw file paths, usernames, hostnames, directory structures, diffs, or code patches. Only aggregate counts, booleans, and sanitized strings are permitted.
 
 ## Team & Organization
-* **`team_sync.sh`**: Syncs local promoted cells and metrics snapshots to a shared team repository. Enables multi-developer governance convergence with push/pull/status modes. Respects `TEAM_REPO` and `ORG_REPO` in `steering.conf`. **Privacy:** Only cell hypotheses/scores flow — never file content, paths, or PII.
+* **`team_sync.sh`**: Syncs local promoted cells and metrics snapshots to a shared team repository. Enables multi-developer governance convergence with push/pull/status modes. Respects `TEAM_REPO` and `ORG_REPO` in `soma.conf`. **Privacy:** Only cell hypotheses/scores flow — never file content, paths, or PII.
 
 ## Installation Management
-* **`uninstall.sh`**: Clean uninstaller that removes Prism AI Steering files from the system using `~/.prism-ai-steering/manifest.json`. Features backup-on-install and restore-on-uninstall functionality to safely reinstate previous configurations if desired.
+* **`uninstall.sh`**: Clean uninstaller that removes Soma files from the system using `~/.soma/manifest.json`. Features backup-on-install and restore-on-uninstall functionality to safely reinstate previous configurations if desired.
 
 ## AI-Assisted Governance
-* **`cell_create_nl.py`**: Natural language cell creation via Gemini API. Describe a concern in plain English and get a fully-formed governance cell with YAML frontmatter. Supports configurable API keys via env var, `steering.conf`, `.prism/credentials.conf`, or Application Default Credentials.
+* **`cell_create_nl.py`**: Natural language cell creation via Gemini API. Describe a concern in plain English and get a fully-formed immune cell with YAML frontmatter. Supports configurable API keys via env var, `soma.conf`, `.soma/credentials.conf`, or Application Default Credentials.
 
 ## Adversarial & Research
 * **`cell_adversarial.py`**: Adversarial cell testing — probes cells for bypass vulnerabilities (rename, indirect import, config change, test modification, staleness). Reports per-cell vulnerability scores.
-* **`governance_entropy.py`**: Governance entropy rate — measures information production and distribution using Shannon entropy to detect fossilization, monoculture, and stagnation.
+* **`immune_entropy.py`**: Governance entropy rate — measures information production and distribution using Shannon entropy to detect fossilization, monoculture, and stagnation.

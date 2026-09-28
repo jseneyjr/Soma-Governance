@@ -1,0 +1,1 @@
+"""Soma MCP stdio server."""

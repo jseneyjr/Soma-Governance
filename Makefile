@@ -1,11 +1,11 @@
 # AI Steering Rules — Makefile
-# Reads steering.conf for team/workflow configuration.
-# Without steering.conf, all defaults apply (solo/trunk/all).
+# Reads soma.conf for team/workflow configuration.
+# Without soma.conf, all defaults apply (solo/trunk/all).
 
--include steering.conf
+-include soma.conf
 
 # Defaults (namespaced to avoid env collisions)
-STEERING_PLATFORM ?= gemini
+SOMA_PLATFORM ?= gemini
 TEAM_SIZE         ?= solo
 GIT_STRATEGY      ?= trunk
 APPROVAL_CHAIN    ?= none
@@ -13,7 +13,7 @@ RULES_SUBSET      ?= all
 ENABLE_HOOKS      ?= true
 
 export TEAM_SIZE GIT_STRATEGY APPROVAL_CHAIN
-export RULES_SUBSET ENABLE_HOOKS STEERING_PLATFORM
+export RULES_SUBSET ENABLE_HOOKS SOMA_PLATFORM
 
 .PHONY: help info install install-windows \
         uninstall doctor validate update status test
@@ -22,8 +22,8 @@ help: ## Show available targets
 	@echo "AI Steering Rules"
 	@echo ""
 	@echo "Workflow:"
-	@echo "  1. cp steering.conf.example steering.conf"
-	@echo "  2. Edit steering.conf (set STEERING_PLATFORM, TEAM_SIZE, etc.)"
+	@echo "  1. cp soma.conf.example soma.conf"
+	@echo "  2. Edit soma.conf (set SOMA_PLATFORM, TEAM_SIZE, etc.)"
 	@echo "  3. make install"
 	@echo ""
 	@echo "Targets:"
@@ -37,7 +37,7 @@ info: ## Show current configuration
 	@echo "┌─────────────────────────────────────┐"
 	@echo "│  AI Steering Rules — Configuration  │"
 	@echo "├─────────────────────────────────────┤"
-	@echo "│  Platform:        $(STEERING_PLATFORM)"
+	@echo "│  Platform:        $(SOMA_PLATFORM)"
 	@echo "│  Team Size:       $(TEAM_SIZE)"
 	@echo "│  Git Strategy:    $(GIT_STRATEGY)"
 	@echo "│  Approval Chain:  $(APPROVAL_CHAIN)"
@@ -45,8 +45,8 @@ info: ## Show current configuration
 	@echo "│  Hooks Enabled:   $(ENABLE_HOOKS)"
 	@echo "└─────────────────────────────────────┘"
 
-install: ## Install for configured platform (STEERING_PLATFORM)
-	@bash install/install.sh $(STEERING_PLATFORM)
+install: ## Install for configured platform (SOMA_PLATFORM)
+	@bash install/install.sh $(SOMA_PLATFORM)
 
 install-gemini: ## Install rules for Gemini/Antigravity (alias)
 	@bash install/install.sh gemini
@@ -58,35 +58,35 @@ install-copilot: ## Install rules for GitHub Copilot (alias)
 	@bash install/install.sh copilot $(if $(MODE),$(MODE),global)
 
 install-windows: ## Install rules and skills for Windows using PowerShell
-	@powershell -ExecutionPolicy Bypass -File install/install.ps1 -Platform $(STEERING_PLATFORM)
+	@powershell -ExecutionPolicy Bypass -File install/install.ps1 -Platform $(SOMA_PLATFORM)
 
 uninstall: ## Remove installed rules, skills, and hooks
-	@echo "Uninstalling steering rules for $(STEERING_PLATFORM)..."
-	@case "$(STEERING_PLATFORM)" in \
+	@echo "Uninstalling steering rules for $(SOMA_PLATFORM)..."
+	@case "$(SOMA_PLATFORM)" in \
 	  gemini) \
-	    echo "  Removing rules from $(HOME)/.gemini/config/rules/"; \
-	    rm -f $(HOME)/.gemini/config/rules/providence.md $(HOME)/.gemini/config/rules/cost-optimization.md \
-	      $(HOME)/.gemini/config/rules/subagent-delegation.md $(HOME)/.gemini/config/rules/testing.md \
-	      $(HOME)/.gemini/config/rules/git-workflow.md $(HOME)/.gemini/config/rules/destructive-ops.md \
-	      $(HOME)/.gemini/config/rules/documentation.md $(HOME)/.gemini/config/rules/architectural-tenets.md \
-	      $(HOME)/.gemini/config/rules/feature-specs.md $(HOME)/.gemini/config/rules/polyglot-standards.md \
-	      $(HOME)/.gemini/config/rules/desktop-automation.md; \
+	    echo "  Removing rules from $(HOME)/.gemini/config/genome/"; \
+	    rm -f $(HOME)/.gemini/config/genome/providence.md $(HOME)/.gemini/config/genome/cost-optimization.md \
+	      $(HOME)/.gemini/config/genome/subagent-delegation.md $(HOME)/.gemini/config/genome/testing.md \
+	      $(HOME)/.gemini/config/genome/git-workflow.md $(HOME)/.gemini/config/genome/destructive-ops.md \
+	      $(HOME)/.gemini/config/genome/documentation.md $(HOME)/.gemini/config/genome/architectural-tenets.md \
+	      $(HOME)/.gemini/config/genome/feature-specs.md $(HOME)/.gemini/config/genome/polyglot-standards.md \
+	      $(HOME)/.gemini/config/genome/desktop-automation.md; \
 	    echo "  Removing hooks"; \
 	    rm -f $(HOME)/.gemini/config/plugins/governance/hooks.json; \
 	    echo "  Removing skills"; \
-	    for skill_dir in skills/*/; do \
+	    for skill_dir in organs/*/; do \
 	      skill=$$(basename "$$skill_dir"); \
-	      rm -rf $(HOME)/.gemini/config/skills/$$skill; \
+	      rm -rf $(HOME)/.gemini/config/organs/$$skill; \
 	    done; \
 	    echo "Done! Rules, hooks, and skills removed."; \
 	    ;; \
 	  kiro) \
 	    echo "  Removing rules from $(HOME)/.kiro/steering/"; \
 	    rm -rf $(HOME)/.kiro/steering/; \
-	    echo "  Removing skills from $(HOME)/.kiro/skills/"; \
-	    for skill_dir in skills/*/; do \
+	    echo "  Removing skills from $(HOME)/.kiro/organs/"; \
+	    for skill_dir in organs/*/; do \
 	      skill=$$(basename "$$skill_dir"); \
-	      rm -rf $(HOME)/.kiro/skills/$$skill; \
+	      rm -rf $(HOME)/.kiro/organs/$$skill; \
 	    done; \
 	    echo "  Removing hooks from $(HOME)/.kiro/hooks/"; \
 	    rm -f $(HOME)/.kiro/hooks/hooks.json; \
@@ -110,29 +110,29 @@ doctor: ## Verify installation health & dependencies
 	@command -v awk >/dev/null 2>&1 && echo "  ✅ awk" || echo "  ❌ awk not found"
 	@echo ""
 	@echo "Scripts:"
-	@for s in scripts/*.sh; do \
+	@for s in enzymes/*.sh; do \
 	  if [ -f "$$s" ]; then echo "  ✅ $$s"; else echo "  ❌ $$s missing"; fi; \
 	done
 	@echo ""
 	@echo "Hook template:"
 	@if [ -f install/hooks.json.template ]; then echo "  ✅ install/hooks.json.template"; else echo "  ❌ install/hooks.json.template missing"; fi
 	@echo ""
-	@echo "Installed rules ($(STEERING_PLATFORM)):"
-	@case "$(STEERING_PLATFORM)" in \
-	  gemini) ls $(HOME)/.gemini/config/rules/*.md 2>/dev/null | while read f; do echo "  ✅ $$(basename $$f)"; done || echo "  (none)"; \
+	@echo "Installed rules ($(SOMA_PLATFORM)):"
+	@case "$(SOMA_PLATFORM)" in \
+	  gemini) ls $(HOME)/.gemini/config/genome/*.md 2>/dev/null | while read f; do echo "  ✅ $$(basename $$f)"; done || echo "  (none)"; \
 	    if [ -f $(HOME)/.gemini/config/plugins/governance/hooks.json ]; then echo "  ✅ hooks.json installed"; else echo "  ⚠️  hooks.json not installed"; fi ;; \
 	  kiro) ls $(HOME)/.kiro/steering/*.md 2>/dev/null | while read f; do echo "  ✅ $$(basename $$f)"; done || echo "  (none)"; \
 	    echo ""; \
 	    echo "Installed skills (kiro):"; \
 	    if [ -d $(HOME)/.kiro/skills ]; then \
-	      ls -d $(HOME)/.kiro/skills/*/ 2>/dev/null | while read d; do echo "  ✅ $$(basename $$d)"; done || echo "  (none)"; \
-	    else echo "  (none — $(HOME)/.kiro/skills/ not found)"; fi ;; \
+	      ls -d $(HOME)/.kiro/organs/*/ 2>/dev/null | while read d; do echo "  ✅ $$(basename $$d)"; done || echo "  (none)"; \
+	    else echo "  (none — $(HOME)/.kiro/organs/ not found)"; fi ;; \
 	  copilot) if [ -f $(HOME)/copilot-instructions.md ]; then echo "  ✅ $(HOME)/copilot-instructions.md"; else echo "  (none)"; fi ;; \
 	esac
 
 validate: ## Check script syntax and config values
 	@echo "Validating..."
-	@for s in install/install.sh scripts/*.sh; do \
+	@for s in install/install.sh enzymes/*.sh; do \
 	  if [ -f "$$s" ]; then bash -n "$$s" && echo "  ✅ $$s" || echo "  ❌ $$s"; fi; \
 	done
 	@if command -v python3 >/dev/null 2>&1; then \
@@ -148,15 +148,15 @@ update: ## Pull latest and re-install
 
 status: ## Show installed vs repo diff
 	@echo "Comparing installed rules to repo..."
-	@case "$(STEERING_PLATFORM)" in \
-	  gemini) for rule in rules/*.md; do \
+	@case "$(SOMA_PLATFORM)" in \
+	  gemini) for rule in genome/*.md; do \
 	    name=$$(basename $$rule); \
-	    target=$(HOME)/.gemini/config/rules/$$name; \
+	    target=$(HOME)/.gemini/config/genome/$$name; \
 	    if [ ! -f "$$target" ]; then echo "  ❌ $$name (not installed)"; \
 	    elif diff -q "$$rule" "$$target" > /dev/null 2>&1; then echo "  ✅ $$name (in sync)"; \
 	    else echo "  ⚠️  $$name (modified)"; fi; \
 	  done ;; \
-	  kiro) for rule in rules/*.md; do \
+	  kiro) for rule in genome/*.md; do \
 	    name=$$(basename $$rule); \
 	    target=$(HOME)/.kiro/steering/$$name; \
 	    if [ ! -f "$$target" ]; then echo "  ❌ $$name (not installed)"; \

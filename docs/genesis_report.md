@@ -1,10 +1,10 @@
-# Genesis Report — Prism AI Steering
+# Genesis Report — Soma
 > Generated: 2026-09-27T16:47:45-04:00 | Stages: 1-5 | Repos: 1
 
 ## 🗺️ Canopy
 ### Tech Stack
 - Language(s): Bash, Python (3.x), Markdown
-- Framework: Custom (Prism AI Steering)
+- Framework: Custom (Soma)
 - Build system: Make (`make install`, `make test`)
 - Package manager: None detected
 
@@ -18,11 +18,11 @@
 
 ### Directory Tree
 ```
-rules/       — AI behavior rules
-scripts/     — Automation & tooling
-skills/      — Domain-specific skills
+genome/       — AI behavior rules
+enzymes/     — Automation & tooling
+organs/      — Domain-specific skills
 docs/        — Documentation & metrics
-.gemini/     — Adaptive governance cells
+.gemini/     — Adaptive immune cells
 ```
 
 ### Dependencies
@@ -37,7 +37,7 @@ docs/        — Documentation & metrics
 ### Testing
 - Framework: Custom Makefile
 - Runner: `make test`
-- Test directory: Mixed (`scripts/`)
+- Test directory: Mixed (`enzymes/`)
 
 ### Monorepo
 - Is monorepo: no
@@ -60,17 +60,17 @@ docs/        — Documentation & metrics
 |:-----|:------------:|:------------------------|
 | README.md | 43 | documentation |
 | SKILL.md (staff-review) | 19 | skill |
-| EVOLUTION.md | 18 | documentation |
+| PHYLOGENY.md | 18 | documentation |
 | EXPERIMENTS.md | 16 | documentation |
 | subagent-delegation.md | 14 | rule |
-| governance_init.sh | 11 | script |
+| immune_init.sh | 11 | script |
 | providence.md | 11 | rule |
 | cost-optimization.md | 10 | rule |
 | Makefile | 9 | config |
 | METRICS.md | 9 | documentation |
 
 ### High-Risk Files
-- `governance_init.sh` — 11 changes — Risk: High (Core setup script)
+- `immune_init.sh` — 11 changes — Risk: High (Core setup script)
 - `Makefile` — 9 changes — Risk: High (Configuration entrypoint)
 
 ## 📖 Taproot
@@ -85,8 +85,8 @@ docs/        — Documentation & metrics
 
 ### Configuration Pattern
 - Config strategy: Config file & Env vars
-- Config files: `steering.conf`, `hooks.json.template`
-- Env vars referenced: 6 (STEERING_PLATFORM, TEAM_SIZE, etc.)
+- Config files: `soma.conf`, `hooks.json.template`
+- Env vars referenced: 6 (SOMA_PLATFORM, TEAM_SIZE, etc.)
 
 ### External Service Integrations
 - None (Local toolkit)
@@ -110,13 +110,13 @@ docs/        — Documentation & metrics
 - Containerized: no
 - CI/CD: none detected
 - IaC: none
-- Environments: `steering.conf` platform modes
+- Environments: `soma.conf` platform modes
 
 ### Known Traps & Gotchas
 | File | Signal | Trap | Recommendation |
 |:-----|:-------|:-----|:---------------|
-| `install.sh` | High complexity | Hardcoded paths | Use `$STEERING_PLATFORM` |
-| `rules/*.md` | Modifies global behavior | Changes affect all | Elevate review mode |
+| `install.sh` | High complexity | Hardcoded paths | Use `$SOMA_PLATFORM` |
+| `genome/*.md` | Modifies global behavior | Changes affect all | Elevate review mode |
 
 ### Recommended Governance Configuration
 - Default review protocol: Trident — Modifying global rules requires scrutiny
@@ -124,14 +124,14 @@ docs/        — Documentation & metrics
 
 ### Auto-Generated Context Pre-Seeding Block
 ```
-<!-- CONTEXT: prism-ai-steering -->
-[PROJECT]: prism-ai-steering — Adaptive AI governance rules framework
+<!-- CONTEXT: soma -->
+[PROJECT]: soma — Adaptive AI governance rules framework
 [STACK]: Python | Bash | Markdown | Test: `make test`
 [LAYOUT]:
-  - `rules/`: Agent behavior rules
-  - `skills/`: Subagent domain tasks
-  - `scripts/`: Tooling and fitness logic
-  - `.prism/cells/`: Adaptive constraints
+  - `genome/`: Agent behavior rules
+  - `organs/`: Subagent domain tasks
+  - `enzymes/`: Tooling and fitness logic
+  - `.soma/cells/`: Adaptive constraints
 [CONSTRAINTS]:
   - Respect Privacy Invariants: No raw paths, usernames, or env vars
   - Measured token values (ratio 1.35), never heuristics
@@ -139,7 +139,7 @@ docs/        — Documentation & metrics
 ```
 
 ## 🧫 Cytogenesis
-Generated cells in `.prism/cells/`:
+Generated cells in `.soma/cells/`:
 - `vacuoles/trap-hardcoded-paths.md`
 - `walls/wall-core-installers.md`
 - `membranes/membrane-rules.md`

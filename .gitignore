@@ -1,5 +1,5 @@
-# User-local configuration (copy from steering.conf.example)
-steering.conf
+# User-local configuration (copy from soma.conf.example)
+soma.conf
 
 # Generated hook configs (produced by install.sh)
 hooks.json
@@ -35,7 +35,7 @@ Thumbs.db
 docs/postmortem-work-sessions.md
 
 # Cell fitness tracking (private telemetry)
-.prism/cells/fitness.jsonl
-.prism/cells/.archive/
-.prism/credentials.conf
+.soma/cells/fitness.jsonl
+.soma/cells/.archive/
+.soma/credentials.conf
 docs/internal/
