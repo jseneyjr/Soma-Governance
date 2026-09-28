@@ -20,7 +20,7 @@ The framework introduces three contributions:
 
 3. **Evolutionary dynamics**: Fitness-based selection infrastructure. Generated extensions are scored on precision (`true_positives / total_triggers × impact_weight`), pruned when ineffective, and promoted to global rules when universally effective.
 
-4. **Independent validation and Tiered Enforcement**: Moves beyond self-reported fitness by incorporating independent outcome signals (CI failures, test regressions, runtime crashes) to break the agent-grades-itself loop. Cells use an enhanced fitness formula (`bayesian_mean × (1 - escaped_defect_rate) × tier_weight`) and earn promotion through three enforcement tiers (advisory → mechanical → gate) based on demonstrated defect prevention rate.
+4. **Independent validation and Tiered Enforcement**: Moves beyond self-reported fitness by incorporating independent outcome signals (CI failures, test regressions, runtime crashes) to break the agent-grades-itself loop. Cells use an enhanced fitness formula (`bayesian_mean × (1 - escaped_defect_rate) × tier_weight`) and earn promotion through three enforcement tiers (advisory → mechanical → gate) based on demonstrated defect prevention rate. Promoted cells auto-generate deterministic enforcement artifacts: pre-commit hooks for mechanical tier, runtime assertion classes for gate tier — completing the transition from prompt suggestion to code-level invariant.
 
 The system's idle overhead is 4,380 tokens per turn (~3.4% of a 128K context window). All telemetry enforces a strict privacy invariant: aggregate counts and scores only.
 

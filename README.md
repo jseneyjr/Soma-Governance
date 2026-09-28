@@ -219,6 +219,9 @@ Generate → Score (Half-Life) → Adapt / Crossover → Metamorphose → Prune 
 - **Escaped Defect Tracking** (`cell_escaped_defects.py`): Independent outcome signal from CI failures, test regressions, and crashes — breaks the self-evaluation loop
 - **Enhanced Fitness**: `fitness = bayesian_mean × (1 - escaped_defect_rate) × tier_weight` rewards cells that prevent *real* failures
 - **Promotion Lifecycle**: Cells earn their enforcement tier through demonstrated defect prevention rate (advisory → mechanical at 85%, mechanical → gate at 95%)
+- **Enforcement Artifacts** (`cell_enforce.py`): Auto-generates pre-commit checks for `mechanical` cells and runtime assertion classes for `gate` cells in `.prism/enforcement/`
+- **Coverage Tiers**: `cell_coverage.py` shows the highest enforcement tier (🔒 gate | ⚙️ mechanical | 💬 advisory) covering each directory
+- **Artifact Linking**: `enforcement_artifact` YAML field links cells to their generated enforcement code
 
 A background **fitness function** monitors the success rate (true positives) of each cell against its disruption rate (false positives). Overperforming cells are kept (or promoted globally), and underperforming ones are autonomously adapted or driven to extinction. 
 
@@ -230,7 +233,7 @@ Refer to [docs/SCRIPTS.md](docs/SCRIPTS.md) for full documentation of the 39 sys
 
 **Cell Lifecycle**: `cell_fitness.py`, `cell_selection.sh`, `cell_adapt.py`, `cell_scan.py`, `cell_signal.sh`, `cell_create.sh`, `cell_crossover.py`, `cell_metamorphose.py`, `cell_promote.py`, `cell_transfer.sh`, `cell_enforce.py`
 
-**Analysis & Research**: `cell_quorum.py`, `cell_coverage.py`, `governance_replay.py`, `governance_trends.py`, `governance_grade.py`, `governance_entropy.py`, `cell_adversarial.py`, `cell_deps.py`
+**Analysis & Research**: `cell_quorum.py`, `cell_coverage.py`, `governance_replay.py`, `governance_trends.py`, `governance_grade.py`, `governance_entropy.py`, `cell_adversarial.py`, `cell_deps.py`, `cell_escaped_defects.py`
 
 **AI-Assisted**: `cell_create_nl.py` (natural language cell creation via Gemini)
 
