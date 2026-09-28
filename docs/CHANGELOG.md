@@ -31,7 +31,7 @@ This project uses [Semantic Versioning](https://semver.org/).
 ## [0.13.0] — 2026-09-27
 
 ### Added
-- Cytogenesis infrastructure (`.gemini/cells/`)
+- Cytogenesis infrastructure (`.prism/cells/`)
 - Cell fitness scoring (`cell_fitness.py`)
 - Cell selection lifecycle (`cell_selection.sh`)
 - Four cell types: Vacuole, Chloroplast, Cell Wall, Membrane

@@ -253,8 +253,8 @@ main() {
   fi
 
   # ── Membrane Overrides ──────────────────────────────────────────
-  if [ -d ".gemini/cells/membranes" ]; then
-    for membrane in .gemini/cells/membranes/*.md; do
+  if [ -d ".prism/cells/membranes" ]; then
+    for membrane in .prism/cells/membranes/*.md; do
       [ -f "$membrane" ] || continue
       local mem_mode
       mem_mode=$(grep '^minimum_mode:' "$membrane" | awk '{print $2}' | tr -d '\r')

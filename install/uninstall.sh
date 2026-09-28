@@ -32,6 +32,9 @@ PLATFORM="${POSITIONAL_ARGS[0]:-${STEERING_PLATFORM:-gemini}}"
 DETECTED_OS="$(detect_os)"
 RESOLVED_HOME="$(resolve_home "$DETECTED_OS")"
 MANIFEST_PATH="$RESOLVED_HOME/.prism-ai-steering/manifest.json"
+if [ -f "$(pwd)/.prism/manifest.json" ]; then
+  MANIFEST_PATH="$(pwd)/.prism/manifest.json"
+fi
 
 MANIFEST_EXISTS=false
 if [ -f "$MANIFEST_PATH" ]; then
@@ -98,8 +101,8 @@ else
 fi
 
 # Local cell data
-if [ -d "$REPO_DIR/.gemini/cells" ]; then
-  for f in "$REPO_DIR"/.gemini/cells/*; do
+if [ -d "$REPO_DIR/.prism/cells" ]; then
+  for f in "$REPO_DIR"/.prism/cells/*; do
     [ -e "$f" ] && FILES_TO_REMOVE+=("$f")
   done
 fi

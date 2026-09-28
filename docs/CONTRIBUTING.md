@@ -19,7 +19,7 @@ Thank you for your interest in contributing!
 ### Contributing Cells
 If your Genesis scan produced useful cells, you can contribute them:
 1. Run `python3 scripts/cell_fitness.py` to verify fitness > 0.7
-2. Submit the cell file via PR to `.gemini/cells/`
+2. Submit the cell file via PR to `.prism/cells/`
 3. Include the cell's hypothesis and fitness data
 
 ### Contributing Rules

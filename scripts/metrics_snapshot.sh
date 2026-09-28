@@ -104,7 +104,7 @@ def main():
     
     # Cells count
     cells_count = 0
-    cells_dir = os.path.join(workspace, ".gemini/cells")
+    cells_dir = os.path.join(workspace, ".prism/cells")
     if os.path.exists(cells_dir):
         for root, _, files in os.walk(cells_dir):
             for file in files:

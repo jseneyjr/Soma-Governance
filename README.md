@@ -20,6 +20,7 @@ cp steering.conf.example steering.conf   # Optional: customize for your team
 
 # Linux, macOS, WSL, Windows (Git Bash):
 make install                              # Gemini / Antigravity (default)
+bash install/install.sh gemini --local    # Install rules to project .prism/ dir
 
 # Windows (Native PowerShell):
 .\install.ps1                             # Rules + skills only (hooks require bash)
@@ -105,7 +106,7 @@ The framework enforces code modifications using tiered Review Modes and structur
 
 ## Adaptive Governance (Cells)
 
-Cells are atomic, dynamically generated governance invariants that live exclusively inside a repository (`.gemini/cells/`). 
+Cells are atomic, dynamically generated governance invariants that live exclusively inside a repository (`.prism/cells/`). 
 1. **Vacuole**: Traps and anti-patterns.
 2. **Chloroplast**: Accelerators and repo-specific personas.
 3. **Cell Wall**: Boundary conditions and invariants.
@@ -138,7 +139,7 @@ It includes a `METRICS_REPO` configuration for storing telemetry distinct from t
 
 | OS / Environment | Shell | Command | Rules | Skills | Hooks | Notes |
 |:-----------------|:------|:--------|:-----:|:------:|:-----:|:------|
-| **Linux** | Bash | `make install` | ✅ | ✅ | ✅ | Full support |
+| **Linux** | Bash | `make install` | ✅ | ✅ | ✅ | Full support (`--local` supported) |
 | **macOS** | Zsh / Bash | `make install` | ✅ | ✅ | ✅ | Full support |
 | **WSL** | Bash | `make install` | ✅ | ✅ | ✅ | Auto-resolves Windows user profile |
 | **Windows (Git Bash)** | Bash | `make install` | ✅ | ✅ | ✅ | Full support via bash runtime |

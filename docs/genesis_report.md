@@ -131,7 +131,7 @@ docs/        — Documentation & metrics
   - `rules/`: Agent behavior rules
   - `skills/`: Subagent domain tasks
   - `scripts/`: Tooling and fitness logic
-  - `.gemini/cells/`: Adaptive constraints
+  - `.prism/cells/`: Adaptive constraints
 [CONSTRAINTS]:
   - Respect Privacy Invariants: No raw paths, usernames, or env vars
   - Measured token values (ratio 1.35), never heuristics
@@ -139,7 +139,7 @@ docs/        — Documentation & metrics
 ```
 
 ## 🧫 Cytogenesis
-Generated cells in `.gemini/cells/`:
+Generated cells in `.prism/cells/`:
 - `vacuoles/trap-hardcoded-paths.md`
 - `walls/wall-core-installers.md`
 - `membranes/membrane-rules.md`

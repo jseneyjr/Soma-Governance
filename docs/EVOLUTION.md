@@ -292,7 +292,7 @@ Every generated cell must be **self-testing**. When Genesis produces a cell, it 
 | 4 | **Chloroplasts** (personas) | The big experiment. Launches with fitness tracking already running |
 | 5 | **First Selection Cycle** | Immediate pruning pass — do Vacuoles and Chloroplasts actually help? |
 
-Genesis Stage 5 (Cytogenesis) acts as the **Meristem** — the stem cell zone that produces all new differentiated cells. This is not a separate component; it is the cell-generation stage within the Genesis skill. Cell outputs live in `.gemini/cells/` — additive only, never overriding global governance.
+Genesis Stage 5 (Cytogenesis) acts as the **Meristem** — the stem cell zone that produces all new differentiated cells. This is not a separate component; it is the cell-generation stage within the Genesis skill. Cell outputs live in `.prism/cells/` — additive only, never overriding global governance.
 
 ### Fitness Function
 
@@ -310,7 +310,7 @@ Where:
 ```
 Every N sessions (or on-demand):
     ↓
-For each cell in .gemini/cells/:
+For each cell in .prism/cells/:
     ├── fitness > 0.7           → SURVIVE (keep as-is)
     ├── fitness 0.3–0.7         → ADAPT (refine hypothesis, narrow scope)
     ├── fitness < 0.3           → EXTINCTION (prune)
@@ -340,7 +340,7 @@ Phase 14 extends Phase 13's local cell generation across repos and over time, en
 When a cell proves universal — catching the same class of issues across multiple unrelated repos — it's no longer repo-specific. It's a universal governance pattern that should graduate:
 
 ```
-.gemini/cells/chloroplast-schema-guardian.md (repo-local)
+.prism/cells/chloroplast-schema-guardian.md (repo-local)
     ↓ catches schema issues in Repo A, Repo B, Repo C
     ↓ fitness > 0.7 in all three
     ↓
@@ -348,6 +348,12 @@ rules/schema-validation.md (global rule, trigger: model_decision)
 ```
 
 Micro informs macro. Cells feed back into the forest floor. The system discovers its own rules.
+
+### Named Anti-Pattern: Write-Only Knowledge Base
+
+A system accumulates lessons, rules, or post-mortems but never closes the loop — knowledge is written to disk but never queried during decisions, never validated against outcomes, and never pruned when proven wrong. Prism's fitness function detects this automatically: a cell with zero `triggers` in its `expiry_sessions` window scores null and is pruned. This mechanism transforms a passive knowledge accumulator into an active, self-validating epistemic system.
+
+This anti-pattern was independently discovered in a cross-domain RL training pipeline where 40 game post-mortems were stored in a JSON knowledge base but never referenced during gameplay decisions.
 
 ### Configurable Metrics Infrastructure (Prerequisite)
 Cross-repo Natural Selection requires a shared metrics store. Phase 14 includes configurable data paths via `steering.conf`:

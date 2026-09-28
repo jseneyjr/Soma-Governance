@@ -101,7 +101,7 @@ if domain_hint:
     })
 
 # Component 1: Vacuoles
-vacuoles_dir = os.path.join(target, '.gemini/cells/vacuoles')
+vacuoles_dir = os.path.join(target, '.prism/cells/vacuoles')
 if os.path.exists(vacuoles_dir):
     vacuoles = []
     import glob, re

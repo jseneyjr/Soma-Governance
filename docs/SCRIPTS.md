@@ -12,7 +12,7 @@ These scripts are invoked automatically by the IDE or terminal environment.
 ## Cell Evolutionary Lifecycle Scripts
 These scripts run the Cytogenesis selection and speciation pipeline. They respect `METRICS_REPO` configuration for tracking across repositories.
 * **`cell_selection.sh`**: Main entrypoint for evaluating local cell fitness, calling the python scripts below.
-* **`cell_fitness.py`**: Computes the fitness score of each cell in `.gemini/cells/` based on true positives, false positives, and triggers. Respects `METRICS_REPO`.
+* **`cell_fitness.py`**: Computes the fitness score of each cell in `.prism/cells/` based on true positives, false positives, and triggers. Respects `METRICS_REPO`.
 * **`cell_adapt.py`**: Modifies underperforming cells (score 0.3 - 0.7) by refining their hypotheses and targeting to improve signal-to-noise ratios. Respects `METRICS_REPO`.
 * **`cell_promote.py`**: Identifies high-performing local cells (score > 0.7) running in multiple repositories and promotes them into global forest-floor rules. Respects `METRICS_REPO`.
 

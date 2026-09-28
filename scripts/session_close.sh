@@ -52,7 +52,7 @@ fi
 echo '{}'
 
 # --- Cell Feedback Prompt ---
-CELLS_DIR="$STEERING_REPO/.gemini/cells"
+CELLS_DIR="$STEERING_REPO/.prism/cells"
 if [ -d "$CELLS_DIR" ] && [ "$(find "$CELLS_DIR" -type f -name "*.md" | wc -l)" -gt 0 ]; then
     echo -e "\n=== Governance Cell Feedback ==="
     read -p "Did any cells help this session? [y/n/skip]: " feedback_resp

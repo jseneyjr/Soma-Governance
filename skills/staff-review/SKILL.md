@@ -177,7 +177,7 @@ Dispatch 3–4 Flash scouts with orthogonal lenses (same as Gale Protocol Phase 
 - **Output budget**: 500 tokens max (max 5 findings, ~100 tokens each)
 
 **Orthogonal Personas Note**:
-If `.gemini/cells/chloroplasts/` contains repo-specific personas, use them to supplement the built-in Orthogonal Personas. Chloroplasts provide domain expertise that generic personas lack.
+If `.prism/cells/chloroplasts/` contains repo-specific personas, use them to supplement the built-in Orthogonal Personas. Chloroplasts provide domain expertise that generic personas lack.
 
 **Scout prompt suffix**:
 ```

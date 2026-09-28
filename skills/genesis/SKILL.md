@@ -397,10 +397,10 @@ Dispatch 1 Flash cytogenesis orchestrator to read the Lichen output and generate
 
 | Objective | Method | Output |
 |:----------|:-------|:-------|
-| Vacuoles (Traps) | For each identified trap/anti-pattern from Lichen | Generate a Vacuole cell in `.gemini/cells/vacuoles/trap-<slugified-name>.md` |
-| Cell Walls (Boundaries) | Detect security-sensitive paths (auth/, secrets/, .env files, config/credentials) | Generate a Cell Wall in `.gemini/cells/walls/wall-<slugified-name>.md` |
-| Membranes (Escalation) | Identify high-risk directories (migrations/, infrastructure/, deploy/) | Generate a Membrane in `.gemini/cells/membranes/membrane-<slugified-name>.md` |
-| Plasmodesmata (Connections) | Detect multi-service patterns (API clients, shared DBs, event channels, import references to other repos) | Generate a Plasmodesmata cell in `.gemini/cells/plasmodesmata/<connection-name>.md` |
+| Vacuoles (Traps) | For each identified trap/anti-pattern from Lichen | Generate a Vacuole cell in `.prism/cells/vacuoles/trap-<slugified-name>.md` |
+| Cell Walls (Boundaries) | Detect security-sensitive paths (auth/, secrets/, .env files, config/credentials) | Generate a Cell Wall in `.prism/cells/walls/wall-<slugified-name>.md` |
+| Membranes (Escalation) | Identify high-risk directories (migrations/, infrastructure/, deploy/) | Generate a Membrane in `.prism/cells/membranes/membrane-<slugified-name>.md` |
+| Plasmodesmata (Connections) | Detect multi-service patterns (API clients, shared DBs, event channels, import references to other repos) | Generate a Plasmodesmata cell in `.prism/cells/plasmodesmata/<connection-name>.md` |
 
 ### Cell Formats
 
@@ -423,6 +423,27 @@ fitness:
 ---
 ## Trap: <trap name>
 <description of the anti-pattern and correct approach>
+```
+
+#### Vacuole: Write-Only Knowledge Base (Anti-Pattern)
+```yaml
+---
+type: vacuole
+hypothesis: "Knowledge base entries are being written but never read back"
+prediction: "Querying the KB during decisions will improve outcomes by >10%"
+falsification: "0 KB read calls detected in 10 sessions → prune"
+expiry_sessions: 10
+expiry_days: 30
+created: <date>
+impact_weight: 1.0
+fitness:
+  triggers: 0
+  true_positives: 0
+  false_positives: 0
+  score: null
+---
+## Trap: Write-Only Knowledge Base
+The system accumulates lessons, rules, or post-mortems but never closes the loop. Query the knowledge base before making decisions.
 ```
 
 #### Cell Walls
@@ -513,7 +534,7 @@ Genesis analyzes the repo's domain and generates 2-3 Chloroplast personas. These
   - Data models (SQL, NoSQL, file-based, graph)
   - Test patterns (unit-heavy, integration-heavy, E2E)
   - Dependency types (monorepo, multi-service, standalone)
-- **Each Chloroplast file in `.gemini/cells/chloroplasts/`**:
+- **Each Chloroplast file in `.prism/cells/chloroplasts/`**:
   ```yaml
   ---
   type: chloroplast

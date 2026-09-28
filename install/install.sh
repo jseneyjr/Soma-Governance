@@ -3,10 +3,10 @@ set -euo pipefail
 
 # Unified Installer — prism-ai-steering
 # Replaces install-gemini.sh, install-kiro.sh, install-copilot.sh
-# Usage: bash install.sh [platform] [mode] [--dry-run]
+# Usage: bash install.sh [platform] [mode] [--dry-run] [--local]
 #   platform: gemini (default) | kiro | copilot
 #   mode:     global (default) | project  (copilot only)
-#   options:  --dry-run, -n
+#   options:  --dry-run, -n, --local
 
 # Symlink-safe resolution (Thorns fix #3)
 PRG="${BASH_SOURCE[0]}"
@@ -24,6 +24,7 @@ load_config "$REPO_DIR"
 
 # Parse CLI flags & positional arguments
 DRY_RUN=false
+LOCAL_INSTALL=false
 POSITIONAL_ARGS=()
 
 for arg in "$@"; do
@@ -31,12 +32,16 @@ for arg in "$@"; do
     --dry-run|-n)
       DRY_RUN=true
       ;;
+    --local)
+      LOCAL_INSTALL=true
+      ;;
     *)
       POSITIONAL_ARGS+=("$arg")
       ;;
   esac
 done
 export DRY_RUN
+export LOCAL_INSTALL
 
 # CLI arg > steering.conf > default
 STEERING_PLATFORM="${POSITIONAL_ARGS[0]:-$STEERING_PLATFORM}"
@@ -53,6 +58,11 @@ RESOLVED_HOME="$(resolve_home "$DETECTED_OS")"
 write_manifest() {
   if [ "$DRY_RUN" = "true" ]; then return 0; fi
   local manifest_dir="$RESOLVED_HOME/.prism-ai-steering"
+  local scope="global"
+  if [ "$LOCAL_INSTALL" = "true" ] && [ "$PLATFORM" = "gemini" ]; then
+    manifest_dir="$(pwd)/.prism"
+    scope="local"
+  fi
   mkdir -p "$manifest_dir"
   local target_json="$manifest_dir/manifest.json"
   
@@ -97,6 +107,7 @@ write_manifest() {
   "version": "$version",
   "installed_at": "$ts",
   "platform": "$PLATFORM",
+  "scope": "$scope", 
   "rules_subset": "$RULES_SUBSET",
   "source_repo": "$REPO_DIR",
   "team_repo": $t_repo,
@@ -130,9 +141,16 @@ if [ "$DRY_RUN" = "false" ]; then
   
   case "$PLATFORM" in
     gemini)
-      [ -d "$RESOLVED_HOME/.gemini/config/rules" ] && cp -r "$RESOLVED_HOME/.gemini/config/rules" "$BACKUP_DIR/rules"
-      [ -d "$RESOLVED_HOME/.gemini/config/skills" ] && cp -r "$RESOLVED_HOME/.gemini/config/skills" "$BACKUP_DIR/skills"
-      [ -d "$RESOLVED_HOME/.gemini/config/plugins/governance" ] && cp -r "$RESOLVED_HOME/.gemini/config/plugins/governance" "$BACKUP_DIR/governance"
+      if [ "$LOCAL_INSTALL" = "true" ]; then
+        [ -d "$(pwd)/.prism/rules" ] && cp -r "$(pwd)/.prism/rules" "$BACKUP_DIR/rules"
+        [ -d "$(pwd)/.prism/skills" ] && cp -r "$(pwd)/.prism/skills" "$BACKUP_DIR/skills"
+        [ -d "$(pwd)/.prism/plugins/governance" ] && cp -r "$(pwd)/.prism/plugins/governance" "$BACKUP_DIR/governance"
+        [ -d "$(pwd)/.prism/cells" ] && cp -r "$(pwd)/.prism/cells" "$BACKUP_DIR/cells"
+      else
+        [ -d "$RESOLVED_HOME/.gemini/config/rules" ] && cp -r "$RESOLVED_HOME/.gemini/config/rules" "$BACKUP_DIR/rules"
+        [ -d "$RESOLVED_HOME/.gemini/config/skills" ] && cp -r "$RESOLVED_HOME/.gemini/config/skills" "$BACKUP_DIR/skills"
+        [ -d "$RESOLVED_HOME/.gemini/config/plugins/governance" ] && cp -r "$RESOLVED_HOME/.gemini/config/plugins/governance" "$BACKUP_DIR/governance"
+      fi
       ;;
     kiro)
       [ -d "$RESOLVED_HOME/.kiro/steering" ] && cp -r "$RESOLVED_HOME/.kiro/steering" "$BACKUP_DIR/steering"
@@ -147,9 +165,15 @@ fi
 
 case "$PLATFORM" in
   gemini)
-    TARGET_RULES="$RESOLVED_HOME/.gemini/config/rules"
-    TARGET_SKILLS="$RESOLVED_HOME/.gemini/config/skills"
-    TARGET_HOOKS="$RESOLVED_HOME/.gemini/config/plugins/governance"
+    if [ "$LOCAL_INSTALL" = "true" ]; then
+      TARGET_RULES="$(pwd)/.prism/rules"
+      TARGET_SKILLS="$(pwd)/.prism/skills"
+      TARGET_HOOKS="$(pwd)/.prism/plugins/governance"
+    else
+      TARGET_RULES="$RESOLVED_HOME/.gemini/config/rules"
+      TARGET_SKILLS="$RESOLVED_HOME/.gemini/config/skills"
+      TARGET_HOOKS="$RESOLVED_HOME/.gemini/config/plugins/governance"
+    fi
     [ "$DRY_RUN" = "true" ] || mkdir -p "$TARGET_RULES" "$TARGET_SKILLS"
 
     # Install rules
@@ -203,7 +227,11 @@ case "$PLATFORM" in
     else
       write_manifest
       echo "Done! Installed $count rules, $skill_count skills"
-      echo "These will take effect on your next Gemini conversation."
+      if [ "$LOCAL_INSTALL" = "true" ]; then
+        echo "Installed locally to $(pwd)/.prism/ — these rules apply only to this project."
+      else
+        echo "These will take effect on your next Gemini conversation."
+      fi
     fi
     if [ "$skipped" -gt 0 ]; then
       echo "  ($skipped rules skipped — not in $RULES_SUBSET subset)"
