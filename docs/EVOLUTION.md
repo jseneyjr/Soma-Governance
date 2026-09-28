@@ -146,7 +146,7 @@ Tempest #1–#4 and Gale review overhauled the build system, security gate, runt
 Tempest #5 cross-conversation analysis of 2 sessions (2,904 total steps) unlocked subagent nesting, adaptive protocol selection, and empirical experiment validation:
 
 ### Subagent Nesting (E11)
-- **Discovery**: `define_subagent` supports `enable_subagent_tools: true` — subagents can dispatch their own sub-subagents. E11 was incorrectly marked BLOCKED for months.
+- **Discovery**: `define_subagent` supports `enable_subagent_tools: true` — subagents can dispatch their own sub-subagents. E11 was incorrectly marked BLOCKED across multiple prior sessions.
 - **Breeze POC**: Review orchestrator autonomously dispatched Roots + Bedrock scouts, synthesized findings, and reported back. Zero parent context consumed on coordination.
 - **Maelstrom POC**: Adaptive reviewer ran full Spores → Roots → Thorns → Roots-Retry → Bedrock pipeline (8 dispatches) with auto-escalation based on finding severity. Thorns caught 3 broken + 5 weakened fixes before shipping.
 

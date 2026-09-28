@@ -48,7 +48,7 @@ docs/        — Documentation & metrics
 - Active branches: 2 (main, feature/phase-11-prism)
 - Stale branches (>90 days): 0
 
-### Commit Activity (last 6 months)
+### Commit Activity
 - Total commits: 104
 - Active contributors: 1 (Nick Seney)
 
