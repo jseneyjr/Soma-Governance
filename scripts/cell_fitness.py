@@ -69,8 +69,16 @@ def main():
             except Exception:
                 pass
                 
-        half_life_days = int(os.environ.get('CELL_HALF_LIFE_DAYS', 30))
-        dec_score = decayed_fitness(score, last_trigger_date, half_life_days)
+        type_upper = cell_type.upper()
+        hl_val = os.environ.get(f'CELL_HALF_LIFE_{type_upper}')
+        if hl_val is None:
+            hl_val = os.environ.get('CELL_HALF_LIFE_DAYS', '30')
+            
+        if hl_val == 'null':
+            dec_score = score
+        else:
+            half_life_days = int(hl_val)
+            dec_score = decayed_fitness(score, last_trigger_date, half_life_days)
             
         expiry_days = metadata.get('expiry_days')
         created_str = metadata.get('created')
@@ -86,7 +94,8 @@ def main():
         else:
             if expiry_days and created_str:
                 try:
-                    created_date = datetime.strptime(created_str, "%Y-%m-%d")
+                    fmt = "%Y-%m-%dT%H:%M:%SZ" if 'T' in created_str else "%Y-%m-%d"
+                    created_date = datetime.strptime(created_str, fmt)
                     current_date = datetime.now()
                     days_since_created = (current_date - created_date).days
                     if days_since_created > expiry_days:
@@ -95,6 +104,65 @@ def main():
                         status = "NEW"
                 except Exception:
                     status = "NEW"
+
+        decay_to = metadata.get('decay_to')
+        if status in ("EXTINCT", "DORMANT") and decay_to:
+            new_type = decay_to.get('type', 'membrane')
+            metadata['type'] = new_type
+            metadata['impact_weight'] = decay_to.get('impact_weight', 1.0)
+            metadata['minimum_mode'] = decay_to.get('minimum_mode', 'trident')
+            if 'response_type' in decay_to:
+                metadata['response_type'] = decay_to['response_type']
+            if 'activation' in decay_to:
+                metadata['activation'] = decay_to['activation']
+            del metadata['decay_to']
+            
+            if 'fitness' not in metadata:
+                metadata['fitness'] = {}
+            metadata['fitness']['score'] = 0.5
+            metadata['fitness']['triggers'] = 0
+            metadata['fitness']['true_positives'] = 0
+            metadata['fitness']['false_positives'] = 0
+            
+            gen = metadata.get('lineage', {}).get('generation', 0) if isinstance(metadata.get('lineage'), dict) else 0
+            metadata['lineage'] = {
+                'parent_id': cell_name,
+                'created_by': "decay",
+                'generation': gen + 1,
+                'siblings': []
+            }
+            
+            target_plural = new_type + "s" if new_type != "plasmodesmata" else "plasmodesmata"
+            target_dir = os.path.join(os.path.dirname(__file__), '..', '.prism', 'cells', target_plural)
+            os.makedirs(target_dir, exist_ok=True)
+            new_path = os.path.join(target_dir, cell_name)
+            
+            end_idx = content.find('---', 3)
+            body_str = content[end_idx+3:]
+            
+            with open(new_path, 'w') as out_f:
+                out_f.write("---\n")
+                yaml.dump(metadata, out_f, default_flow_style=False, sort_keys=False)
+                out_f.write("---\n")
+                if body_str.startswith('\n'):
+                    out_f.write(body_str[1:])
+                else:
+                    out_f.write(body_str)
+                    
+            if os.path.abspath(new_path) != os.path.abspath(file_path):
+                os.remove(file_path)
+                
+            status = "TRANSFORMED"
+            
+            metrics_dir = os.path.join(os.path.dirname(__file__), '..', '.prism', 'metrics')
+            os.makedirs(metrics_dir, exist_ok=True)
+            with open(os.path.join(metrics_dir, 'decay_transitions.jsonl'), 'a') as mf:
+                mf.write(json.dumps({
+                    'timestamp': datetime.utcnow().isoformat() + "Z",
+                    'cell_id': cell_name,
+                    'from_type': cell_type,
+                    'to_type': new_type
+                }) + '\n')
 
         results.append({
             "cell": cell_name,

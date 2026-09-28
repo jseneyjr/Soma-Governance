@@ -84,3 +84,10 @@ ENABLE_HOOKS=true
 # Cells that stop being triggered decay naturally. Default: 30.
 # Set higher for slow-moving projects, lower for fast iteration.
 # CELL_HALF_LIFE_DAYS=30
+# Per-type half-life overrides (optional).
+# Set to 'null' for types that should never decay (e.g., mathematical invariants).
+# CELL_HALF_LIFE_WALL=null
+# CELL_HALF_LIFE_VACUOLE=30
+# CELL_HALF_LIFE_CHLOROPLAST=60
+# CELL_HALF_LIFE_MEMBRANE=45
+# CELL_HALF_LIFE_PLASMODESMATA=60

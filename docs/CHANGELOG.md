@@ -3,6 +3,14 @@
 All notable changes to Prism AI Steering are documented here.
 This project uses [Semantic Versioning](https://semver.org/).
 
+## [0.17.1] — 2026-09-27
+
+### Added
+- Cell lineage tracking (`lineage` block in YAML) — phylogenetic tree support
+- Per-type half-life configuration (`CELL_HALF_LIFE_WALL`, etc.)
+- Effector→Memory auto-transition via `decay_to` field
+- Benchmark protocol (`docs/BENCHMARK.md`)
+
 ## [0.17.0] — 2026-09-27
 
 ### Added

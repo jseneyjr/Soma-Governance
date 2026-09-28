@@ -130,6 +130,14 @@ def main():
     metadata['metamorphosed_from'] = current_type
     metadata['metamorphosis_date'] = datetime.utcnow().isoformat() + "Z"
     
+    gen = metadata.get('lineage', {}).get('generation', 0) if isinstance(metadata.get('lineage'), dict) else 0
+    metadata['lineage'] = {
+        'parent_id': os.path.splitext(cell_filename)[0],
+        'created_by': "metamorphosis",
+        'generation': gen + 1,
+        'siblings': []
+    }
+    
     if new_type == 'rule':
         target_dir = os.path.join(workspace, "rules")
         os.makedirs(target_dir, exist_ok=True)

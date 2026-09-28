@@ -21,6 +21,7 @@ MINIMUM_MODE=""
 ACTIVATION=""
 EFFECTOR=false
 MEMORY=false
+DECAY_TO_YAML=""
 
 # Parse arguments
 while [[ $# -gt 0 ]]; do
@@ -88,6 +89,12 @@ if [[ "$EFFECTOR" == "true" ]]; then
   WEIGHT="3.0"
   RESPONSE_TYPE="effector"
   MINIMUM_MODE="tempest"
+  DECAY_TO_YAML="decay_to:
+  type: membrane
+  impact_weight: 1.0
+  minimum_mode: trident
+  response_type: memory
+  activation: dormant"
 fi
 
 if [[ "$MEMORY" == "true" ]]; then
@@ -166,6 +173,9 @@ fi
 if [[ -n "$ACTIVATION" ]]; then
   OPTIONAL_YAML+="activation: $ACTIVATION"$'\n'
 fi
+if [[ -n "$DECAY_TO_YAML" ]]; then
+  OPTIONAL_YAML+="$DECAY_TO_YAML"$'\n'
+fi
 
 cat > "$FILE_PATH" << EOF
 ---
@@ -178,6 +188,11 @@ expiry_days: $EXPIRY_DAYS
 created: "$DATE"
 impact_weight: $WEIGHT
 tags: $TAGS_YAML
+lineage:
+  parent_id: null
+  created_by: "manual"
+  generation: 0
+  siblings: []
 ${OPTIONAL_YAML}fitness:
   triggers: 0
   true_positives: 0

@@ -9,6 +9,12 @@ created: "template"
 impact_weight: 3.0
 response_type: effector
 minimum_mode: tempest
+decay_to:
+  type: membrane
+  impact_weight: 1.0
+  minimum_mode: trident
+  response_type: memory
+  activation: dormant
 fitness:
   triggers: 0
   true_positives: 0

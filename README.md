@@ -188,6 +188,7 @@ Read the [EVOLUTION.md](docs/EVOLUTION.md) for a comprehensive breakdown, driven
 - **Waste Rate**: ~1.1% in best governed sessions
 - **Calibrated Token Ratio**: 1.35 measured directly against models
 See [METRICS.md](docs/METRICS.md) for a complete system breakdown.
+See [BENCHMARK.md](docs/BENCHMARK.md) for the standardized governance effectiveness benchmark.
 
 ## Design Principles
 

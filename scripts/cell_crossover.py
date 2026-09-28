@@ -114,6 +114,10 @@ def main():
 
     falsification = "Falsification criteria combined or needs review."
 
+    gen_a = meta_a.get('lineage', {}).get('generation', 0) if isinstance(meta_a.get('lineage'), dict) else 0
+    gen_b = meta_b.get('lineage', {}).get('generation', 0) if isinstance(meta_b.get('lineage'), dict) else 0
+    merged_generation = max(gen_a, gen_b) + 1
+
     new_meta = {
         'type': merged_type,
         'hypothesis': merged_hypothesis,
@@ -124,6 +128,12 @@ def main():
         'created': date_str,
         'impact_weight': merged_weight,
         'tags': [],
+        'lineage': {
+            'parent_id': f"{args.cell_a_id} × {args.cell_b_id}",
+            'created_by': "crossover",
+            'generation': merged_generation,
+            'siblings': []
+        },
         'fitness': {
             'triggers': 0,
             'true_positives': 0,

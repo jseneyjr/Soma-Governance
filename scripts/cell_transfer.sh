@@ -107,6 +107,14 @@ metadata['expiry_sessions'] = 5
 metadata['transferred_from'] = source_basename
 metadata['transfer_date'] = datetime.utcnow().isoformat() + 'Z'
 
+gen = metadata.get('lineage', {}).get('generation', 0) if isinstance(metadata.get('lineage'), dict) else 0
+metadata['lineage'] = {
+    'parent_id': os.path.splitext(filename)[0],
+    'created_by': 'transfer',
+    'generation': gen + 1,
+    'siblings': []
+}
+
 with open(dest_file, 'w') as f:
     f.write('---\n')
     yaml.dump(metadata, f, default_flow_style=False, sort_keys=False)
