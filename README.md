@@ -161,7 +161,7 @@ bash scripts/team_sync.sh pull
 To remove all Prism AI Steering files from your system:
 
 ```bash
-bash uninstall.sh gemini
+bash install/uninstall.sh gemini
 ```
 
 You can also use `--dry-run` to see what will be removed, and `--keep-config` to preserve `steering.conf`.
