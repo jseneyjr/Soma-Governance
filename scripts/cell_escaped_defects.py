@@ -5,7 +5,7 @@ For each failure event (test regression, crash, build failure):
 1. Identify which files were involved
 2. Check which cells cover those files via target_paths
 3. If a cell covers the file but didn't fire → escaped defect
-4. Update the cell's escaped_defect_rate in its YAML frontmatter
+4. Log the escaped defect to metrics/escaped_defects.jsonl
 
 Usage:
     python cell_escaped_defects.py --event crash --files agent/ppo/optimizer.py
@@ -15,8 +15,17 @@ Usage:
 """
 import os, sys, argparse, glob, yaml, json, subprocess, math
 from datetime import datetime
-from fnmatch import fnmatch
 from prism_resolve import resolve_workspace
+
+def match_glob(filepath, pattern):
+    """Match a filepath against a glob pattern, supporting ** globstar."""
+    import re
+    # Convert glob to regex
+    regex = pattern.replace('.', r'\.')
+    regex = regex.replace('**/', '(?:.+/)?')  # ** matches any number of directories
+    regex = regex.replace('*', '[^/]*')       # * matches within a single directory
+    regex = regex.replace('?', '[^/]')        # ? matches single char
+    return bool(re.match(regex + '$', filepath))
 
 
 def load_cells(cells_dir):
@@ -50,7 +59,7 @@ def find_covering_cells(cells, files):
         matched_files = []
         for f in files:
             for pattern in target_paths:
-                if fnmatch(f, pattern):
+                if match_glob(f, pattern):
                     matched_files.append(f)
                     break
         if matched_files:
@@ -108,6 +117,10 @@ def update_cell_escaped_rate(cell, workspace):
     return round(escaped / total, 4)
 
 
+# Note: This is a simplified fitness for reporting purposes.
+# The canonical fitness function is in cell_fitness.py which also includes
+# specificity penalty, antifragile bonus, and impact weighting.
+# For authoritative fitness scores, use cell_fitness.py --json.
 def compute_enhanced_fitness(cell, escaped_defect_rate):
     """Compute fitness with independent outcome signal.
     
@@ -146,11 +159,16 @@ def scan_git_for_defects(workspace, since):
         # Heuristic: fix, revert, hotfix, patch, workaround indicate escaped defects
         if any(kw in msg for kw in ['revert', 'hotfix', 'fix:', 'bugfix', 'patch:', 'workaround']):
             # Get files changed in this commit
-            diff_result = subprocess.run(
-                ['git', 'diff', '--name-only', f'{sha}~1', sha],
-                capture_output=True, text=True, cwd=workspace
-            )
-            files = [f for f in diff_result.stdout.strip().split('\n') if f]
+            try:
+                diff_result = subprocess.run(
+                    ['git', 'diff', '--name-only', f'{sha}~1', sha],
+                    capture_output=True, text=True, cwd=workspace
+                )
+                if diff_result.returncode != 0:
+                    continue
+                files = [f for f in diff_result.stdout.strip().split('\n') if f]
+            except Exception:
+                continue
             if files:
                 defect_commits.append({
                     'sha': sha[:8],

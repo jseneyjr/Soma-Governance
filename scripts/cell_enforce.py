@@ -54,16 +54,18 @@ def generate_precommit_check(cell, workspace):
 set -uo pipefail
 
 CHANGED_FILES=$(git diff --cached --name-only 2>/dev/null)
+if [ -z "$CHANGED_FILES" ]; then exit 0; fi
+
 TARGET_PATTERNS=({' '.join(f'"{p}"' for p in target_paths)})
 MATCHED=0
 
-for pattern in "${{TARGET_PATTERNS[@]}}"; do
-    for file in $CHANGED_FILES; do
+while IFS= read -r file; do
+    for pattern in "${{TARGET_PATTERNS[@]}}"; do
         case "$file" in
             $pattern) MATCHED=1; break 2 ;;
         esac
     done
-done
+done <<< "$CHANGED_FILES"
 
 if [ "$MATCHED" -eq 1 ]; then
     echo "\U0001f6e1\ufe0f  [{name}] Cell triggered (mechanical enforcement)"
@@ -86,16 +88,18 @@ exit 0  # Mechanical: warn but don't block
 set -uo pipefail
 
 CHANGED_FILES=$(git diff --cached --name-only 2>/dev/null)
+if [ -z "$CHANGED_FILES" ]; then exit 0; fi
+
 TARGET_PATTERNS=({' '.join(f'"{p}"' for p in target_paths)})
 MATCHED=0
 
-for pattern in "${{TARGET_PATTERNS[@]}}"; do
-    for file in $CHANGED_FILES; do
+while IFS= read -r file; do
+    for pattern in "${{TARGET_PATTERNS[@]}}"; do
         case "$file" in
             $pattern) MATCHED=1; break 2 ;;
         esac
     done
-done
+done <<< "$CHANGED_FILES"
 
 if [ "$MATCHED" -eq 1 ]; then
     echo "\u26a0\ufe0f  [{name}] Membrane escalation triggered (mechanical enforcement)"
@@ -115,16 +119,18 @@ exit 0
 set -uo pipefail
 
 CHANGED_FILES=$(git diff --cached --name-only 2>/dev/null)
+if [ -z "$CHANGED_FILES" ]; then exit 0; fi
+
 TARGET_PATTERNS=({' '.join(f'"{p}"' for p in target_paths)})
 MATCHED=0
 
-for pattern in "${{TARGET_PATTERNS[@]}}"; do
-    for file in $CHANGED_FILES; do
+while IFS= read -r file; do
+    for pattern in "${{TARGET_PATTERNS[@]}}"; do
         case "$file" in
             $pattern) MATCHED=1; break 2 ;;
         esac
     done
-done
+done <<< "$CHANGED_FILES"
 
 if [ "$MATCHED" -eq 1 ]; then
     echo "\U0001f50d  [{name}] Trap check triggered (mechanical enforcement)"
@@ -171,9 +177,13 @@ class Gate_{re.sub(r"[^a-zA-Z0-9]", "_", name)}:
         # Override this method with domain-specific logic.
         # The default implementation logs the check.
         signal_script = os.path.join(
-            os.path.dirname(__file__), '..', 'vendor', 'prism-ai-steering',
+            os.path.dirname(__file__), '..', '..', 'vendor', 'prism-ai-steering',
             'scripts', 'cell_signal.sh'
         )
+        if not os.path.exists(signal_script):
+            signal_script = os.path.join(
+                os.path.dirname(__file__), '..', '..', 'scripts', 'cell_signal.sh'
+            )
         if os.path.exists(signal_script):
             subprocess.run(
                 ['bash', signal_script, cls.CELL_NAME, 'tp'],
@@ -187,10 +197,10 @@ class Gate_{re.sub(r"[^a-zA-Z0-9]", "_", name)}:
             msg = message or f"Gate violation: {{cls.HYPOTHESIS}}"
             # Record escaped defect
             escaped_script = os.path.join(
-                os.path.dirname(__file__), '..', 'vendor', 'prism-ai-steering',
+                os.path.dirname(__file__), '..', '..', 'vendor', 'prism-ai-steering',
                 'scripts', 'cell_escaped_defects.py'
             )
-            if os.path.exists(escaped_script):
+            if os.path.exists(escaped_script) and cls.TARGET_PATHS:
                 subprocess.run(
                     ['python3', escaped_script, '--event', 'crash',
                      '--files'] + cls.TARGET_PATHS + ['--severity', 'critical'],
@@ -207,16 +217,38 @@ def update_cell_enforcement_artifact(cell, artifact_path, workspace):
     with open(cell_path) as f:
         content = f.read()
     
+    if 'enforcement_artifact:' in content:
+        return  # Already has artifact link
+    
     rel_path = os.path.relpath(artifact_path, workspace)
     
-    if 'enforcement_artifact:' not in content:
-        # Add after enforcement: line
-        content = content.replace(
-            f"enforcement: {cell.get('enforcement', 'advisory')}",
-            f"enforcement: {cell.get('enforcement', 'advisory')}\\nenforcement_artifact: {rel_path}"
-        )
-        with open(cell_path, 'w') as f:
-            f.write(content)
+    # Parse the YAML frontmatter properly
+    if not content.startswith('---'):
+        return
+    end_idx = content.find('---', 3)
+    if end_idx == -1:
+        return
+    
+    yaml_block = content[3:end_idx]
+    body = content[end_idx:]  # includes closing ---
+    
+    # Insert enforcement_artifact after enforcement line
+    lines = yaml_block.split('\n')
+    new_lines = []
+    inserted = False
+    for line in lines:
+        new_lines.append(line)
+        if line.strip().startswith('enforcement:') and not inserted:
+            new_lines.append(f'enforcement_artifact: {rel_path}')
+            inserted = True
+    
+    if not inserted:
+        # Just append before the end
+        new_lines.append(f'enforcement_artifact: {rel_path}')
+    
+    new_content = '---' + '\n'.join(new_lines) + body
+    with open(cell_path, 'w') as f:
+        f.write(new_content)
 
 
 def main():
