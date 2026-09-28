@@ -184,6 +184,15 @@ Read the [EVOLUTION.md](docs/EVOLUTION.md) for a comprehensive breakdown, driven
 - **Calibrated Token Ratio**: 1.35 measured directly against models
 See [METRICS.md](docs/METRICS.md) for a complete system breakdown.
 
+## Design Principles
+
+1. **Evidence over intuition** — Every rule traces back to observed steps wasted. No rule exists "just in case."
+2. **Accuracy over speed** — The agent must never sacrifice correctness to save tokens.
+3. **Rules as a system** — Cross-references between rules are intentional. Providence §3 mandates read-before-write; refactoring-pilot operationalizes it as a phased workflow.
+4. **Continuous validation** — Rules aren't "done" after review. Governance is a living system that evolves with each session.
+5. **Installation completeness** — Governance installed at partial fidelity provides false assurance. Every installer path must deploy rules, skills, and hooks with the same completeness.
+6. **Hypothesis-driven governance** — Every governance extension must carry its own falsifiability criteria. A rule, persona, or adaptation that cannot be tested has no place in the system. Generated extensions (Chloroplasts, Vacuoles) must specify what they predict, how to measure it, and when to prune if unvalidated. The scientific method is not just how we evolve the system — it IS the system.
+
 ## License
 
 Apache 2.0 — Copyright 2026 Nicholas Seney

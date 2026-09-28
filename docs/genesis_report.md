@@ -45,7 +45,7 @@ docs/        — Documentation & metrics
 ## 📜 Rings
 ### Branch Topology
 - Default branch: main
-- Active branches: 2 (main, feature/phase-11-prism)
+- Active branches: 1 (main)
 - Stale branches (>90 days): 0
 
 ### Commit Activity
