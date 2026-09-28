@@ -57,6 +57,22 @@ for f in cells:
             })
     except: pass
 
+# Check dormant spores for reactivation
+spores_file = os.path.join(workspace, '.prism', 'cells', '.spores.jsonl')
+if os.path.exists(spores_file):
+    with open(spores_file) as f:
+        for line in f:
+            try:
+                spore = json.loads(line.strip())
+                for pattern in spore.get('reactivation_patterns', spore.get('target_paths', [])):
+                    if any(fnmatch.fnmatch(cf, pattern) for cf in all_changed):
+                        print(f"🧬 SPORE REACTIVATION: Extinct cell '{spore['name']}' matches current changes")
+                        print(f"   Hypothesis: {spore['hypothesis'][:80]}")
+                        print(f"   Peak fitness: {spore.get('peak_fitness', 'unknown')}")
+                        break
+            except:
+                pass
+
 if '--json' in sys.argv:
     print(json.dumps(triggered))
 else:

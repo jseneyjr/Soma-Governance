@@ -8,6 +8,30 @@ import yaml
 from datetime import datetime
 from prism_resolve import resolve_workspace
 
+
+def bayesian_fitness(tp, fp, confidence=0.90):
+    """Beta-Binomial posterior with Jeffrey's prior."""
+    a = tp + 0.5
+    b = fp + 0.5
+    mean = a / (a + b)
+    import math
+    std = math.sqrt((a * b) / ((a + b) ** 2 * (a + b + 1)))
+    z = 1.645
+    lower = max(0, mean - z * std)
+    upper = min(1, mean + z * std)
+    certainty = 'low' if (tp + fp) < 5 else 'medium' if (tp + fp) < 20 else 'high'
+    return {
+        'mean': round(mean, 4),
+        'lower_90': round(lower, 4),
+        'upper_90': round(upper, 4),
+        'certainty': certainty
+    }
+
+def antifragile_bonus(metadata):
+    """Cells gain +5% fitness per survived high-intensity review."""
+    stress_events = metadata.get('fitness', {}).get('stress_survived', 0)
+    return 1.0 + (0.05 * min(stress_events, 10))
+
 def decayed_fitness(raw_score, last_trigger_date, half_life_days=30):
     if last_trigger_date is None or raw_score is None:
         return raw_score
@@ -21,9 +45,22 @@ def main():
     parser.add_argument("--prune", action="store_true", help="List cells recommended for removal")
     parser.add_argument("--promote", action="store_true", help="List cells ready for cross-repo promotion")
     parser.add_argument("--cross-repo", action="store_true", help="Aggregate fitness across multiple repos in METRICS_REPO")
+    parser.add_argument("--bayesian", action="store_true", help="Output bayesian estimates")
     args = parser.parse_args()
 
+
     workspace = resolve_workspace(__file__)
+    total_sessions = 30
+    conf_path = os.path.join(workspace, "steering.conf")
+    if os.path.exists(conf_path):
+        with open(conf_path) as f:
+            for line in f:
+                if line.startswith("TOTAL_SESSIONS="):
+                    try:
+                        total_sessions = int(line.strip().split("=")[1])
+                    except:
+                        pass
+
     cells_dir = os.path.join(workspace, '.prism', 'cells')
     cell_files = glob.glob(os.path.join(cells_dir, '**', '*.md'), recursive=True)
 
@@ -57,10 +94,28 @@ def main():
         fp = fitness.get('false_positives', 0)
         impact_weight = metadata.get('impact_weight', 1.0)
         
+
         if triggers == 0:
             score = None
+            snr_db = 0.0
         else:
             score = (tp / triggers) * impact_weight
+            
+            trigger_rate = triggers / max(total_sessions, 1)
+            specificity_penalty = 1.0 - min(trigger_rate, 1.0)
+            if trigger_rate > 0.8:
+                score = score * specificity_penalty
+                
+            score = score * antifragile_bonus(metadata)
+            
+            import math
+            if tp > 0 and fp > 0:
+                snr_db = round(10 * math.log10(tp / fp), 1)
+            elif tp > 0:
+                snr_db = float('inf')
+            else:
+                snr_db = 0.0
+
             
         last_trigger_date_str = fitness.get('last_trigger_date')
         last_trigger_date = None
@@ -86,9 +141,14 @@ def main():
         created_str = metadata.get('created')
         status = "NEW"
         
+
         # Apoptosis: immediate eviction if false positives dominate
         if fp > 0 and tp > 0 and fp > 2 * tp:
-            status = "APOPTOSIS"
+            if cell_type == 'wall':
+                status = "APOPTOSIS_WARNING"
+            else:
+                status = "APOPTOSIS"
+
         elif dec_score is not None:
             if dec_score > 0.7:
                 status = "SURVIVE"
@@ -169,7 +229,7 @@ def main():
                     'to_type': new_type
                 }) + '\n')
 
-        results.append({
+        res = {
             "cell": cell_name,
             "type": cell_type,
             "hypothesis": metadata.get('hypothesis', ''),
@@ -178,8 +238,12 @@ def main():
             "fp": fp,
             "score": score,
             "decayed_score": dec_score,
-            "status": status
-        })
+            "status": status,
+            "snr_db": snr_db
+        }
+        if args.bayesian:
+            res['bayesian'] = bayesian_fitness(tp, fp)
+        results.append(res)
 
     if args.prune:
         results = [r for r in results if r['status'] in ("EXTINCT", "DORMANT")]
@@ -211,7 +275,19 @@ def main():
                 return os.path.expanduser(metrics_repo)
             return os.path.join(workspace, "docs", "snapshots")
             
-        workspace = resolve_workspace(__file__)
+    
+    workspace = resolve_workspace(__file__)
+    total_sessions = 30
+    conf_path = os.path.join(workspace, "steering.conf")
+    if os.path.exists(conf_path):
+        with open(conf_path) as f:
+            for line in f:
+                if line.startswith("TOTAL_SESSIONS="):
+                    try:
+                        total_sessions = int(line.strip().split("=")[1])
+                    except:
+                        pass
+
         metrics_dir = resolve_metrics_dir(workspace)
         
         # Look for JSON files in metrics_dir that might be cell fitness snapshots
@@ -267,15 +343,26 @@ def main():
                 print(f"{hyp:<50} | {r['repos']:<5} | {r['avg_fitness']:<11.2f} | {r['candidate']:<10}")
         return
 
+
     if args.json:
         print(json.dumps(results, indent=2))
     else:
-        print(f"{'Cell':<20} | {'Type':<12} | {'Triggers':<8} | {'TP':<4} | {'FP':<4} | {'Raw':<6} | {'Decayed':<7} | {'Status':<10}")
-        print("-" * 85)
-        for r in results:
-            score_str = f"{r['score']:.2f}" if r['score'] is not None else "null"
-            dec_score_str = f"{r['decayed_score']:.2f}" if r['decayed_score'] is not None else "null"
-            print(f"{r['cell']:<20} | {r['type']:<12} | {r['triggers']:<8} | {r['tp']:<4} | {r['fp']:<4} | {score_str:<6} | {dec_score_str:<7} | {r['status']:<10}")
+        if args.bayesian:
+            print(f"{'Cell':<20} | {'Type':<12} | {'Triggers':<8} | {'TP':<4} | {'FP':<4} | {'Raw':<6} | {'Decayed':<7} | {'Status':<10} | {'Bayesian Mean':<13} | {'SNR':<5}")
+            print("-" * 105)
+            for r in results:
+                score_str = f"{r['score']:.2f}" if r['score'] is not None else "null"
+                dec_score_str = f"{r['decayed_score']:.2f}" if r['decayed_score'] is not None else "null"
+                bayes_mean = f"{r['bayesian']['mean']:.2f} ({r['bayesian']['certainty']})" if 'bayesian' in r else ""
+                print(f"{r['cell']:<20} | {r['type']:<12} | {r['triggers']:<8} | {r['tp']:<4} | {r['fp']:<4} | {score_str:<6} | {dec_score_str:<7} | {r['status']:<10} | {bayes_mean:<13} | {r.get('snr_db', 0):<5}")
+        else:
+            print(f"{'Cell':<20} | {'Type':<12} | {'Triggers':<8} | {'TP':<4} | {'FP':<4} | {'Raw':<6} | {'Decayed':<7} | {'Status':<10} | {'SNR':<5}")
+            print("-" * 93)
+            for r in results:
+                score_str = f"{r['score']:.2f}" if r['score'] is not None else "null"
+                dec_score_str = f"{r['decayed_score']:.2f}" if r['decayed_score'] is not None else "null"
+                print(f"{r['cell']:<20} | {r['type']:<12} | {r['triggers']:<8} | {r['tp']:<4} | {r['fp']:<4} | {score_str:<6} | {dec_score_str:<7} | {r['status']:<10} | {r.get('snr_db', 0):<5}")
+
 
 if __name__ == "__main__":
     main()

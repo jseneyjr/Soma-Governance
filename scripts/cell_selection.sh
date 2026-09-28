@@ -65,6 +65,9 @@ for root, dirs, files in os.walk(cells_dir):
             
         triggers = get_val('triggers', 0)
         tp = get_val('true_positives', 0)
+        fp = get_val('false_positives', 0)
+        type_match = re.search(r'type:\s*([^\s\n]+)', fm)
+        cell_type = type_match.group(1) if type_match else ''
         dormant = ('dormant_since' in fm)
         
         if triggers == 0:
@@ -72,7 +75,12 @@ for root, dirs, files in os.walk(cells_dir):
             score = 0.0
         else:
             score = tp / triggers
-            if score > 0.7: category = "SURVIVE"
+            if fp > 0 and tp > 0 and fp > 2 * tp:
+                if cell_type == 'wall':
+                    category = "APOPTOSIS_WARNING"
+                else:
+                    category = "APOPTOSIS"
+            elif score > 0.7: category = "SURVIVE"
             elif score >= 0.3: category = "ADAPT"
             else: category = "EXTINCT"
             
@@ -80,10 +88,38 @@ for root, dirs, files in os.walk(cells_dir):
         
         if execute_mode:
             action = None
-            if category == "EXTINCT":
+            if category in ("EXTINCT", "APOPTOSIS"):
                 dest = os.path.join(archive_dir, f)
                 shutil.move(fpath, dest)
                 action = "moved_to_archive"
+                
+                # Save dormant spore
+                spores_file = os.path.join(cells_dir, ".spores.jsonl")
+                
+                def get_str(key):
+                    m = re.search(fr"{key}:\s*(.+?)$", fm, re.MULTILINE)
+                    return m.group(1).strip().strip("\"'") if m else ""
+                
+                name_val = get_str("name") or f.replace(".md", "")
+                type_val = get_str("type")
+                hypo_val = get_str("hypothesis")
+                
+                tp_list = []
+                tp_m = re.search(r"target_paths:\s*\[(.*?)\]", fm, re.DOTALL)
+                if tp_m:
+                    tp_list = [p.strip().strip("\"'") for p in tp_m.group(1).split(",") if p.strip()]
+                
+                spore = {
+                    "name": name_val,
+                    "type": type_val,
+                    "hypothesis": hypo_val,
+                    "target_paths": tp_list,
+                    "peak_fitness": score,
+                    "extinction_date": datetime.datetime.utcnow().strftime("%Y-%m-%d"),
+                    "reactivation_patterns": tp_list
+                }
+                with open(spores_file, "a") as sf:
+                    sf.write(json.dumps(spore) + "\n")
             elif category == "DORMANT" and not dormant:
                 timestamp = datetime.datetime.utcnow().isoformat() + "Z"
                 new_content = content.replace("fitness:", f"dormant_since: {timestamp}\nfitness:")

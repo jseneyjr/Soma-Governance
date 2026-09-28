@@ -35,7 +35,7 @@ if [ -f "$SCRIPT_DIR/common.sh" ]; then
 fi
 
 if [ "$#" -lt 2 ]; then
-  echo "Usage: $0 <cell_id> <tp|fp|fn> [--metric key=value]"
+  echo "Usage: $0 <cell_id> <tp|fp|fn> [--metric key=value] [--stress]"
   exit 2
 fi
 
@@ -45,11 +45,28 @@ shift 2
 
 METRIC_KEY=""
 METRIC_VAL=""
-if [ "$#" -ge 2 ] && [ "$1" == "--metric" ]; then
-  # Split on first equals sign
-  METRIC_KEY="${2%%=*}"
-  METRIC_VAL="${2#*=}"
-fi
+STRESS="false"
+
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --metric)
+      if [ "$#" -ge 2 ]; then
+        METRIC_KEY="${2%%=*}"
+        METRIC_VAL="${2#*=}"
+        shift 2
+      else
+        shift
+      fi
+      ;;
+    --stress)
+      STRESS="true"
+      shift
+      ;;
+    *)
+      shift
+      ;;
+  esac
+done
 
 if [[ "$OUTCOME" != "tp" && "$OUTCOME" != "fp" && "$OUTCOME" != "fn" ]]; then
   echo "Error: Outcome must be tp, fp, or fn."
@@ -92,6 +109,7 @@ outcome = sys.argv[2]
 metric_key = sys.argv[3]
 metric_val = sys.argv[4]
 metrics_file = sys.argv[5]
+stress = True if sys.argv[6] == 'true' else False
 
 try:
     with open(file_path, 'r') as f:
@@ -144,6 +162,9 @@ fitness['false_positives'] = fp
 fitness['score'] = new_score
 fitness['last_trigger_date'] = datetime.utcnow().isoformat() + "Z"
 
+if stress:
+    fitness['stress_survived'] = fitness.get('stress_survived', 0) + 1
+
 metadata['fitness'] = fitness
 
 try:
@@ -179,4 +200,4 @@ if metric_key:
 EOF
 )
 
-python3 -c "$PYTHON_HELPER" "$TARGET_CELL" "$OUTCOME" "$METRIC_KEY" "$METRIC_VAL" "$METRICS_FILE"
+python3 -c "$PYTHON_HELPER" "$TARGET_CELL" "$OUTCOME" "$METRIC_KEY" "$METRIC_VAL" "$METRICS_FILE" "$STRESS"

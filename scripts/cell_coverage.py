@@ -1,0 +1,91 @@
+#!/usr/bin/env python3
+import os, sys, argparse, glob, yaml, json, subprocess
+from fnmatch import fnmatch
+from prism_resolve import resolve_workspace
+
+def main():
+    parser = argparse.ArgumentParser(description='Cell coverage map: visualize governance blind spots')
+    parser.add_argument('--json', action='store_true', help='JSON output')
+    args = parser.parse_args()
+    
+    workspace = resolve_workspace(__file__)
+    cells_dir = os.path.join(workspace, '.prism', 'cells')
+    
+    # Get all tracked files
+    result = subprocess.run(['git', 'ls-files'], capture_output=True, text=True, cwd=workspace)
+    all_files = [f for f in result.stdout.strip().split('\n') if f]
+    
+    # Load all cell target_paths
+    cell_patterns = []
+    for cell_file in glob.glob(os.path.join(cells_dir, '**', '*.md'), recursive=True):
+        if os.path.basename(cell_file) == 'README.md': continue
+        try:
+            with open(cell_file) as f: content = f.read()
+            if not content.startswith('---'): continue
+            fm = yaml.safe_load(content[3:content.find('---', 3)])
+            paths = fm.get('target_paths', [])
+            name = os.path.splitext(os.path.basename(cell_file))[0]
+            cell_patterns.append({'name': name, 'patterns': paths, 'type': fm.get('type', '')})
+        except: pass
+    
+    # Compute coverage
+    covered_files = set()
+    uncovered_files = set()
+    coverage_map = {}  # dir -> {covered, total}
+    
+    for f in all_files:
+        is_covered = False
+        for cell in cell_patterns:
+            for pattern in cell['patterns']:
+                if fnmatch(f, pattern):
+                    is_covered = True
+                    break
+            if is_covered: break
+        
+        if is_covered:
+            covered_files.add(f)
+        else:
+            uncovered_files.add(f)
+        
+        # Track by directory
+        d = os.path.dirname(f) or '.'
+        if d not in coverage_map:
+            coverage_map[d] = {'covered': 0, 'total': 0}
+        coverage_map[d]['total'] += 1
+        if is_covered:
+            coverage_map[d]['covered'] += 1
+    
+    total = len(all_files)
+    covered = len(covered_files)
+    pct = (covered / total * 100) if total > 0 else 0
+    
+    if args.json:
+        print(json.dumps({
+            'total_files': total, 'covered': covered, 'uncovered': total - covered,
+            'coverage_pct': round(pct, 1),
+            'by_directory': coverage_map
+        }, indent=2))
+    else:
+        print(f'\n📊 Cell Coverage: {covered}/{total} files ({pct:.1f}%)\n')
+        print(f'{"Directory":<40} {"Coverage":>10}  Bar')
+        print('─' * 70)
+        for d in sorted(coverage_map.keys()):
+            info = coverage_map[d]
+            dpct = info['covered'] / info['total'] * 100 if info['total'] > 0 else 0
+            bar_len = int(dpct / 5)
+            bar = '█' * bar_len + '░' * (20 - bar_len)
+            status = '✅' if dpct == 100 else '⚠️' if dpct > 0 else '🔴'
+            print(f'{d:<40} {info["covered"]:>3}/{info["total"]:<3} {status} {bar}')
+        
+        if uncovered_files:
+            print(f'\n🔴 Blind Spots ({len(uncovered_files)} uncovered files):')
+            # Show top uncovered dirs
+            uncovered_dirs = {}
+            for f in uncovered_files:
+                d = os.path.dirname(f) or '.'
+                uncovered_dirs[d] = uncovered_dirs.get(d, 0) + 1
+            for d, count in sorted(uncovered_dirs.items(), key=lambda x: -x[1])[:10]:
+                print(f'   {d}/ ({count} files)')
+
+if __name__ == '__main__':
+    main()

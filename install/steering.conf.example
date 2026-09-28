@@ -98,3 +98,7 @@ ENABLE_HOOKS=true
 # CELL_HALF_LIFE_CHLOROPLAST=60
 # CELL_HALF_LIFE_MEMBRANE=45
 # CELL_HALF_LIFE_PLASMODESMATA=60
+
+# STOCHASTIC_GENESIS_INTERVAL: Number of sessions between random cell injections.
+# Injects random diversity (Cambrian Trigger) to prevent local optima. Default: 10.
+# STOCHASTIC_GENESIS_INTERVAL=10

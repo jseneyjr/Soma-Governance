@@ -149,6 +149,25 @@ for f in cells:
     except: pass
 " 2>/dev/null || true
 
+# === Stochastic Genesis (Diversity Injection) ===
+python3 "$SCRIPTS_DIR/cell_genesis_stochastic.py" 2>/dev/null || true
+
+# === Mulch → Cell Pipeline ===
+MULCH_QUEUE="$(pwd)/.prism/governance/mulch_queue.jsonl"
+if [ -f "$MULCH_QUEUE" ] && [ -s "$MULCH_QUEUE" ]; then
+    echo "  Processing mulch queue..."
+    MULCH_COUNT=0
+    while IFS= read -r line; do
+        NAME=$(echo "$line" | python3 -c "import sys,json; print(json.load(sys.stdin).get('name','mulch-cell'))" 2>/dev/null || echo 'mulch-cell')
+        HYPO=$(echo "$line" | python3 -c "import sys,json; print(json.load(sys.stdin).get('hypothesis',''))" 2>/dev/null || echo '')
+        if [ -n "$HYPO" ]; then
+            bash "$SCRIPTS_DIR/cell_create.sh" --name "$NAME" --type vacuole --hypothesis "$HYPO" 2>/dev/null && MULCH_COUNT=$((MULCH_COUNT + 1)) || true
+        fi
+    done < "$MULCH_QUEUE"
+    mv "$MULCH_QUEUE" "$MULCH_QUEUE.processed"
+    echo "  Created $MULCH_COUNT cells from mulch findings."
+fi
+
 # === Session Dashboard ===
 python3 -c "
 import os, glob, yaml, json
