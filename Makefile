@@ -15,7 +15,7 @@ ENABLE_HOOKS      ?= true
 export TEAM_SIZE GIT_STRATEGY APPROVAL_CHAIN
 export RULES_SUBSET ENABLE_HOOKS STEERING_PLATFORM
 
-.PHONY: help info install install-gemini install-kiro install-copilot install-windows \
+.PHONY: help info install install-windows \
         uninstall doctor validate update status test
 
 help: ## Show available targets
@@ -48,13 +48,13 @@ info: ## Show current configuration
 install: ## Install for configured platform (STEERING_PLATFORM)
 	@bash install.sh $(STEERING_PLATFORM)
 
-install-gemini: ## Install rules for Gemini/Antigravity
+install-gemini: ## Install rules for Gemini/Antigravity (alias)
 	@bash install.sh gemini
 
-install-kiro: ## Install rules for Kiro
+install-kiro: ## Install rules for Kiro (alias)
 	@bash install.sh kiro
 
-install-copilot: ## Install rules for GitHub Copilot
+install-copilot: ## Install rules for GitHub Copilot (alias)
 	@bash install.sh copilot $(if $(MODE),$(MODE),global)
 
 install-windows: ## Install rules and skills for Windows using PowerShell

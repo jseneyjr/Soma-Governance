@@ -22,7 +22,8 @@ jobs:
       
       - name: Check for hardcoded paths
         run: |
-          if grep -rn '/home/' scripts/ rules/ skills/ docs/ README.md 2>/dev/null; then
+          # Exclude template examples like /home/<user>/ which are privacy instructions
+          if grep -rn '/home/' scripts/ rules/ skills/ docs/ README.md 2>/dev/null | grep -v '<user>' | grep -v '<username>'; then
             echo "ERROR: Hardcoded paths found"
             exit 1
           fi
