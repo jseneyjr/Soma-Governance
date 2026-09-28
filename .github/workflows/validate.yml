@@ -46,7 +46,7 @@ jobs:
           echo "Privacy check complete"
 
       - name: Dry-run install
-        run: bash install.sh gemini --dry-run
+        run: bash install/install.sh gemini --dry-run
 
       - name: Dry-run uninstall
-        run: bash uninstall.sh gemini --dry-run --force
+        run: bash install/uninstall.sh gemini --dry-run --force

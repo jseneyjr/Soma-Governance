@@ -46,19 +46,19 @@ info: ## Show current configuration
 	@echo "└─────────────────────────────────────┘"
 
 install: ## Install for configured platform (STEERING_PLATFORM)
-	@bash install.sh $(STEERING_PLATFORM)
+	@bash install/install.sh $(STEERING_PLATFORM)
 
 install-gemini: ## Install rules for Gemini/Antigravity (alias)
-	@bash install.sh gemini
+	@bash install/install.sh gemini
 
 install-kiro: ## Install rules for Kiro (alias)
-	@bash install.sh kiro
+	@bash install/install.sh kiro
 
 install-copilot: ## Install rules for GitHub Copilot (alias)
-	@bash install.sh copilot $(if $(MODE),$(MODE),global)
+	@bash install/install.sh copilot $(if $(MODE),$(MODE),global)
 
 install-windows: ## Install rules and skills for Windows using PowerShell
-	@powershell -ExecutionPolicy Bypass -File install.ps1 -Platform $(STEERING_PLATFORM)
+	@powershell -ExecutionPolicy Bypass -File install/install.ps1 -Platform $(STEERING_PLATFORM)
 
 uninstall: ## Remove installed rules, skills, and hooks
 	@echo "Uninstalling steering rules for $(STEERING_PLATFORM)..."
@@ -115,7 +115,7 @@ doctor: ## Verify installation health & dependencies
 	done
 	@echo ""
 	@echo "Hook template:"
-	@if [ -f hooks.json.template ]; then echo "  ✅ hooks.json.template"; else echo "  ❌ hooks.json.template missing"; fi
+	@if [ -f install/hooks.json.template ]; then echo "  ✅ install/hooks.json.template"; else echo "  ❌ install/hooks.json.template missing"; fi
 	@echo ""
 	@echo "Installed rules ($(STEERING_PLATFORM)):"
 	@case "$(STEERING_PLATFORM)" in \
@@ -132,11 +132,11 @@ doctor: ## Verify installation health & dependencies
 
 validate: ## Check script syntax and config values
 	@echo "Validating..."
-	@for s in install.sh install-*.sh scripts/*.sh; do \
+	@for s in install/install.sh scripts/*.sh; do \
 	  if [ -f "$$s" ]; then bash -n "$$s" && echo "  ✅ $$s" || echo "  ❌ $$s"; fi; \
 	done
 	@if command -v python3 >/dev/null 2>&1; then \
-	  python3 -m json.tool hooks.json.template > /dev/null 2>&1 && echo "  ✅ hooks.json.template (valid JSON)" || echo "  ❌ hooks.json.template (invalid JSON)"; \
+	  python3 -m json.tool install/hooks.json.template > /dev/null 2>&1 && echo "  ✅ install/hooks.json.template (valid JSON)" || echo "  ❌ install/hooks.json.template (invalid JSON)"; \
 	fi
 	@echo "Done!"
 

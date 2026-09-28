@@ -321,7 +321,9 @@ APPROVAL_OVERRIDE
 install_hooks() {
   local repo_dir="$1"
   local target_dir="$2"
-  local template="$repo_dir/hooks.json.template"
+  local template="$repo_dir/install/hooks.json.template"
+  # Fallback: check repo root for backward compatibility
+  [ ! -f "$template" ] && template="$repo_dir/hooks.json.template"
   local scripts_dir="$repo_dir/scripts"
   local target="$target_dir/hooks.json"
 

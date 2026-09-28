@@ -8,7 +8,7 @@ while [ -h "$PRG" ]; do
   PRG="$(readlink "$PRG")"
   [[ $PRG != /* ]] && PRG="$DIR/$PRG"
 done
-REPO_DIR="$(cd -P "$(dirname "$PRG")" && pwd)"
+REPO_DIR="$(cd -P "$(dirname "$PRG")/.." && pwd)"
 
 source "$REPO_DIR/scripts/common.sh"
 load_config "$REPO_DIR"
