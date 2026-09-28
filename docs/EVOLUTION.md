@@ -396,9 +396,11 @@ Measurement Integrity → Ground-truth calibration, rule compression, ROI refram
 Genesis Cytogenesis → Repo-specific cell generation: Chloroplast personas, Vacuole traps, Cell Wall boundaries, Membrane escalation, Plasmodesmata cross-repo
     ↓
 Natural Selection → Fitness scoring, selection pressure, adaptation, speciation (cell → global rule promotion), extinction of unfit governance
+    ↓
+Team Topology → Shared repo convergence, org-wide promotion path, backup/restore lifecycle
 ```
 
-Compliance went from **7.8/10 to 9.8/10** and waste dropped from **~56% to 1.1%** in best-governed sessions — see [METRICS.md](METRICS.md) for the full breakdown. The rules now cover failure modes that no amount of upfront design would have predicted. Phase 11 validated the system against 66 real production sessions, proving that the governance gap between "rules present" and "skills present" is the highest-risk silent failure mode.
+Compliance went from **7.8/10 to 9.8/10** and waste dropped from **~56% to 1.1%** in best-governed sessions (with Phase 15 expanding this to multi-developer teams and clean uninstalls, reaching 17 scripts with zero added idle token overhead) — see [METRICS.md](METRICS.md) for the full breakdown. The rules now cover failure modes that no amount of upfront design would have predicted. Phase 11 validated the system against 66 real production sessions, proving that the governance gap between "rules present" and "skills present" is the highest-risk silent failure mode.
 
 ## Design Principles (Emerged, Not Prescribed)
 
@@ -409,4 +411,16 @@ Compliance went from **7.8/10 to 9.8/10** and waste dropped from **~56% to 1.1%*
 5. **Installation completeness** — Governance installed at partial fidelity provides false assurance. Every installer path must deploy rules, skills, and hooks with the same completeness.
 6. **Hypothesis-driven governance** — Every governance extension must carry its own falsifiability criteria. A rule, persona, or adaptation that cannot be tested has no place in the system. Generated extensions (Chloroplasts, Vacuoles) must specify what they predict, how to measure it, and when to prune if unvalidated. The scientific method is not just how we evolve the system — it IS the system.
 
-- [x] Phase 15: Team Topology & Clean Uninstaller
+---
+
+## Phase 15: Team Topology & Clean Uninstaller
+
+- Team governance convergence: `TEAM_REPO` and `ORG_REPO` in `steering.conf`
+- Three-tier hierarchy: Individual → Team → Organization
+- `team_sync.sh` with push/pull/status modes
+- Clean uninstaller (`uninstall.sh`) with backup/restore, manifest tracking
+- Install manifest (`~/.prism-ai-steering/manifest.json`) for safe uninstall
+- Backup-on-install: archives existing config before overwriting
+- Restore-on-uninstall: reinstates previous config if desired
+- Integration: cell_promote.py auto-syncs to TEAM_REPO, metrics_snapshot.sh uses TEAM_REPO, cell_fitness.py scans team snapshots
+- Privacy: only cell hypotheses/scores flow — never file content, paths, or PII

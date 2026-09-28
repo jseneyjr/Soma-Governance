@@ -1,6 +1,6 @@
 # Scripts Reference
 
-This document catalogs the 15 executable scripts that power the Prism AI Steering framework.
+This document catalogs the 17 executable scripts that power the Prism AI Steering framework.
 
 ## Lifecycle Scripts (Hooks)
 These scripts are invoked automatically by the IDE or terminal environment.
@@ -30,10 +30,8 @@ These scripts run the Cytogenesis selection and speciation pipeline. They respec
 ## Privacy Note
 All scripts are constrained by the **Privacy Invariant**: No script may output, log, or transmit raw file paths, usernames, hostnames, directory structures, diffs, or code patches. Only aggregate counts, booleans, and sanitized strings are permitted.
 
-## `team_sync.sh`
-Syncs local promoted cells and metrics snapshots to a shared team repository. Enables multi-developer governance convergence.
-Usage: `bash scripts/team_sync.sh [push|pull|status]`
+## Team & Organization
+* **`team_sync.sh`**: Syncs local promoted cells and metrics snapshots to a shared team repository. Enables multi-developer governance convergence with push/pull/status modes. Respects `TEAM_REPO` and `ORG_REPO` in `steering.conf`. **Privacy:** Only cell hypotheses/scores flow — never file content, paths, or PII.
 
-## `uninstall.sh`
-Removes Prism AI Steering files from the system. Reverses the install process safely, using the generated manifest.
-Usage: `bash uninstall.sh [platform] [--dry-run] [--keep-config] [--force]`
+## Installation Management
+* **`uninstall.sh`**: Clean uninstaller that removes Prism AI Steering files from the system using `~/.prism-ai-steering/manifest.json`. Features backup-on-install and restore-on-uninstall functionality to safely reinstate previous configurations if desired.

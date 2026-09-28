@@ -3,8 +3,8 @@
 [![License: Apache 2.0](https://img.shields.io/badge/License-Apache_2.0-blue?style=flat-square)](LICENSE)
 [![Rules](https://img.shields.io/badge/Rules-11-green?style=flat-square)](#rules)
 [![Skills](https://img.shields.io/badge/Skills-15-purple?style=flat-square)](#skills)
-[![Scripts](https://img.shields.io/badge/Scripts-15-red?style=flat-square)](#scripts)
-[![Phases](https://img.shields.io/badge/Phases-14-blue?style=flat-square)](docs/EVOLUTION.md)
+[![Scripts](https://img.shields.io/badge/Scripts-17-red?style=flat-square)](#scripts)
+[![Phases](https://img.shields.io/badge/Phases-15-blue?style=flat-square)](docs/EVOLUTION.md)
 [![Cells](https://img.shields.io/badge/Cells-4-orange?style=flat-square)](#adaptive-governance-cells)
 
 Prism AI Steering is an adaptive governance framework that generates, measures, and evolves its own rules based on observed agent behavior. Built on top of continuous feedback loops and biological natural selection principles, it ensures agents remain grounded, efficient, and safe across different repositories. See the [NOTICE](NOTICE) file for our full local-only Data Privacy Statement.
@@ -122,7 +122,7 @@ You can manually trigger these via: `python3 scripts/cell_fitness.py`, `scripts/
 
 ## 📜 Scripts
 
-Refer to [docs/SCRIPTS.md](docs/SCRIPTS.md) for full documentation of the 15 system scripts. Highlights include:
+Refer to [docs/SCRIPTS.md](docs/SCRIPTS.md) for full documentation of the 17 system scripts. Highlights include:
 - `cell_selection.sh`: Main entrypoint for evaluating cell fitness.
 - `escalation_sentinel.sh`: Predicts escalation necessity.
 - `governance_init.sh`: Seeds contexts, domain hints and tests.
@@ -168,12 +168,13 @@ You can also use `--dry-run` to see what will be removed, and `--keep-config` to
 
 
 ## Evolution
-Prism AI Steering has evolved across 14 measured phases, from manually written logic into a self-adapting machine:
+Prism AI Steering has evolved across 15 measured phases, from manually written logic into a self-adapting machine:
 - Phases 1-5: Prescriptive logic extraction and optimization.
 - Phases 6-10: Multi-lens scaling and Autonomous Orchestration.
 - Phases 11-12: Full dataset mapping and token census calibration.
 - Phase 13: Cytogenesis — Local governance and cell generation.
 - Phase 14: Natural Selection — Evolutionary scaling and cross-repo speciation.
+- Phase 15: Team Topology & Clean Uninstaller.
 
 Read the [EVOLUTION.md](docs/EVOLUTION.md) for a comprehensive breakdown, driven by 6 core Design Principles ensuring empirical, adaptive, hypothesis-driven, system-first governance.
 
