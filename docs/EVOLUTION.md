@@ -406,7 +406,7 @@ Natural Selection → Fitness scoring, selection pressure, adaptation, speciatio
 Team Topology → Shared repo convergence, org-wide promotion path, backup/restore lifecycle
 ```
 
-Compliance went from **7.8/10 to 9.8/10** and waste dropped from **~56% to 1.1%** in best-governed sessions (with Phase 15 expanding this to multi-developer teams and clean uninstalls, reaching 18 scripts with zero added idle token overhead) — see [METRICS.md](METRICS.md) for the full breakdown. The rules now cover failure modes that no amount of upfront design would have predicted. Phase 11 validated the system against 66 real production sessions, proving that the governance gap between "rules present" and "skills present" is the highest-risk silent failure mode.
+Compliance went from **7.8/10 to 9.8/10** and waste dropped from **~56% to 1.1%** in best-governed sessions (with Phase 15 expanding this to multi-developer teams and clean uninstalls, reaching 20 scripts with zero added idle token overhead) — see [METRICS.md](METRICS.md) for the full breakdown. The rules now cover failure modes that no amount of upfront design would have predicted. Phase 11 validated the system against 66 real production sessions, proving that the governance gap between "rules present" and "skills present" is the highest-risk silent failure mode.
 
 ## Design Principles (Emerged, Not Prescribed)
 

@@ -1,6 +1,6 @@
 # Scripts Reference
 
-This document catalogs the 18 executable scripts that power the Prism AI Steering framework.
+This document catalogs the 20 executable scripts that power the Prism AI Steering framework.
 
 ## Lifecycle Scripts (Hooks)
 These scripts are invoked automatically by the IDE or terminal environment.
@@ -18,6 +18,14 @@ These scripts run the Cytogenesis selection and speciation pipeline. They respec
 * **`cell_fitness.py`**: Computes the fitness score of each cell in `.prism/cells/` based on true positives, false positives, and triggers. Respects `METRICS_REPO`.
 * **`cell_adapt.py`**: Modifies underperforming cells (score 0.3 - 0.7) by refining their hypotheses and targeting to improve signal-to-noise ratios. Respects `METRICS_REPO`.
 * **`cell_promote.py`**: Identifies high-performing local cells (score > 0.7) running in multiple repositories and promotes them into global forest-floor rules. Respects `METRICS_REPO`.
+
+## External Signals & Lifecycle
+
+| Script | Purpose |
+|:-------|:--------|
+| `cell_signal.sh` | External fitness signal API. Allows CI/CD, monitoring, test suites, or any external system to feed TP/FP/FN outcomes back to cells. |
+| `cell_create.sh` | Programmatic cell creation. Create cells from automated systems, incident response, or test failures. |
+| `cell_demote.py` | Reverse of cell_promote.py. Demotes global rules back to local cells when they cause false positives in new contexts. |
 
 ## Telemetry & Metrics
 * **`token_census.py`**: Validates the token costs of active rules and skills via the Gemini SDK (or fallback estimation). Evaluates `METRICS_REPO`. **Privacy:** Only tokenizes local open-source rules/skills; never exfiltrates codebase files.

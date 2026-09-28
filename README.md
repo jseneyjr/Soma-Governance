@@ -3,7 +3,7 @@
 [![License: Apache 2.0](https://img.shields.io/badge/License-Apache_2.0-blue?style=flat-square)](LICENSE)
 [![Rules](https://img.shields.io/badge/Rules-11-green?style=flat-square)](#rules)
 [![Skills](https://img.shields.io/badge/Skills-15-purple?style=flat-square)](#skills)
-[![Scripts](https://img.shields.io/badge/Scripts-18-red?style=flat-square)](#scripts)
+[![Scripts](https://img.shields.io/badge/Scripts-20-red?style=flat-square)](#scripts)
 [![Phases](https://img.shields.io/badge/Phases-15-blue?style=flat-square)](docs/EVOLUTION.md)
 [![Cells](https://img.shields.io/badge/Cells-4-orange?style=flat-square)](#adaptive-governance-cells)
 
@@ -123,8 +123,11 @@ You can manually trigger these via: `python3 scripts/cell_fitness.py`, `scripts/
 
 ## 📜 Scripts
 
-Refer to [docs/SCRIPTS.md](docs/SCRIPTS.md) for full documentation of the 18 system scripts. Highlights include:
+Refer to [docs/SCRIPTS.md](docs/SCRIPTS.md) for full documentation of the 20 system scripts. Highlights include:
 - `cell_selection.sh`: Main entrypoint for evaluating cell fitness.
+- `cell_signal.sh`: External fitness signal API for CI/CD and monitoring integration.
+- `cell_create.sh`: Programmatic cell creation from automated systems.
+- `cell_demote.py`: Reverse promotion for cells causing issues in new contexts.
 - `escalation_sentinel.sh`: Predicts escalation necessity.
 - `governance_init.sh`: Seeds contexts, domain hints and tests.
 - `metrics_snapshot.sh`: Snapshots environment metrics telemetry.

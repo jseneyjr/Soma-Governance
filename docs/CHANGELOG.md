@@ -3,6 +3,19 @@
 All notable changes to Prism AI Steering are documented here.
 This project uses [Semantic Versioning](https://semver.org/).
 
+## [0.16.0] — 2026-09-27
+
+### Added
+- External fitness signal API (`cell_signal.sh`) — any system (CI/CD, monitoring, game results) can feed outcomes to cells
+- Programmatic cell creation (`cell_create.sh`) — create cells from automated systems
+- Cell demotion (`cell_demote.py`) — reverse promotion when cells cause issues in new contexts
+- Cell templates by domain (`templates/`) — RL training, web backend, infrastructure, data pipeline
+- 14 domain-specific cell templates with self-pruning (`expiry_sessions: 5`)
+- Template auto-detection in Genesis Stage 5 based on project dependencies
+
+### Changed
+- Script count: 18 → 20
+
 ## [0.15.1] — 2026-09-27
 
 ### Added

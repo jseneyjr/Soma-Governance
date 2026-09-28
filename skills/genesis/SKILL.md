@@ -396,6 +396,8 @@ This block is nominally ~200 tokens (approximate target; ground-truth token coun
 
 Dispatch 1 Flash cytogenesis orchestrator to read the Lichen output and generate repo-local governance cells.
 
+Before generating cells from Lichen output, check `templates/` for domain-matching template packs. Detect domain from: `requirements.txt` (Python/ML), `package.json` (JS/web), `Dockerfile`/`*.tf` (infra), `setup.py` with torch/tensorflow (RL/ML). Copy matching templates to `.prism/cells/` as seed cells.
+
 ### Orchestrator Objectives
 
 | Objective | Method | Output |
