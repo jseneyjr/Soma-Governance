@@ -3,6 +3,17 @@
 All notable changes to Prism AI Steering are documented here.
 This project uses [Semantic Versioning](https://semver.org/).
 
+## [0.21.0] — 2026-09-28
+
+### Added
+- Tiered enforcement system: cells declare `advisory`, `mechanical`, or `gate` enforcement level
+- `cell_escaped_defects.py`: Independent defect tracking from CI/tests/crashes (breaks self-evaluation loop)
+- Enhanced fitness formula: `bayesian_mean × (1 - escaped_defect_rate) × tier_weight`
+- Enforcement tier promotion/demotion lifecycle in `cell_promote.py --tier-check`
+- Tier distribution in governance report card
+- Backfilled all existing cells with `enforcement: advisory`
+- Script count: 37 → 38
+
 ## [0.20.0] — 2026-09-27
 
 ### Added

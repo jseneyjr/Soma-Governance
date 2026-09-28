@@ -1,5 +1,8 @@
 ---
 type: wall
+enforcement: advisory
+promotion_threshold: 0.85
+demotion_threshold: 0.30
 hypothesis: "Changes to Makefile and install*.sh require core review"
 prediction: "Will flag unreviewed changes to installer scripts"
 falsification: "0 findings in 15 sessions → prune"

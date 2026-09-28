@@ -84,6 +84,12 @@ def main():
     # Overall
     overall_pct = (coverage_pct * 0.3 + fitness_pct * 0.25 + diversity * 0.15 + staleness_pct * 0.15 + wall_pct * 0.15)
     
+    # Enforcement tier distribution
+    tier_counts = {}
+    for c in cells:
+        tier = c.get('enforcement', 'advisory')
+        tier_counts[tier] = tier_counts.get(tier, 0) + 1
+    
     # Find top improvement
     uncovered_dirs = {}
     for f in all_files:
@@ -99,6 +105,7 @@ def main():
             'diversity': {'pct': round(diversity, 1), 'grade': letter_grade(diversity)},
             'staleness': {'pct': round(staleness_pct, 1), 'grade': letter_grade(staleness_pct)},
             'wall_integrity': {'pct': round(wall_pct, 1), 'grade': letter_grade(wall_pct)},
+            'tiers': tier_counts,
             'overall': {'pct': round(overall_pct, 1), 'grade': letter_grade(overall_pct)},
             'top_improvement': f'Add cells for {top_gap[0]}/ ({top_gap[1]} uncovered files)'
         }, indent=2))
@@ -112,6 +119,8 @@ def main():
         print(f'  Diversity:       {diversity:5.1f}%  ({letter_grade(diversity)})')
         print(f'  Staleness:       {staleness_pct:5.1f}%  ({letter_grade(staleness_pct)})')
         print(f'  Wall Integrity:  {wall_pct:5.1f}%  ({letter_grade(wall_pct)})')
+        print()
+        print(f'  Tiers:           A: {tier_counts.get("advisory", 0)} | M: {tier_counts.get("mechanical", 0)} | G: {tier_counts.get("gate", 0)}')
         print()
         print(f'  Overall Grade:   {letter_grade(overall_pct)}')
         print()

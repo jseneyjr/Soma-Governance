@@ -229,6 +229,27 @@ def main():
                     'to_type': new_type
                 }) + '\n')
 
+        # Enhanced fitness with independent outcome signal
+        enforcement = metadata.get('enforcement', 'advisory')
+        tier_weights = {'advisory': 1.0, 'mechanical': 1.2, 'gate': 1.5}
+        tier_weight = tier_weights.get(enforcement, 1.0)
+        
+        # Load escaped defect rate
+        escaped_defects_log = os.path.join(workspace, '.prism', 'metrics', 'escaped_defects.jsonl')
+        escaped_count = 0
+        if os.path.exists(escaped_defects_log):
+            with open(escaped_defects_log) as edf:
+                for eline in edf:
+                    try:
+                        eentry = json.loads(eline.strip())
+                        if eentry.get('cell') == os.path.splitext(cell_name)[0]:
+                            escaped_count += 1
+                    except Exception:
+                        continue
+        
+        edr = escaped_count / (escaped_count + tp) if (escaped_count + tp) > 0 else 0.0
+        enhanced_score = round(score * (1 - edr) * tier_weight, 4) if score is not None else None
+
         res = {
             "cell": cell_name,
             "type": cell_type,
@@ -239,7 +260,11 @@ def main():
             "score": score,
             "decayed_score": dec_score,
             "status": status,
-            "snr_db": snr_db
+            "snr_db": snr_db,
+            "enforcement": enforcement,
+            "escaped_defects": escaped_count,
+            "escaped_defect_rate": edr,
+            "enhanced_fitness": enhanced_score
         }
         if args.bayesian:
             res['bayesian'] = bayesian_fitness(tp, fp)
@@ -348,20 +373,20 @@ def main():
         print(json.dumps(results, indent=2))
     else:
         if args.bayesian:
-            print(f"{'Cell':<20} | {'Type':<12} | {'Triggers':<8} | {'TP':<4} | {'FP':<4} | {'Raw':<6} | {'Decayed':<7} | {'Status':<10} | {'Bayesian Mean':<13} | {'SNR':<5}")
-            print("-" * 105)
+            print(f"{'Cell':<20} | {'Type':<12} | {'Tier':<10} | {'Triggers':<8} | {'TP':<4} | {'FP':<4} | {'Esc':<3} | {'EnhFit':<6} | {'Raw':<6} | {'Status':<10} | {'Bayesian Mean':<13} | {'SNR':<5}")
+            print("-" * 130)
             for r in results:
                 score_str = f"{r['score']:.2f}" if r['score'] is not None else "null"
-                dec_score_str = f"{r['decayed_score']:.2f}" if r['decayed_score'] is not None else "null"
+                enh_str = f"{r['enhanced_fitness']:.2f}" if r['enhanced_fitness'] is not None else "null"
                 bayes_mean = f"{r['bayesian']['mean']:.2f} ({r['bayesian']['certainty']})" if 'bayesian' in r else ""
-                print(f"{r['cell']:<20} | {r['type']:<12} | {r['triggers']:<8} | {r['tp']:<4} | {r['fp']:<4} | {score_str:<6} | {dec_score_str:<7} | {r['status']:<10} | {bayes_mean:<13} | {r.get('snr_db', 0):<5}")
+                print(f"{r['cell']:<20} | {r['type']:<12} | {r.get('enforcement', 'advisory'):<10} | {r['triggers']:<8} | {r['tp']:<4} | {r['fp']:<4} | {r.get('escaped_defects', 0):<3} | {enh_str:<6} | {score_str:<6} | {r['status']:<10} | {bayes_mean:<13} | {r.get('snr_db', 0):<5}")
         else:
-            print(f"{'Cell':<20} | {'Type':<12} | {'Triggers':<8} | {'TP':<4} | {'FP':<4} | {'Raw':<6} | {'Decayed':<7} | {'Status':<10} | {'SNR':<5}")
-            print("-" * 93)
+            print(f"{'Cell':<20} | {'Type':<12} | {'Tier':<10} | {'Triggers':<8} | {'TP':<4} | {'FP':<4} | {'Esc':<3} | {'EnhFit':<6} | {'Raw':<6} | {'Status':<10} | {'SNR':<5}")
+            print("-" * 110)
             for r in results:
                 score_str = f"{r['score']:.2f}" if r['score'] is not None else "null"
-                dec_score_str = f"{r['decayed_score']:.2f}" if r['decayed_score'] is not None else "null"
-                print(f"{r['cell']:<20} | {r['type']:<12} | {r['triggers']:<8} | {r['tp']:<4} | {r['fp']:<4} | {score_str:<6} | {dec_score_str:<7} | {r['status']:<10} | {r.get('snr_db', 0):<5}")
+                enh_str = f"{r['enhanced_fitness']:.2f}" if r['enhanced_fitness'] is not None else "null"
+                print(f"{r['cell']:<20} | {r['type']:<12} | {r.get('enforcement', 'advisory'):<10} | {r['triggers']:<8} | {r['tp']:<4} | {r['fp']:<4} | {r.get('escaped_defects', 0):<3} | {enh_str:<6} | {score_str:<6} | {r['status']:<10} | {r.get('snr_db', 0):<5}")
 
 
 if __name__ == "__main__":

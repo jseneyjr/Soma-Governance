@@ -1,5 +1,8 @@
 ---
 type: membrane
+enforcement: advisory
+promotion_threshold: 0.85
+demotion_threshold: 0.30
 hypothesis: "Changes to rules/*.md need elevated review"
 prediction: "Escalation sentinel will apply minimum trident mode"
 falsification: "All escalated reviews are over-kill for 10 sessions → prune"

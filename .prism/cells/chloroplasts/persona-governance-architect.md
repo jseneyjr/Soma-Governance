@@ -1,5 +1,8 @@
 ---
 type: chloroplast
+enforcement: advisory
+promotion_threshold: 0.85
+demotion_threshold: 0.30
 persona_name: "Governance Architect"
 hypothesis: "Ensures cell fitness logic and markdown rules remain compliant"
 prediction: "Will catch rule syntax errors and fitness calculation bugs"

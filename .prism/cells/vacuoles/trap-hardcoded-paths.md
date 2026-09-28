@@ -1,5 +1,8 @@
 ---
 type: vacuole
+enforcement: advisory
+promotion_threshold: 0.85
+demotion_threshold: 0.30
 hypothesis: "Hardcoded platform paths (e.g. ~/.gemini) in common scripts"
 prediction: "Will flag hardcoded paths where dynamic STEERING_PLATFORM logic is required"
 falsification: "0 findings in 10 sessions → prune"

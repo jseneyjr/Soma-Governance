@@ -3,10 +3,10 @@
 [![License: Apache 2.0](https://img.shields.io/badge/License-Apache_2.0-blue?style=flat-square)](LICENSE)
 [![Rules](https://img.shields.io/badge/Rules-11-green?style=flat-square)](#rules)
 [![Skills](https://img.shields.io/badge/Skills-15-purple?style=flat-square)](#skills)
-[![Scripts](https://img.shields.io/badge/Scripts-37-red?style=flat-square)](#scripts)
+[![Scripts](https://img.shields.io/badge/Scripts-38-red?style=flat-square)](#scripts)
 [![Phases](https://img.shields.io/badge/Phases-17-blue?style=flat-square)](docs/EVOLUTION.md)
 [![Cells](https://img.shields.io/badge/Cells-5-orange?style=flat-square)](#adaptive-governance-cells)
-[![Version](https://img.shields.io/badge/Version-0.20.0-informational?style=flat-square)](docs/CHANGELOG.md)
+[![Version](https://img.shields.io/badge/Version-0.21.0-informational?style=flat-square)](docs/CHANGELOG.md)
 [![Blog Post](https://img.shields.io/badge/Blog-dev.to-black?style=flat-square&logo=devdotto)](https://dev.to/nseney1/rules-that-cant-prove-themselves-die-adaptive-governance-for-ai-coding-agents-25bn)
 
 Prism AI Steering is an adaptive governance framework that generates, measures, and evolves its own rules based on observed agent behavior. Built on top of continuous feedback loops and biological natural selection principles, it ensures agents remain grounded, efficient, and safe across different repositories. See the [NOTICE](NOTICE) file for our full local-only Data Privacy Statement.
@@ -214,13 +214,19 @@ Generate → Score (Half-Life) → Adapt / Crossover → Metamorphose → Prune 
 - **Antifragile Bonus**: +5% fitness per survived Tempest/Maelstrom review
 - **SNR Quality Metric**: Signal-to-noise ratio in dB per cell
 
+**Tiered Enforcement** (v0.21.0+):
+- **Enforcement Tiers**: Cells declare `advisory` (prompt injection), `mechanical` (pre-commit/CI block), or `gate` (runtime assertion/hard stop)
+- **Escaped Defect Tracking** (`cell_escaped_defects.py`): Independent outcome signal from CI failures, test regressions, and crashes — breaks the self-evaluation loop
+- **Enhanced Fitness**: `fitness = bayesian_mean × (1 - escaped_defect_rate) × tier_weight` rewards cells that prevent *real* failures
+- **Promotion Lifecycle**: Cells earn their enforcement tier through demonstrated defect prevention rate (advisory → mechanical at 85%, mechanical → gate at 95%)
+
 A background **fitness function** monitors the success rate (true positives) of each cell against its disruption rate (false positives). Overperforming cells are kept (or promoted globally), and underperforming ones are autonomously adapted or driven to extinction. 
 
 You can manually trigger these via: `python3 scripts/cell_fitness.py`, `scripts/cell_selection.sh`, `python3 scripts/cell_adapt.py`, `python3 scripts/cell_promote.py`, `scripts/cell_signal.sh`, `scripts/cell_create.sh`, `python3 scripts/cell_scan.py`, `python3 scripts/fitness_landscape.py`, `python3 scripts/cell_crossover.py`, `python3 scripts/cell_metamorphose.py`, `scripts/cell_transfer.sh`.
 
 ## 📜 Scripts
 
-Refer to [docs/SCRIPTS.md](docs/SCRIPTS.md) for full documentation of the 37 system scripts. Highlights include:
+Refer to [docs/SCRIPTS.md](docs/SCRIPTS.md) for full documentation of the 38 system scripts. Highlights include:
 
 **Cell Lifecycle**: `cell_fitness.py`, `cell_selection.sh`, `cell_adapt.py`, `cell_scan.py`, `cell_signal.sh`, `cell_create.sh`, `cell_crossover.py`, `cell_metamorphose.py`, `cell_promote.py`, `cell_transfer.sh`
 
@@ -288,6 +294,7 @@ You can also use `--dry-run` to see what will be removed, and `--keep-config` to
 |:--|:---:|:---:|:---:|:---:|
 | **Adaptability** | Static | Manual updates | Static policies | **Self-evolving via Darwinian fitness** |
 | **Learns from outcomes** | No | No | No | **Yes — TP/FP scoring + half-life** |
+| **Learns from failures** | No | No | Alerts only | **Yes — escaped defect tracking + tier promotion** |
 | **Cross-repo learning** | No | Copy-paste | No | **Horizontal gene transfer** |
 | **Context cost** | Zero | Fixed overhead | Extra inference | **Tiered loading (3.4% idle)** |
 | **Failure modes caught** | Syntax/types | Generic guidelines | Unsafe strings | **Rework loops, hallucinations, waste** |
@@ -338,6 +345,7 @@ See [BENCHMARK.md](docs/BENCHMARK.md) for the standardized governance effectiven
 4. **Continuous validation** — Rules aren't "done" after review. Governance is a living system that evolves with each session.
 5. **Installation completeness** — Governance installed at partial fidelity provides false assurance. Every installer path must deploy rules, skills, and hooks with the same completeness.
 6. **Hypothesis-driven governance** — Every governance extension must carry its own falsifiability criteria. A rule, persona, or adaptation that cannot be tested has no place in the system. Generated extensions (Chloroplasts, Vacuoles) must specify what they predict, how to measure it, and when to prune if unvalidated. The scientific method is not just how we evolve the system — it IS the system.
+7. **Independent validation** — Self-evaluated fitness is necessary but not sufficient. Escaped defects from CI, tests, and crashes provide the ground truth that breaks the agent-grades-itself loop.
 
 ## Next Steps
 

@@ -1,6 +1,6 @@
 # Scripts Reference
 
-This document catalogs the 37 executable scripts that power the Prism AI Steering framework.
+This document catalogs the 38 executable scripts that power the Prism AI Steering framework.
 
 ## Lifecycle Scripts (Hooks)
 These scripts are invoked automatically by the IDE or terminal environment.
@@ -51,6 +51,7 @@ These scripts run the Cytogenesis selection and speciation pipeline. They respec
 * **`log_finding.sh`**: Appends specific anti-patterns or successful catches into the `mulch_queue.jsonl` database for evolutionary learning.
 
 ## Analysis & Research
+* **`cell_escaped_defects.py`**: Tracks defects that escaped governance coverage from CI/tests/crashes.
 * **`cell_quorum.py`**: Quorum sensing — detects when ≥3 cells trigger simultaneously on the same diff, indicating systemic issues. Auto-escalates review mode.
 * **`cell_coverage.py`**: Cell coverage map — visualizes which files/directories have governance cell coverage and highlights blind spots.
 * **`cell_deps.py`**: Cell dependency graph: visualize co-trigger relationships
