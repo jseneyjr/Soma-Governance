@@ -16,7 +16,7 @@ Prism AI Steering is an adaptive governance framework that generates, measures, 
 ```bash
 git clone https://github.com/nseney1/prism-ai-steering.git
 cd prism-ai-steering
-cp steering.conf.example steering.conf   # Optional: customize for your team
+cp install/steering.conf.example steering.conf   # Optional: customize for your team
 
 # Linux, macOS, WSL, Windows (Git Bash):
 make install                              # Gemini / Antigravity (default)
@@ -90,7 +90,7 @@ The framework enforces code modifications using tiered Review Modes and structur
 |:------|:--------|
 | [adaptive-reviewer](skills/adaptive-reviewer/SKILL.md) | Auto-escalating review orchestrator with subagent nesting. |
 | [domain-researcher](skills/domain-researcher/SKILL.md) | Compiles verified external facts (wikis, API docs). |
-| [genesis](skills/genesis/SKILL.md) | 4-stage codebase onboarding: Canopy → Rings → Taproot → Lichen. |
+| [genesis](skills/genesis/SKILL.md) | 5-stage codebase onboarding: Canopy → Rings → Taproot → Lichen → Cytogenesis. |
 | [governance-auditor](skills/governance-auditor/SKILL.md) | Mechanical per-rule PASS/FAIL compliance checks. |
 | [incident-debug](skills/incident-debug/SKILL.md) | SRE: reproduce → isolate → diagnose → fix → verify. |
 | [performance-audit](skills/performance-audit/SKILL.md) | Hot-path allocations, O(n²) patterns, GC pressure. |
@@ -132,8 +132,8 @@ Refer to [docs/SCRIPTS.md](docs/SCRIPTS.md) for full documentation of the 17 sys
 
 ## Configuration
 
-Copy [`steering.conf.example`](steering.conf.example) → `steering.conf` to customize platform, team size, git strategy, approval chains, and hooks configuration. 
-It includes a `METRICS_REPO` configuration for storing telemetry distinct from the public workspace.
+Copy [`steering.conf.example`](install/steering.conf.example) → `steering.conf` to customize platform, team size, git strategy, approval chains, and hooks configuration. 
+It includes `TEAM_REPO` and `ORG_REPO` configuration for multi-developer and multi-team governance convergence.
 
 ### Cross-OS Support Matrix
 
