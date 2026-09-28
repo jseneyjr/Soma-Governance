@@ -14,6 +14,8 @@ def main():
     # Get all tracked files
     result = subprocess.run(['git', 'ls-files'], capture_output=True, text=True, cwd=workspace)
     all_files = [f for f in result.stdout.strip().split('\n') if f]
+    EXCLUDE_PATTERNS = ['.prism/', 'vendor/', '.git/', 'node_modules/']
+    all_files = [f for f in all_files if not any(p in f for p in EXCLUDE_PATTERNS)]
     
     # Load all cell target_paths
     cell_patterns = []

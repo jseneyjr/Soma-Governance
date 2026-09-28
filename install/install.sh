@@ -35,6 +35,9 @@ for arg in "$@"; do
     --local)
       LOCAL_INSTALL=true
       ;;
+    --hooks)
+      INSTALL_GIT_HOOKS=true
+      ;;
     *)
       POSITIONAL_ARGS+=("$arg")
       ;;
@@ -401,3 +404,13 @@ case "$PLATFORM" in
     exit 1
     ;;
 esac
+
+if [ "${INSTALL_GIT_HOOKS:-false}" = "true" ]; then
+  if [ -d ".git/hooks" ]; then
+    cp "$REPO_DIR/install/hooks/pre-commit" ".git/hooks/pre-commit"
+    chmod +x ".git/hooks/pre-commit"
+    echo "Installed git pre-commit hook."
+  else
+    echo "No .git/hooks directory found, skipping pre-commit hook installation."
+  fi
+fi

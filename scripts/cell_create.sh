@@ -42,6 +42,7 @@ EFFECTOR=false
 MEMORY=false
 DECAY_TO_YAML=""
 TARGET_PATHS=""
+ID_OVERRIDE=""
 
 # Parse arguments
 while [[ $# -gt 0 ]]; do
@@ -76,6 +77,14 @@ while [[ $# -gt 0 ]]; do
       ;;
     --expiry-days)
       EXPIRY_DAYS="$2"
+      shift 2
+      ;;
+    --minimum-mode)
+      MINIMUM_MODE="$2"
+      shift 2
+      ;;
+    --id)
+      ID_OVERRIDE="$2"
       shift 2
       ;;
     --effector)
@@ -155,7 +164,11 @@ case "$TYPE" in
 esac
 
 # Generate slug: lowercase, spaces to dashes, remove special chars, truncate to 50 chars
-SLUG=$(echo "$HYPOTHESIS" | tr '[:upper:]' '[:lower:]' | sed 's/[^a-z0-9 ]//g' | sed 's/ /-/g' | cut -c1-50 | sed 's/-$//')
+if [[ -n "$ID_OVERRIDE" ]]; then
+  SLUG="$ID_OVERRIDE"
+else
+  SLUG=$(echo "$HYPOTHESIS" | tr '[:upper:]' '[:lower:]' | sed 's/[^a-z0-9 ]//g' | sed 's/ /-/g' | cut -c1-50 | sed 's/-$//')
+fi
 DATE=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
 
 DIR="$REPO_DIR/.prism/cells/$TYPE_PLURAL"

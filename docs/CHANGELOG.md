@@ -3,6 +3,19 @@
 All notable changes to Prism AI Steering are documented here.
 This project uses [Semantic Versioning](https://semver.org/).
 
+## [0.19.1] — 2026-09-27
+
+### Fixed
+- `cell_create.sh`: Added `--minimum-mode` and `--id` flags
+- `cell_coverage.py`: Excludes .prism/, vendor/, .git/ from coverage counts
+- `cell_fitness.py`: Fixed UnboundLocalError in --bayesian mode
+
+### Added
+- `install/hooks/pre-commit`: Git pre-commit hook for automatic cell scanning
+- `cell_deps.py`: Cell dependency graph with Mermaid output
+- `governance_grade.py`: Single-grade governance report card
+- Script count: 32 → 34
+
 ## [0.19.0] — 2026-09-27
 
 ### Added
