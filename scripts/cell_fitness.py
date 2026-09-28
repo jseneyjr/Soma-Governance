@@ -276,71 +276,71 @@ def main():
             return os.path.join(workspace, "docs", "snapshots")
             
     
-    workspace = resolve_workspace(__file__)
-    total_sessions = 30
-    conf_path = os.path.join(workspace, "steering.conf")
-    if os.path.exists(conf_path):
-        with open(conf_path) as f:
-            for line in f:
-                if line.startswith("TOTAL_SESSIONS="):
-                    try:
-                        total_sessions = int(line.strip().split("=")[1])
-                    except:
-                        pass
+        workspace = resolve_workspace(__file__)
+        total_sessions = 30
+        conf_path = os.path.join(workspace, "steering.conf")
+        if os.path.exists(conf_path):
+            with open(conf_path) as f:
+                for line in f:
+                    if line.startswith("TOTAL_SESSIONS="):
+                        try:
+                            total_sessions = int(line.strip().split("=")[1])
+                        except:
+                            pass
 
-        metrics_dir = resolve_metrics_dir(workspace)
+            metrics_dir = resolve_metrics_dir(workspace)
         
-        # Look for JSON files in metrics_dir that might be cell fitness snapshots
-        # A cell fitness snapshot is assumed to contain a list of objects with 'hypothesis', 'score', and 'repo'
-        # or we infer repo from filename if 'repo' is missing.
-        snapshots = glob.glob(os.path.join(metrics_dir, '**', '*.json'), recursive=True)
+            # Look for JSON files in metrics_dir that might be cell fitness snapshots
+            # A cell fitness snapshot is assumed to contain a list of objects with 'hypothesis', 'score', and 'repo'
+            # or we infer repo from filename if 'repo' is missing.
+            snapshots = glob.glob(os.path.join(metrics_dir, '**', '*.json'), recursive=True)
         
-        # Group by hypothesis
-        hypothesis_stats = {}
-        for snap in snapshots:
-            try:
-                with open(snap, 'r') as f:
-                    data = json.load(f)
-                if not isinstance(data, list):
-                    continue
+            # Group by hypothesis
+            hypothesis_stats = {}
+            for snap in snapshots:
+                try:
+                    with open(snap, 'r') as f:
+                        data = json.load(f)
+                    if not isinstance(data, list):
+                        continue
                     
-                # Infer repo from filename if not in data: e.g. "repoA-fitness.json"
-                filename = os.path.basename(snap)
-                inferred_repo = filename.split('-')[0] if '-' in filename else filename.split('.')[0]
+                    # Infer repo from filename if not in data: e.g. "repoA-fitness.json"
+                    filename = os.path.basename(snap)
+                    inferred_repo = filename.split('-')[0] if '-' in filename else filename.split('.')[0]
                 
-                for item in data:
-                    if 'hypothesis' in item and 'score' in item and item['score'] is not None:
-                        hyp = item['hypothesis']
-                        repo = item.get('repo', inferred_repo)
-                        if hyp not in hypothesis_stats:
-                            hypothesis_stats[hyp] = {'repos': set(), 'scores': []}
-                        hypothesis_stats[hyp]['repos'].add(repo)
-                        hypothesis_stats[hyp]['scores'].append(item['score'])
-            except Exception:
-                continue
+                    for item in data:
+                        if 'hypothesis' in item and 'score' in item and item['score'] is not None:
+                            hyp = item['hypothesis']
+                            repo = item.get('repo', inferred_repo)
+                            if hyp not in hypothesis_stats:
+                                hypothesis_stats[hyp] = {'repos': set(), 'scores': []}
+                            hypothesis_stats[hyp]['repos'].add(repo)
+                            hypothesis_stats[hyp]['scores'].append(item['score'])
+                except Exception:
+                    continue
                 
-        cross_repo_results = []
-        for hyp, stats in hypothesis_stats.items():
-            avg_score = sum(stats['scores']) / len(stats['scores']) if stats['scores'] else 0
-            repos_count = len(stats['repos'])
-            candidate = "Yes" if avg_score > 0.7 and repos_count >= 3 else "No"
-            cross_repo_results.append({
-                "hypothesis": hyp,
-                "repos": repos_count,
-                "avg_fitness": avg_score,
-                "candidate": candidate
-            })
+            cross_repo_results = []
+            for hyp, stats in hypothesis_stats.items():
+                avg_score = sum(stats['scores']) / len(stats['scores']) if stats['scores'] else 0
+                repos_count = len(stats['repos'])
+                candidate = "Yes" if avg_score > 0.7 and repos_count >= 3 else "No"
+                cross_repo_results.append({
+                    "hypothesis": hyp,
+                    "repos": repos_count,
+                    "avg_fitness": avg_score,
+                    "candidate": candidate
+                })
             
-        if args.json:
-            print(json.dumps(cross_repo_results, indent=2))
-        else:
-            print(f"{'Cell Hypothesis':<50} | {'Repos':<5} | {'Avg Fitness':<11} | {'Candidate?':<10}")
-            print("-" * 85)
-            for r in cross_repo_results:
-                hyp = r['hypothesis']
-                if len(hyp) > 47:
-                    hyp = hyp[:44] + "..."
-                print(f"{hyp:<50} | {r['repos']:<5} | {r['avg_fitness']:<11.2f} | {r['candidate']:<10}")
+            if args.json:
+                print(json.dumps(cross_repo_results, indent=2))
+            else:
+                print(f"{'Cell Hypothesis':<50} | {'Repos':<5} | {'Avg Fitness':<11} | {'Candidate?':<10}")
+                print("-" * 85)
+                for r in cross_repo_results:
+                    hyp = r['hypothesis']
+                    if len(hyp) > 47:
+                        hyp = hyp[:44] + "..."
+                    print(f"{hyp:<50} | {r['repos']:<5} | {r['avg_fitness']:<11.2f} | {r['candidate']:<10}")
         return
 
 
