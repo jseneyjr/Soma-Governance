@@ -2,11 +2,18 @@ import os
 import sys
 import glob
 import json
+import re
 
 # Ensure soma_sdk is importable
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from soma_sdk.governance import Governance
+# Try importing Governance SDK (requires pyyaml); fall back to stdlib-only impl
+try:
+    from soma_sdk.governance import Governance
+    _HAS_SDK = True
+except ImportError:
+    _HAS_SDK = False
+
 
 def resolve_workspace():
     """Find the project root containing .soma/cells/."""
@@ -26,9 +33,85 @@ def resolve_workspace():
         
     return cwd
 
+
+def _parse_frontmatter_stdlib(content):
+    """Parse YAML frontmatter using only stdlib (no pyyaml required).
+    
+    Handles simple key: value pairs, lists, and nested values.
+    Falls back gracefully for complex YAML.
+    """
+    if not content.startswith('---'):
+        return {}
+    end = content.find('---', 3)
+    if end == -1:
+        return {}
+    fm_text = content[3:end].strip()
+    result = {}
+    current_key = None
+    current_list = None
+    for line in fm_text.split('\n'):
+        stripped = line.strip()
+        if not stripped or stripped.startswith('#'):
+            continue
+        # List item under a key
+        if stripped.startswith('- ') and current_key and current_list is not None:
+            val = stripped[2:].strip().strip('"').strip("'")
+            current_list.append(val)
+            result[current_key] = current_list
+            continue
+        # Key: value pair
+        match = re.match(r'^([a-zA-Z_][a-zA-Z0-9_]*)\s*:\s*(.*)', stripped)
+        if match:
+            key = match.group(1)
+            val = match.group(2).strip()
+            if val == '' or val == '|' or val == '>':
+                # Could be a list or block scalar following
+                current_key = key
+                current_list = []
+                result[key] = val
+            elif val.startswith('[') and val.endswith(']'):
+                # Inline list
+                items = [v.strip().strip('"').strip("'") for v in val[1:-1].split(',') if v.strip()]
+                result[key] = items
+                current_key = key
+                current_list = None
+            else:
+                result[key] = val.strip('"').strip("'")
+                current_key = key
+                current_list = None
+        else:
+            current_list = None
+    return result
+
+
+def _list_cells_stdlib(workspace):
+    """List cells using only stdlib (no pyyaml)."""
+    cells = []
+    cells_dir = os.path.join(workspace, '.soma', 'cells')
+    if not os.path.isdir(cells_dir):
+        return cells
+    for cell_file in glob.glob(os.path.join(cells_dir, '**', '*.md'), recursive=True):
+        if os.path.basename(cell_file) == 'README.md':
+            continue
+        try:
+            with open(cell_file) as f:
+                content = f.read()
+            fm = _parse_frontmatter_stdlib(content)
+            if fm:
+                fm['_name'] = os.path.splitext(os.path.basename(cell_file))[0]
+                fm['_path'] = os.path.relpath(cell_file, workspace)
+                cells.append(fm)
+        except Exception:
+            pass
+    return cells
+
+
 def get_governance():
+    if not _HAS_SDK:
+        return None
     workspace = resolve_workspace()
     return Governance(project_root=workspace)
+
 
 def build_cell_create_prompt(description: str, domain_hint: str = None, cell_type: str = None) -> str:
     workspace = resolve_workspace()
@@ -133,7 +216,7 @@ TOOL_DEFINITIONS = [
     },
     {
         "name": "soma_list_cells",
-        "description": "Lists all governance cells.",
+        "description": "Lists all governance cells with their type, hypothesis, and fitness data.",
         "inputSchema": {
             "type": "object",
             "properties": {}
@@ -152,7 +235,17 @@ def execute_tool(name: str, args: dict):
         )
         return {"prompt": prompt, "instruction": "Process this prompt and return the cell YAML. Then use a file-writing tool to save it to the appropriate .soma/cells/ directory."}
     
-    elif name == "soma_scan":
+    elif name == "soma_list_cells":
+        # list_cells works without pyyaml via stdlib fallback
+        if gov:
+            return gov.list_cells()
+        return _list_cells_stdlib(resolve_workspace())
+
+    # All other tools require the full SDK (pyyaml)
+    if not gov:
+        return {"error": "soma_sdk requires pyyaml. Install with: pip install pyyaml"}
+    
+    if name == "soma_scan":
         return gov.scan()
         
     elif name == "soma_grade":
@@ -163,9 +256,6 @@ def execute_tool(name: str, args: dict):
         
     elif name == "soma_fitness":
         return gov.fitness_landscape(bayesian=args.get("bayesian", False))
-        
-    elif name == "soma_list_cells":
-        return gov.list_cells()
         
     else:
         raise ValueError(f"Unknown tool: {name}")

@@ -183,7 +183,7 @@ validate_config() {
   validate_enum "APPROVAL_CHAIN" "$APPROVAL_CHAIN" none peer lead
   validate_enum "RULES_SUBSET" "$RULES_SUBSET" all core minimal
   validate_enum "ENABLE_HOOKS" "$ENABLE_HOOKS" true false
-  validate_enum "SOMA_PLATFORM" "$SOMA_PLATFORM" gemini kiro copilot
+  validate_enum "SOMA_PLATFORM" "$SOMA_PLATFORM" gemini kiro copilot claude
 }
 
 # ── Rule Subset Resolution ───────────────────────────────────────

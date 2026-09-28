@@ -57,6 +57,9 @@ install-kiro: ## Install rules for Kiro (alias)
 install-copilot: ## Install rules for GitHub Copilot (alias)
 	@bash install/install.sh copilot $(if $(MODE),$(MODE),global)
 
+install-claude: ## Install rules for Claude Code
+	@bash install/install.sh claude
+
 install-windows: ## Install rules and skills for Windows using PowerShell
 	@powershell -ExecutionPolicy Bypass -File install/install.ps1 -Platform $(SOMA_PLATFORM)
 
@@ -97,6 +100,12 @@ uninstall: ## Remove installed genome, organs, and hooks
 	    rm -f $(HOME)/copilot-instructions.md; \
 	    echo "Done!"; \
 	    ;; \
+	  claude) \
+	    echo "  Removing $(HOME)/.claude/CLAUDE.md and local CLAUDE.md/.mcp.json"; \
+	    rm -f $(HOME)/.claude/CLAUDE.md; \
+	    rm -f CLAUDE.md .mcp.json; \
+	    echo "Done!"; \
+	    ;; \
 	esac
 
 doctor: ## Verify installation health & dependencies
@@ -128,6 +137,7 @@ doctor: ## Verify installation health & dependencies
 	      ls -d $(HOME)/.kiro/organs/*/ 2>/dev/null | while read d; do echo "  ✅ $$(basename $$d)"; done || echo "  (none)"; \
 	    else echo "  (none — $(HOME)/.kiro/organs/ not found)"; fi ;; \
 	  copilot) if [ -f $(HOME)/copilot-instructions.md ]; then echo "  ✅ $(HOME)/copilot-instructions.md"; else echo "  (none)"; fi ;; \
+	  claude) if [ -f $(HOME)/.claude/CLAUDE.md ]; then echo "  ✅ $(HOME)/.claude/CLAUDE.md"; else echo "  (none)"; fi ;; \
 	esac
 
 validate: ## Check script syntax and config values

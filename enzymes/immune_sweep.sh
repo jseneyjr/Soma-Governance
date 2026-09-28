@@ -22,8 +22,11 @@ set -euo pipefail
 # ============================================================================
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-GOVERNANCE_DIR="$HOME/.gemini/antigravity/scratch/ai-conversation-logs/governance"
-BRAIN_DIR="$HOME/.gemini/antigravity/brain"
+
+# Configurable data directory — defaults to Antigravity location
+SOMA_DATA_DIR="${SOMA_DATA_DIR:-$HOME/.gemini/antigravity}"
+GOVERNANCE_DIR="$SOMA_DATA_DIR/scratch/ai-conversation-logs/governance"
+BRAIN_DIR="$SOMA_DATA_DIR/brain"
 METRICS_DIR="$GOVERNANCE_DIR/session_metrics"
 SWEEP_LOG="$GOVERNANCE_DIR/sweep_log.jsonl"
 PROPOSALS="$GOVERNANCE_DIR/pending_proposals.md"

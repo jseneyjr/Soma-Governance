@@ -37,6 +37,7 @@ bash install/install.sh gemini --local
 # Other platforms
 bash install/install.sh kiro       # AWS Kiro
 bash install/install.sh copilot    # GitHub Copilot
+bash install/install.sh claude     # Claude Code
 ```
 
 ### MCP Server (Recommended)
@@ -252,7 +253,7 @@ Copy [`soma.conf.example`](install/soma.conf.example) → `soma.conf` to customi
 
 | Variable | Default | Description |
 |:---------|:--------|:------------|
-| `SOMA_PLATFORM` | `gemini` | Target AI platform: `gemini`, `kiro`, `copilot` |
+| `SOMA_PLATFORM` | `gemini` | Target AI platform: `gemini`, `kiro`, `copilot`, `claude` |
 | `SOMA_INFERENCE_PROVIDER` | `auto` | LLM provider: `auto`, `gemini`, `anthropic`, `openai`, `prompt-only` |
 | `DEFAULT_REVIEW_MODE` | `gale` | Session default review intensity |
 | `CELL_TELOMERE_DAYS` | `30` | Days for fitness confidence to halve |
@@ -271,6 +272,7 @@ Copy [`soma.conf.example`](install/soma.conf.example) → `soma.conf` to customi
 | **WSL** | Bash | `make install` | ✅ | ✅ | ✅ |
 | **Windows (Git Bash)** | Bash | `make install` | ✅ | ✅ | ✅ |
 | **Windows (PowerShell)** | PowerShell | `.\install.ps1` | ✅ | ✅ | ❌ |
+| **Claude Code** | Bash / PS | `make install-claude` | ✅ | ❌ | ❌ |
 
 ### Team Setup
 

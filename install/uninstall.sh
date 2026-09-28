@@ -54,7 +54,7 @@ if [ "$MANIFEST_EXISTS" = "true" ]; then
   BACKUP_DIR=$(python3 -c "import json, sys; d=json.load(open('$MANIFEST_PATH')); print(d.get('backup_dir') or '')" 2>/dev/null || true)
   
   while IFS= read -r f; do
-    if [[ "$f" == *"/copilot-instructions.md" ]]; then
+    if [[ "$f" == *"/copilot-instructions.md" ]] || [[ "$f" == *"/CLAUDE.md" ]]; then
       MODIFY_FILES+=("$f")
     elif [ -n "$f" ]; then
       FILES_TO_REMOVE+=("$f")
@@ -97,6 +97,15 @@ else
       if [ -f "$RESOLVED_HOME/copilot-instructions.md" ]; then
         MODIFY_FILES+=("$RESOLVED_HOME/copilot-instructions.md")
       fi
+      ;;
+    claude)
+      if [ -f "$(pwd)/CLAUDE.md" ]; then
+        MODIFY_FILES+=("$(pwd)/CLAUDE.md")
+      fi
+      if [ -f "$RESOLVED_HOME/.claude/CLAUDE.md" ]; then
+        MODIFY_FILES+=("$RESOLVED_HOME/.claude/CLAUDE.md")
+      fi
+      [ -f "$(pwd)/.mcp.json" ] && FILES_TO_REMOVE+=("$(pwd)/.mcp.json")
       ;;
   esac
 fi
@@ -155,9 +164,21 @@ for m in "${MODIFY_FILES[@]}"; do
   if [ -f "$m" ]; then
     # Removes everything between # Copilot Global Instructions and the end (or just deletes the auto-gen stuff)
     # The install script appends to it with a comment "> Auto-generated from soma."
-    # We will just remove lines starting from "# Copilot Global Instructions" to the end of the file.
+    # We will just remove lines starting from "# Copilot Global Instructions" or "# Soma Governance Rules" to the end of the file.
     sed -i.bak '/^# Copilot Global Instructions/,$d' "$m" && rm -f "$m.bak"
+    sed -i.bak '/^# Soma Governance Rules/,$d' "$m" && rm -f "$m.bak"
     echo "Cleaned $m"
+  fi
+done
+
+# Try to clean hooks from claude settings.json
+for settings_file in "$(pwd)/.claude/settings.json" "$RESOLVED_HOME/.claude/settings.json"; do
+  if [ -f "$settings_file" ]; then
+    # Just a simple jq to remove soma hooks if present
+    if command -v jq >/dev/null 2>&1; then
+      jq 'del(.hooks | select(. != null) | .soma?)' "$settings_file" > "$settings_file.tmp" && mv "$settings_file.tmp" "$settings_file"
+      echo "Cleaned soma hooks from $settings_file"
+    fi
   fi
 done
 
@@ -183,6 +204,10 @@ if [ -n "$BACKUP_DIR" ] && [ -d "$BACKUP_DIR" ]; then
       copilot)
         echo "  $BACKUP_DIR/copilot-instructions.md -> $RESOLVED_HOME/copilot-instructions.md"
         ;;
+      claude)
+        echo "  $BACKUP_DIR/CLAUDE.md -> $RESOLVED_HOME/.claude/CLAUDE.md or project CLAUDE.md"
+        echo "  $BACKUP_DIR/.mcp.json -> project .mcp.json"
+        ;;
     esac
   else
     if [ "$FORCE" = "false" ]; then
@@ -202,6 +227,10 @@ if [ -n "$BACKUP_DIR" ] && [ -d "$BACKUP_DIR" ]; then
             ;;
           copilot)
             [ -f "$BACKUP_DIR/copilot-instructions.md" ] && cp "$BACKUP_DIR/copilot-instructions.md" "$RESOLVED_HOME/"
+            ;;
+          claude)
+            [ -f "$BACKUP_DIR/CLAUDE.md" ] && cp "$BACKUP_DIR/CLAUDE.md" "$RESOLVED_HOME/.claude/"
+            [ -f "$BACKUP_DIR/.mcp.json" ] && cp "$BACKUP_DIR/.mcp.json" "$(pwd)/"
             ;;
         esac
         echo "Restore complete."

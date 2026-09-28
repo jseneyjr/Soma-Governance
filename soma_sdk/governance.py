@@ -25,7 +25,7 @@ class Governance:
         self.scripts_dir = self._find_scripts_dir()
     
     def _find_scripts_dir(self):
-        """Locate Prism scripts directory."""
+        """Locate Soma scripts directory."""
         candidates = [
             self.root / 'vendor' / 'soma' / 'enzymes',
             self.root / 'enzymes',
@@ -37,9 +37,9 @@ class Governance:
         return None
     
     def _run_script(self, script_name, *args, json_output=True):
-        """Run a Prism script and return parsed output."""
+        """Run a Soma enzyme script and return parsed output."""
         if not self.scripts_dir:
-            raise RuntimeError('Prism scripts directory not found')
+            raise RuntimeError('Soma enzymes directory not found')
         
         script = self.scripts_dir / script_name
         if not script.exists():
