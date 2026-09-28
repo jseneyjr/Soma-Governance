@@ -10,6 +10,8 @@ from datetime import datetime
 def resolve_workspace():
     d = os.path.dirname(os.path.abspath(__file__))
     while d != os.path.dirname(d):
+        if os.path.isdir(os.path.join(d, ".prism", "cells")):
+            return d
         if os.path.isdir(os.path.join(d, "rules")) and os.path.isdir(os.path.join(d, "skills")):
             return d
         d = os.path.dirname(d)

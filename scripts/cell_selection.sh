@@ -15,7 +15,17 @@ import os, sys, re, json, datetime, shutil
 
 execute_mode = len(sys.argv) > 1 and sys.argv[1] == '--execute'
 script_dir = sys.argv[2] if len(sys.argv) > 2 else os.getcwd()
-repo_root = os.path.dirname(script_dir)
+
+# Walk up from script dir to find project root with .prism/cells/
+d = os.path.abspath(script_dir)
+while d != os.path.dirname(d):
+    if os.path.isdir(os.path.join(d, ".prism", "cells")):
+        break
+    d = os.path.dirname(d)
+else:
+    d = os.getcwd()
+repo_root = d
+
 cells_dir = os.path.join(repo_root, ".prism", "cells")
 archive_dir = os.path.join(cells_dir, ".archive")
 fitness_log = os.path.join(cells_dir, "fitness.jsonl")

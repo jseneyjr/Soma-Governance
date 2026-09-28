@@ -7,6 +7,15 @@ import json
 import yaml
 from datetime import datetime
 
+def resolve_workspace():
+    """Walk up from script location to find the project root containing .prism/cells/."""
+    d = os.path.dirname(os.path.abspath(__file__))
+    while d != os.path.dirname(d):
+        if os.path.isdir(os.path.join(d, ".prism", "cells")):
+            return d
+        d = os.path.dirname(d)
+    return os.getcwd()
+
 def decayed_fitness(raw_score, last_trigger_date, half_life_days=30):
     if last_trigger_date is None or raw_score is None:
         return raw_score
@@ -22,7 +31,8 @@ def main():
     parser.add_argument("--cross-repo", action="store_true", help="Aggregate fitness across multiple repos in METRICS_REPO")
     args = parser.parse_args()
 
-    cells_dir = os.path.join(os.path.dirname(__file__), '..', '.prism', 'cells')
+    workspace = resolve_workspace()
+    cells_dir = os.path.join(workspace, '.prism', 'cells')
     cell_files = glob.glob(os.path.join(cells_dir, '**', '*.md'), recursive=True)
 
     results = []
@@ -133,7 +143,7 @@ def main():
             }
             
             target_plural = new_type + "s" if new_type != "plasmodesmata" else "plasmodesmata"
-            target_dir = os.path.join(os.path.dirname(__file__), '..', '.prism', 'cells', target_plural)
+            target_dir = os.path.join(workspace, '.prism', 'cells', target_plural)
             os.makedirs(target_dir, exist_ok=True)
             new_path = os.path.join(target_dir, cell_name)
             
@@ -154,7 +164,7 @@ def main():
                 
             status = "TRANSFORMED"
             
-            metrics_dir = os.path.join(os.path.dirname(__file__), '..', '.prism', 'metrics')
+            metrics_dir = os.path.join(workspace, '.prism', 'metrics')
             os.makedirs(metrics_dir, exist_ok=True)
             with open(os.path.join(metrics_dir, 'decay_transitions.jsonl'), 'a') as mf:
                 mf.write(json.dumps({

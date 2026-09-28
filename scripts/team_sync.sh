@@ -9,7 +9,15 @@ while [ -h "$PRG" ]; do
   [[ $PRG != /* ]] && PRG="$DIR/$PRG"
 done
 REPO_DIR="$(cd -P "$(dirname "$PRG")" && cd .. && pwd)"
+# Walk up to find project root with .prism/cells/ (handles vendor submodule installs)
+_d="$REPO_DIR"
+while [ "$_d" != "/" ]; do
+  [ -d "$_d/.prism/cells" ] && REPO_DIR="$_d" && break
+  _d="$(dirname "$_d")"
+done
 SCRIPTS_DIR="$REPO_DIR/scripts"
+# If scripts dir doesn't exist at resolved root, fall back to original script location
+[ ! -d "$SCRIPTS_DIR" ] && SCRIPTS_DIR="$(cd -P "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 source "$SCRIPTS_DIR/common.sh"
 load_config "$REPO_DIR"
