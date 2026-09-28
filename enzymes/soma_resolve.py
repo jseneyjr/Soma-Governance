@@ -17,9 +17,9 @@ def resolve_workspace(caller_file=None):
         caller_file: Pass __file__ from the calling script for walk-up from script location.
     """
     # 1. Explicit override via environment variable
-    prism_root = os.environ.get("SOMA_ROOT")
-    if prism_root and os.path.isdir(os.path.join(prism_root, ".soma", "cells")):
-        return os.path.abspath(prism_root)
+    soma_root = os.environ.get("SOMA_ROOT")
+    if soma_root and os.path.isdir(os.path.join(soma_root, ".soma", "cells")):
+        return os.path.abspath(soma_root)
 
     # 2. Check CWD directly
     cwd = os.getcwd()

@@ -124,7 +124,7 @@ echo ""
 echo "The following will be removed/modified:"
 for f in "${FILES_TO_REMOVE[@]}"; do echo "  - [FILE] $f"; done
 for d in "${DIRS_TO_REMOVE[@]}"; do echo "  - [DIR]  $d"; done
-for m in "${MODIFY_FILES[@]}"; do echo "  - [MOD]  $m (remove prism sections)"; done
+for m in "${MODIFY_FILES[@]}"; do echo "  - [MOD]  $m (remove soma sections)"; done
 
 if [ ${#FILES_TO_REMOVE[@]} -eq 0 ] && [ ${#DIRS_TO_REMOVE[@]} -eq 0 ] && [ ${#MODIFY_FILES[@]} -eq 0 ]; then
   echo "Nothing to remove."

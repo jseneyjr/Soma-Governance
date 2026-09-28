@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 # enzymes/liveness_sentinel.sh
 # 
 # Usage:

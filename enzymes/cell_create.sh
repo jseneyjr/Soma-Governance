@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 # cell_create.sh: Programmatic Cell Creation for Soma
 # Usage: bash enzymes/cell_create.sh --type <type> --hypothesis <hypothesis> --prediction <prediction> --falsification <falsification> [options]
 

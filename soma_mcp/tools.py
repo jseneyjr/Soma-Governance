@@ -10,9 +10,9 @@ from soma_sdk.governance import Governance
 
 def resolve_workspace():
     """Find the project root containing .soma/cells/."""
-    prism_root = os.environ.get("SOMA_ROOT")
-    if prism_root and os.path.isdir(os.path.join(prism_root, ".soma", "cells")):
-        return os.path.abspath(prism_root)
+    soma_root = os.environ.get("SOMA_ROOT")
+    if soma_root and os.path.isdir(os.path.join(soma_root, ".soma", "cells")):
+        return os.path.abspath(soma_root)
 
     cwd = os.getcwd()
     if os.path.isdir(os.path.join(cwd, ".soma", "cells")):

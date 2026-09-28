@@ -3,7 +3,7 @@
 [![License: Apache 2.0](https://img.shields.io/badge/License-Apache_2.0-blue?style=flat-square)](LICENSE)
 [![Genome](https://img.shields.io/badge/Genome-11_Genes-green?style=flat-square)](#-genome)
 [![Organs](https://img.shields.io/badge/Organs-15-purple?style=flat-square)](#-organs)
-[![Enzymes](https://img.shields.io/badge/Enzymes-39-red?style=flat-square)](#%EF%B8%8F-enzymes)
+[![Enzymes](https://img.shields.io/badge/Enzymes-40-red?style=flat-square)](#%EF%B8%8F-enzymes)
 [![Cells](https://img.shields.io/badge/Cells-5_Types-orange?style=flat-square)](#-cells)
 [![Version](https://img.shields.io/badge/Version-0.22.0-informational?style=flat-square)](docs/CHANGELOG.md)
 [![Blog Post](https://img.shields.io/badge/Blog-dev.to-black?style=flat-square&logo=devdotto)](https://dev.to/nseney1/rules-that-cant-prove-themselves-die-adaptive-governance-for-ai-coding-agents-25bn)

@@ -4,11 +4,16 @@ soma.conf
 # Generated hook configs (produced by install.sh)
 hooks.json
 
-# Local telemetry & governance runtime data
+# Local telemetry & immune system runtime data
+immune_system/*.lock
+immune_system/*.log
+immune_system/mulch_queue.jsonl
+docs/snapshots/
+
+# Legacy governance dir (pre-rename)
 governance/*.lock
 governance/*.log
 governance/mulch_queue.jsonl
-docs/snapshots/
 
 # Raw session logs & postmortem data (masked exports live in docs/, not here)
 agent-session-postmortem/
@@ -23,6 +28,15 @@ __pycache__/
 venv/
 .pytest_cache/
 .ruff_cache/
+dist/
+*.egg-info/
+
+# JavaScript artifacts
+node_modules/
+
+# Environment files (may contain API keys)
+.env
+.env.*
 
 # OS metadata
 .DS_Store
@@ -38,4 +52,6 @@ docs/postmortem-work-sessions.md
 .soma/cells/fitness.jsonl
 .soma/cells/.archive/
 .soma/credentials.conf
+.soma/backup/
+.soma/enforcement/
 docs/internal/

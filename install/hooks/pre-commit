@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 # Soma — Git Pre-Commit Hook
 # Advisory only: informs about governance triggers but never blocks commits.
 set -uo pipefail
