@@ -3,10 +3,10 @@
 [![License: Apache 2.0](https://img.shields.io/badge/License-Apache_2.0-blue?style=flat-square)](LICENSE)
 [![Rules](https://img.shields.io/badge/Rules-11-green?style=flat-square)](#rules)
 [![Skills](https://img.shields.io/badge/Skills-15-purple?style=flat-square)](#skills)
-[![Scripts](https://img.shields.io/badge/Scripts-27-red?style=flat-square)](#scripts)
+[![Scripts](https://img.shields.io/badge/Scripts-32-red?style=flat-square)](#scripts)
 [![Phases](https://img.shields.io/badge/Phases-17-blue?style=flat-square)](docs/EVOLUTION.md)
 [![Cells](https://img.shields.io/badge/Cells-5-orange?style=flat-square)](#adaptive-governance-cells)
-[![Version](https://img.shields.io/badge/Version-0.18.1-informational?style=flat-square)](docs/CHANGELOG.md)
+[![Version](https://img.shields.io/badge/Version-0.19.0-informational?style=flat-square)](docs/CHANGELOG.md)
 
 Prism AI Steering is an adaptive governance framework that generates, measures, and evolves its own rules based on observed agent behavior. Built on top of continuous feedback loops and biological natural selection principles, it ensures agents remain grounded, efficient, and safe across different repositories. See the [NOTICE](NOTICE) file for our full local-only Data Privacy Statement.
 
@@ -159,7 +159,7 @@ You can manually trigger these via: `python3 scripts/cell_fitness.py`, `scripts/
 
 ## 📜 Scripts
 
-Refer to [docs/SCRIPTS.md](docs/SCRIPTS.md) for full documentation of the 27 system scripts. Highlights include:
+Refer to [docs/SCRIPTS.md](docs/SCRIPTS.md) for full documentation of the 32 system scripts. Highlights include:
 - `cell_scan.py`: Automated diff→cell triggering via git diff and target_paths matching
 - `fitness_landscape.py`: ASCII governance fitness dashboard with half-life decay
 - `cell_crossover.py`: GA crossover operator for hypothesis merging

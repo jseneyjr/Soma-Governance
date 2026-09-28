@@ -3,6 +3,23 @@
 All notable changes to Prism AI Steering are documented here.
 This project uses [Semantic Versioning](https://semver.org/).
 
+## [0.19.0] — 2026-09-27
+
+### Added
+- Wall extinction immunity (walls immune to apoptosis, get APOPTOSIS_WARNING instead)
+- Specificity penalty (anti-Goodhart: penalize cells triggering >80% of sessions)
+- Bayesian cell fitness (`--bayesian`): Beta-Binomial posterior with Jeffrey's prior
+- Antifragile fitness bonus (+5% per survived Tempest/Maelstrom review)
+- Signal-to-noise ratio (SNR dB) per cell in fitness output
+- `cell_quorum.py`: Detect systemic issues when ≥3 cells trigger simultaneously
+- `cell_coverage.py`: Visualize governance blind spots across codebase
+- `governance_replay.py`: Retrospective "would cells have caught this?" analysis
+- `governance_trends.py`: Cross-session trend dashboard with Shannon diversity index
+- Dormant spore archive (pruned cells saved to `.spores.jsonl`, reactivated on match)
+- `cell_genesis_stochastic.py`: Random template injection every N sessions
+- Mulch→Cell pipeline: Tempest findings auto-create vacuole cells
+- Script count: 27 → 32
+
 ## [0.18.1] — 2026-09-27
 
 ### Fixed
