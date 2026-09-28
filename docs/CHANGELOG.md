@@ -3,6 +3,17 @@
 All notable changes to Prism AI Steering are documented here.
 This project uses [Semantic Versioning](https://semver.org/).
 
+## [0.20.0] — 2026-09-27
+
+### Added
+- Natural language cell creation (`cell_create_nl.py`) via Gemini API with multi-source API key resolution
+- Python SDK (`prism_sdk/`): `pip install prism-steering` for programmatic governance access
+- Counterfactual replay (`--counterfactual --cell <name>`): ROI estimation against historical commits
+- Adversarial cell testing (`cell_adversarial.py`): probe cells for bypass vulnerabilities
+- Governance entropy rate (`governance_entropy.py`): fossilization detection via Shannon entropy
+- `pyproject.toml` for PyPI packaging
+- Script count: 34 → 37
+
 ## [0.19.1] — 2026-09-27
 
 ### Fixed

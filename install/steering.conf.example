@@ -102,3 +102,9 @@ ENABLE_HOOKS=true
 # STOCHASTIC_GENESIS_INTERVAL: Number of sessions between random cell injections.
 # Injects random diversity (Cambrian Trigger) to prevent local optima. Default: 10.
 # STOCHASTIC_GENESIS_INTERVAL=10
+
+# ─── API Keys ─────────────────────────────────────────────────────
+
+# Gemini API key for natural language cell creation.
+# Can also be set via environment variable or .prism/credentials.conf
+# GEMINI_API_KEY=

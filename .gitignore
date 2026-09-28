@@ -37,4 +37,5 @@ docs/postmortem-work-sessions.md
 # Cell fitness tracking (private telemetry)
 .prism/cells/fitness.jsonl
 .prism/cells/.archive/
+.prism/credentials.conf
 docs/internal/

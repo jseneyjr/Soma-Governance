@@ -1,6 +1,6 @@
 # Scripts Reference
 
-This document catalogs the 34 executable scripts that power the Prism AI Steering framework.
+This document catalogs the 37 executable scripts that power the Prism AI Steering framework.
 
 ## Lifecycle Scripts (Hooks)
 These scripts are invoked automatically by the IDE or terminal environment.
@@ -67,3 +67,10 @@ All scripts are constrained by the **Privacy Invariant**: No script may output, 
 
 ## Installation Management
 * **`uninstall.sh`**: Clean uninstaller that removes Prism AI Steering files from the system using `~/.prism-ai-steering/manifest.json`. Features backup-on-install and restore-on-uninstall functionality to safely reinstate previous configurations if desired.
+
+## AI-Assisted Governance
+* **`cell_create_nl.py`**: Natural language cell creation via Gemini API. Describe a concern in plain English and get a fully-formed governance cell with YAML frontmatter. Supports configurable API keys via env var, `steering.conf`, `.prism/credentials.conf`, or Application Default Credentials.
+
+## Adversarial & Research
+* **`cell_adversarial.py`**: Adversarial cell testing — probes cells for bypass vulnerabilities (rename, indirect import, config change, test modification, staleness). Reports per-cell vulnerability scores.
+* **`governance_entropy.py`**: Governance entropy rate — measures information production and distribution using Shannon entropy to detect fossilization, monoculture, and stagnation.

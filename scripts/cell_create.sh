@@ -43,6 +43,7 @@ MEMORY=false
 DECAY_TO_YAML=""
 TARGET_PATHS=""
 ID_OVERRIDE=""
+DESCRIPTION=""
 
 # Parse arguments
 while [[ $# -gt 0 ]]; do
@@ -99,12 +100,25 @@ while [[ $# -gt 0 ]]; do
       TARGET_PATHS="$2"
       shift 2
       ;;
+    --from-description)
+      DESCRIPTION="$2"
+      shift 2
+      ;;
     *)
       echo "Unknown option: $1"
       exit 1
       ;;
   esac
 done
+
+SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+if [ -n "$DESCRIPTION" ]; then
+    EXTRA_ARGS=""
+    [ -n "$ID_OVERRIDE" ] && EXTRA_ARGS="$EXTRA_ARGS --id $ID_OVERRIDE"
+    [ -n "$TYPE" ] && EXTRA_ARGS="$EXTRA_ARGS --type $TYPE"
+    python3 "$SCRIPT_DIR/cell_create_nl.py" "$DESCRIPTION" $EXTRA_ARGS
+    exit $?
+fi
 
 if [[ -z "$TYPE" || -z "$HYPOTHESIS" || -z "$PREDICTION" || -z "$FALSIFICATION" ]]; then
   echo "Error: Missing required arguments."

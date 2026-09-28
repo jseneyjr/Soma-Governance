@@ -1,0 +1,43 @@
+[build-system]
+requires = ["setuptools>=68.0", "wheel"]
+build-backend = "setuptools.backends._legacy:_Backend"
+
+[project]
+name = "prism-steering"
+version = "0.19.1"
+description = "Adaptive governance framework for AI coding assistants"
+readme = "README.md"
+license = {text = "Apache-2.0"}
+requires-python = ">=3.9"
+authors = [
+    {name = "Prism AI Steering Contributors"}
+]
+keywords = [
+    "ai-governance", "agent-alignment", "evolutionary-rules",
+    "code-review", "ai-coding-assistant", "token-optimization"
+]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: Apache Software License",
+    "Programming Language :: Python :: 3",
+    "Topic :: Software Development :: Quality Assurance",
+]
+dependencies = [
+    "pyyaml>=6.0",
+]
+
+[project.optional-dependencies]
+ai = ["google-genai>=1.0"]
+dev = ["pytest", "ruff"]
+
+[project.urls]
+Homepage = "https://github.com/nseney1/prism-ai-steering"
+Documentation = "https://github.com/nseney1/prism-ai-steering/tree/main/docs"
+Changelog = "https://github.com/nseney1/prism-ai-steering/blob/main/docs/CHANGELOG.md"
+
+[tool.setuptools.packages.find]
+include = ["prism_sdk*"]
+
+[tool.setuptools.package-data]
+prism_sdk = ["py.typed"]
