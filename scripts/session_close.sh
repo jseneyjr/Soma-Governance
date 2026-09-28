@@ -87,3 +87,66 @@ with open(fpath, 'w') as f: f.write(content)
         fi
     fi
 fi
+
+# === Automated Cell Evolution ===
+echo "Running cell evolution..."
+
+SCRIPTS_DIR="$(cd -P "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+# 1. Evaluate fitness with half-life decay
+python3 "$SCRIPTS_DIR/cell_fitness.py" 2>/dev/null || true
+
+# 2. Run selection pressure (archive extinct cells)
+bash "$SCRIPTS_DIR/cell_selection.sh" --execute 2>/dev/null || true
+
+# 3. Probabilistic crossover: if >5 cells with fitness >0.5, attempt one crossover
+CROSSOVER_CANDIDATES=$(python3 -c "
+import os, glob, yaml
+cells = glob.glob(os.path.join(os.getcwd(), '.prism', 'cells', '**', '*.md'), recursive=True)
+high_fitness = []
+for f in cells:
+    if os.path.basename(f) == 'README.md': continue
+    try:
+        with open(f) as fh: content = fh.read()
+        if not content.startswith('---'): continue
+        fm = yaml.safe_load(content[3:content.find('---',3)])
+        score = fm.get('fitness',{}).get('score')
+        if score and score > 0.5:
+            high_fitness.append(os.path.splitext(os.path.basename(f))[0])
+    except: pass
+if len(high_fitness) >= 2:
+    import random
+    pair = random.sample(high_fitness, 2)
+    print(f'{pair[0]} {pair[1]}')  
+else:
+    print('')
+" 2>/dev/null || echo '')
+
+if [ -n "$CROSSOVER_CANDIDATES" ]; then
+  read -r CELL_A CELL_B <<< "$CROSSOVER_CANDIDATES"
+  echo "  Attempting crossover: $CELL_A × $CELL_B"
+  python3 "$SCRIPTS_DIR/cell_crossover.py" "$CELL_A" "$CELL_B" 2>/dev/null || true
+fi
+
+# 4. Check for metamorphosis candidates
+python3 -c "
+import os, glob, yaml
+cells = glob.glob(os.path.join(os.getcwd(), '.prism', 'cells', '**', '*.md'), recursive=True)
+for f in cells:
+    if os.path.basename(f) == 'README.md': continue
+    try:
+        with open(f) as fh: content = fh.read()
+        if not content.startswith('---'): continue
+        fm = yaml.safe_load(content[3:content.find('---',3)])
+        score = fm.get('fitness',{}).get('score')
+        triggers = fm.get('fitness',{}).get('triggers', 0)
+        ctype = fm.get('type', '')
+        name = os.path.splitext(os.path.basename(f))[0]
+        if ctype == 'vacuole' and score and score >= 0.8 and triggers >= 20:
+            print(f'  Metamorphosis candidate: {name} (vacuole→wall, fitness={score}, triggers={triggers})')
+        elif ctype == 'wall' and score and score >= 0.85 and triggers >= 25:
+            print(f'  Metamorphosis candidate: {name} (wall→rule, fitness={score}, triggers={triggers})')
+    except: pass
+" 2>/dev/null || true
+
+echo "Cell evolution complete."

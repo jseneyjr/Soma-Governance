@@ -199,3 +199,46 @@ else:
 
 echo "$MERGED"
 
+# === Homeostatic Governance ===
+# Read recent waste rate and adjust review intensity suggestion
+if [ -d "$HOME/.gemini/antigravity/scratch/ai-conversation-logs/governance" ]; then
+  RECENT_WASTE=$(python3 -c "
+import os, json, glob
+gov_dir = os.path.expanduser('~/.gemini/antigravity/scratch/ai-conversation-logs/governance')
+sweeps = sorted(glob.glob(os.path.join(gov_dir, '*.json')))[-5:]  # last 5 sessions
+if not sweeps:
+    print('unknown')
+else:
+    rates = []
+    for f in sweeps:
+        try:
+            with open(f) as fh:
+                data = json.load(fh)
+                rate = data.get('waste_rate', data.get('waste_pct'))
+                if rate is not None:
+                    rates.append(float(rate))
+        except: pass
+    if rates:
+        avg = sum(rates) / len(rates)
+        if avg < 5:
+            print('low')     # Can relax governance
+        elif avg > 15:
+            print('high')    # Should tighten governance
+        else:
+            print('normal')
+    else:
+        print('unknown')
+" 2>/dev/null || echo 'unknown')
+
+  case "$RECENT_WASTE" in
+    low)
+      echo "  📊 Homeostasis: Recent waste rate <5%. Consider Breeze/Gale for routine changes."
+      ;;
+    high)
+      echo "  ⚠️ Homeostasis: Recent waste rate >15%. Recommend Trident+ for all changes."
+      ;;
+    normal)
+      echo "  📊 Homeostasis: Waste rate nominal (5-15%). Standard review protocol."
+      ;;
+  esac
+fi

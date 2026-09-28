@@ -94,7 +94,10 @@ def main():
         created_str = metadata.get('created')
         status = "NEW"
         
-        if dec_score is not None:
+        # Apoptosis: immediate eviction if false positives dominate
+        if fp > 0 and tp > 0 and fp > 2 * tp:
+            status = "APOPTOSIS"
+        elif dec_score is not None:
             if dec_score > 0.7:
                 status = "SURVIVE"
             elif 0.3 <= dec_score <= 0.7:
