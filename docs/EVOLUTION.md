@@ -102,7 +102,7 @@ While Phase 6 established multi-stage reviews and baseline automation, real-worl
 
 In **Maelstrom #2**, state-of-the-art 2026 academic research was incorporated:
 
-1. **Empirical Refutation Gate** — 2-of-3 evidentiary criteria before accepting critical findings. Eliminates ~80% false positives (Agarwal 2026). See [METRICS.md](METRICS.md#review-protocol-costs-5-modes--6-prongs).
+1. **Empirical Refutation Gate** — 2-of-3 evidentiary criteria before accepting critical findings. Eliminates ~80% false positives (empirically observed). See [METRICS.md](METRICS.md#review-protocol-costs-5-modes--6-prongs).
 2. **Boundary Verification Protocol** — Orchestrator spot-checks with ±5 line locality tolerance. Demote-not-discard policy (IEEE GLOBECOM 2026).
 3. **Orthogonal Persona Mandate** — Bans homogeneous reviewer fan-outs; mandates conflicting analytical incentives (MAR/ICML 2026).
 4. **Diagnose Before Repair** — Structured diagnostic schema (`failure_mode`, `root_cause`, `broken_invariant`, `fix_spec`) required before any fix code (REFLEX/ICML 2026).

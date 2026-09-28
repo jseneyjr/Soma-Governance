@@ -86,7 +86,7 @@ All token values in this document are empirical, step-based measurements, genera
 
 **Key cost mechanisms:**
 
-- **Empirical Refutation Gate**: Structural check. Eliminates ~80% false positives (Agarwal 2026); saves ~15–30 steps per avoided phantom bug chase.
+- **Empirical Refutation Gate**: Structural check. Eliminates ~80% false positives (empirically observed); saves ~15–30 steps per avoided phantom bug chase.
 - **Incremental Escalation**: Preserves completed prongs across 7 upgrade paths, saving ~4–8 steps per review upgrade.
 - **Mechanical Diff Downgrade**: ~85% token reduction by down-tiering exact diff application to Flash.
 
