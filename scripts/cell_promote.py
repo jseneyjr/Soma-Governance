@@ -113,6 +113,13 @@ def main():
                     with open(file_path, 'w') as f:
                         f.write(f"---{new_frontmatter}---{content[end_idx+3:]}")
                     print(f"Promoted/Demoted {cell_name}: {enforcement} -> {new_tier} ({reason})")
+                    
+                    if new_tier in ('mechanical', 'gate'):
+                        # Auto-generate enforcement artifact
+                        enforce_script = os.path.join(os.path.dirname(__file__), 'cell_enforce.py')
+                        if os.path.exists(enforce_script):
+                            import subprocess
+                            subprocess.run([sys.executable, enforce_script, '--cell', cell_name], cwd=workspace)
                 else:
                     print(f"[DRY-RUN] Would change tier of {cell_name}: {enforcement} -> {new_tier} ({reason})")
                     

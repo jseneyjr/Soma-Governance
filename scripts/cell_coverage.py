@@ -27,7 +27,12 @@ def main():
             fm = yaml.safe_load(content[3:content.find('---', 3)])
             paths = fm.get('target_paths', [])
             name = os.path.splitext(os.path.basename(cell_file))[0]
-            cell_patterns.append({'name': name, 'patterns': paths, 'type': fm.get('type', '')})
+            cell_patterns.append({
+                'name': name,
+                'patterns': paths,
+                'type': fm.get('type', ''),
+                'enforcement': fm.get('enforcement', 'advisory')
+            })
         except Exception: pass
     
     # Compute coverage
@@ -35,6 +40,10 @@ def main():
     uncovered_files = set()
     coverage_map = {}  # dir -> {covered, total}
     
+    # Track highest enforcement tier per directory
+    tier_rank = {'advisory': 0, 'mechanical': 1, 'gate': 2}
+    dir_tiers = {}  # dir -> highest tier
+
     for f in all_files:
         is_covered = False
         for cell in cell_patterns:
@@ -52,10 +61,21 @@ def main():
         # Track by directory
         d = os.path.dirname(f) or '.'
         if d not in coverage_map:
-            coverage_map[d] = {'covered': 0, 'total': 0}
+            coverage_map[d] = {'covered': 0, 'total': 0, 'tier': 'none'}
         coverage_map[d]['total'] += 1
         if is_covered:
             coverage_map[d]['covered'] += 1
+            
+        for cell in cell_patterns:
+            for pattern in cell['patterns']:
+                if fnmatch(f, pattern):
+                    current = dir_tiers.get(d, 'none')
+                    cell_tier = cell.get('enforcement', 'advisory')
+                    if tier_rank.get(cell_tier, 0) > tier_rank.get(current, -1):
+                        dir_tiers[d] = cell_tier
+                    break
+            
+        coverage_map[d]['tier'] = dir_tiers.get(d, 'none')
     
     total = len(all_files)
     covered = len(covered_files)
@@ -69,15 +89,17 @@ def main():
         }, indent=2))
     else:
         print(f'\n📊 Cell Coverage: {covered}/{total} files ({pct:.1f}%)\n')
-        print(f'{"Directory":<40} {"Coverage":>10}  Bar')
-        print('─' * 70)
+        print(f'{"Directory":<40} {"Coverage":>10}  Bar                  Tier')
+        print('─' * 90)
+        tier_icons = {'gate': '🔒', 'mechanical': '⚙️', 'advisory': '💬', 'none': '⬜'}
         for d in sorted(coverage_map.keys()):
             info = coverage_map[d]
             dpct = info['covered'] / info['total'] * 100 if info['total'] > 0 else 0
             bar_len = int(dpct / 5)
             bar = '█' * bar_len + '░' * (20 - bar_len)
             status = '✅' if dpct == 100 else '⚠️' if dpct > 0 else '🔴'
-            print(f'{d:<40} {info["covered"]:>3}/{info["total"]:<3} {status} {bar}')
+            tier = info.get('tier', 'none')
+            print(f'{d:<40} {info["covered"]:>3}/{info["total"]:<3} {status} {bar} {tier_icons.get(tier, "")} {tier}')
         
         if uncovered_files:
             print(f'\n🔴 Blind Spots ({len(uncovered_files)} uncovered files):')

@@ -3,6 +3,18 @@
 All notable changes to Prism AI Steering are documented here.
 This project uses [Semantic Versioning](https://semver.org/).
 
+## [0.21.1] — 2026-09-28
+
+### Added
+- `cell_enforce.py`: Auto-generates enforcement artifacts for promoted cells
+- Mechanical cells generate pre-commit hook checks in `.prism/enforcement/`
+- Gate cells generate runtime assertion classes in `.prism/enforcement/`
+- `enforcement_artifact` field links cells to their generated artifacts
+- Coverage map now shows enforcement tier per directory
+- Pre-commit hook runs mechanical checks from `.prism/enforcement/`
+- Auto-trigger enforcement generation on tier promotion
+- Script count: 38 → 39
+
 ## [0.21.0] — 2026-09-28
 
 ### Added
