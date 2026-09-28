@@ -37,10 +37,10 @@ if [[ -z "$CELL_ID" || -z "$TARGET_DIR" ]]; then
   exit 1
 fi
 
-SOURCE_CELL=$(find .prism/cells -type f -name "*${CELL_ID}*.md" | head -n 1)
+SOURCE_CELL=$(find "$REPO_DIR/.prism/cells" -type f -name "*${CELL_ID}*.md" | head -n 1)
 
 if [[ -z "$SOURCE_CELL" ]]; then
-  echo "Error: Cell matching '${CELL_ID}' not found in .prism/cells/"
+  echo "Error: Cell matching '${CELL_ID}' not found in $REPO_DIR/.prism/cells/"
   exit 1
 fi
 

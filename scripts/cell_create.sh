@@ -8,6 +8,25 @@ if [[ -f "scripts/common.sh" ]]; then
 fi
 
 # Default values
+# Walk up from CWD to find project root with .prism/cells/
+if [ -n "${PRISM_ROOT:-}" ] && [ -d "$PRISM_ROOT" ]; then
+  REPO_DIR="$PRISM_ROOT"
+else
+  _d="$(pwd)"
+  REPO_DIR="$_d"
+  while [ "$_d" != "/" ]; do
+    if [[ "$_d" == */vendor/* ]] || [[ "$_d" == */vendor ]]; then
+      _d="$(dirname "$_d")"
+      continue
+    fi
+    if [ -d "$_d/.prism/cells" ]; then
+      REPO_DIR="$_d"
+      break
+    fi
+    _d="$(dirname "$_d")"
+  done
+fi
+
 TYPE=""
 HYPOTHESIS=""
 PREDICTION=""
@@ -134,7 +153,7 @@ esac
 SLUG=$(echo "$HYPOTHESIS" | tr '[:upper:]' '[:lower:]' | sed 's/[^a-z0-9 ]//g' | sed 's/ /-/g' | cut -c1-50 | sed 's/-$//')
 DATE=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
 
-DIR=".prism/cells/$TYPE_PLURAL"
+DIR="$REPO_DIR/.prism/cells/$TYPE_PLURAL"
 mkdir -p "$DIR"
 
 FILE_PATH="$DIR/$SLUG.md"

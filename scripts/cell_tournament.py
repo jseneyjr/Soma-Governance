@@ -5,16 +5,7 @@ import argparse
 import glob
 import yaml
 import random
-
-def resolve_workspace():
-    d = os.path.dirname(os.path.abspath(__file__))
-    while d != os.path.dirname(d):
-        if os.path.isdir(os.path.join(d, ".prism", "cells")):
-            return d
-        if os.path.isdir(os.path.join(d, "scripts")):
-            return d
-        d = os.path.dirname(d)
-    return os.getcwd()
+from prism_resolve import resolve_workspace
 
 def main():
     parser = argparse.ArgumentParser(description="Tournament selection for cell pruning decisions")
@@ -22,7 +13,7 @@ def main():
     parser.add_argument("--count", type=int, default=5, help="Number of tournaments to run")
     args = parser.parse_args()
 
-    workspace = resolve_workspace()
+    workspace = resolve_workspace(__file__)
     cells_dir = os.path.join(workspace, '.prism', 'cells')
     
     cell_files = glob.glob(os.path.join(cells_dir, '**', '*.md'), recursive=True)

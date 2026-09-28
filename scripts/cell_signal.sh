@@ -9,14 +9,25 @@
 set -euo pipefail
 
 # Symlink-safe pattern to resolve repository directory
-SOURCE="${BASH_SOURCE[0]}"
-while [ -h "$SOURCE" ]; do
-  DIR="$( cd -P "$( dirname "$SOURCE" )" >/dev/null 2>&1 && pwd )"
-  SOURCE="$(readlink "$SOURCE")"
-  [[ $SOURCE != /* ]] && SOURCE="$DIR/$SOURCE"
-done
-SCRIPT_DIR="$( cd -P "$( dirname "$SOURCE" )" >/dev/null 2>&1 && pwd )"
-REPO_DIR="$(dirname "$SCRIPT_DIR")"
+# Walk up from CWD to find project root with .prism/cells/
+if [ -n "${PRISM_ROOT:-}" ] && [ -d "$PRISM_ROOT" ]; then
+  REPO_DIR="$PRISM_ROOT"
+else
+  _d="$(pwd)"
+  REPO_DIR="$_d"
+  while [ "$_d" != "/" ]; do
+    if [[ "$_d" == */vendor/* ]] || [[ "$_d" == */vendor ]]; then
+      _d="$(dirname "$_d")"
+      continue
+    fi
+    if [ -d "$_d/.prism/cells" ]; then
+      REPO_DIR="$_d"
+      break
+    fi
+    _d="$(dirname "$_d")"
+  done
+fi
+SCRIPT_DIR="$REPO_DIR/scripts"
 
 # Source common utilities if available
 if [ -f "$SCRIPT_DIR/common.sh" ]; then

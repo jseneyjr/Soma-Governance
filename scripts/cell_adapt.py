@@ -7,22 +7,14 @@ import json
 import yaml
 import shutil
 from datetime import datetime
-
-def resolve_workspace():
-    """Walk up from script location to find the project root containing .prism/cells/."""
-    d = os.path.dirname(os.path.abspath(__file__))
-    while d != os.path.dirname(d):
-        if os.path.isdir(os.path.join(d, ".prism", "cells")):
-            return d
-        d = os.path.dirname(d)
-    return os.getcwd()
+from prism_resolve import resolve_workspace
 
 def main():
     parser = argparse.ArgumentParser(description="Adapt governance cells based on fitness.")
     parser.add_argument("--generate", action="store_true", help="Generate v2 cells for adaptation candidates")
     args = parser.parse_args()
 
-    workspace_dir = resolve_workspace()
+    workspace_dir = resolve_workspace(__file__)
     cells_dir = os.path.join(workspace_dir, '.prism', 'cells')
     cell_files = glob.glob(os.path.join(cells_dir, '**', '*.md'), recursive=True)
 

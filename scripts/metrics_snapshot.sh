@@ -4,10 +4,15 @@
 source "$(dirname "$0")/common.sh" 2>/dev/null || true
 
 # Forward arguments to python logic
+SCRIPT_DIR="$(dirname "$(realpath "$0")")"
+export SCRIPT_DIR
 python3 - "$@" << 'PYEOF'
 import sys
-import json
 import os
+
+sys.path.insert(0, os.environ["SCRIPT_DIR"])
+from prism_resolve import resolve_workspace
+import json
 import re
 import datetime
 import subprocess
@@ -23,15 +28,6 @@ def parse_args():
         if idx + 1 < len(args):
             compare_file = args[idx+1]
     return json_mode, raw_mode, compare_file, save
-
-def resolve_workspace():
-    """Find workspace root by walking up from this script's location."""
-    d = os.path.dirname(os.path.abspath(__file__))
-    while d != os.path.dirname(d):
-        if os.path.isdir(os.path.join(d, "rules")) and os.path.isdir(os.path.join(d, "skills")):
-            return d
-        d = os.path.dirname(d)
-    return os.getcwd()
 
 def resolve_metrics_dir(workspace):
     """Resolve where metrics snapshots are stored. Respects TEAM_REPO or METRICS_REPO."""
@@ -69,7 +65,7 @@ def resolve_metrics_dir(workspace):
 
 def main():
     json_mode, raw_mode, compare_file, save = parse_args()
-    workspace = resolve_workspace()
+    workspace = resolve_workspace(os.environ["SCRIPT_DIR"] + "/metrics_snapshot.sh")
     metrics_dir = resolve_metrics_dir(workspace)
 
     # Call token_census.py

@@ -10,6 +10,7 @@ import glob
 import json
 import yaml
 from datetime import datetime
+from prism_resolve import resolve_workspace
 
 # The 11 built-in core rules that must not be demoted
 PROTECTED_RULES = {
@@ -18,21 +19,13 @@ PROTECTED_RULES = {
     "destructive-ops", "git-workflow", "desktop-automation"
 }
 
-def resolve_workspace():
-    d = os.path.dirname(os.path.abspath(__file__))
-    while d != os.path.dirname(d):
-        if os.path.isdir(os.path.join(d, "rules")) and os.path.isdir(os.path.join(d, "scripts")):
-            return d
-        d = os.path.dirname(d)
-    return os.getcwd()
-
 def main():
     parser = argparse.ArgumentParser(description="Demote a global rule back to a local cell.")
     parser.add_argument("rule_name", help="The name of the rule to demote (e.g. rule-trap-walls)")
     parser.add_argument("--reason", required=True, help="Reason for demotion")
     args = parser.parse_args()
 
-    workspace = resolve_workspace()
+    workspace = resolve_workspace(__file__)
     
     rule_name = args.rule_name
     if rule_name.endswith('.md'):

@@ -6,15 +6,7 @@ import glob
 import json
 import yaml
 from datetime import datetime
-
-def resolve_workspace():
-    """Walk up from script location to find the project root containing .prism/cells/."""
-    d = os.path.dirname(os.path.abspath(__file__))
-    while d != os.path.dirname(d):
-        if os.path.isdir(os.path.join(d, ".prism", "cells")):
-            return d
-        d = os.path.dirname(d)
-    return os.getcwd()
+from prism_resolve import resolve_workspace
 
 def decayed_fitness(raw_score, last_trigger_date, half_life_days=30):
     if last_trigger_date is None or raw_score is None:
@@ -31,7 +23,7 @@ def main():
     parser.add_argument("--cross-repo", action="store_true", help="Aggregate fitness across multiple repos in METRICS_REPO")
     args = parser.parse_args()
 
-    workspace = resolve_workspace()
+    workspace = resolve_workspace(__file__)
     cells_dir = os.path.join(workspace, '.prism', 'cells')
     cell_files = glob.glob(os.path.join(cells_dir, '**', '*.md'), recursive=True)
 
@@ -195,14 +187,6 @@ def main():
         results = [r for r in results if r['score'] is not None and r['score'] > 0.7]
 
     if args.cross_repo:
-        def resolve_workspace():
-            d = os.path.dirname(os.path.abspath(__file__))
-            while d != os.path.dirname(d):
-                if os.path.isdir(os.path.join(d, "rules")) and os.path.isdir(os.path.join(d, "skills")):
-                    return d
-                d = os.path.dirname(d)
-            return os.getcwd()
-            
         def resolve_metrics_dir(workspace):
             team_repo = os.environ.get("TEAM_REPO")
             team_member = os.environ.get("TEAM_MEMBER_ID", "local_user")
@@ -227,7 +211,7 @@ def main():
                 return os.path.expanduser(metrics_repo)
             return os.path.join(workspace, "docs", "snapshots")
             
-        workspace = resolve_workspace()
+        workspace = resolve_workspace(__file__)
         metrics_dir = resolve_metrics_dir(workspace)
         
         # Look for JSON files in metrics_dir that might be cell fitness snapshots

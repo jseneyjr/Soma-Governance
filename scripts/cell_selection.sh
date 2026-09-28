@@ -16,15 +16,21 @@ import os, sys, re, json, datetime, shutil
 execute_mode = len(sys.argv) > 1 and sys.argv[1] == '--execute'
 script_dir = sys.argv[2] if len(sys.argv) > 2 else os.getcwd()
 
-# Walk up from script dir to find project root with .prism/cells/
-d = os.path.abspath(script_dir)
-while d != os.path.dirname(d):
-    if os.path.isdir(os.path.join(d, ".prism", "cells")):
-        break
-    d = os.path.dirname(d)
-else:
+# Walk up from CWD to find project root with .prism/cells/
+def resolve_workspace():
+    if os.environ.get("PRISM_ROOT") and os.path.isdir(os.environ.get("PRISM_ROOT")):
+        return os.environ.get("PRISM_ROOT")
     d = os.getcwd()
-repo_root = d
+    while d != os.path.dirname(d):
+        if "/vendor/" in d or d.endswith("/vendor"):
+            d = os.path.dirname(d)
+            continue
+        if os.path.isdir(os.path.join(d, ".prism", "cells")):
+            return d
+        d = os.path.dirname(d)
+    return os.getcwd()
+
+repo_root = resolve_workspace()
 
 cells_dir = os.path.join(repo_root, ".prism", "cells")
 archive_dir = os.path.join(cells_dir, ".archive")

@@ -6,16 +6,7 @@ import glob
 import yaml
 import csv
 from datetime import datetime
-
-def resolve_workspace():
-    d = os.path.dirname(os.path.abspath(__file__))
-    while d != os.path.dirname(d):
-        if os.path.isdir(os.path.join(d, ".prism", "cells")):
-            return d
-        if os.path.isdir(os.path.join(d, "scripts")):
-            return d
-        d = os.path.dirname(d)
-    return os.getcwd()
+from prism_resolve import resolve_workspace
 
 def decayed_fitness(raw_score, last_trigger_date, half_life_days=30):
     if last_trigger_date is None or raw_score is None:
@@ -29,7 +20,7 @@ def main():
     parser.add_argument("--format", choices=["ascii", "csv"], default="ascii", help="Output format")
     args = parser.parse_args()
 
-    workspace = resolve_workspace()
+    workspace = resolve_workspace(__file__)
     cells_dir = os.path.join(workspace, '.prism', 'cells')
     
     cell_files = glob.glob(os.path.join(cells_dir, '**', '*.md'), recursive=True)

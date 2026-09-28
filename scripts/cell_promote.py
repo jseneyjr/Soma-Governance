@@ -6,16 +6,7 @@ import glob
 import json
 import yaml
 from datetime import datetime
-
-def resolve_workspace():
-    d = os.path.dirname(os.path.abspath(__file__))
-    while d != os.path.dirname(d):
-        if os.path.isdir(os.path.join(d, ".prism", "cells")):
-            return d
-        if os.path.isdir(os.path.join(d, "rules")) and os.path.isdir(os.path.join(d, "skills")):
-            return d
-        d = os.path.dirname(d)
-    return os.getcwd()
+from prism_resolve import resolve_workspace
 
 def resolve_metrics_dir(workspace):
     metrics_repo = os.environ.get("METRICS_REPO")
@@ -39,7 +30,7 @@ def main():
     args = parser.parse_args()
     
     dry_run = not args.execute
-    workspace = resolve_workspace()
+    workspace = resolve_workspace(__file__)
     metrics_dir = resolve_metrics_dir(workspace)
     fitness_log_path = os.path.join(metrics_dir, "fitness.jsonl")
     

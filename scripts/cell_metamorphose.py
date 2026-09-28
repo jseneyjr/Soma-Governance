@@ -10,6 +10,7 @@ import json
 import yaml
 import shutil
 from datetime import datetime
+from prism_resolve import resolve_workspace
 
 METAMORPHOSIS_PATHS = {
     "vacuole": [
@@ -24,20 +25,12 @@ METAMORPHOSIS_PATHS = {
     ],
 }
 
-def resolve_workspace():
-    d = os.path.dirname(os.path.abspath(__file__))
-    while d != os.path.dirname(d):
-        if os.path.isdir(os.path.join(d, ".prism")):
-            return d
-        d = os.path.dirname(d)
-    return os.getcwd()
-
 def main():
     parser = argparse.ArgumentParser(description="Transforms cells between types based on maturity criteria.")
     parser.add_argument("cell_id", help="The ID of the cell to metamorphose (filename or partial match)")
     args = parser.parse_args()
 
-    workspace = resolve_workspace()
+    workspace = resolve_workspace(__file__)
     cells_dir = os.path.join(workspace, ".prism", "cells")
     
     matches = glob.glob(os.path.join(cells_dir, "**", f"*{args.cell_id}*.md"), recursive=True)
