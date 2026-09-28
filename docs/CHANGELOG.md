@@ -3,6 +3,31 @@
 All notable changes to Prism AI Steering are documented here.
 This project uses [Semantic Versioning](https://semver.org/).
 
+## [0.18.1] — 2026-09-27
+
+### Fixed
+- Wire `escalation_sentinel.sh` into `governance_init.sh` (was orphaned)
+- Escalation sentinel now scans walls AND membranes for `minimum_mode`
+- Thorns terminology disambiguation in README
+
+### Added
+- `cell_scan.py`: Automated diff→cell triggering via git diff and target_paths
+- `target_paths` field in cell YAML schema
+- `DEFAULT_REVIEW_MODE` and `MINIMUM_REVIEW_MODE` in steering.conf
+- Session fitness dashboard in session_close.sh
+
+## [0.18.0] — 2026-09-27
+
+### Added
+- Centralized workspace resolution (`prism_resolve.py`) — CWD-first, vendor-safe
+- Automated evolutionary loop in `session_close.sh`
+- Apoptotic fast-kill in `cell_fitness.py` (FP > 2×TP)
+- Homeostatic governance intensity in `governance_init.sh`
+
+### Changed
+- All scripts use `prism_resolve.py` instead of inline resolution
+- Script count: 25 → 26
+
 ## [0.17.1] — 2026-09-27
 
 ### Added

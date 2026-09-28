@@ -1,6 +1,6 @@
 # Scripts Reference
 
-This document catalogs the 25 executable scripts that power the Prism AI Steering framework.
+This document catalogs the 27 executable scripts that power the Prism AI Steering framework.
 
 ## Lifecycle Scripts (Hooks)
 These scripts are invoked automatically by the IDE or terminal environment.
@@ -24,6 +24,7 @@ These scripts run the Cytogenesis selection and speciation pipeline. They respec
 | Script | Purpose |
 |:-------|:--------|
 | `cell_signal.sh` | External fitness signal API. Allows CI/CD, monitoring, test suites, or any external system to feed TP/FP/FN outcomes back to cells. |
+| `cell_scan.py` | Automated diff→cell triggering via git diff and target_paths. Can automatically signal via cell_signal.sh. |
 | `cell_create.sh` | Programmatic cell creation. Create cells from automated systems, incident response, or test failures. |
 | `cell_demote.py` | Reverse of cell_promote.py. Demotes global rules back to local cells when they cause false positives in new contexts. |
 
@@ -44,6 +45,7 @@ These scripts run the Cytogenesis selection and speciation pipeline. They respec
 
 ## Governance & Maintenance
 * **`common.sh`**: A shared bash library used across scripts to standardize output, error handling, and path resolutions.
+* **`prism_resolve.py`**: Centralized workspace resolution (CWD-first, vendor-safe) used across scripts.
 * **`governance_sweep.sh`**: Performs local scans across past session transcripts to extract waste patterns and identify missed traps.
 * **`sweep_session.py`**: Companion python script for `governance_sweep.sh` that classifies waste and scores compliance per session.
 * **`log_finding.sh`**: Appends specific anti-patterns or successful catches into the `mulch_queue.jsonl` database for evolutionary learning.

@@ -253,13 +253,14 @@ main() {
   fi
 
   # ── Membrane Overrides ──────────────────────────────────────────
-  if [ -d ".prism/cells/membranes" ]; then
-    for membrane in .prism/cells/membranes/*.md; do
+  for cell_dir in membranes walls; do
+    if [ -d ".prism/cells/$cell_dir" ]; then
+      for membrane in .prism/cells/$cell_dir/*.md; do
       [ -f "$membrane" ] || continue
       local mem_mode
-      mem_mode=$(grep '^minimum_mode:' "$membrane" | awk '{print $2}' | tr -d '\r')
+      mem_mode=$(grep '^minimum_mode:' "$membrane" 2>/dev/null | awk '{print $2}' | tr -d '\r' || true)
       local mem_path
-      mem_path=$(grep -m 1 '^hypothesis:' "$membrane" | sed -E 's/.*Changes to ([^ ]+) .*/\1/' | sed -E 's/["'\'']//g')
+      mem_path=$(grep -m 1 '^hypothesis:' "$membrane" 2>/dev/null | sed -E 's/.*Changes to ([^ ]+) .*/\1/' | sed -E 's/["'\'']//g' || true)
       
       if [ -n "$mem_mode" ] && [ -n "$mem_path" ]; then
         if echo "$files" | grep -qiE "$mem_path"; then
@@ -275,8 +276,9 @@ main() {
           fi
         fi
       fi
-    done
-  fi
+      done
+    fi
+  done
 
   # ── Output ──────────────────────────────────────────────────────
 

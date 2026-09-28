@@ -9,6 +9,13 @@
 # Namespaced to avoid collision with Docker/CI PLATFORM env var.
 STEERING_PLATFORM=gemini
 
+# Default review mode (set by Genesis Lichen or manually).
+# Modes: breeze | gale | trident | maelstrom | tempest
+# DEFAULT_REVIEW_MODE=gale
+
+# Minimum review mode floor (cannot go below this).
+# MINIMUM_REVIEW_MODE=breeze
+
 # ─── Team Structure ───────────────────────────────────────────────
 
 # TEAM_SIZE: solo | small (2-5) | team (6-20) | enterprise (20+)

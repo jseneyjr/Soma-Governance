@@ -149,4 +149,37 @@ for f in cells:
     except: pass
 " 2>/dev/null || true
 
+# === Session Dashboard ===
+python3 -c "
+import os, glob, yaml, json
+
+cells_dir = os.path.join(os.getcwd(), '.prism', 'cells')
+if not os.path.isdir(cells_dir):
+    exit(0)
+
+cells = glob.glob(os.path.join(cells_dir, '**', '*.md'), recursive=True)
+active = extinct = 0
+for f in cells:
+    if os.path.basename(f) == 'README.md': continue
+    try:
+        with open(f) as fh: content = fh.read()
+        if not content.startswith('---'): continue
+        fm = yaml.safe_load(content[3:content.find('---',3)])
+        score = fm.get('fitness',{}).get('score')
+        if score is not None and score > 0.3:
+            active += 1
+        else:
+            extinct += 1
+    except: pass
+
+print()
+print('\u2554' + '\u2550'*50 + '\u2557')
+print('\u2551  \U0001f4ca Governance Session Summary' + ' '*21 + '\u2551')
+print('\u2560' + '\u2550'*50 + '\u2563')
+print(f'\u2551  Active Cells:     {active:<30}\u2551')
+print(f'\u2551  Extinct Cells:    {extinct:<30}\u2551')
+print(f'\u2551  Total Population:  {active+extinct:<29}\u2551')
+print('\u255a' + '\u2550'*50 + '\u255d')
+" 2>/dev/null || true
+
 echo "Cell evolution complete."

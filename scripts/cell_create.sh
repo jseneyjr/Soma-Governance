@@ -41,6 +41,7 @@ ACTIVATION=""
 EFFECTOR=false
 MEMORY=false
 DECAY_TO_YAML=""
+TARGET_PATHS=""
 
 # Parse arguments
 while [[ $# -gt 0 ]]; do
@@ -84,6 +85,10 @@ while [[ $# -gt 0 ]]; do
     --memory)
       MEMORY=true
       shift
+      ;;
+    --target-paths)
+      TARGET_PATHS="$2"
+      shift 2
       ;;
     *)
       echo "Unknown option: $1"
@@ -181,6 +186,24 @@ if [[ -n "$TAGS" ]]; then
   TAGS_YAML+="]"
 fi
 
+# Convert target_paths to array format for YAML if not empty
+TARGET_PATHS_YAML="[]"
+if [[ -n "$TARGET_PATHS" ]]; then
+  # split by comma, add quotes, join by comma
+  IFS=',' read -ra TP_ARRAY <<< "$TARGET_PATHS"
+  TARGET_PATHS_YAML="["
+  for i in "${!TP_ARRAY[@]}"; do
+    # trim whitespace
+    TP=$(echo "${TP_ARRAY[$i]}" | xargs)
+    if [[ $i -eq 0 ]]; then
+      TARGET_PATHS_YAML+="\"$TP\""
+    else
+      TARGET_PATHS_YAML+=", \"$TP\""
+    fi
+  done
+  TARGET_PATHS_YAML+="]"
+fi
+
 # Build optional fields
 OPTIONAL_YAML=""
 if [[ -n "$RESPONSE_TYPE" ]]; then
@@ -207,6 +230,7 @@ expiry_days: $EXPIRY_DAYS
 created: "$DATE"
 impact_weight: $WEIGHT
 tags: $TAGS_YAML
+target_paths: $TARGET_PATHS_YAML
 lineage:
   parent_id: null
   created_by: "manual"

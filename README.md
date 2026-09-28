@@ -3,31 +3,43 @@
 [![License: Apache 2.0](https://img.shields.io/badge/License-Apache_2.0-blue?style=flat-square)](LICENSE)
 [![Rules](https://img.shields.io/badge/Rules-11-green?style=flat-square)](#rules)
 [![Skills](https://img.shields.io/badge/Skills-15-purple?style=flat-square)](#skills)
-[![Scripts](https://img.shields.io/badge/Scripts-25-red?style=flat-square)](#scripts)
-[![Phases](https://img.shields.io/badge/Phases-15-blue?style=flat-square)](docs/EVOLUTION.md)
-[![Cells](https://img.shields.io/badge/Cells-4-orange?style=flat-square)](#adaptive-governance-cells)
+[![Scripts](https://img.shields.io/badge/Scripts-27-red?style=flat-square)](#scripts)
+[![Phases](https://img.shields.io/badge/Phases-17-blue?style=flat-square)](docs/EVOLUTION.md)
+[![Cells](https://img.shields.io/badge/Cells-5-orange?style=flat-square)](#adaptive-governance-cells)
+[![Version](https://img.shields.io/badge/Version-0.18.1-informational?style=flat-square)](docs/CHANGELOG.md)
 
 Prism AI Steering is an adaptive governance framework that generates, measures, and evolves its own rules based on observed agent behavior. Built on top of continuous feedback loops and biological natural selection principles, it ensures agents remain grounded, efficient, and safe across different repositories. See the [NOTICE](NOTICE) file for our full local-only Data Privacy Statement.
 
+> **The Problem**: Ungoverned AI coding agents waste 25-56% of tokens in circular rework loops, hallucinated API calls, and broken assumptions. Static rule files (`.cursorrules`, `CLAUDE.md`) help but never adapt.
+>
+> **The Result**: Prism reduces waste to under 5% (1.1% best-case) while adding only ~3.4% idle context overhead. Rules that stop proving themselves die. Rules that keep proving themselves get promoted. This is Darwinian governance.
+
 ## Quick Start
 
-> **Prerequisites:** `git`, and one of: [Gemini/Antigravity](https://github.com/google-gemini/antigravity), [Kiro](https://kiro.dev), or [GitHub Copilot](https://github.com/features/copilot)
+### Installation
 
 ```bash
-git clone https://github.com/nseney1/prism-ai-steering.git
-cd prism-ai-steering
-cp install/steering.conf.example steering.conf   # Optional: customize for your team
+# Clone
+git clone https://github.com/nseney1/prism-ai-steering.git && cd prism-ai-steering
 
-# Linux, macOS, WSL, Windows (Git Bash):
-make install                              # Gemini / Antigravity (default)
-bash install/install.sh gemini --local    # Install rules to project .prism/ dir
+# Option A: Global install (Gemini / Antigravity)
+make install
 
-# Windows (Native PowerShell):
-.\install.ps1                             # Rules + skills only (hooks require bash)
+# Option B: Project-local install (creates .prism/ in your repo)
+bash install/install.sh gemini --local
+
+# Other platforms
+bash install/install.sh kiro       # AWS Kiro
+bash install/install.sh copilot    # GitHub Copilot
 ```
 
-**Activate Genesis onboarding:** Run the `genesis` skill on your repository to generate initial project-specific governance cells.
-**Verify Installation:** Run `make validate` and `make doctor` to ensure your deployment is healthy.
+### Onboarding
+
+After installation, open your AI assistant in your project and prompt:
+
+> *Run the genesis skill to inspect this repository and seed governance cells.*
+
+Genesis scans your stack (languages, frameworks, dependencies) and creates tailored `.prism/cells/` in seconds. Domain templates (`templates/`) are auto-detected based on your project type.
 
 ## Architecture
 
@@ -66,7 +78,9 @@ The framework enforces code modifications using tiered Review Modes and structur
 | 🪨 Bedrock | Final verification gate | Binary Gate |
 | 🍂 Mulch | Learning extraction | Lightweight |
 
-*An **escalation sentinel** runs dynamically in the PreInvocation lifecycle to evaluate diff sensitivity and automatically dictate the minimum Review Mode (e.g., Breeze vs Tempest).*
+> **Note**: Thorns is a *review prong* (adversarial falsification stage), not a top-level review mode. It powers Maelstrom and Tempest automatically and can be invoked standalone. The 5 review modes are: Breeze → Gale → Trident → Maelstrom → Tempest.
+
+*An **escalation sentinel** runs dynamically in the PreInvocation lifecycle to evaluate diff sensitivity and recommends diff-sensitivity review tiers during session initialization.*
 
 ## 📜 Rules
 
@@ -113,17 +127,44 @@ Cells are atomic, dynamically generated governance invariants that live exclusiv
 4. **Membrane**: Context filtering and escalation overrides.
 5. **Plasmodesmata**: Cross-repo data boundaries and service connections.
 
+| Biological Unit | Software Equivalent | What It Does |
+|:----------------|:-------------------|:-------------|
+| **Vacuole** | Anti-pattern trap | Catches known failure modes (e.g., "Don't use raw coordinates") |
+| **Chloroplast** | Domain persona | Injects idiomatic patterns (e.g., "Use async FastAPI conventions") |
+| **Cell Wall** | Hard invariant | Non-negotiable safety gate (e.g., "Never skip GAE truncation") |
+| **Membrane** | Escalation gate | Forces elevated review when sensitive areas change |
+| **Plasmodesmata** | Cross-repo contract | Governs data shapes and APIs between services |
+
 ### Cell Lifecycle
 Cells operate on a Darwinian evolutionary lifecycle:
-`Generate → Score → Adapt → Prune → Promote`
+
+```text
+Generate → Score (Half-Life) → Adapt / Crossover → Metamorphose → Prune / Apoptosis → Promote / Transfer
+   ↑                                                                                    |
+   └───────────────────────── External Fitness Signals (CI/CD, tests, metrics) ───────────┘
+```
+
+**Evolutionary Operators** (v0.17.0+):
+- **Crossover** (`cell_crossover.py`): Merges complementary hypotheses from two high-fitness cells
+- **Tournament Selection** (`cell_tournament.py`): Diversity-preserving selection pressure
+- **Metamorphosis** (`cell_metamorphose.py`): Vacuoles harden into Walls, Walls graduate to Rules through proof
+- **Half-Life Decay**: Cell confidence decays exponentially unless reinforced by new evidence
+- **Apoptosis**: Immediate eviction when false positives exceed 2× true positives
+- **Horizontal Gene Transfer** (`cell_transfer.sh`): Cross-project cell sharing with 5-session probation
+- **Lineage Tracking**: Phylogenetic provenance (`parent_id`, `created_by`, `generation`)
 
 A background **fitness function** monitors the success rate (true positives) of each cell against its disruption rate (false positives). Overperforming cells are kept (or promoted globally), and underperforming ones are autonomously adapted or driven to extinction. 
 
-You can manually trigger these via: `python3 scripts/cell_fitness.py`, `scripts/cell_selection.sh`, `python3 scripts/cell_adapt.py`, `python3 scripts/cell_promote.py`.
+You can manually trigger these via: `python3 scripts/cell_fitness.py`, `scripts/cell_selection.sh`, `python3 scripts/cell_adapt.py`, `python3 scripts/cell_promote.py`, `scripts/cell_signal.sh`, `scripts/cell_create.sh`, `python3 scripts/cell_scan.py`, `python3 scripts/fitness_landscape.py`, `python3 scripts/cell_crossover.py`, `python3 scripts/cell_metamorphose.py`, `scripts/cell_transfer.sh`.
 
 ## 📜 Scripts
 
-Refer to [docs/SCRIPTS.md](docs/SCRIPTS.md) for full documentation of the 25 system scripts. Highlights include:
+Refer to [docs/SCRIPTS.md](docs/SCRIPTS.md) for full documentation of the 27 system scripts. Highlights include:
+- `cell_scan.py`: Automated diff→cell triggering via git diff and target_paths matching
+- `fitness_landscape.py`: ASCII governance fitness dashboard with half-life decay
+- `cell_crossover.py`: GA crossover operator for hypothesis merging
+- `cell_metamorphose.py`: Cell type transformation through maturity proof
+- `prism_resolve.py`: Centralized workspace resolution (CWD-first, vendor-safe)
 - `cell_selection.sh`: Main entrypoint for evaluating cell fitness.
 - `cell_signal.sh`: External fitness signal API for CI/CD and monitoring integration.
 - `cell_create.sh`: Programmatic cell creation from automated systems.
@@ -137,6 +178,17 @@ Refer to [docs/SCRIPTS.md](docs/SCRIPTS.md) for full documentation of the 25 sys
 
 Copy [`steering.conf.example`](install/steering.conf.example) → `steering.conf` to customize platform, team size, git strategy, approval chains, and hooks configuration. 
 It includes `TEAM_REPO` and `ORG_REPO` configuration for multi-developer and multi-team governance convergence.
+
+Key `steering.conf` options (see `install/steering.conf.example` for full reference):
+
+| Variable | Default | Description |
+|:---------|:--------|:------------|
+| `STEERING_PLATFORM` | `gemini` | Target AI platform |
+| `DEFAULT_REVIEW_MODE` | `gale` | Session default review intensity |
+| `CELL_HALF_LIFE_DAYS` | `30` | Days for fitness confidence to halve |
+| `CELL_HALF_LIFE_WALL` | `null` | Walls (invariants) never decay |
+| `TEAM_SIZE` | `solo` | Team topology configuration |
+| `PRISM_ROOT` | (auto) | Override workspace resolution |
 
 ### Cross-OS Support Matrix
 
@@ -171,14 +223,38 @@ bash install/uninstall.sh gemini
 You can also use `--dry-run` to see what will be removed, and `--keep-config` to preserve `steering.conf`.
 
 
+## How Prism Differs
+
+| | Static Linters | Prompt Files (`.cursorrules`) | Runtime Guardrails | **Prism** |
+|:--|:---:|:---:|:---:|:---:|
+| **Adaptability** | Static | Manual updates | Static policies | **Self-evolving via Darwinian fitness** |
+| **Learns from outcomes** | No | No | No | **Yes — TP/FP scoring + half-life** |
+| **Cross-repo learning** | No | Copy-paste | No | **Horizontal gene transfer** |
+| **Context cost** | Zero | Fixed overhead | Extra inference | **Tiered loading (3.4% idle)** |
+| **Failure modes caught** | Syntax/types | Generic guidelines | Unsafe strings | **Rework loops, hallucinations, waste** |
+
+## Documentation
+
+| Document | Description |
+|:---------|:------------|
+| [CHANGELOG](docs/CHANGELOG.md) | Release history |
+| [EVOLUTION](docs/EVOLUTION.md) | Phase-by-phase development narrative |
+| [SCRIPTS](docs/SCRIPTS.md) | Full script catalog (27 scripts) |
+| [BENCHMARK](docs/BENCHMARK.md) | Reproducible governance effectiveness protocol |
+| [METRICS](docs/METRICS.md) | Empirical measurement methodology |
+| [ABSTRACT](docs/ABSTRACT.md) | Research paper abstract |
+| [CONTRIBUTING](docs/CONTRIBUTING.md) | Contribution guidelines |
+| [Templates](templates/README.md) | Domain-specific cell template packs |
+
 ## Evolution
-Prism AI Steering has evolved across 15 measured phases, from manually written logic into a self-adapting machine:
+Prism AI Steering has evolved across 17 measured phases, from manually written logic into a self-adapting machine:
 - Phases 1-5: Prescriptive logic extraction and optimization.
 - Phases 6-10: Multi-lens scaling and Autonomous Orchestration.
 - Phases 11-12: Full dataset mapping and token census calibration.
 - Phase 13: Cytogenesis — Local governance and cell generation.
 - Phase 14: Natural Selection — Evolutionary scaling and cross-repo speciation.
 - Phase 15: Team Topology & Clean Uninstaller.
+- Phase 16: Automated Workflows — CI/CD integration and automated cell triggering.
 - Phase 17: Evolutionary Computation — GA operators, half-life decay, metamorphosis, horizontal gene transfer.
 
 Read the [EVOLUTION.md](docs/EVOLUTION.md) for a comprehensive breakdown, driven by 6 core Design Principles ensuring empirical, adaptive, hypothesis-driven, system-first governance.
@@ -198,6 +274,14 @@ See [BENCHMARK.md](docs/BENCHMARK.md) for the standardized governance effectiven
 4. **Continuous validation** — Rules aren't "done" after review. Governance is a living system that evolves with each session.
 5. **Installation completeness** — Governance installed at partial fidelity provides false assurance. Every installer path must deploy rules, skills, and hooks with the same completeness.
 6. **Hypothesis-driven governance** — Every governance extension must carry its own falsifiability criteria. A rule, persona, or adaptation that cannot be tested has no place in the system. Generated extensions (Chloroplasts, Vacuoles) must specify what they predict, how to measure it, and when to prune if unvalidated. The scientific method is not just how we evolve the system — it IS the system.
+
+## Next Steps
+
+- 🚀 **Try Prism**: `make install` and run Genesis on your repository
+- 📊 **Run the Benchmark**: Measure governance effectiveness with [BENCHMARK.md](docs/BENCHMARK.md)
+- 🧬 **Explore Templates**: Browse domain packs in [templates/](templates/README.md)
+- 📄 **Read the Research**: Review the [Abstract](docs/ABSTRACT.md) and [Evolution](docs/EVOLUTION.md)
+- 🤝 **Contribute**: See [CONTRIBUTING.md](docs/CONTRIBUTING.md)
 
 ## License
 

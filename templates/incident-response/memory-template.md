@@ -14,6 +14,7 @@ fitness:
   true_positives: 0
   false_positives: 0
   score: null
+target_paths: []
 ---
 ## Memory Cell: Long-Term Incident Immunity
 

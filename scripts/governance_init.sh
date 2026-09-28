@@ -20,6 +20,13 @@ if [ "$INVOCATION_NUM" != "1" ] && [ "$(( INVOCATION_NUM % 100 ))" != "0" ]; the
     exit 0
 fi
 
+if [ -f "$HOME/.gemini/antigravity/scratch/prism-ai-steering/steering.conf" ]; then
+    source "$HOME/.gemini/antigravity/scratch/prism-ai-steering/steering.conf"
+fi
+
+DEFAULT_REVIEW_MODE=${DEFAULT_REVIEW_MODE:-gale}
+MINIMUM_REVIEW_MODE=${MINIMUM_REVIEW_MODE:-breeze}
+
 LOGS_REPO="$HOME/.gemini/antigravity/scratch/ai-conversation-logs"
 CRITICAL="$LOGS_REPO/governance/pending_critical.md"
 LAST_CRITICAL="$LOGS_REPO/governance/last_critical.md"
@@ -241,4 +248,20 @@ else:
       echo "  📊 Homeostasis: Waste rate nominal (5-15%). Standard review protocol."
       ;;
   esac
+fi
+
+# === Escalation Sentinel ===
+if [ -f "$SCRIPT_DIR/escalation_sentinel.sh" ]; then
+  SENTINEL_RESULT=$(bash "$SCRIPT_DIR/escalation_sentinel.sh" 2>/dev/null || echo '')
+  RECOMMENDED_MODE=$(echo "$SENTINEL_RESULT" | python3 -c "
+import sys
+result = {}
+for line in sys.stdin:
+    line = line.strip()
+    if '=' in line:
+        key, _, val = line.partition('=')
+        result[key.strip()] = val.strip()
+print(result.get('PROTOCOL', result.get('recommended_mode', 'gale')))
+" 2>/dev/null || echo 'gale')
+  echo "  Escalation sentinel recommends: $RECOMMENDED_MODE"
 fi
