@@ -292,7 +292,7 @@ Every generated cell must be **self-testing**. When Genesis produces a cell, it 
 | 4 | **Chloroplasts** (personas) | The big experiment. Launches with fitness tracking already running |
 | 5 | **First Selection Cycle** | Immediate pruning pass — do Vacuoles and Chloroplasts actually help? |
 
-Genesis becomes the **Meristem** — the stem cell zone that produces all new differentiated cells. Cell outputs live in `.gemini/cells/` — additive only, never overriding global governance.
+Genesis Stage 5 (Cytogenesis) acts as the **Meristem** — the stem cell zone that produces all new differentiated cells. This is not a separate component; it is the cell-generation stage within the Genesis skill. Cell outputs live in `.gemini/cells/` — additive only, never overriding global governance.
 
 ### Fitness Function
 
