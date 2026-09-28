@@ -199,6 +199,9 @@ if [ "$DRY_RUN" = "false" ]; then
         [ -f "$RESOLVED_HOME/.claude/CLAUDE.md" ] && cp "$RESOLVED_HOME/.claude/CLAUDE.md" "$BACKUP_DIR/"
       fi
       ;;
+    mcp)
+      [ -f "$(pwd)/.mcp.json" ] && cp "$(pwd)/.mcp.json" "$BACKUP_DIR/"
+      ;;
   esac
 fi
 
@@ -510,8 +513,38 @@ case "$PLATFORM" in
     fi
     ;;
 
+  mcp)
+    TARGET_DIR="$(pwd)"
+    MCP_FILE="$TARGET_DIR/.mcp.json"
+    
+    if [ "$DRY_RUN" = "true" ]; then
+      log_info "[dry-run] would create/update .mcp.json at $(normalize_path "$MCP_FILE")"
+    else
+      backup_file "$MCP_FILE"
+      cat > "$MCP_FILE" <<EOF
+{
+  "mcpServers": {
+    "soma": {
+      "command": "python3",
+      "args": ["-m", "soma_mcp"],
+      "cwd": "$TARGET_DIR"
+    }
+  }
+}
+EOF
+      log_info "created .mcp.json"
+    fi
+
+    echo ""
+    if [ "$DRY_RUN" = "true" ]; then
+      echo "Dry-run complete."
+    else
+      echo "Done! Created .mcp.json for local MCP server."
+    fi
+    ;;
+
   *)
-    log_error "Unknown platform: $PLATFORM (expected: gemini|kiro|copilot)"
+    log_error "Unknown platform: $PLATFORM (expected: gemini|kiro|copilot|claude|mcp)"
     exit 1
     ;;
 esac

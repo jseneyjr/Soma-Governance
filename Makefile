@@ -60,6 +60,9 @@ install-copilot: ## Install rules for GitHub Copilot (alias)
 install-claude: ## Install rules for Claude Code
 	@bash install/install.sh claude
 
+install-mcp: ## Install only .mcp.json for any MCP-compatible agent
+	@bash install/install.sh mcp
+
 install-windows: ## Install rules and skills for Windows using PowerShell
 	@powershell -ExecutionPolicy Bypass -File install/install.ps1 -Platform $(SOMA_PLATFORM)
 
@@ -106,6 +109,11 @@ uninstall: ## Remove installed genome, organs, and hooks
 	    rm -f CLAUDE.md .mcp.json; \
 	    echo "Done!"; \
 	    ;; \
+	  mcp) \
+	    echo "  Removing local .mcp.json"; \
+	    rm -f .mcp.json; \
+	    echo "Done!"; \
+	    ;; \
 	esac
 
 doctor: ## Verify installation health & dependencies
@@ -128,16 +136,17 @@ doctor: ## Verify installation health & dependencies
 	@echo ""
 	@echo "Installed genome ($(SOMA_PLATFORM)):"
 	@case "$(SOMA_PLATFORM)" in \
-	  gemini) ls $(HOME)/.gemini/config/genome/*.md 2>/dev/null | while read f; do echo "  ✅ $$(basename $$f)"; done || echo "  (none)"; \
+	  gemini) ls $(HOME)/.gemini/config/rules/*.md 2>/dev/null | while read f; do echo "  ✅ $$(basename $$f)"; done || echo "  (none)"; \
 	    if [ -f $(HOME)/.gemini/config/plugins/governance/hooks.json ]; then echo "  ✅ hooks.json installed"; else echo "  ⚠️  hooks.json not installed"; fi ;; \
 	  kiro) ls $(HOME)/.kiro/steering/*.md 2>/dev/null | while read f; do echo "  ✅ $$(basename $$f)"; done || echo "  (none)"; \
 	    echo ""; \
 	    echo "Installed skills (kiro):"; \
 	    if [ -d $(HOME)/.kiro/skills ]; then \
-	      ls -d $(HOME)/.kiro/organs/*/ 2>/dev/null | while read d; do echo "  ✅ $$(basename $$d)"; done || echo "  (none)"; \
-	    else echo "  (none — $(HOME)/.kiro/organs/ not found)"; fi ;; \
+	      ls -d $(HOME)/.kiro/skills/*/ 2>/dev/null | while read d; do echo "  ✅ $$(basename $$d)"; done || echo "  (none)"; \
+	    else echo "  (none — $(HOME)/.kiro/skills/ not found)"; fi ;; \
 	  copilot) if [ -f $(HOME)/copilot-instructions.md ]; then echo "  ✅ $(HOME)/copilot-instructions.md"; else echo "  (none)"; fi ;; \
 	  claude) if [ -f $(HOME)/.claude/CLAUDE.md ]; then echo "  ✅ $(HOME)/.claude/CLAUDE.md"; else echo "  (none)"; fi ;; \
+	  mcp) if [ -f .mcp.json ]; then echo "  ✅ .mcp.json"; else echo "  (none)"; fi ;; \
 	esac
 
 validate: ## Check script syntax and config values

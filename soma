@@ -1,0 +1,10 @@
+#!/usr/bin/env bash
+# Soma CLI wrapper
+PRG="${BASH_SOURCE[0]}"
+while [ -h "$PRG" ]; do
+  DIR="$(cd -P "$(dirname "$PRG")" && pwd)"
+  PRG="$(readlink "$PRG")"
+  [[ $PRG != /* ]] && PRG="$DIR/$PRG"
+done
+REPO_DIR="$(cd -P "$(dirname "$PRG")" && pwd)"
+exec python3 "$REPO_DIR/enzymes/soma_cli.py" "$@"

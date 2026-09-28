@@ -4,7 +4,7 @@
 
 # ─── Platform ─────────────────────────────────────────────────────
 
-# SOMA_PLATFORM: gemini | kiro | copilot
+# SOMA_PLATFORM: gemini | kiro | copilot | claude | mcp
 # Determines which installer runs on `make install`
 # Namespaced to avoid collision with Docker/CI PLATFORM env var.
 SOMA_PLATFORM=gemini

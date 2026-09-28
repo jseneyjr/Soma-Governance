@@ -107,6 +107,9 @@ else
       fi
       [ -f "$(pwd)/.mcp.json" ] && FILES_TO_REMOVE+=("$(pwd)/.mcp.json")
       ;;
+    mcp)
+      [ -f "$(pwd)/.mcp.json" ] && FILES_TO_REMOVE+=("$(pwd)/.mcp.json")
+      ;;
   esac
 fi
 
@@ -208,6 +211,9 @@ if [ -n "$BACKUP_DIR" ] && [ -d "$BACKUP_DIR" ]; then
         echo "  $BACKUP_DIR/CLAUDE.md -> $RESOLVED_HOME/.claude/CLAUDE.md or project CLAUDE.md"
         echo "  $BACKUP_DIR/.mcp.json -> project .mcp.json"
         ;;
+      mcp)
+        echo "  $BACKUP_DIR/.mcp.json -> project .mcp.json"
+        ;;
     esac
   else
     if [ "$FORCE" = "false" ]; then
@@ -230,6 +236,9 @@ if [ -n "$BACKUP_DIR" ] && [ -d "$BACKUP_DIR" ]; then
             ;;
           claude)
             [ -f "$BACKUP_DIR/CLAUDE.md" ] && cp "$BACKUP_DIR/CLAUDE.md" "$RESOLVED_HOME/.claude/"
+            [ -f "$BACKUP_DIR/.mcp.json" ] && cp "$BACKUP_DIR/.mcp.json" "$(pwd)/"
+            ;;
+          mcp)
             [ -f "$BACKUP_DIR/.mcp.json" ] && cp "$BACKUP_DIR/.mcp.json" "$(pwd)/"
             ;;
         esac

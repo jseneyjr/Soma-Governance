@@ -38,6 +38,7 @@ bash install/install.sh gemini --local
 bash install/install.sh kiro       # AWS Kiro
 bash install/install.sh copilot    # GitHub Copilot
 bash install/install.sh claude     # Claude Code
+bash install/install.sh mcp        # MCP-only mode
 ```
 
 ### MCP Server (Recommended)

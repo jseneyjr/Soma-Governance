@@ -27,6 +27,9 @@ dependencies = [
     "pyyaml>=6.0",
 ]
 
+[project.scripts]
+soma = "enzymes.soma_cli:main"
+
 [project.optional-dependencies]
 ai = ["google-genai>=1.0"]
 gemini = ["google-genai>=1.0"]
