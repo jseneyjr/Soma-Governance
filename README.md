@@ -5,7 +5,7 @@
 [![Organs](https://img.shields.io/badge/Organs-15-purple?style=flat-square)](#-organs)
 [![Enzymes](https://img.shields.io/badge/Enzymes-39-red?style=flat-square)](#%EF%B8%8F-enzymes)
 [![Cells](https://img.shields.io/badge/Cells-5_Types-orange?style=flat-square)](#-cells)
-[![Version](https://img.shields.io/badge/Version-0.22.0-informational?style=flat-square)](docs/CHANGELOG.md)
+[![Version](https://img.shields.io/badge/Version-0.25.0-informational?style=flat-square)](docs/CHANGELOG.md)
 [![Blog Post](https://img.shields.io/badge/Blog-dev.to-black?style=flat-square&logo=devdotto)](https://dev.to/nseney1/rules-that-cant-prove-themselves-die-adaptive-governance-for-ai-coding-agents-25bn)
 
 **Your codebase is a living organism. Soma gives it an immune system.**
@@ -264,13 +264,13 @@ Copy [`soma.conf.example`](install/soma.conf.example) → `soma.conf` to customi
 
 ### Cross-OS Support
 
-| OS | Shell | Command | Genome | Organs | Hooks |
-|:---|:------|:--------|:------:|:------:|:-----:|
-| **Linux** | Bash | `make install` | ✅ | ✅ | ✅ |
-| **macOS** | Zsh / Bash | `make install` | ✅ | ✅ | ✅ |
-| **WSL** | Bash | `make install` | ✅ | ✅ | ✅ |
-| **Windows (Git Bash)** | Bash | `make install` | ✅ | ✅ | ✅ |
-| **Windows (PowerShell)** | PowerShell | `.\install.ps1` | ✅ | ✅ | ❌ |
+| OS | Shell | Install | Uninstall | Genome | Organs | Hooks |
+|:---|:------|:--------|:----------|:------:|:------:|:-----:|
+| **Linux** | Bash | `make install` | `bash install/uninstall.sh` | ✅ | ✅ | ✅ |
+| **macOS** | Zsh / Bash | `make install` | `bash install/uninstall.sh` | ✅ | ✅ | ✅ |
+| **WSL** | Bash | `make install` | `bash install/uninstall.sh` | ✅ | ✅ | ✅ |
+| **Windows (Git Bash)** | Bash | `make install` | `bash install/uninstall.sh` | ✅ | ✅ | ✅ |
+| **Windows (PowerShell)** | PowerShell | `.\install.ps1` | `.\install\uninstall.ps1` | ✅ | ✅ | ❌ |
 
 ### Team Setup
 
@@ -380,6 +380,13 @@ Soma is rigorously tested for production-grade agentic workflows. In our latest 
 
 Soma runs securely as an isolated MCP server (JSON-RPC over stdio) with zero API keys exposed to the environment, and zero syntax errors across its 39 core bash enzymes.
 
+### Testing & CI
+
+- **Test suite**: `make test` runs pytest against `tests/` (requires `pip install pytest`)
+- **Validation**: `make validate` checks shell syntax, Python compilation, and JSON templates
+- **CI matrix**: GitHub Actions runs on `ubuntu-latest`, `macos-latest`, and `windows-latest`
+- **Windows CI**: PowerShell scripts are parsed for syntax errors; dry-run install asserts non-zero rule count
+
 ## Next Steps
 
 - 🚀 **Try Soma**: `make install` and run Genesis on your repository
@@ -394,9 +401,19 @@ Soma runs securely as an isolated MCP server (JSON-RPC over stdio) with zero API
 ## Uninstalling
 
 ```bash
-bash install/uninstall.sh gemini           # Remove all Soma files
-bash install/uninstall.sh gemini --dry-run  # Preview what will be removed
-bash install/uninstall.sh gemini --keep-config  # Preserve soma.conf
+bash install/uninstall.sh gemini                # Remove Soma files, restore backups
+bash install/uninstall.sh gemini --dry-run       # Preview what will be removed
+bash install/uninstall.sh gemini --keep-config   # Preserve soma.conf
+bash install/uninstall.sh gemini --no-restore    # Skip backup restoration
+bash install/uninstall.sh gemini --force         # Skip confirmation prompt
+bash install/uninstall.sh gemini --purge-data    # Also remove cells, fitness history
+```
+
+On Windows (PowerShell):
+
+```powershell
+pwsh install\uninstall.ps1 -Platform gemini
+pwsh install\uninstall.ps1 -Platform gemini -DryRun
 ```
 
 Existing `.prism/` directories are auto-migrated to `.soma/` on install.
