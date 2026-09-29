@@ -210,6 +210,15 @@ def check(
                 init_path = os.path.join(entry_path, '__init__.py')
                 if os.path.exists(init_path):
                     local_packages.add(entry)
+                    # Also register individual .py basenames inside the
+                    # package so bare `from jit_engine import X` is local
+                    # when the package dir is on sys.path at test time.
+                    try:
+                        for fname in os.listdir(entry_path):
+                            if fname.endswith('.py') and not fname.startswith('_'):
+                                local_packages.add(fname[:-3])
+                    except PermissionError:
+                        pass
                 else:
                     # Check for namespace package: contains .py files or sub-packages
                     try:
@@ -224,6 +233,23 @@ def check(
                     )
                     if has_python or has_subpkg:
                         local_packages.add(entry)
+                        # Also register individual .py basenames inside
+                        # non-package directories (e.g. enzymes/jit_engine.py
+                        # → 'jit_engine') so bare `from jit_engine import X`
+                        # is recognised as local when enzymes/ is on sys.path.
+                        if not os.path.exists(init_path):
+                            for fname in contents:
+                                if fname.endswith('.py') and not fname.startswith('_'):
+                                    local_packages.add(fname[:-3])
+
+        # Treat .py siblings of the target file as local (e.g. conftest.py)
+        target_dir = os.path.dirname(os.path.abspath(filepath))
+        try:
+            for sibling in os.listdir(target_dir):
+                if sibling.endswith('.py') and not sibling.startswith('_'):
+                    local_packages.add(sibling[:-3])
+        except PermissionError:
+            pass
 
     imports = extract_imports(filepath)
     violations: list[tuple[str, int]] = []

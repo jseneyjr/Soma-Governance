@@ -17,6 +17,8 @@ import shutil
 
 import pytest
 
+pytest.importorskip("yaml")  # enzymes require PyYAML at import time
+
 REPO_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, REPO_ROOT)
 sys.path.insert(0, os.path.join(REPO_ROOT, 'soma_mcp'))
