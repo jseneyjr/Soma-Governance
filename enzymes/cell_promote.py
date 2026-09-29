@@ -4,10 +4,58 @@ import sys
 import argparse
 import glob
 import json
+import time
 import yaml
 from datetime import datetime
 from datetime import timezone
+from bayesian_score import bayesian_score
 from soma_resolve import resolve_workspace
+
+DECAY_FACTOR = 0.95  # Multiply counts by this each application; ~20-session memory window
+
+
+def apply_decay(meta):
+    """Decay historical fitness data so recent signals weigh more.
+
+    Prevents Beta-locking: a cell with 1000 historical TPs can still
+    be demoted if it starts producing false positives consistently.
+    Effective memory window: ~20 sessions (0.95^20 ≈ 0.36).
+
+    Idempotency: skips decay if last_decay_epoch is within 1 hour.
+    Mutates meta in place and returns it.
+    """
+    fitness = (meta or {}).get('fitness', {})
+    if not isinstance(fitness, dict):
+        return meta
+
+    # Idempotency guard: skip if already decayed within the last hour
+    now = int(time.time())
+    last_decay = fitness.get('last_decay_epoch', 0)
+    if now - last_decay < 3600:
+        return meta
+
+    triggers = fitness.get('triggers', 0)
+    tp = fitness.get('true_positives', 0)
+    fp = fitness.get('false_positives', 0)
+
+    if triggers <= 0:
+        fitness['last_decay_epoch'] = now
+        meta['fitness'] = fitness
+        return meta
+
+    # Decay counts, floor to integers, never below 1 for triggers
+    fitness['triggers'] = max(1, int(triggers * DECAY_FACTOR))
+    fitness['true_positives'] = max(0, int(tp * DECAY_FACTOR))
+    fitness['false_positives'] = max(0, int(fp * DECAY_FACTOR))
+
+    # Recompute score with centralized Bayesian posterior mean
+    new_tp = fitness['true_positives']
+    new_triggers = fitness['triggers']
+    fitness['score'] = round(bayesian_score(new_tp, new_triggers), 4)
+
+    fitness['last_decay_epoch'] = now
+    meta['fitness'] = fitness
+    return meta
 
 def normalize_fitness(metadata):
     """Return the cell's `fitness` value as a dict.
@@ -100,6 +148,12 @@ def main():
             
             enforcement = metadata.get('enforcement', 'advisory')
             fitness = normalize_fitness(metadata)
+
+            # Apply exponential decay so recent signals dominate
+            metadata['fitness'] = fitness
+            apply_decay(metadata)
+            fitness = metadata['fitness']
+
             triggers = fitness.get('triggers', 0)
             tp = fitness.get('true_positives', 0)
             fp = fitness.get('false_positives', 0)
@@ -129,20 +183,54 @@ def main():
                 if fp_rate > 0.30 or escaped > 0: # simple spike logic
                     new_tier = 'mechanical'
                     reason = "FP rate > 0.30 or escaped defects spike"
-                    
+
+            # Rebuild frontmatter with decayed fitness + any tier change
+            needs_write = False
+            lines = frontmatter_str.split('\n')
+
             if new_tier != enforcement:
-                if not dry_run:
-                    # Update YAML
-                    lines = frontmatter_str.split('\n')
+                needs_write = True
+                for i, line in enumerate(lines):
+                    if line.startswith('enforcement:'):
+                        lines[i] = f"enforcement: {new_tier}"
+                        break
+                else:
+                    lines.append(f"enforcement: {new_tier}")
+
+            # Always persist decayed fitness counts
+            if not dry_run:
+                needs_write = True
+
+            if needs_write and not dry_run:
+                # Update fitness values in frontmatter
+                has_decay_epoch = False
+                for i, line in enumerate(lines):
+                    stripped = line.lstrip()
+                    if stripped.startswith('triggers:'):
+                        lines[i] = line[:len(line)-len(stripped)] + f"triggers: {fitness['triggers']}"
+                    elif stripped.startswith('true_positives:'):
+                        lines[i] = line[:len(line)-len(stripped)] + f"true_positives: {fitness['true_positives']}"
+                    elif stripped.startswith('false_positives:'):
+                        lines[i] = line[:len(line)-len(stripped)] + f"false_positives: {fitness['false_positives']}"
+                    elif stripped.startswith('score:'):
+                        lines[i] = line[:len(line)-len(stripped)] + f"score: {fitness.get('score', 0.5)}"
+                    elif stripped.startswith('last_decay_epoch:'):
+                        lines[i] = line[:len(line)-len(stripped)] + f"last_decay_epoch: {fitness.get('last_decay_epoch', 0)}"
+                        has_decay_epoch = True
+
+                # Insert last_decay_epoch if not already in frontmatter
+                if not has_decay_epoch and 'last_decay_epoch' in fitness:
+                    # Find the fitness block indent and append after score
                     for i, line in enumerate(lines):
-                        if line.startswith('enforcement:'):
-                            lines[i] = f"enforcement: {new_tier}"
+                        if line.lstrip().startswith('score:'):
+                            indent = line[:len(line)-len(line.lstrip())]
+                            lines.insert(i + 1, f"{indent}last_decay_epoch: {fitness['last_decay_epoch']}")
                             break
-                    else:
-                        lines.append(f"enforcement: {new_tier}")
-                    new_frontmatter = '\n'.join(lines)
-                    with open(file_path, 'w', encoding='utf-8') as f:
-                        f.write(f"---\n{new_frontmatter}\n---{content[end_idx+3:]}")
+
+                new_frontmatter = '\n'.join(lines)
+                with open(file_path, 'w', encoding='utf-8') as f:
+                    f.write(f"---\n{new_frontmatter}\n---{content[end_idx+3:]}")
+                if new_tier != enforcement:
                     print(f"Promoted/Demoted {cell_name}: {enforcement} -> {new_tier} ({reason})")
                     
                     if new_tier in ('mechanical', 'gate'):
@@ -173,11 +261,18 @@ def main():
             except Exception: continue
             
             fitness = normalize_fitness(metadata)
+
+            # Apply exponential decay so recent signals dominate
+            metadata['fitness'] = fitness
+            apply_decay(metadata)
+            fitness = metadata['fitness']
+
             triggers = fitness.get('triggers', 0)
             tp = fitness.get('true_positives', 0)
             impact = metadata.get('impact_weight', 1.0)
             if triggers == 0: continue
-            score = (tp / triggers) * impact
+            # Centralized Bayesian posterior mean
+            score = bayesian_score(tp, triggers, impact)
             
             if score > 0.85 and triggers >= 20:
                 candidates.append({

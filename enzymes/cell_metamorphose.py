@@ -102,7 +102,7 @@ def main():
     if not best_path:
         # Find nearest threshold
         nearest = None
-        closest_distance = float('inf')
+        closest_distance = 1e9  # sentinel for min-distance search (never serialized)
         for path in paths:
             fitness_dist = max(0, path['min_fitness'] - score)
             session_dist = max(0, path['min_sessions'] - triggers)

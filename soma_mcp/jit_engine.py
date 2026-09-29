@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""JIT Cell Expression Engine — Soma v0.23
+"""JIT Cell Expression Engine — Soma v0.30
 
 Implements just-in-time governance delivery based on context engineering research:
 - Gloaguen et al. (2026): Static context files don't improve task success
@@ -463,7 +463,11 @@ def match_cells_to_files(cells, changed_files):
 
 
 def get_fitness_score(cell):
-    """Extract fitness score from cell."""
+    """Extract fitness score from cell.
+
+    NOTE: This mirrors enzymes/bayesian_score.py — Laplace-smoothed posterior mean.
+    Cannot import from enzymes/ due to zero-dep policy for soma_mcp/.
+    """
     fitness = cell.get('fitness', '')
     impact_weight = cell.get('impact_weight', 1.0)
     try:
@@ -479,7 +483,7 @@ def get_fitness_score(cell):
         try:
             tp, triggers = int(tp), int(triggers)
             if triggers > 0:
-                return (tp / triggers) * impact_weight
+                return ((tp + 1) / (triggers + 2)) * impact_weight
         except (ValueError, TypeError):
             pass
         if score is not None:
@@ -494,7 +498,7 @@ def get_fitness_score(cell):
         tp_int = int(tp)
         triggers_int = int(triggers)
         if triggers_int > 0:
-            return (tp_int / triggers_int) * impact_weight
+            return ((tp_int + 1) / (triggers_int + 2)) * impact_weight
     except (ValueError, TypeError):
         pass
     return 0.5 * impact_weight
@@ -659,8 +663,29 @@ def express(workspace, changed_files=None, budget=None):
     # Load and match cells
     all_cells = load_all_cells(workspace)
     matched = match_cells_to_files(all_cells, changed_files)
-    ranked = rank_cells(matched)
-    selected = ensure_type_diversity(ranked, budget)
+
+    # Score ALL matched cells first (fixes C3: mandatory cells displaying Fitness: 0.00)
+    for cell in matched:
+        cell['_fitness_score'] = get_fitness_score(cell)
+
+    # Stage 0: Mandatory invariants — walls and gate-tier cells always load
+    mandatory = []
+    candidates = []
+    for cell in matched:
+        cell_type = cell.get('type', 'vacuole')
+        enforcement = cell.get('enforcement', 'advisory')
+        if cell_type == 'wall' or enforcement == 'gate':
+            mandatory.append(cell)
+        else:
+            candidates.append(cell)
+
+    # Stage 1-2: Rank and diversify remaining candidates within leftover budget
+    remaining_budget = max(0, budget - len(mandatory))
+    ranked = rank_cells(candidates)
+    selected_candidates = ensure_type_diversity(ranked, remaining_budget)
+
+    # Combine: mandatory first, then ranked candidates
+    selected = mandatory + selected_candidates
 
     # Format guidance
     cell_guidance = [format_cell_guidance(c) for c in selected]

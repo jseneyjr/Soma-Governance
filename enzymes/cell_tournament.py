@@ -44,11 +44,12 @@ def main():
             
         fitness = metadata['fitness']
         score = fitness.get('score')
+        triggers = fitness.get('triggers', 0) if isinstance(fitness, dict) else 0
         
         valid_cells.append({
             'id': os.path.basename(file_path),
             'type': metadata.get('type', 'unknown'),
-            'score': score if score is not None else -1.0 # Treat null fitness as worst
+            'score': score if score is not None and triggers > 0 else -1.0 # Unobserved/null = worst
         })
         
     if not valid_cells:
