@@ -15,9 +15,9 @@ created: "2026-09-28"
 impact_weight: 1.0
 minimum_mode: breeze
 fitness:
-  triggers: 1
-  true_positives: 1
-  false_positives: 0
+  triggers: 3
+  true_positives: 2
+  false_positives: 1
 tags: [versioning, consistency, release]
 ---
 

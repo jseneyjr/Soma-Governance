@@ -17,9 +17,9 @@ impact_weight: 1.1
 domain: "Cross-Platform Engineering"
 expertise: ["POSIX Shell", "Bash", "PowerShell", "BSD vs GNU", "Path Resolution"]
 fitness:
-  triggers: 0
-  true_positives: 0
-  false_positives: 0
+  triggers: 2
+  true_positives: 1
+  false_positives: 1
 tags: [cross-platform, portability, qa, persona]
 ---
 

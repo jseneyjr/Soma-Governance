@@ -15,9 +15,9 @@ expiry_days: 30
 created: "2026-09-28"
 impact_weight: 0.8
 fitness:
-  triggers: 0
-  true_positives: 0
-  false_positives: 0
+  triggers: 2
+  true_positives: 1
+  false_positives: 1
 tags: [portability, cross-platform, anti-pattern]
 ---
 

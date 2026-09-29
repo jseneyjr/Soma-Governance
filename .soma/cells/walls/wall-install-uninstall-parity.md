@@ -14,9 +14,9 @@ created: "2026-09-28"
 impact_weight: 1.3
 minimum_mode: trident
 fitness:
-  triggers: 0
-  true_positives: 0
-  false_positives: 0
+  triggers: 2
+  true_positives: 1
+  false_positives: 1
 tags: [install, uninstall, parity, lifecycle]
 ---
 

@@ -19,9 +19,9 @@ created: "2026-09-28"
 impact_weight: 1.3
 minimum_mode: gale
 fitness:
-  triggers: 3
-  true_positives: 3
-  false_positives: 0
+  triggers: 5
+  true_positives: 4
+  false_positives: 1
 tags: [rename, migration, anti-pattern, high-value]
 ---
 
