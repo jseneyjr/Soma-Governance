@@ -287,16 +287,20 @@ Configure `TEAM_REPO` and optionally `ORG_REPO` in `soma.conf` for multi-team hi
 
 ## How Soma Differs
 
-| | Static Linters | Prompt Files (`.cursorrules`) | Runtime Guardrails | **Soma** |
-|:--|:---:|:---:|:---:|:---:|
-| **Adaptability** | Static | Manual updates | Static policies | **Self-evolving via Darwinian fitness** |
-| **Learns from outcomes** | No | No | No | **Yes — TP/FP scoring + telomere shortening** |
-| **Learns from failures** | No | No | Alerts only | **Yes — escaped defect tracking + tier promotion** |
-| **Cross-repo learning** | No | Copy-paste | No | **Horizontal gene transfer** |
-| **Platform lock-in** | N/A | Platform-specific | Platform-specific | **Any agent via MCP stdio** |
-| **Context cost** | Zero | Fixed overhead | Extra inference | **Tiered loading (3.4% idle)** |
-| **Failure modes caught** | Syntax/types | Generic guidelines | Unsafe strings | **Rework loops, hallucinations, waste** |
-| **SDK** | No | No | Sometimes | **Python + npm + MCP** |
+A common critique of early agentic wrappers is that they ultimately degrade back into "Standard AI" — they get lazy, their context windows pollute, they hallucinate codebase assumptions, and they ignore their own system prompts when clean APIs give them a path of least resistance. 
+
+Soma is built on the foundational premise that **LLMs are inherently lazy and must be mechanically governed**. 
+
+| Feature | Standard AI Agents | Prompt Files (`.cursorrules`) | **Soma (Phase 25)** |
+|:--|:---:|:---:|:---:|
+| **Rule Enforcement** | Relies on LLM obedience | Relies on LLM obedience | **Mechanistic rejection via TTC Oracles** |
+| **Context Management** | Pollutes main thread | Fixed overhead | **JIT Context & Aggressive Subagent Delegation** |
+| **Adaptability** | Static training | Manual updates | **Self-evolving via Darwinian fitness** |
+| **Learns from outcomes** | No | No | **Yes — TP/FP scoring + telomere shortening** |
+| **Failure modes caught** | Syntax errors | Generic guidelines | **Rework loops, lazy reads, and hallucinations** |
+| **Platform lock-in** | Vendor specific | Platform specific | **Universal via MCP stdio** |
+
+Instead of pleading with the AI in a system prompt to "think step-by-step," Soma acts as an evolutionary immune system. If an AI agent attempts to blindly write code without delegating research to subagents first, Soma's TTC Oracles intercept the MCP tool call and violently reject it. **Rules that can't prove themselves die. Agents that refuse to research are blocked.**
 
 ---
 
