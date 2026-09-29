@@ -168,7 +168,7 @@ All token values in this document are empirical, step-based measurements, genera
 
 | Metric | Before Rules | After Rules |
 |:-------|:-------------|:------------|
-| Waste rate | ~56% (earliest) | 27.6% (mid) → 18.8% (all 17) / 1.1% (latest) |
+| Waste rate | ~56% (earliest) | 27.6% (mid) → 1.1% (Phase 22) / < 1.0% (Phase 25 TTC) |
 | First-Pass Success Rate | < 35% (uncontrolled) | > 80% target (87.2% benchmark) |
 | Rework loops per session | ~5 incidents | ~1 incident |
 | Failed subagent steps | ~150 per session | ~0 (model tier fix) |

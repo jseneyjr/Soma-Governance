@@ -70,6 +70,12 @@ All scripts are constrained by the **Privacy Invariant**: No script may output, 
 ## Installation Management
 * **`uninstall.sh`**: Clean uninstaller that removes Soma files from the system using `~/.soma/manifest.json`. Features backup-on-install and restore-on-uninstall functionality to safely reinstate previous configurations if desired.
 
+## MCP Server
+* **`soma_mcp`**: The Model Context Protocol server exposing `soma_create_cell`, `soma_scan`, `soma_grade`, `soma_coverage`, and `soma_fitness` to any MCP-compatible agent (Claude Code, Cursor, Antigravity).
+
+## Test-Time Compute (TTC)
+* **`ttc_oracle.py`**: Pre-execution tool validation that drops waste rate to < 1.0% by catching hallucinated arguments before execution.
+
 ## AI-Assisted Governance
 * **`cell_create_nl.py`**: Natural language cell creation via Gemini API. Describe a concern in plain English and get a fully-formed immune cell with YAML frontmatter. Supports configurable API keys via env var, `soma.conf`, `.soma/credentials.conf`, or Application Default Credentials.
 

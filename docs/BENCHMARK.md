@@ -18,7 +18,7 @@ Provide a reproducible benchmark so any team can measure Soma's impact and contr
    - Session duration
 
 ### Phase 2: Genesis
-4. Install Soma: `make install` or `bash install/install.sh <platform> --local`
+4. Install Soma: `make install` or `bash install/install.sh <platform> --local` (Optionally integrate via `soma_mcp` MCP server)
 5. Run Genesis skill to generate initial cells
 6. If domain templates exist (`templates/`), verify they were seeded
 

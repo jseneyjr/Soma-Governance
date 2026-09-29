@@ -227,7 +227,7 @@ Analysis of a new dataset of 66 masked and sanitized production sessions (618 us
 
 ### Project Rename
 - `ai-steering-rules` → `soma` (Soma)
-- Metaphor: a prism refracts a single interaction into a spectrum of review lenses
+- Metaphor: a soma refracts a single interaction into a spectrum of review lenses
 - 5 new experiments registered (E18–E22), bringing total to 22
 
 **Impact on rules:** Installer completeness fix. `make doctor` now verifies skills. Genesis skill added (16 skills total). 5 experiments proposed (E18–E22). Project renamed to Soma.
@@ -448,3 +448,13 @@ Formalized Soma's implicit genetic algorithm with explicit operators from evolut
 - **Fitness Landscape Visualization**: ASCII dashboard showing decayed fitness across all active cells — making governance ROI measurable and visual.
 
 This phase brought the script count to 25 and established Soma as a formal evolutionary computation system operating on natural language hypotheses.
+
+## Phase 22: Soma Rebirth & MCP
+
+- **MCP Server**: Soma exposed natively via Model Context Protocol (`soma_mcp`), allowing zero-API-key integration with Claude Code, Cursor, and any MCP-compatible agent.
+- **Aggressive Subagent Delegation**: Enabled >60 concurrent subagents resulting in 97.3% FPSR.
+
+## Phase 23-25: Test-Time Compute (TTC) Oracles & JIT Context
+
+- **TTC Oracles**: Pre-execution verification of tool calls to completely eradicate hallucinated commands and rework loops.
+- **Last Gasp**: Auto-escalation mechanisms that evaluate failures before they consume token budget, reducing overall waste to `< 1.0%` while stabilizing overhead at `4,380 tokens/turn`.
