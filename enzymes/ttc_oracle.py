@@ -20,7 +20,7 @@ def load_oracles(workspace):
         return oracles
     
     for f in glob.glob(os.path.join(oracles_dir, '*.md')):
-        with open(f, 'r') as file:
+        with open(f, 'r', encoding="utf-8") as file:
             oracles.append((os.path.basename(f), file.read()))
     return oracles
 
@@ -83,7 +83,7 @@ if __name__ == "__main__":
     
     # We can either pass content directly or via a file
     if len(sys.argv) >= 4:
-        with open(sys.argv[3], 'r') as f:
+        with open(sys.argv[3], 'r', encoding="utf-8") as f:
             proposed_content = f.read()
     else:
         proposed_content = sys.stdin.read()

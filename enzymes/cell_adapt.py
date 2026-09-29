@@ -23,7 +23,7 @@ def main():
     if not metrics_repo:
         conf_path = os.path.join(workspace_dir, "soma.conf")
         if os.path.exists(conf_path):
-            with open(conf_path) as f:
+            with open(conf_path, encoding="utf-8") as f:
                 for line in f:
                     line = line.strip()
                     if line.startswith("METRICS_REPO=") and not line.startswith("#"):
@@ -46,7 +46,7 @@ def main():
         if os.path.basename(file_path) == 'README.md':
             continue
         
-        with open(file_path, 'r') as f:
+        with open(file_path, 'r', encoding="utf-8") as f:
             content = f.read()
         
         if not content.startswith('---'):
@@ -107,7 +107,7 @@ def main():
                 new_frontmatter = yaml.dump(new_metadata, sort_keys=False, default_flow_style=False)
                 new_content = f"---\n{new_frontmatter}---\n{content[end_idx+3:]}"
                 
-                with open(v2_path, 'w') as f:
+                with open(v2_path, 'w', encoding="utf-8") as f:
                     f.write(new_content)
                     
                 print(f"  -> Generated {v2_name}")
@@ -122,7 +122,7 @@ def main():
                 })
 
     if args.generate and adaptations:
-        with open(fitness_log_path, 'a') as f:
+        with open(fitness_log_path, 'a', encoding="utf-8") as f:
             for adapt in adaptations:
                 f.write(json.dumps(adapt) + "\n")
 

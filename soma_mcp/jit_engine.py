@@ -11,6 +11,10 @@ Instead of dumping all rules into the system prompt, this engine:
 3. Ranks by Bayesian fitness score (highest first)
 4. Returns only the top N cells (default: 3) with full guidance text
 5. Includes relevant non-standard genome rules
+
+Dependency policy: pyyaml is OPTIONAL here. soma_mcp/ must import and run on a
+bare interpreter (see .soma/cells/walls/wall-mcp-zero-deps.md), so frontmatter
+falls back to a stdlib parser covering the YAML subset the cells actually use.
 """
 
 import os
@@ -20,24 +24,359 @@ import json
 import re
 import subprocess
 import fnmatch
-import yaml
+
+# pyyaml is an OPTIONAL dependency. When it is missing we parse the frontmatter
+# subset used by cells with the stdlib parser below instead of failing to import.
+try:
+    import yaml
+except ImportError:
+    yaml = None
+
 
 # Ensure parent dir is importable
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 
-def _parse_frontmatter(content):
-    """Parse YAML frontmatter robustly using pyyaml."""
+def warn(message):
+    """Emit a diagnostic on STDERR.
+
+    stdout is the JSON-RPC transport — never write diagnostics there.
+    """
+    try:
+        print(f"[soma-mcp] {message}", file=sys.stderr, flush=True)
+    except Exception:
+        pass
+
+
+# ── Stdlib YAML-subset frontmatter parser ─────────────────────────────
+# Supports exactly what governance cells and genome rules use:
+#   scalars (quoted/plain strings, ints, floats, bools, null)
+#   nested block mappings   (fitness:/lineage: + indented keys)
+#   block sequences         (target_paths:\n  - "enzymes/*.sh")
+#   flow collections        (tags: [a, b] / {k: v})
+# Anything outside that subset raises FrontmatterError so the caller can report
+# a *skipped* cell instead of silently acting on a half-parsed one.
+
+class FrontmatterError(ValueError):
+    """Frontmatter could not be parsed by the stdlib subset parser."""
+
+
+_BOOL_TRUE = frozenset(('true', 'yes', 'on'))
+_BOOL_FALSE = frozenset(('false', 'no', 'off'))
+_NULL_VALUES = frozenset(('', '~', 'null'))
+_INT_RE = re.compile(r'^[-+]?[0-9]+$')
+# Mirrors pyyaml's YAML 1.1 float resolver: the mantissa needs a '.' and an
+# exponent needs an explicit sign, so '1e3' and '1.5e3' stay strings.
+_FLOAT_RE = re.compile(
+    r'^[-+]?(?:[0-9]+\.[0-9]*(?:[eE][-+][0-9]+)?|\.[0-9]+(?:[eE][-+][0-9]+)?)$'
+)
+_SEQ_MAPPING_RE = re.compile(r'^[A-Za-z_][A-Za-z0-9_.\-]*:(?:\s|$)')
+# Indicators pyyaml rejects outright ('%', '@', '`', '!', '*') plus constructs we
+# cannot honour without a real YAML engine ('|', '>' block scalars, '&' anchors).
+# Refusing beats returning the raw text as a string and acting on wrong data.
+_UNSUPPORTED_PREFIXES = ('|', '>', '&', '*', '!', '%', '@', '`')
+_ESCAPES = {'n': '\n', 't': '\t', 'r': '\r', '0': '\0',
+            '"': '"', '\\': '\\', '/': '/', "'": "'"}
+
+
+def _skip_ws(text, i):
+    while i < len(text) and text[i] in ' \t':
+        i += 1
+    return i
+
+
+def _unescape_double(body):
+    out = []
+    i = 0
+    while i < len(body):
+        ch = body[i]
+        if ch == '\\' and i + 1 < len(body):
+            nxt = body[i + 1]
+            out.append(_ESCAPES.get(nxt, '\\' + nxt))
+            i += 2
+            continue
+        out.append(ch)
+        i += 1
+    return ''.join(out)
+
+
+def _read_token(text, i, stops):
+    """Read a raw token until an unquoted char in `stops`. Returns (token, i).
+
+    As in YAML, a quote is only special at the start of a token, so plain values
+    containing an apostrophe (``shouldn't``) are read as-is.
+    """
+    start = i
+    quote = None
+    while i < len(text):
+        ch = text[i]
+        if quote:
+            if quote == '"' and ch == '\\' and i + 1 < len(text):
+                i += 2
+                continue
+            if ch == quote:
+                quote = None
+            i += 1
+            continue
+        if ch in ('"', "'") and i == start:
+            quote = ch
+            i += 1
+            continue
+        if ch in stops:
+            break
+        i += 1
+    if quote:
+        raise FrontmatterError('unterminated quoted string')
+    return text[start:i], i
+
+
+def _strip_comment(line):
+    """Drop a trailing ` #` comment that is not inside quotes."""
+    out = []
+    quote = None
+    i = 0
+    while i < len(line):
+        ch = line[i]
+        if quote:
+            if quote == '"' and ch == '\\' and i + 1 < len(line):
+                out.append(line[i:i + 2])
+                i += 2
+                continue
+            if ch == quote:
+                quote = None
+            out.append(ch)
+        elif ch in ('"', "'"):
+            quote = ch
+            out.append(ch)
+        elif ch == '#' and (i == 0 or line[i - 1] in ' \t'):
+            break
+        else:
+            out.append(ch)
+        i += 1
+    return ''.join(out)
+
+
+def _parse_scalar(raw):
+    """Convert a raw scalar token to a Python value."""
+    text = raw.strip()
+    if text[:1] in ('"', "'"):
+        if len(text) < 2 or text[-1] != text[0]:
+            # pyyaml raises here too; refusing beats returning a mangled string.
+            raise FrontmatterError(f'unterminated quoted scalar: {text[:24]!r}')
+        body = text[1:-1]
+        return _unescape_double(body) if text[0] == '"' else body.replace("''", "'")
+    if text[:1] in ('[', '{'):
+        value, idx = _parse_flow(text, 0)
+        if text[idx:].strip():
+            raise FrontmatterError(f'trailing content after flow collection: {text[idx:][:20]!r}')
+        return value
+    lowered = text.lower()
+    if lowered in _NULL_VALUES:
+        return None
+    if lowered in _BOOL_TRUE:
+        return True
+    if lowered in _BOOL_FALSE:
+        return False
+    if _INT_RE.match(text):
+        return int(text)
+    if _FLOAT_RE.match(text):
+        return float(text)
+    if text[:1] in _UNSUPPORTED_PREFIXES:
+        raise FrontmatterError(f'unsupported YAML construct: {text[:24]!r}')
+    return text
+
+
+def _parse_flow(text, i):
+    """Parse a flow node ([...], {...} or scalar). Returns (value, i)."""
+    i = _skip_ws(text, i)
+    if i >= len(text):
+        raise FrontmatterError('unexpected end of flow collection')
+    if text[i] == '[':
+        return _parse_flow_seq(text, i)
+    if text[i] == '{':
+        return _parse_flow_map(text, i)
+    raw, i = _read_token(text, i, ',]}')
+    if not raw.strip():
+        raise FrontmatterError('empty entry in flow collection')
+    return _parse_scalar(raw), i
+
+
+def _parse_flow_seq(text, i):
+    items = []
+    i = _skip_ws(text, i + 1)
+    if i < len(text) and text[i] == ']':
+        return items, i + 1
+    while True:
+        value, i = _parse_flow(text, i)
+        items.append(value)
+        i = _skip_ws(text, i)
+        if i >= len(text):
+            raise FrontmatterError('unterminated flow sequence')
+        if text[i] == ']':
+            return items, i + 1
+        if text[i] != ',':
+            raise FrontmatterError(f'malformed flow sequence near {text[i:i + 12]!r}')
+        i = _skip_ws(text, i + 1)
+        if i < len(text) and text[i] == ']':  # tolerate a trailing comma
+            return items, i + 1
+
+
+def _parse_flow_map(text, i):
+    mapping = {}
+    i = _skip_ws(text, i + 1)
+    if i < len(text) and text[i] == '}':
+        return mapping, i + 1
+    while True:
+        raw_key, i = _read_token(text, i, ':,}')
+        if i >= len(text) or text[i] != ':':
+            raise FrontmatterError('flow mapping entry is missing ":"')
+        if not raw_key.strip():
+            raise FrontmatterError('flow mapping entry is missing a key')
+        value, i = _parse_flow(text, i + 1)
+        mapping[str(_parse_scalar(raw_key))] = value
+        i = _skip_ws(text, i)
+        if i >= len(text):
+            raise FrontmatterError('unterminated flow mapping')
+        if text[i] == '}':
+            return mapping, i + 1
+        if text[i] != ',':
+            raise FrontmatterError(f'malformed flow mapping near {text[i:i + 12]!r}')
+        i = _skip_ws(text, i + 1)
+        if i < len(text) and text[i] == '}':  # tolerate a trailing comma
+            return mapping, i + 1
+
+
+def _prepare_lines(text):
+    """Strip comments/blanks. Returns [(indent, content, lineno), ...]."""
+    prepared = []
+    for lineno, raw in enumerate(text.splitlines(), start=1):
+        leading = raw[:len(raw) - len(raw.lstrip(' \t'))]
+        if '\t' in leading:
+            raise FrontmatterError(f'line {lineno}: tab indentation is not supported')
+        line = _strip_comment(raw)
+        if not line.strip():
+            continue
+        prepared.append((len(line) - len(line.lstrip(' ')), line.strip(), lineno))
+    return prepared
+
+
+def _parse_collection(lines, start, indent):
+    content = lines[start][1]
+    if content == '-' or content.startswith('- '):
+        return _parse_block_seq(lines, start, indent)
+    return _parse_block_map(lines, start, indent)
+
+
+def _parse_block_map(lines, start, indent):
+    mapping = {}
+    i = start
+    while i < len(lines):
+        line_indent, content, lineno = lines[i]
+        if line_indent < indent:
+            break
+        if line_indent > indent:
+            raise FrontmatterError(f'line {lineno}: unexpected indentation')
+        if content == '-' or content.startswith('- '):
+            raise FrontmatterError(f'line {lineno}: unexpected sequence item inside a mapping')
+        raw_key, idx = _read_token(content, 0, ':')
+        if idx >= len(content) or content[idx] != ':':
+            raise FrontmatterError(f'line {lineno}: expected "key: value"')
+        if not raw_key.strip():
+            raise FrontmatterError(f'line {lineno}: missing key')
+        key = str(_parse_scalar(raw_key))
+        rest = content[idx + 1:].strip()
+        if rest:
+            mapping[key] = _parse_scalar(rest)
+            i += 1
+            continue
+        # Empty inline value: either a nested block below, or a null scalar.
+        if i + 1 < len(lines) and lines[i + 1][0] > indent:
+            mapping[key], i = _parse_collection(lines, i + 1, lines[i + 1][0])
+        else:
+            mapping[key] = None
+            i += 1
+    return mapping, i
+
+
+def _parse_block_seq(lines, start, indent):
+    items = []
+    i = start
+    while i < len(lines):
+        line_indent, content, lineno = lines[i]
+        if line_indent < indent:
+            break
+        if line_indent > indent:
+            raise FrontmatterError(f'line {lineno}: unexpected indentation in sequence')
+        if not (content == '-' or content.startswith('- ')):
+            break
+        body = content[1:].strip()
+        if not body:
+            if i + 1 < len(lines) and lines[i + 1][0] > indent:
+                value, i = _parse_collection(lines, i + 1, lines[i + 1][0])
+                items.append(value)
+            else:
+                items.append(None)
+                i += 1
+            continue
+        if _SEQ_MAPPING_RE.match(body):
+            raise FrontmatterError(
+                f'line {lineno}: sequences of mappings are outside the stdlib parser subset'
+            )
+        items.append(_parse_scalar(body))
+        i += 1
+    return items, i
+
+
+def parse_yaml_subset(text):
+    """Parse the YAML subset used by cells. Raises FrontmatterError otherwise."""
+    lines = _prepare_lines(text)
+    if not lines:
+        return {}
+    value, idx = _parse_collection(lines, 0, lines[0][0])
+    if idx != len(lines):
+        raise FrontmatterError(f'line {lines[idx][2]}: unparsed content')
+    return value
+
+
+def parse_frontmatter(content):
+    """Parse YAML frontmatter from a cell/genome markdown file.
+
+    Returns a dict on success, {} when there is no frontmatter (or it is
+    empty), and None when frontmatter is present but cannot be parsed. The
+    None-vs-{} distinction matters: callers must be able to tell "this file has
+    no metadata" from "this file's metadata is broken and the cell was skipped".
+    """
     if not content.startswith('---'):
         return {}
     end = content.find('---', 3)
     if end == -1:
-        return {}
+        return None  # opened frontmatter that is never closed
     fm_text = content[3:end].strip()
-    try:
-        return yaml.safe_load(fm_text) or {}
-    except Exception:
+    if not fm_text:
         return {}
+
+    if yaml is not None:
+        try:
+            data = yaml.safe_load(fm_text)
+        except Exception:
+            return None
+    else:
+        try:
+            data = parse_yaml_subset(fm_text)
+        except FrontmatterError:
+            return None
+        except Exception:
+            return None
+
+    if data is None:
+        return {}
+    if not isinstance(data, dict):
+        return None  # frontmatter must be a mapping
+    return data
+
+
+# Backwards-compatible private alias for in-module/legacy call sites.
+_parse_frontmatter = parse_frontmatter
 
 
 def _get_body(content):
@@ -76,18 +415,24 @@ def load_all_cells(workspace):
     for cell_file in glob.glob(os.path.join(cells_dir, '**', '*.md'), recursive=True):
         if os.path.basename(cell_file) == 'README.md':
             continue
+        rel = os.path.relpath(cell_file, workspace)
         try:
-            with open(cell_file) as f:
+            with open(cell_file, encoding="utf-8") as f:
                 content = f.read()
-            fm = _parse_frontmatter(content)
-            if fm:
-                fm['_name'] = os.path.splitext(os.path.basename(cell_file))[0]
-                fm['_path'] = os.path.relpath(cell_file, workspace)
-                fm['_body'] = _get_body(content)
-                fm['_full'] = content
-                cells.append(fm)
-        except Exception:
-            pass
+            fm = parse_frontmatter(content)
+            if fm is None:
+                warn(f'skipped cell {rel}: malformed YAML frontmatter')
+                continue
+            if not fm:
+                warn(f'skipped cell {rel}: no frontmatter metadata')
+                continue
+            fm['_name'] = os.path.splitext(os.path.basename(cell_file))[0]
+            fm['_path'] = rel
+            fm['_body'] = _get_body(content)
+            fm['_full'] = content
+            cells.append(fm)
+        except Exception as e:
+            warn(f'skipped cell {rel}: {e.__class__.__name__}: {e}')
     return cells
 
 
@@ -248,10 +593,14 @@ def load_genome_rules(workspace, changed_files):
 
     relevant = []
     for rule_file in sorted(glob.glob(os.path.join(genome_dir, '*.md'))):
+        rel = os.path.relpath(rule_file, workspace)
         try:
-            with open(rule_file) as f:
+            with open(rule_file, encoding="utf-8") as f:
                 content = f.read()
-            fm = _parse_frontmatter(content)
+            fm = parse_frontmatter(content)
+            if fm is None:
+                warn(f'skipped genome rule {rel}: malformed YAML frontmatter')
+                continue
             # Only include non-standard rules
             non_standard = fm.get('non_standard', 'false')
             if str(non_standard).lower() not in ('true', 'yes', '1'):
@@ -283,8 +632,8 @@ def load_genome_rules(workspace, changed_files):
                     else:
                         continue
                     break
-        except Exception:
-            pass
+        except Exception as e:
+            warn(f'skipped genome rule {rel}: {e.__class__.__name__}: {e}')
     return relevant
 
 

@@ -1,13 +1,70 @@
+import contextlib
 import json
+import os
 import sys
 import traceback
 from typing import Any, Dict
 
 from .tools import TOOL_DEFINITIONS, execute_tool
 
+# Messages that mean "the operation did not happen", regardless of the tool.
+_ERROR_STATUSES = ("FAIL", "FAILED", "ERROR", "REJECTED", "BLOCKED", "ESCALATION_REQUIRED")
+_ERROR_TEXT_PREFIXES = ("ERROR", "CRITICAL ERROR")
+
+
+def _server_version() -> str:
+    """Resolve the version from a single source of truth.
+
+    Was hardcoded here, giving a third independent copy alongside VERSION and
+    pyproject.toml with no test tying them together. Prefers installed package
+    metadata, falls back to the VERSION file for a source checkout.
+    """
+    try:
+        from importlib.metadata import PackageNotFoundError, version
+        try:
+            return version("soma-steering")
+        except PackageNotFoundError:
+            pass
+    except ImportError:
+        pass
+
+    version_file = os.path.join(
+        os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "VERSION"
+    )
+    try:
+        with open(version_file, "r", encoding="utf-8") as fh:
+            return fh.read().strip() or "unknown"
+    except OSError:
+        return "unknown"
+
 
 def send_response(response: Dict[str, Any]):
+    # stdout is the JSON-RPC transport: only framed responses may be written here.
     print(json.dumps(response), flush=True)
+
+
+def _is_error_text(value: Any) -> bool:
+    return isinstance(value, str) and value.lstrip().upper().startswith(_ERROR_TEXT_PREFIXES)
+
+
+def _is_error_result(result: Any) -> bool:
+    """Decide whether a tool result represents a failure.
+
+    A tool can signal failure three ways: an "error" key, an explicit failure
+    "status", or a failure-prefixed message string. Checking only for "error"
+    reported rejected proposals and failing audits as successes.
+    """
+    if _is_error_text(result):
+        return True
+    if isinstance(result, dict):
+        if "error" in result:
+            return True
+        if str(result.get("status", "")).upper() in _ERROR_STATUSES:
+            return True
+        # Tools that wrap a human-readable verdict in {"result": "..."}.
+        if _is_error_text(result.get("result")):
+            return True
+    return False
 
 def send_error(id: Any, code: int, message: str):
     send_response({
@@ -35,7 +92,7 @@ def handle_request(request: Dict[str, Any]) -> Dict[str, Any]:
                 },
                 "serverInfo": {
                     "name": "soma-mcp",
-                    "version": "0.25.0"
+                    "version": _server_version()
                 }
             }
         }
@@ -52,8 +109,12 @@ def handle_request(request: Dict[str, Any]) -> Dict[str, Any]:
         args = params.get("arguments", {})
         
         try:
-            result = execute_tool(name, args)
-            is_error = isinstance(result, dict) and "error" in result
+            # Tool implementations (and the enzymes they call) may print progress
+            # notes. stdout belongs to the JSON-RPC framing, so any stray writes
+            # are re-routed to stderr instead of corrupting the stream.
+            with contextlib.redirect_stdout(sys.stderr):
+                result = execute_tool(name, args)
+            is_error = _is_error_result(result)
             return {
                 "jsonrpc": "2.0",
                 "id": req_id,

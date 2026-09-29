@@ -16,13 +16,41 @@ load_config "$REPO_DIR"
 DRY_RUN=false
 KEEP_CONFIG=false
 FORCE=false
+NO_RESTORE=false
+PURGE_DATA=false
 POSITIONAL_ARGS=()
+
+usage() {
+  cat <<'USAGE'
+Soma uninstaller
+
+Usage: bash install/uninstall.sh [platform] [options]
+  platform: gemini (default) | kiro | copilot | claude | mcp
+
+Options:
+  --dry-run       Print the removal plan without deleting anything
+  --force         Skip the deletion confirmation prompt.
+                  Does NOT disable the restore offer (use --no-restore).
+  --no-restore    Do not offer to restore the previous configuration
+  --keep-config   Never remove soma.conf
+  --purge-data    Also remove user-authored governance data:
+                  .soma/cells/, fitness.jsonl, docs/snapshots/
+                  (these are PRESERVED by default)
+  -h, --help      Show this help
+
+Never removed without --purge-data: your cells, fitness history and snapshots.
+USAGE
+}
 
 for arg in "$@"; do
   case "$arg" in
     --dry-run) DRY_RUN=true ;;
     --keep-config) KEEP_CONFIG=true ;;
     --force) FORCE=true ;;
+    --no-restore) NO_RESTORE=true ;;
+    --purge-data) PURGE_DATA=true ;;
+    -h|--help) usage; exit 0 ;;
+    -*) log_error "Unknown option: $arg"; usage; exit 1 ;;
     *) POSITIONAL_ARGS+=("$arg") ;;
   esac
 done
@@ -40,6 +68,43 @@ MANIFEST_EXISTS=false
 if [ -f "$MANIFEST_PATH" ]; then
   MANIFEST_EXISTS=true
 fi
+MANIFEST_PLATFORM=""
+MANIFEST_SCOPE=""
+RESTORED_ANY=false
+
+# ── Restore Helpers ───────────────────────────────────────────────
+# The backup directory name differs from the destination name (genome -> rules,
+# organs -> skills), so `cp -r src dst` would nest src inside dst. Copy contents
+# instead. Also creates the destination parent: `[ -f x ] && cp x dir/` aborted
+# the whole script under `set -e` when dir/ did not exist.
+restore_dir_contents() {
+  local src="$1" dst="$2"
+  [ -d "$src" ] || return 0
+  mkdir -p "$dst" || return 0
+  # Dotfiles included; an empty source is not an error.
+  if find "$src" -mindepth 1 -maxdepth 1 -print -quit 2>/dev/null | grep -q .; then
+    cp -R "$src"/. "$dst"/ 2>/dev/null || {
+      log_warn "Could not fully restore $src -> $dst"
+      return 0
+    }
+  fi
+  echo "  restored $dst"
+  RESTORED_ANY=true
+  return 0
+}
+
+restore_file() {
+  local src="$1" dst="$2"
+  [ -f "$src" ] || return 0
+  mkdir -p "$(dirname "$dst")" || return 0
+  cp -- "$src" "$dst" 2>/dev/null || {
+    log_warn "Could not restore $src -> $dst"
+    return 0
+  }
+  echo "  restored $dst"
+  RESTORED_ANY=true
+  return 0
+}
 
 echo "Uninstalling Soma ($PLATFORM)..."
 [ "$DRY_RUN" = "true" ] && echo "Mode: DRY-RUN (no files will be deleted)"
@@ -49,35 +114,92 @@ DIRS_TO_REMOVE=()
 MODIFY_FILES=()
 BACKUP_DIR=""
 
+# Reads one field from the manifest. The path is passed through the environment
+# rather than interpolated into the Python source: a quote in the path used to
+# be a silent SyntaxError (swallowed by 2>/dev/null), and a crafted directory
+# name was code execution.
+read_manifest_field() {
+  SOMA_MANIFEST="$MANIFEST_PATH" python3 -c '
+import json, os, sys
+field = sys.argv[1]
+with open(os.environ["SOMA_MANIFEST"], "r", encoding="utf-8") as fh:
+    data = json.load(fh)
+value = data.get(field)
+if value is None:
+    pass
+elif isinstance(value, list):
+    for item in value:
+        if item:
+            print(item)
+else:
+    print(value)
+' "$1"
+}
+
 if [ "$MANIFEST_EXISTS" = "true" ]; then
   echo "Found manifest at $MANIFEST_PATH. Reading paths..."
-  BACKUP_DIR=$(python3 -c "import json, sys; d=json.load(open('$MANIFEST_PATH')); print(d.get('backup_dir') or '')" 2>/dev/null || true)
-  
+
+  if ! command -v python3 >/dev/null 2>&1; then
+    log_error "A manifest exists at $MANIFEST_PATH but python3 is not available to read it."
+    log_error "Refusing to continue: guessing paths risks an incomplete uninstall."
+    log_error "Install python3, or delete the manifest to use pattern-based removal."
+    exit 1
+  fi
+
+  # Validate before use. Failures inside process substitution are invisible to
+  # `set -e`, so the old code silently produced an empty removal plan, deleted
+  # the manifest, and reported "Uninstall complete."
+  if ! MANIFEST_PLATFORM="$(read_manifest_field platform 2>/dev/null)"; then
+    log_error "Manifest at $MANIFEST_PATH is unreadable or not valid JSON."
+    log_error "Refusing to continue. Repair or delete it, then re-run."
+    exit 1
+  fi
+
+  # Platform guard: the manifest branch used to ignore $PLATFORM entirely, so
+  # `uninstall.sh mcp` against a kiro manifest deleted the kiro install.
+  if [ -n "$MANIFEST_PLATFORM" ] && [ "$MANIFEST_PLATFORM" != "$PLATFORM" ]; then
+    if [ "$FORCE" = "true" ]; then
+      log_warn "PLATFORM MISMATCH: manifest records '$MANIFEST_PLATFORM', you asked for '$PLATFORM'."
+      log_warn "--force supplied, continuing: the '$MANIFEST_PLATFORM' paths will be removed."
+    else
+      log_error "PLATFORM MISMATCH: manifest records '$MANIFEST_PLATFORM', you asked for '$PLATFORM'."
+      log_error "Re-run as: bash install/uninstall.sh $MANIFEST_PLATFORM"
+      log_error "Or pass --force to remove the '$MANIFEST_PLATFORM' paths anyway."
+      exit 1
+    fi
+  fi
+
+  BACKUP_DIR="$(read_manifest_field backup_dir)"
+  MANIFEST_SCOPE="$(read_manifest_field scope)"
+
   while IFS= read -r f; do
     if [[ "$f" == *"/copilot-instructions.md" ]] || [[ "$f" == *"/CLAUDE.md" ]]; then
       MODIFY_FILES+=("$f")
     elif [ -n "$f" ]; then
       FILES_TO_REMOVE+=("$f")
     fi
-  done < <(python3 -c "import json, sys; d=json.load(open('$MANIFEST_PATH')); print('\n'.join(d.get('files', [])))")
-  
+  done <<< "$(read_manifest_field files)"
+
   while IFS= read -r d; do
     [ -n "$d" ] && DIRS_TO_REMOVE+=("$d")
-  done < <(python3 -c "import json, sys; d=json.load(open('$MANIFEST_PATH')); print('\n'.join(d.get('organs', [])))")
-  
+  done <<< "$(read_manifest_field organs)"
+
   while IFS= read -r h; do
     [ -n "$h" ] && FILES_TO_REMOVE+=("$h")
-  done < <(python3 -c "import json, sys; d=json.load(open('$MANIFEST_PATH')); print('\n'.join(d.get('hooks', [])))")
-  
+  done <<< "$(read_manifest_field hooks)"
+
   FILES_TO_REMOVE+=("$MANIFEST_PATH")
 else
   echo "No manifest found. Falling back to known patterns..."
   case "$PLATFORM" in
     gemini)
-      for f in "$RESOLVED_HOME"/.gemini/config/genome/*.md; do
+      # install.sh writes config/rules and config/skills. These globs used to
+      # say config/genome and config/organs, so the fallback matched nothing and
+      # removed nothing.
+      for f in "$RESOLVED_HOME"/.gemini/config/rules/*.md; do
         [ -f "$f" ] && FILES_TO_REMOVE+=("$f")
       done
-      for d in "$RESOLVED_HOME"/.gemini/config/organs/*; do
+      for d in "$RESOLVED_HOME"/.gemini/config/skills/*; do
         [ -d "$d" ] && DIRS_TO_REMOVE+=("$d")
       done
       [ -d "$RESOLVED_HOME/.gemini/config/plugins/governance" ] && DIRS_TO_REMOVE+=("$RESOLVED_HOME/.gemini/config/plugins/governance")
@@ -114,76 +236,175 @@ else
   esac
 fi
 
-# Local cell data
-if [ -d "$REPO_DIR/.soma/cells" ]; then
-  for f in "$REPO_DIR"/.soma/cells/*; do
-    [ -e "$f" ] && FILES_TO_REMOVE+=("$f")
-  done
-fi
-[ -f "$REPO_DIR/fitness.jsonl" ] && FILES_TO_REMOVE+=("$REPO_DIR/fitness.jsonl")
+# ── User-Authored Data ────────────────────────────────────────────
+# Cells, fitness history and snapshots are authored by the user, not installed
+# by install.sh. Uninstalling a tool must not delete the user's work, so these
+# are PRESERVED unless --purge-data is passed explicitly.
+PRESERVED_PATHS=()
+[ -d "$REPO_DIR/.soma/cells" ] && PRESERVED_PATHS+=("$REPO_DIR/.soma/cells")
+[ -f "$REPO_DIR/fitness.jsonl" ] && PRESERVED_PATHS+=("$REPO_DIR/fitness.jsonl")
+[ -d "$REPO_DIR/docs/snapshots" ] && PRESERVED_PATHS+=("$REPO_DIR/docs/snapshots")
 
-# Local snapshots
-if [ -d "$REPO_DIR/docs/snapshots" ]; then
-  for f in "$REPO_DIR"/docs/snapshots/*; do
-    [ -e "$f" ] && FILES_TO_REMOVE+=("$f")
-  done
+if [ "$PURGE_DATA" = "true" ]; then
+  if [ -d "$REPO_DIR/.soma/cells" ]; then
+    DIRS_TO_REMOVE+=("$REPO_DIR/.soma/cells")
+  fi
+  [ -f "$REPO_DIR/fitness.jsonl" ] && FILES_TO_REMOVE+=("$REPO_DIR/fitness.jsonl")
+  if [ -d "$REPO_DIR/docs/snapshots" ]; then
+    DIRS_TO_REMOVE+=("$REPO_DIR/docs/snapshots")
+  fi
+  PRESERVED_PATHS=()
 fi
 
+# soma.conf is user configuration. Listed separately so the plan can label it
+# as such instead of burying it among installed artifacts.
+CONFIG_TO_REMOVE=()
 if [ "$KEEP_CONFIG" = "false" ] && [ -f "$REPO_DIR/soma.conf" ]; then
-  FILES_TO_REMOVE+=("$REPO_DIR/soma.conf")
+  CONFIG_TO_REMOVE+=("$REPO_DIR/soma.conf")
 fi
+
+# ── Reconcile the Plan With Disk ──────────────────────────────────
+# A manifest entry recorded as a file can exist as a directory, or be gone. The
+# plan printed "[FILE]" for everything while the removal loop was [ -f ]-guarded,
+# so directories were advertised as deletions and then silently left in place.
+# Note: ${arr[@]+"${arr[@]}"} — on Bash 3.2, "${arr[@]}" on an empty array is
+# fatal under `set -u`, which is why this script used to disable `set -u` across
+# the entire removal section.
+REAL_FILES=()
+REAL_DIRS=()
+for p in ${FILES_TO_REMOVE[@]+"${FILES_TO_REMOVE[@]}"} ${DIRS_TO_REMOVE[@]+"${DIRS_TO_REMOVE[@]}"}; do
+  if [ -d "$p" ]; then
+    REAL_DIRS+=("$p")
+  elif [ -f "$p" ]; then
+    REAL_FILES+=("$p")
+  fi
+done
+FILES_TO_REMOVE=(${REAL_FILES[@]+"${REAL_FILES[@]}"})
+DIRS_TO_REMOVE=(${REAL_DIRS[@]+"${REAL_DIRS[@]}"})
+
+REAL_MOD=()
+for m in ${MODIFY_FILES[@]+"${MODIFY_FILES[@]}"}; do
+  [ -f "$m" ] && REAL_MOD+=("$m")
+done
+MODIFY_FILES=(${REAL_MOD[@]+"${REAL_MOD[@]}"})
 
 echo ""
 echo "The following will be removed/modified:"
-set +u
-for f in "${FILES_TO_REMOVE[@]}"; do echo "  - [FILE] $f"; done
-for d in "${DIRS_TO_REMOVE[@]}"; do echo "  - [DIR]  $d"; done
-for m in "${MODIFY_FILES[@]}"; do echo "  - [MOD]  $m (remove soma sections)"; done
+for f in ${FILES_TO_REMOVE[@]+"${FILES_TO_REMOVE[@]}"}; do echo "  - [FILE] $f"; done
+for d in ${DIRS_TO_REMOVE[@]+"${DIRS_TO_REMOVE[@]}"}; do echo "  - [DIR]  $d"; done
+for m in ${MODIFY_FILES[@]+"${MODIFY_FILES[@]}"}; do echo "  - [MOD]  $m (remove soma sections, keep the rest)"; done
+for c in ${CONFIG_TO_REMOVE[@]+"${CONFIG_TO_REMOVE[@]}"}; do echo "  - [USER CONFIG] $c (pass --keep-config to keep it)"; done
 
-if [ ${#FILES_TO_REMOVE[@]} -eq 0 ] && [ ${#DIRS_TO_REMOVE[@]} -eq 0 ] && [ ${#MODIFY_FILES[@]} -eq 0 ]; then
+PLAN_COUNT=$(( ${#FILES_TO_REMOVE[@]} + ${#DIRS_TO_REMOVE[@]} + ${#MODIFY_FILES[@]} + ${#CONFIG_TO_REMOVE[@]} ))
+if [ "$PLAN_COUNT" -eq 0 ]; then
   echo "Nothing to remove."
-  set -u
   exit 0
 fi
 
+if [ ${#PRESERVED_PATHS[@]} -gt 0 ]; then
+  echo ""
+  echo "Preserved (user-authored — pass --purge-data to remove):"
+  for p in ${PRESERVED_PATHS[@]+"${PRESERVED_PATHS[@]}"}; do echo "  - [KEEP] $p"; done
+fi
+
 if [ "$DRY_RUN" = "false" ] && [ "$FORCE" = "false" ]; then
-  read -p "Proceed with deletion? (y/N): " confirm
+  # `read -p` returns 1 at EOF, and under `set -e` that aborted the script with
+  # a bare exit 1 in CI, containers, or `curl | bash`. Abort explicitly instead.
+  if [ ! -t 0 ]; then
+    echo ""
+    log_error "Confirmation required but stdin is not a terminal."
+    log_error "Aborting without removing anything. Re-run with --force, or --dry-run to preview."
+    exit 2
+  fi
+  echo ""
+  read -r -p "Proceed with deletion? (y/N): " confirm
   if [[ ! "$confirm" =~ ^[Yy]$ ]]; then
     echo "Aborted."
-    set -u
     exit 0
   fi
 fi
 
 if [ "$DRY_RUN" = "true" ]; then
-  echo "Dry-run complete."
-  set -u
+  # Preview the restore mapping here. The old dry-run preview lived inside the
+  # restore block further down, which this early exit made unreachable.
+  if [ -n "$BACKUP_DIR" ] && [ -d "$BACKUP_DIR" ]; then
+    echo ""
+    echo "Would offer to restore from: $BACKUP_DIR"
+    case "$PLATFORM" in
+      gemini)
+        echo "  $BACKUP_DIR/genome     -> $RESOLVED_HOME/.gemini/config/rules"
+        echo "  $BACKUP_DIR/organs     -> $RESOLVED_HOME/.gemini/config/skills"
+        echo "  $BACKUP_DIR/governance -> $RESOLVED_HOME/.gemini/config/plugins/governance"
+        ;;
+      kiro)
+        echo "  $BACKUP_DIR/genome -> $RESOLVED_HOME/.kiro/steering"
+        echo "  $BACKUP_DIR/organs -> $RESOLVED_HOME/.kiro/skills"
+        echo "  $BACKUP_DIR/hooks  -> $RESOLVED_HOME/.kiro/hooks"
+        ;;
+      copilot)
+        echo "  $BACKUP_DIR/copilot-instructions.md -> $RESOLVED_HOME/copilot-instructions.md"
+        ;;
+      claude)
+        if [ "$MANIFEST_SCOPE" = "local" ]; then
+          echo "  $BACKUP_DIR/CLAUDE.md -> $(pwd)/CLAUDE.md"
+        else
+          echo "  $BACKUP_DIR/CLAUDE.md -> $RESOLVED_HOME/.claude/CLAUDE.md"
+        fi
+        echo "  $BACKUP_DIR/.mcp.json -> $(pwd)/.mcp.json"
+        ;;
+      mcp)
+        echo "  $BACKUP_DIR/.mcp.json -> $(pwd)/.mcp.json"
+        ;;
+    esac
+  fi
+  echo ""
+  echo "Dry-run complete. Nothing was removed."
   exit 0
 fi
 
-for f in "${FILES_TO_REMOVE[@]}"; do
-  [ -f "$f" ] && rm -f "$f"
+# Inventory in-place backups BEFORE removing anything: cleaning a [MOD] file
+# writes a fresh .bak containing Soma content, and the parent of a removed file
+# may disappear.
+for f in ${FILES_TO_REMOVE[@]+"${FILES_TO_REMOVE[@]}"}; do
+  [ -f "$f" ] && rm -f "$f" && echo "Removed $f"
 done
-for d in "${DIRS_TO_REMOVE[@]}"; do
-  [ -d "$d" ] && rm -rf "$d"
+for d in ${DIRS_TO_REMOVE[@]+"${DIRS_TO_REMOVE[@]}"}; do
+  [ -d "$d" ] && rm -rf "$d" && echo "Removed $d/"
 done
 
-for m in "${MODIFY_FILES[@]}"; do
+for m in ${MODIFY_FILES[@]+"${MODIFY_FILES[@]}"}; do
   if [ -f "$m" ]; then
     sed -i.bak '/^# Copilot Global Instructions/,$d' "$m" && rm -f "$m.bak"
     sed -i.bak '/^# Soma Governance Rules/,$d' "$m" && rm -f "$m.bak"
-    echo "Cleaned $m"
+    # Truncating at our header can leave an empty file behind. Remove it only if
+    # nothing but whitespace remains, so a user's own content is never lost.
+    if [ ! -s "$m" ] || [ -z "$(tr -d '[:space:]' < "$m")" ]; then
+      rm -f "$m"
+      echo "Cleaned and removed $m (contained only soma content)"
+    else
+      echo "Cleaned $m"
+    fi
   fi
 done
-set -u
 
-# Try to clean hooks from claude settings.json
+for c in ${CONFIG_TO_REMOVE[@]+"${CONFIG_TO_REMOVE[@]}"}; do
+  [ -f "$c" ] && rm -f "$c" && echo "Removed user config $c"
+done
+
+# Clean soma hooks from claude settings.json, but only when one is actually
+# present. The previous version rewrote the user's settings.json through jq
+# unconditionally and printed "Cleaned ..." even when nothing matched — and on a
+# jq failure it left a stray .tmp behind while still claiming success.
 for settings_file in "$(pwd)/.claude/settings.json" "$RESOLVED_HOME/.claude/settings.json"; do
-  if [ -f "$settings_file" ]; then
-    # Just a simple jq to remove soma hooks if present
-    if command -v jq >/dev/null 2>&1; then
-      jq 'del(.hooks | select(. != null) | .soma?)' "$settings_file" > "$settings_file.tmp" && mv "$settings_file.tmp" "$settings_file"
-      echo "Cleaned soma hooks from $settings_file"
+  if [ -f "$settings_file" ] && command -v jq >/dev/null 2>&1; then
+    if jq -e '.hooks.soma? // empty' "$settings_file" >/dev/null 2>&1; then
+      if jq 'del(.hooks.soma)' "$settings_file" > "$settings_file.tmp" 2>/dev/null; then
+        mv "$settings_file.tmp" "$settings_file"
+        echo "Cleaned soma hooks from $settings_file"
+      else
+        rm -f "$settings_file.tmp"
+        log_warn "Could not rewrite $settings_file — left unchanged."
+      fi
     fi
   fi
 done
@@ -193,65 +414,58 @@ done
 
 if [ -n "$BACKUP_DIR" ] && [ -d "$BACKUP_DIR" ]; then
   echo ""
-  if [ "$DRY_RUN" = "true" ]; then
-    echo "Dry-run: Would offer to restore from backup: $BACKUP_DIR"
-    echo "Restore mapping:"
-    case "$PLATFORM" in
-      gemini)
-        echo "  $BACKUP_DIR/genome -> $RESOLVED_HOME/.gemini/config/rules"
-        echo "  $BACKUP_DIR/organs -> $RESOLVED_HOME/.gemini/config/skills"
-        echo "  $BACKUP_DIR/governance -> $RESOLVED_HOME/.gemini/config/plugins/governance"
-        ;;
-      kiro)
-        echo "  $BACKUP_DIR/genome -> $RESOLVED_HOME/.kiro/steering"
-        echo "  $BACKUP_DIR/organs -> $RESOLVED_HOME/.kiro/skills"
-        echo "  $BACKUP_DIR/hooks -> $RESOLVED_HOME/.kiro/hooks"
-        ;;
-      copilot)
-        echo "  $BACKUP_DIR/copilot-instructions.md -> $RESOLVED_HOME/copilot-instructions.md"
-        ;;
-      claude)
-        echo "  $BACKUP_DIR/CLAUDE.md -> $RESOLVED_HOME/.claude/CLAUDE.md or project CLAUDE.md"
-        echo "  $BACKUP_DIR/.mcp.json -> project .mcp.json"
-        ;;
-      mcp)
-        echo "  $BACKUP_DIR/.mcp.json -> project .mcp.json"
-        ;;
-    esac
+  if [ "$NO_RESTORE" = "true" ]; then
+    echo "Skipping restore (--no-restore). Backup left at $BACKUP_DIR"
+  elif [ ! -t 0 ]; then
+    # Previously `read -p` here aborted the script under `set -e` at EOF.
+    echo "Not restoring: stdin is not a terminal."
+    echo "Backup preserved at $BACKUP_DIR — copy from it manually if needed."
   else
-    if [ "$FORCE" = "false" ]; then
-      read -p "Restore previous configuration from backup? [y/N] " restore_confirm
+      # --force skips the DELETION prompt only. It used to also skip restore,
+      # so the one flag meant for automation disabled recovery.
+      read -r -p "Restore previous configuration from backup? [y/N] " restore_confirm
       if [[ "$restore_confirm" =~ ^[Yy]$ ]]; then
         echo "Restoring from $BACKUP_DIR..."
         case "$PLATFORM" in
           gemini)
-            [ -d "$BACKUP_DIR/rules" ] && cp -r "$BACKUP_DIR/rules" "$RESOLVED_HOME/.gemini/config/"
-            [ -d "$BACKUP_DIR/skills" ] && cp -r "$BACKUP_DIR/skills" "$RESOLVED_HOME/.gemini/config/"
-            [ -d "$BACKUP_DIR/governance" ] && cp -r "$BACKUP_DIR/governance" "$RESOLVED_HOME/.gemini/config/plugins/"
+            # install.sh creates $BACKUP_DIR/{genome,organs,governance}. This
+            # block used to read rules/ and skills/, which never exist, so
+            # restore silently did nothing and still printed "Restore complete."
+            restore_dir_contents "$BACKUP_DIR/genome" "$RESOLVED_HOME/.gemini/config/rules"
+            restore_dir_contents "$BACKUP_DIR/organs" "$RESOLVED_HOME/.gemini/config/skills"
+            restore_dir_contents "$BACKUP_DIR/governance" "$RESOLVED_HOME/.gemini/config/plugins/governance"
             ;;
           kiro)
-            [ -d "$BACKUP_DIR/steering" ] && cp -r "$BACKUP_DIR/steering" "$RESOLVED_HOME/.kiro/"
-            [ -d "$BACKUP_DIR/skills" ] && cp -r "$BACKUP_DIR/skills" "$RESOLVED_HOME/.kiro/"
-            [ -d "$BACKUP_DIR/hooks" ] && cp -r "$BACKUP_DIR/hooks" "$RESOLVED_HOME/.kiro/"
+            restore_dir_contents "$BACKUP_DIR/genome" "$RESOLVED_HOME/.kiro/steering"
+            restore_dir_contents "$BACKUP_DIR/organs" "$RESOLVED_HOME/.kiro/skills"
+            restore_dir_contents "$BACKUP_DIR/hooks" "$RESOLVED_HOME/.kiro/hooks"
             ;;
           copilot)
-            [ -f "$BACKUP_DIR/copilot-instructions.md" ] && cp "$BACKUP_DIR/copilot-instructions.md" "$RESOLVED_HOME/"
+            restore_file "$BACKUP_DIR/copilot-instructions.md" "$RESOLVED_HOME/copilot-instructions.md"
             ;;
           claude)
-            [ -f "$BACKUP_DIR/CLAUDE.md" ] && cp "$BACKUP_DIR/CLAUDE.md" "$RESOLVED_HOME/.claude/"
-            [ -f "$BACKUP_DIR/.mcp.json" ] && cp "$BACKUP_DIR/.mcp.json" "$(pwd)/"
+            # A local install backed up the project CLAUDE.md, so restore it to
+            # the scope it came from rather than always to the global home.
+            if [ "$MANIFEST_SCOPE" = "local" ]; then
+              restore_file "$BACKUP_DIR/CLAUDE.md" "$(pwd)/CLAUDE.md"
+            else
+              restore_file "$BACKUP_DIR/CLAUDE.md" "$RESOLVED_HOME/.claude/CLAUDE.md"
+            fi
+            restore_file "$BACKUP_DIR/.mcp.json" "$(pwd)/.mcp.json"
             ;;
           mcp)
-            [ -f "$BACKUP_DIR/.mcp.json" ] && cp "$BACKUP_DIR/.mcp.json" "$(pwd)/"
+            restore_file "$BACKUP_DIR/.mcp.json" "$(pwd)/.mcp.json"
             ;;
         esac
-        echo "Restore complete."
+        if [ "$RESTORED_ANY" = "true" ]; then
+          echo "Restore complete."
+        else
+          # Do not claim success when nothing was found to restore.
+          log_warn "Nothing was restored: $BACKUP_DIR held no recognised payload."
+        fi
       else
-        echo "Skipping restore."
+        echo "Skipping restore. Backup left at $BACKUP_DIR"
       fi
-    else
-      echo "Force mode enabled, skipping restore."
-    fi
   fi
 fi
 

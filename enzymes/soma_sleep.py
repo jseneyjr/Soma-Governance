@@ -44,7 +44,7 @@ def load_cells(workspace):
     cells = []
     for f in glob.glob(os.path.join(cells_dir, "**", "*.md"), recursive=True):
         try:
-            with open(f) as fh:
+            with open(f, encoding="utf-8") as fh:
                 content = fh.read()
             if not content.startswith("---"):
                 continue
@@ -68,7 +68,7 @@ def load_session_outcomes(workspace):
     today = datetime.now(timezone.utc).date().isoformat()
     outcomes = []
     try:
-        with open(outcomes_path) as f:
+        with open(outcomes_path, encoding="utf-8") as f:
             for line in f:
                 entry = json.loads(line.strip())
                 if entry.get("timestamp", "").startswith(today):
@@ -160,7 +160,7 @@ def phase3_dream_compression(cells, session_outcomes, workspace):
     os.makedirs(dreams_dir, exist_ok=True)
     dream_path = os.path.join(dreams_dir, f"{today}.md")
 
-    with open(dream_path, "w") as f:
+    with open(dream_path, "w", encoding="utf-8") as f:
         f.write(f"# Dream Log — {today}\n\n")
         f.write("*Read this at session start instead of the full genome.*\n\n")
         f.write("## 🏆 Top Performers (reinforce these)\n")

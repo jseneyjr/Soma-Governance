@@ -90,13 +90,48 @@ if [ "$LOCAL_INSTALL" = "true" ]; then
   migrate_prism_to_soma "$(pwd)"
 fi
 
+# ── Installed-Path Recording ──────────────────────────────────────
+# The manifest MUST list what this installer actually wrote. It used to be
+# built by `find`-ing the destination directories, which enrolled every
+# pre-existing file in the user's steering/skills/hooks dirs — so uninstall
+# deleted third-party skills and hand-written hooks it never installed.
+# Newline-delimited rather than arrays: empty arrays are fatal under `set -u`
+# on Bash 3.2, which macOS still ships.
+INSTALLED_FILES=""
+INSTALLED_SKILLS=""
+INSTALLED_HOOKS=""
+# Truthful scope. Only a branch that really wrote to project-local paths may
+# set this to "local"; the old code labelled every non-gemini --local install
+# "global" while still writing a global manifest.
+INSTALL_SCOPE="global"
+
+record_installed_file()  { [ -n "${1:-}" ] && INSTALLED_FILES="${INSTALLED_FILES}$1"$'\n'; return 0; }
+record_installed_skill() { [ -n "${1:-}" ] && INSTALLED_SKILLS="${INSTALLED_SKILLS}$1"$'\n'; return 0; }
+record_installed_hook()  { [ -n "${1:-}" ] && INSTALLED_HOOKS="${INSTALLED_HOOKS}$1"$'\n'; return 0; }
+
+# Newline-delimited paths on stdin -> JSON array. Escapes backslash and quote
+# so Windows paths and odd filenames cannot produce invalid JSON.
+_json_array_from_lines() {
+  awk '
+    BEGIN { printf "["; first = 1 }
+    length($0) > 0 {
+      s = $0
+      gsub(/\\/, "\\\\", s)
+      gsub(/"/, "\\\"", s)
+      if (!first) printf ","
+      printf "\"%s\"", s
+      first = 0
+    }
+    END { printf "]" }
+  '
+}
+
 write_manifest() {
   if [ "$DRY_RUN" = "true" ]; then return 0; fi
   local manifest_dir="$RESOLVED_HOME/.soma"
-  local scope="global"
-  if [ "$LOCAL_INSTALL" = "true" ] && [ "$PLATFORM" = "gemini" ]; then
+  local scope="$INSTALL_SCOPE"
+  if [ "$scope" = "local" ]; then
     manifest_dir="$(pwd)/.soma"
-    scope="local"
   fi
   mkdir -p "$manifest_dir"
   local target_json="$manifest_dir/manifest.json"
@@ -110,25 +145,11 @@ write_manifest() {
   local m_repo=${METRICS_REPO:-null}
   [ "$m_repo" != "null" ] && m_repo="\"$m_repo\""
   
-  local files_arr="[]"
-  local skills_arr="[]"
-  local hooks_arr="[]"
-  
-  if [ -n "${TARGET_RULES:-}" ] && [ -d "$TARGET_RULES" ]; then
-    files_arr="[$(find "$TARGET_RULES" -maxdepth 1 -type f -name "*.md" 2>/dev/null | awk '{print "\""$0"\""}' | tr '\n' ',' | sed 's/,$//')]"
-  elif [ -n "${TARGET_DIR:-}" ] && [ -d "$TARGET_DIR" ]; then
-    files_arr="[$(find "$TARGET_DIR" -maxdepth 1 -type f -name "*.instructions.md" 2>/dev/null | awk '{print "\""$0"\""}' | tr '\n' ',' | sed 's/,$//')]"
-  elif [ -n "${TARGET_FILE:-}" ] && [ -f "$TARGET_FILE" ]; then
-    files_arr="[\"$TARGET_FILE\"]"
-  fi
-  
-  if [ -n "${TARGET_SKILLS:-}" ] && [ -d "$TARGET_SKILLS" ]; then
-    skills_arr="[$(find "$TARGET_SKILLS" -maxdepth 1 -mindepth 1 -type d 2>/dev/null | awk '{print "\""$0"\""}' | tr '\n' ',' | sed 's/,$//')]"
-  fi
-  
-  if [ -n "${TARGET_HOOKS:-}" ] && [ -d "$TARGET_HOOKS" ]; then
-    hooks_arr="[$(find "$TARGET_HOOKS" -maxdepth 1 -type f 2>/dev/null | awk '{print "\""$0"\""}' | tr '\n' ',' | sed 's/,$//')]"
-  fi
+  # Exactly what this run wrote — never a scan of the destination directory.
+  local files_arr skills_arr hooks_arr
+  files_arr="$(printf '%s' "$INSTALLED_FILES" | _json_array_from_lines)"
+  skills_arr="$(printf '%s' "$INSTALLED_SKILLS" | _json_array_from_lines)"
+  hooks_arr="$(printf '%s' "$INSTALLED_HOOKS" | _json_array_from_lines)"
   
   local ts=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
   local backup_path=${BACKUP_DIR:-null}
@@ -170,16 +191,34 @@ BACKUP_TS=$(date -u +"%Y-%m-%dT%H-%M-%S")
 BACKUP_DIR="$RESOLVED_HOME/.soma/backup/$BACKUP_TS"
 
 if [ "$DRY_RUN" = "false" ]; then
-  # Keep only the most recent backup — safely recreate
-  rm -rf "$RESOLVED_HOME/.soma/backup"
-  mkdir -p "$RESOLVED_HOME/.soma/backup"
+  # Retain the most recent N generations. This used to `rm -rf` the whole
+  # backup parent before creating the new stamped directory, so exactly one
+  # generation survived — and after a second install that survivor was a copy
+  # of Soma's own output, leaving the genuine pre-install state unrecoverable.
+  BACKUP_ROOT="$RESOLVED_HOME/.soma/backup"
+  BACKUP_KEEP="${SOMA_BACKUP_GENERATIONS:-5}"
+  case "$BACKUP_KEEP" in
+    ''|*[!0-9]*) BACKUP_KEEP=5 ;;
+  esac
+  mkdir -p "$BACKUP_ROOT"
+  # Prune oldest-first, never the one we are about to write.
+  find "$BACKUP_ROOT" -maxdepth 1 -mindepth 1 -type d 2>/dev/null \
+    | sort -r \
+    | awk -v k="$BACKUP_KEEP" 'NR>=k { print }' \
+    | while IFS= read -r stale; do
+        [ -n "$stale" ] || continue
+        [ "$stale" = "$BACKUP_DIR" ] && continue
+        rm -rf -- "$stale"
+      done
   mkdir -p "$BACKUP_DIR"
   
   case "$PLATFORM" in
     gemini)
       if [ "$LOCAL_INSTALL" = "true" ]; then
-        [ -d "$(pwd)/.soma/genome" ] && cp -r "$(pwd)/.soma/genome" "$BACKUP_DIR/genome"
-        [ -d "$(pwd)/.soma/organs" ] && cp -r "$(pwd)/.soma/organs" "$BACKUP_DIR/organs"
+        # Read the paths a local install actually writes (.soma/rules and
+        # .soma/skills), not .soma/genome / .soma/organs which never exist.
+        [ -d "$(pwd)/.soma/rules" ] && cp -r "$(pwd)/.soma/rules" "$BACKUP_DIR/genome"
+        [ -d "$(pwd)/.soma/skills" ] && cp -r "$(pwd)/.soma/skills" "$BACKUP_DIR/organs"
         [ -d "$(pwd)/.soma/plugins/governance" ] && cp -r "$(pwd)/.soma/plugins/governance" "$BACKUP_DIR/governance"
         [ -d "$(pwd)/.soma/cells" ] && cp -r "$(pwd)/.soma/cells" "$BACKUP_DIR/cells"
       else
@@ -213,6 +252,7 @@ fi
 case "$PLATFORM" in
   gemini)
     if [ "$LOCAL_INSTALL" = "true" ]; then
+      INSTALL_SCOPE="local"
       TARGET_RULES="$(pwd)/.soma/rules"
       TARGET_SKILLS="$(pwd)/.soma/skills"
       TARGET_HOOKS="$(pwd)/.soma/plugins/governance"
@@ -238,6 +278,7 @@ case "$PLATFORM" in
       else
         rm -f "$TARGET_RULES/$name"  # Remove any existing symlink before copy
         cp -- "$rule" "$TARGET_RULES/$name"
+        record_installed_file "$TARGET_RULES/$name"
         log_info "$name"
       fi
       count=$((count + 1))
@@ -255,6 +296,7 @@ case "$PLATFORM" in
           # Remove existing to prevent nesting
           [ -d "$TARGET_SKILLS/$skill_name" ] && rm -rf -- "$TARGET_SKILLS/$skill_name"
           cp -r -- "$skill" "$TARGET_SKILLS/$skill_name"
+          record_installed_skill "$TARGET_SKILLS/$skill_name"
           log_info "skill/$skill_name"
         fi
         skill_count=$((skill_count + 1))
@@ -266,7 +308,10 @@ case "$PLATFORM" in
 
     # Hooks
     if [ "$ENABLE_HOOKS" = "true" ]; then
-      install_hooks "$REPO_DIR" "$TARGET_HOOKS"
+      if install_hooks "$REPO_DIR" "$TARGET_HOOKS"; then
+        [ "$DRY_RUN" = "true" ] || [ ! -f "$TARGET_HOOKS/hooks.json" ] || \
+          record_installed_hook "$TARGET_HOOKS/hooks.json"
+      fi
     fi
 
     echo ""
@@ -309,6 +354,7 @@ case "$PLATFORM" in
         sed -e 's/^trigger: always_on$/inclusion: always/' \
             -e 's/^trigger: model_decision$/inclusion: manual/' \
             "$rule" > "$TARGET_RULES/$name"
+        record_installed_file "$TARGET_RULES/$name"
         log_info "$name"
       fi
       count=$((count + 1))
@@ -326,6 +372,7 @@ case "$PLATFORM" in
           # Remove existing to prevent nesting
           [ -d "$TARGET_SKILLS/$skill_name" ] && rm -rf -- "$TARGET_SKILLS/$skill_name"
           cp -r -- "$skill" "$TARGET_SKILLS/$skill_name"
+          record_installed_skill "$TARGET_SKILLS/$skill_name"
           log_info "skill/$skill_name"
         fi
         skill_count=$((skill_count + 1))
@@ -337,7 +384,10 @@ case "$PLATFORM" in
 
     # Hooks (Kiro uses individual .kiro.hook files, not hooks.json)
     if [ "$ENABLE_HOOKS" = "true" ]; then
-      install_hooks "$REPO_DIR" "$TARGET_HOOKS"
+      if install_hooks "$REPO_DIR" "$TARGET_HOOKS"; then
+        [ "$DRY_RUN" = "true" ] || [ ! -f "$TARGET_HOOKS/hooks.json" ] || \
+          record_installed_hook "$TARGET_HOOKS/hooks.json"
+      fi
     fi
 
     if [ "$LOCAL_INSTALL" = "true" ]; then
@@ -367,6 +417,7 @@ case "$PLATFORM" in
   }
 }
 EOF
+      record_installed_file "$KIRO_MCP_FILE"
       log_info "created mcp.json"
     fi
 
@@ -386,7 +437,10 @@ EOF
 
   copilot)
     if [ "$MODE" = "project" ]; then
-      TARGET_DIR=".github/instructions"
+      # Absolute: a relative path here put relative strings into a manifest
+      # that uninstall may read from a different working directory.
+      INSTALL_SCOPE="local"
+      TARGET_DIR="$(pwd)/.github/instructions"
       echo "  Target: $(normalize_path "$TARGET_DIR")"
       [ "$DRY_RUN" = "true" ] || mkdir -p "$TARGET_DIR"
 
@@ -406,6 +460,7 @@ EOF
         else
           backup_file "$target"
           strip_frontmatter < "$rule" > "$target"
+          record_installed_file "$target"
           log_info "${name}.instructions.md"
         fi
         count=$((count + 1))
@@ -437,6 +492,9 @@ EOF
         echo "" >> "$TARGET_FILE"
         echo "> Auto-generated from soma. Do not edit directly." >> "$TARGET_FILE"
         echo "" >> "$TARGET_FILE"
+        # A merged file, not a copy: uninstall strips our section rather than
+        # deleting the file, so record it once here.
+        record_installed_file "$TARGET_FILE"
       fi
 
       count=0; skipped=0
@@ -479,6 +537,7 @@ EOF
 
   claude)
     if [ "$LOCAL_INSTALL" = "true" ]; then
+      INSTALL_SCOPE="local"
       TARGET_DIR="$(pwd)"
       TARGET_FILE="$TARGET_DIR/CLAUDE.md"
       MCP_FILE="$TARGET_DIR/.mcp.json"
@@ -495,6 +554,10 @@ EOF
       echo "" >> "$TARGET_FILE"
       echo "> Auto-generated by Soma. Do not edit directly." >> "$TARGET_FILE"
       echo "" >> "$TARGET_FILE"
+      # A merged file, not a copy: uninstall strips our section rather than
+      # deleting the file. Recording it is what makes `uninstall.sh claude`
+      # work at all — the old find-based manifest never listed CLAUDE.md.
+      record_installed_file "$TARGET_FILE"
     fi
 
     count=0; skipped=0; skill_count=0
@@ -531,6 +594,7 @@ EOF
       else
         backup_file "$MCP_FILE"
         echo '{"mcpServers": {"soma": {"command": "python3", "args": ["-m", "soma_mcp"], "cwd": "'"$REPO_DIR"'", "env": {"SOMA_ROOT": "'"$TARGET_DIR"'"}}}}' > "$MCP_FILE"
+        record_installed_file "$MCP_FILE"
         log_info "created .mcp.json"
       fi
     fi
@@ -554,6 +618,8 @@ EOF
     ;;
 
   mcp)
+    # Always project-scoped: .mcp.json is written into the current directory.
+    INSTALL_SCOPE="local"
     TARGET_DIR="$(pwd)"
     MCP_FILE="$TARGET_DIR/.mcp.json"
     
@@ -575,6 +641,7 @@ EOF
   }
 }
 EOF
+      record_installed_file "$MCP_FILE"
       log_info "created .mcp.json"
     fi
 
@@ -582,6 +649,10 @@ EOF
     if [ "$DRY_RUN" = "true" ]; then
       echo "Dry-run complete."
     else
+      # The mcp platform previously wrote no manifest at all, so uninstall fell
+      # back to pattern guessing and the platform-mismatch guard had nothing to
+      # check against.
+      write_manifest
       echo "Done! Created .mcp.json for local MCP server."
     fi
     ;;
@@ -594,9 +665,17 @@ esac
 
 if [ "${INSTALL_GIT_HOOKS:-false}" = "true" ]; then
   if [ -d ".git/hooks" ]; then
-    cp "$REPO_DIR/install/hooks/pre-commit" ".git/hooks/pre-commit"
-    chmod +x ".git/hooks/pre-commit"
-    echo "Installed git pre-commit hook."
+    if [ "$DRY_RUN" = "true" ]; then
+      echo "[dry-run] would install git pre-commit hook."
+    else
+      cp "$REPO_DIR/install/hooks/pre-commit" ".git/hooks/pre-commit"
+      chmod +x ".git/hooks/pre-commit"
+      # Recorded so uninstall can remove it. It used to be installed and then
+      # left behind forever, with zero references in uninstall.sh.
+      record_installed_hook "$(pwd)/.git/hooks/pre-commit"
+      write_manifest
+      echo "Installed git pre-commit hook."
+    fi
   else
     echo "No .git/hooks directory found, skipping pre-commit hook installation."
   fi

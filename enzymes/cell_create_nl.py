@@ -22,7 +22,7 @@ def create_cell_from_description(description, domain_hint=None, cell_type=None, 
         for cell_file in glob.glob(os.path.join(cells_dir, '**', '*.md'), recursive=True):
             if os.path.basename(cell_file) == 'README.md': continue
             try:
-                with open(cell_file) as f:
+                with open(cell_file, encoding="utf-8") as f:
                     content = f.read()
                 if content.startswith('---'):
                     examples.append(content[:500])  # Truncate for context
@@ -142,7 +142,7 @@ def main():
     
     filepath = os.path.join(target_dir, filename)
     
-    with open(filepath, 'w') as f:
+    with open(filepath, 'w', encoding="utf-8") as f:
         f.write(cell_content)
     
     rel_path = os.path.relpath(filepath, workspace)

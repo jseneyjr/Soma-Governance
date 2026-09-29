@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-DIR="$(cd \"$(dirname \"${BASH_SOURCE[0]}\")\" && pwd)"
+DIR="$(cd -P "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "$DIR/common.sh"
 RESOLVED_HOME=$(resolve_home)
 

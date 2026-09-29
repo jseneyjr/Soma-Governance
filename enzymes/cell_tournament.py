@@ -24,7 +24,7 @@ def main():
         if os.path.basename(file_path) == 'README.md':
             continue
         
-        with open(file_path, 'r') as f:
+        with open(file_path, 'r', encoding="utf-8") as f:
             content = f.read()
             
         if not content.startswith('---'):

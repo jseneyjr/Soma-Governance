@@ -1,0 +1,61 @@
+"""Shared fixtures for the Soma regression suite.
+
+The suite deliberately avoids requiring pyyaml: several invariants under test
+exist precisely because `soma_mcp/` must work on a bare interpreter.
+"""
+import os
+import shutil
+import subprocess
+import sys
+
+import pytest
+
+REPO_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+
+
+@pytest.fixture(scope="session")
+def repo_root():
+    return REPO_ROOT
+
+
+@pytest.fixture(scope="session")
+def bash():
+    """Path to bash. Prefers /bin/bash: on macOS that is 3.2, the oldest
+    supported shell and the one that surfaced SOMA-C03."""
+    return "/bin/bash" if os.path.exists("/bin/bash") else shutil.which("bash")
+
+
+@pytest.fixture
+def fake_home(tmp_path):
+    """An isolated HOME so installer tests never touch the real one."""
+    home = tmp_path / "home"
+    home.mkdir()
+    return home
+
+
+def run(cmd, cwd=REPO_ROOT, env=None, stdin=subprocess.DEVNULL, timeout=120):
+    """Run a command and return CompletedProcess with text output."""
+    full_env = dict(os.environ)
+    if env:
+        full_env.update(env)
+    return subprocess.run(
+        cmd, cwd=cwd, env=full_env, stdin=stdin,
+        capture_output=True, text=True, timeout=timeout,
+    )
+
+
+def read(path):
+    with open(path, "r", encoding="utf-8") as f:
+        return f.read()
+
+
+def iter_source_files(root, extensions):
+    """Yield absolute paths under root matching extensions, skipping caches."""
+    for dirpath, dirnames, filenames in os.walk(root):
+        dirnames[:] = [
+            d for d in dirnames
+            if d not in {"__pycache__", ".git", "node_modules", ".pytest_cache"}
+        ]
+        for fn in filenames:
+            if any(fn.endswith(ext) for ext in extensions):
+                yield os.path.join(dirpath, fn)

@@ -10,7 +10,7 @@ def load_cell(cells_dir, cell_name):
     for cell_file in glob.glob(os.path.join(cells_dir, '**', '*.md'), recursive=True):
         if os.path.basename(cell_file) == 'README.md': continue
         if os.path.splitext(os.path.basename(cell_file))[0] == cell_name:
-            with open(cell_file) as f: content = f.read()
+            with open(cell_file, encoding="utf-8") as f: content = f.read()
             if content.startswith('---'):
                 fm = yaml.safe_load(content[3:content.find('---', 3)])
                 fm['_name'] = cell_name
@@ -61,7 +61,7 @@ def test_indirect_import(cell, workspace):
         if f in targeted: continue
         try:
             full_path = os.path.join(workspace, f)
-            with open(full_path) as fh:
+            with open(full_path, encoding="utf-8") as fh:
                 content = fh.read()
             for t in targeted:
                 module = os.path.splitext(t)[0].replace('/', '.').replace('\\', '.')
@@ -164,7 +164,7 @@ def main():
         for cell_file in glob.glob(os.path.join(cells_dir, '**', '*.md'), recursive=True):
             if os.path.basename(cell_file) == 'README.md': continue
             try:
-                with open(cell_file) as f: content = f.read()
+                with open(cell_file, encoding="utf-8") as f: content = f.read()
                 if not content.startswith('---'): continue
                 fm = yaml.safe_load(content[3:content.find('---', 3)])
                 fm['_name'] = os.path.splitext(os.path.basename(cell_file))[0]

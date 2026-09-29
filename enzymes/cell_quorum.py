@@ -29,7 +29,7 @@ def main():
     for cell_file in glob.glob(os.path.join(cells_dir, '**', '*.md'), recursive=True):
         if os.path.basename(cell_file) == 'README.md': continue
         try:
-            with open(cell_file) as f: content = f.read()
+            with open(cell_file, encoding="utf-8") as f: content = f.read()
             if not content.startswith('---'): continue
             fm = yaml.safe_load(content[3:content.find('---', 3)])
             target_paths = fm.get('target_paths', [])
@@ -84,7 +84,7 @@ def main():
         # Log quorum event
         metrics_dir = os.path.join(workspace, '.soma', 'metrics')
         os.makedirs(metrics_dir, exist_ok=True)
-        with open(os.path.join(metrics_dir, 'quorum_events.jsonl'), 'a') as f:
+        with open(os.path.join(metrics_dir, 'quorum_events.jsonl'), 'a', encoding="utf-8") as f:
             quorum['timestamp'] = datetime.now(timezone.utc).isoformat() + 'Z'
             f.write(json.dumps(quorum) + '\n')
     else:

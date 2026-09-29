@@ -161,6 +161,10 @@ if [[ "$MEMORY" == "true" ]]; then
 fi
 
 TYPE=$(echo "$TYPE" | tr '[:upper:]' '[:lower:]')
+# Title-case for the cell heading. ${TYPE^} is Bash 4+ and macOS ships Bash
+# 3.2, where it raises "bad substitution" mid-heredoc: the cell file was
+# written as 0 bytes while the script still printed "Created:" and exited 0.
+TYPE_TITLE="$(printf '%s' "$TYPE" | awk '{print toupper(substr($0,1,1)) substr($0,2)}')"
 TYPE_PLURAL=""
 
 case "$TYPE" in
@@ -277,7 +281,7 @@ ${OPTIONAL_YAML}fitness:
   false_positives: 0
   score: null
 ---
-## ${TYPE^}: $HYPOTHESIS_TRUNCATED
+## ${TYPE_TITLE}: $HYPOTHESIS_TRUNCATED
 
 $HYPOTHESIS
 
@@ -287,6 +291,22 @@ $PREDICTION
 ### Falsification Criteria
 $FALSIFICATION
 EOF
+
+# Never report success for a cell that was not actually written. A failed
+# expansion inside the heredoc above (e.g. an unsupported Bash construct on an
+# older shell) leaves a 0-byte file, and this script has no `set -e`.
+if [ ! -s "$FILE_PATH" ]; then
+  echo "ERROR: cell was not written correctly (empty file): $FILE_PATH" >&2
+  rm -f "$FILE_PATH"
+  exit 1
+fi
+
+# The frontmatter must be closed by a lone '---' or downstream parsers
+# (common.sh:strip_frontmatter, and every YAML reader) silently drop the body.
+if [ "$(grep -c '^---$' "$FILE_PATH")" -lt 2 ]; then
+  echo "ERROR: cell frontmatter is malformed (missing closing '---'): $FILE_PATH" >&2
+  exit 1
+fi
 
 echo "Created: $FILE_PATH"
 exit 0

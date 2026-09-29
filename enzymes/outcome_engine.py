@@ -23,7 +23,7 @@ import re
 import glob
 import fnmatch
 import yaml
-from datetime import datetime
+from datetime import datetime, timezone
 
 
 # ── Workspace Resolution ─────────────────────────────────────────────
@@ -138,7 +138,7 @@ def detect_test_runner(workspace):
         # For package.json, check if there's a "test" script
         if framework == 'npm test':
             try:
-                with open(os.path.join(workspace, marker_file)) as f:
+                with open(os.path.join(workspace, marker_file), encoding='utf-8') as f:
                     pkg = json.loads(f.read())
                 if 'test' not in pkg.get('scripts', {}):
                     continue
@@ -294,7 +294,7 @@ def capture_mcp_outcomes(workspace):
     if not os.path.isfile(outcomes_file):
         return outcomes
     try:
-        with open(outcomes_file, 'r') as f:
+        with open(outcomes_file, 'r', encoding='utf-8') as f:
             for line in f:
                 if line.strip():
                     outcomes.append(json.loads(line))
@@ -317,6 +317,16 @@ def _parse_frontmatter(content):
         return yaml.safe_load(fm_text) or {}
     except Exception:
         return {}
+
+
+def _as_int(value, default=0):
+    """Coerce a frontmatter counter to int; hand-edited cells carry strings."""
+    if isinstance(value, bool):
+        return default
+    try:
+        return int(value)
+    except (TypeError, ValueError):
+        return default
 
 
 # ── Cell Matching ────────────────────────────────────────────────────
@@ -347,7 +357,7 @@ def match_cells_to_changes(workspace, changed_files):
         if os.path.basename(cell_file) == 'README.md':
             continue
         try:
-            with open(cell_file, 'r') as f:
+            with open(cell_file, 'r', encoding='utf-8') as f:
                 content = f.read()
             fm = _parse_frontmatter(content)
             target_paths = fm.get('target_paths', [])
@@ -480,7 +490,7 @@ def update_cell_fitness(workspace, fitness_signals):
         fpath = sig['_path']
         signal = sig['signal']
         try:
-            with open(fpath, 'r') as f:
+            with open(fpath, 'r', encoding='utf-8') as f:
                 content = f.read()
 
             if not content.startswith('---'): continue
@@ -489,40 +499,66 @@ def update_cell_fitness(workspace, fitness_signals):
             
             fm_text = content[3:end].strip()
             fm = yaml.safe_load(fm_text) or {}
-            
-            # Normalize fitness to dict
-            fitness = fm.get('fitness', {'score': 100, 'impact_weight': 1.0})
-            if isinstance(fitness, (int, float)):
+
+            # Normalize fitness to a dict.
+            #
+            # `score` is a 0..1 ratio everywhere else in the system
+            # (cell_fitness.py computes tp/triggers; jit_engine.get_fitness_score
+            # multiplies it by impact_weight). Seeding it with 100 made every cell
+            # this engine touched outrank every other cell forever, so an unknown
+            # score is None — meaning "not yet measured".
+            fitness = fm.get('fitness')
+            if fitness is None:
+                fitness = {'score': None, 'impact_weight': 1.0}
+            elif isinstance(fitness, bool):
+                fitness = {'score': None, 'impact_weight': 1.0}
+            elif isinstance(fitness, (int, float)):
                 fitness = {'score': float(fitness), 'impact_weight': 1.0}
             elif isinstance(fitness, str):
                 try:
                     fitness = {'score': float(fitness), 'impact_weight': 1.0}
                 except ValueError:
-                    fitness = {'score': 100.0, 'impact_weight': 1.0}
-            
-            fm['triggers'] = fm.get('triggers', 0) + 1
+                    fitness = {'score': None, 'impact_weight': 1.0}
+            elif not isinstance(fitness, dict):
+                fitness = {'score': None, 'impact_weight': 1.0}
+
+            # Counters MUST live inside the nested `fitness` mapping: that is
+            # where cell_fitness.py, cell_promote.py and jit_engine.py read them
+            # from. Writing them at frontmatter top level made every outcome
+            # signal invisible (triggers stayed 0 -> score None -> status NEW).
+            fitness['triggers'] = _as_int(fitness.get('triggers', 0)) + 1
+            fitness.setdefault('true_positives', 0)
+            fitness.setdefault('false_positives', 0)
+            fitness['true_positives'] = _as_int(fitness['true_positives'])
+            fitness['false_positives'] = _as_int(fitness['false_positives'])
             if signal > 0:
-                fm['true_positives'] = fm.get('true_positives', 0) + 1
+                fitness['true_positives'] += 1
             elif signal < 0:
-                fm['false_positives'] = fm.get('false_positives', 0) + 1
-                
+                fitness['false_positives'] += 1
+
+            fitness['last_trigger_date'] = datetime.now(timezone.utc).strftime(
+                '%Y-%m-%dT%H:%M:%SZ'
+            )
+
             fm['fitness'] = fitness
 
-            new_fm = yaml.dump(fm, sort_keys=False, default_flow_style=False)
+            new_fm = yaml.dump(fm, sort_keys=False, default_flow_style=False,
+                               allow_unicode=True)
             new_content = f"---\n{new_fm}---\n{content[end+3:].lstrip()}"
-            
-            with open(fpath, 'w') as f:
+
+            with open(fpath, 'w', encoding='utf-8') as f:
                 f.write(new_content)
-        except Exception:
-            pass
+        except Exception as e:  # noqa: BLE001 - must not crash the session
+            # Never crash the session, but never lose the signal silently either.
+            print(f"    ! failed to update fitness for {fpath}: {e}", file=sys.stderr)
 
 
 def append_fitness_log(workspace, fitness_signals, outcomes):
     """Append to .soma/cells/fitness.jsonl with full provenance."""
     log_path = os.path.join(workspace, '.soma', 'cells', 'fitness.jsonl')
-    timestamp = datetime.now(tz=__import__('datetime').timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ')
+    timestamp = datetime.now(tz=timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ')
     try:
-        with open(log_path, 'a') as f:
+        with open(log_path, 'a', encoding='utf-8') as f:
             for sig in fitness_signals:
                 entry = {
                     'timestamp': timestamp,

@@ -9,12 +9,37 @@ from datetime import datetime
 from datetime import timezone
 from soma_resolve import resolve_workspace
 
+def normalize_fitness(metadata):
+    """Return the cell's `fitness` value as a dict.
+
+    Cells in the wild carry `fitness` as a bare scalar (`fitness: 1.0`) as well
+    as a nested mapping. cell_fitness.py, outcome_engine.py and
+    jit_engine.get_fitness_score all normalize this; cell_promote.py did not,
+    so `fitness.get('triggers', 0)` raised
+    AttributeError: 'float' object has no attribute 'get'
+    and aborted the whole run (9 of 18 cells in this repo hit it).
+    """
+    fitness = (metadata or {}).get('fitness', {})
+    if isinstance(fitness, dict):
+        return fitness
+    if isinstance(fitness, bool) or fitness is None:
+        return {}
+    if isinstance(fitness, (int, float)):
+        return {'score': float(fitness)}
+    if isinstance(fitness, str):
+        try:
+            return {'score': float(fitness)}
+        except ValueError:
+            return {}
+    return {}
+
+
 def resolve_metrics_dir(workspace):
     metrics_repo = os.environ.get("METRICS_REPO")
     if not metrics_repo:
         conf_path = os.path.join(workspace, "soma.conf")
         if os.path.exists(conf_path):
-            with open(conf_path) as f:
+            with open(conf_path, encoding="utf-8") as f:
                 for line in f:
                     line = line.strip()
                     if line.startswith("METRICS_REPO=") and not line.startswith("#"):
@@ -43,7 +68,7 @@ def main():
         
         escaped_counts = {}
         if os.path.exists(escaped_defects_log):
-            with open(escaped_defects_log) as edf:
+            with open(escaped_defects_log, encoding="utf-8") as edf:
                 for line in edf:
                     try:
                         entry = json.loads(line.strip())
@@ -55,12 +80,17 @@ def main():
         
         for file_path in cell_files:
             if os.path.basename(file_path) == 'README.md': continue
-            with open(file_path, 'r') as f: content = f.read()
+            with open(file_path, 'r', encoding='utf-8') as f: content = f.read()
             if not content.startswith('---'): continue
             end_idx = content.find('---', 3)
             if end_idx == -1: continue
             
-            frontmatter_str = content[3:end_idx]
+            # Strip the delimiter newlines: content[3:end_idx] is "\n<yaml>\n",
+            # so split('\n') would yield a leading and a trailing empty element.
+            # Appending a key after the trailing empty element produced
+            # "enforcement: mechanical---" with no newline, which makes
+            # common.sh:strip_frontmatter (matching /^---$/) swallow the body.
+            frontmatter_str = content[3:end_idx].strip('\n')
             try:
                 metadata = yaml.safe_load(frontmatter_str.strip())
             except Exception: continue
@@ -69,7 +99,7 @@ def main():
             cell_base = os.path.splitext(cell_name)[0]
             
             enforcement = metadata.get('enforcement', 'advisory')
-            fitness = metadata.get('fitness', {})
+            fitness = normalize_fitness(metadata)
             triggers = fitness.get('triggers', 0)
             tp = fitness.get('true_positives', 0)
             fp = fitness.get('false_positives', 0)
@@ -111,8 +141,8 @@ def main():
                     else:
                         lines.append(f"enforcement: {new_tier}")
                     new_frontmatter = '\n'.join(lines)
-                    with open(file_path, 'w') as f:
-                        f.write(f"---{new_frontmatter}---{content[end_idx+3:]}")
+                    with open(file_path, 'w', encoding='utf-8') as f:
+                        f.write(f"---\n{new_frontmatter}\n---{content[end_idx+3:]}")
                     print(f"Promoted/Demoted {cell_name}: {enforcement} -> {new_tier} ({reason})")
                     
                     if new_tier in ('mechanical', 'gate'):
@@ -133,7 +163,7 @@ def main():
         cell_files = glob.glob(os.path.join(cells_dir, '**', '*.md'), recursive=True)
         for file_path in cell_files:
             if os.path.basename(file_path) == 'README.md': continue
-            with open(file_path, 'r') as f: content = f.read()
+            with open(file_path, 'r', encoding='utf-8') as f: content = f.read()
             if not content.startswith('---'): continue
             end_idx = content.find('---', 3)
             if end_idx == -1: continue
@@ -142,7 +172,7 @@ def main():
                 metadata = yaml.safe_load(content[3:end_idx].strip())
             except Exception: continue
             
-            fitness = metadata.get('fitness', {})
+            fitness = normalize_fitness(metadata)
             triggers = fitness.get('triggers', 0)
             tp = fitness.get('true_positives', 0)
             impact = metadata.get('impact_weight', 1.0)
@@ -163,7 +193,7 @@ def main():
         hypothesis_stats = {}
         for snap in snapshots:
             try:
-                with open(snap, 'r') as f: data = json.load(f)
+                with open(snap, 'r', encoding='utf-8') as f: data = json.load(f)
                 if not isinstance(data, list): continue
                 filename = os.path.basename(snap)
                 inferred_repo = filename.split('-')[0] if '-' in filename else filename.split('.')[0]
@@ -225,7 +255,7 @@ This rule was promoted from local cell {cand['cell_name']} after demonstrating h
             print(f"  Hypothesis: {cand['hypothesis']}")
             print(f"  Score: {cand['score']:.2f}\n")
         else:
-            with open(rule_path, 'w') as f:
+            with open(rule_path, 'w', encoding='utf-8') as f:
                 f.write(rule_content)
             print(f"Created {rule_path}")
             
@@ -234,7 +264,7 @@ This rule was promoted from local cell {cand['cell_name']} after demonstrating h
             if not team_repo:
                 conf_path = os.path.join(workspace, "soma.conf")
                 if os.path.exists(conf_path):
-                    with open(conf_path) as conf_file:
+                    with open(conf_path, encoding='utf-8') as conf_file:
                         for line in conf_file:
                             line = line.strip()
                             if line.startswith("TEAM_REPO=") and not line.startswith("#"):
@@ -271,7 +301,7 @@ This rule was promoted from local cell {cand['cell_name']} after demonstrating h
             
     if not dry_run and promotions:
         os.makedirs(os.path.dirname(fitness_log_path), exist_ok=True)
-        with open(fitness_log_path, 'a') as f:
+        with open(fitness_log_path, 'a', encoding='utf-8') as f:
             for promo in promotions:
                 f.write(json.dumps(promo) + "\n")
         print(f"Logged {len(promotions)} promotions to {fitness_log_path}")

@@ -75,6 +75,20 @@ detect_os() {
   fi
 }
 
+# Returns $HOME, or fails loudly. Never emits a literal "~": inside double
+# quotes the shell does not expand it, so "${HOME:-~}" used to produce a
+# relative directory named "~" in the launch directory. A "global" install then
+# landed in ./~/ and install.sh ran `rm -rf ./~/.soma/backup` against it.
+_home_or_fail() {
+  if [ -n "${HOME:-}" ]; then
+    echo "$HOME"
+    return 0
+  fi
+  log_error "Cannot resolve a home directory: neither HOME nor USERPROFILE is set."
+  log_error "Set HOME (or USERPROFILE on Windows) and re-run."
+  return 1
+}
+
 resolve_home() {
   local os="${1:-$(detect_os)}"
   case "$os" in
@@ -86,7 +100,7 @@ resolve_home() {
           wslpath -u "$win_prof" 2>/dev/null && return 0
         fi
       fi
-      echo "${HOME:-~}"
+      _home_or_fail
       ;;
     windows)
       if [ -n "${USERPROFILE:-}" ]; then
@@ -96,11 +110,11 @@ resolve_home() {
           echo "$USERPROFILE" | sed -e 's|\\|/|g' -e 's|^\([A-Za-z]\):|/\L\1|'
         fi
       else
-        echo "${HOME:-~}"
+        _home_or_fail
       fi
       ;;
     macos|linux|*)
-      echo "${HOME:-~}"
+      _home_or_fail
       ;;
   esac
 }
@@ -206,6 +220,32 @@ should_install() {
   echo "$RULE_LIST" | grep -qw -- "$name"
 }
 
+# ── Backup Retention ─────────────────────────────────────────────
+# Keep only the most recent $SOMA_BACKUP_RETENTION ".bak.<epoch>" siblings of
+# $1. These were minted per run with no bound: steering and skill directories
+# ended up 70-80% backups. They are also unreachable by uninstall, because the
+# manifest globs "*.md" and can never match "NAME.md.bak.1790693059".
+_prune_backups() {
+  local target="$1"
+  local keep="${SOMA_BACKUP_RETENTION:-3}"
+  case "$keep" in
+    ''|*[!0-9]*) keep=3 ;;
+  esac
+  local dir base victim
+  dir="$(dirname "$target")"
+  base="$(basename "$target")"
+  [ -d "$dir" ] || return 0
+  find "$dir" -maxdepth 1 -name "${base}.bak.*" 2>/dev/null \
+    | awk -F'\\.bak\\.' 'NF==2 && $2 ~ /^[0-9]+$/ { print $2"\t"$0 }' \
+    | sort -rn \
+    | awk -v k="$keep" 'NR>k { sub(/^[0-9]+\t/, ""); print }' \
+    | while IFS= read -r victim; do
+        [ -n "$victim" ] || continue
+        rm -rf -- "$victim"
+      done
+  return 0
+}
+
 # ── File Backup (Timestamped) ────────────────────────────────────
 # Creates a timestamped backup to prevent clobbering.
 backup_file() {
@@ -217,6 +257,7 @@ backup_file() {
     local backup="${target}.bak.${ts}"
     cp -- "$target" "$backup"
     log_warn "$(basename "$target") backed up to $(basename "$backup")"
+    _prune_backups "$target"
   fi
 }
 
@@ -233,6 +274,7 @@ backup_dir() {
     [ -d "$backup" ] && rm -rf -- "$backup"
     cp -r -- "$target" "$backup"
     log_warn "$(basename "$target")/ backed up to $(basename "$backup")/"
+    _prune_backups "$target"
   fi
 }
 

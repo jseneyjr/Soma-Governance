@@ -39,7 +39,7 @@ REWORK_INDICATORS = [
 def scan_transcript(transcript_path):
     """Scan a transcript and return waste metrics."""
     steps = []
-    with open(transcript_path) as f:
+    with open(transcript_path, encoding="utf-8") as f:
         for line in f:
             line = line.strip()
             if not line:

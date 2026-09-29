@@ -33,7 +33,7 @@ triggered = []
 for f in cells:
     if os.path.basename(f) == 'README.md': continue
     try:
-        with open(f) as fh: content = fh.read()
+        with open(f, encoding="utf-8") as fh: content = fh.read()
         if not content.startswith('---'): continue
         fm = yaml.safe_load(content[3:content.find('---',3)])
         target_paths = fm.get('target_paths', [])
@@ -60,7 +60,7 @@ for f in cells:
 # Check dormant spores for reactivation
 spores_file = os.path.join(workspace, '.soma', 'cells', '.spores.jsonl')
 if os.path.exists(spores_file):
-    with open(spores_file) as f:
+    with open(spores_file, encoding="utf-8") as f:
         for line in f:
             try:
                 spore = json.loads(line.strip())

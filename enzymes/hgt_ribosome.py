@@ -70,7 +70,7 @@ def main():
         print(f"Error: {args.source_file} not found.")
         sys.exit(1)
 
-    with open(args.source_file, 'r') as f:
+    with open(args.source_file, 'r', encoding="utf-8") as f:
         content = f.read()
 
     metadata, body = parse_frontmatter(content)
@@ -99,7 +99,7 @@ def main():
         "trigger": "universal"
     }
     
-    with open(output_path, 'w') as f:
+    with open(output_path, 'w', encoding="utf-8") as f:
         f.write("---\n")
         yaml.dump(new_metadata, f, default_flow_style=False, sort_keys=False)
         f.write("---\n\n")

@@ -60,7 +60,7 @@ def main():
     if os.path.exists(rules_dir):
         for filepath in glob.glob(os.path.join(rules_dir, "*.md")):
             basename = os.path.basename(filepath)
-            with open(filepath, 'r') as f:
+            with open(filepath, 'r', encoding="utf-8") as f:
                 content = f.read()
             
             frontmatter = extract_frontmatter(content)
@@ -101,7 +101,7 @@ def main():
             # Get skill name from parent directory
             skill_name = os.path.basename(os.path.dirname(filepath))
             basename = f"organs/{skill_name}/SKILL.md"
-            with open(filepath, 'r') as f:
+            with open(filepath, 'r', encoding="utf-8") as f:
                 content = f.read()
                 
             frontmatter = extract_frontmatter(content)

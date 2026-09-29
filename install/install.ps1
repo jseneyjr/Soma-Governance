@@ -56,11 +56,16 @@ function Append-Utf8File {
 }
 
 # ── Paths & Locations ─────────────────────────────────────────────
-$ScriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
+$ScriptDir = $PSScriptRoot
+if (-not $ScriptDir) {
+    $ScriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
+}
 if (-not $ScriptDir) {
     $ScriptDir = (Get-Location).Path
 }
-$RepoDir = (Resolve-Path $ScriptDir).Path
+# This script lives in <repo>/install, so the repo root is one level up.
+# (Parity with install.sh, which resolves REPO_DIR as "$(dirname "$PRG")/..")
+$RepoDir = (Resolve-Path (Join-Path $ScriptDir "..")).Path
 $SourceRules = Join-Path $RepoDir "genome"
 $SourceSkills = Join-Path $RepoDir "organs"
 $ConfigFile = Join-Path $RepoDir "soma.conf"
@@ -84,6 +89,14 @@ function Write-LogSkip {
 function Write-LogError {
     param([string]$Message)
     Write-Host "  ❌ $Message" -ForegroundColor Red
+}
+
+# ── Source Layout Validation ──────────────────────────────────────
+# Fail loudly rather than silently reporting "Installed 0 rules".
+if (-not (Test-Path -LiteralPath $SourceRules -PathType Container)) {
+    Write-LogError "Rule source directory not found: $SourceRules"
+    Write-LogError "Run this script from its checked-out location (<repo>/install/install.ps1)."
+    exit 1
 }
 
 # ── Configuration Loading ─────────────────────────────────────────
@@ -329,7 +342,7 @@ switch ($Platform) {
         # Install rules
         $ruleCount = 0
         $skippedCount = 0
-        $ruleFiles = Get-ChildItem -Path $SourceRules -Filter "*.md" | Sort-Object Name
+        $ruleFiles = Get-ChildItem -Path $SourceRules -Filter "*.md" -Recurse -Force -File | Sort-Object Name
         foreach ($file in $ruleFiles) {
             $name = $file.Name
             if (-not (Should-InstallRule $name)) {
@@ -399,7 +412,7 @@ switch ($Platform) {
 
         $ruleCount = 0
         $skippedCount = 0
-        $ruleFiles = Get-ChildItem -Path $SourceRules -Filter "*.md" | Sort-Object Name
+        $ruleFiles = Get-ChildItem -Path $SourceRules -Filter "*.md" -Recurse -Force -File | Sort-Object Name
         foreach ($file in $ruleFiles) {
             $name = $file.Name
             if (-not (Should-InstallRule $name)) {
@@ -474,7 +487,7 @@ switch ($Platform) {
 
             $ruleCount = 0
             $skippedCount = 0
-            $ruleFiles = Get-ChildItem -Path $SourceRules -Filter "*.md" | Sort-Object Name
+            $ruleFiles = Get-ChildItem -Path $SourceRules -Filter "*.md" -Recurse -Force -File | Sort-Object Name
             foreach ($file in $ruleFiles) {
                 $filename = $file.Name
                 if (-not (Should-InstallRule $filename)) {
@@ -514,7 +527,7 @@ switch ($Platform) {
 
             $ruleCount = 0
             $skippedCount = 0
-            $ruleFiles = Get-ChildItem -Path $SourceRules -Filter "*.md" | Sort-Object Name
+            $ruleFiles = Get-ChildItem -Path $SourceRules -Filter "*.md" -Recurse -Force -File | Sort-Object Name
 
             if (-not $DryRun) {
                 Backup-FileItem -FilePath $targetFile
@@ -581,7 +594,7 @@ switch ($Platform) {
         $ruleCount = 0
         $skippedCount = 0
         $skillCount = 0
-        $ruleFiles = Get-ChildItem -Path $SourceRules -Filter "*.md" | Sort-Object Name
+        $ruleFiles = Get-ChildItem -Path $SourceRules -Filter "*.md" -Recurse -Force -File | Sort-Object Name
 
         foreach ($file in $ruleFiles) {
             $filename = $file.Name

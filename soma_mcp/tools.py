@@ -3,14 +3,22 @@ import json
 import os
 import re
 import sys
-import yaml
 from datetime import datetime, timezone
+
+# pyyaml is an OPTIONAL dependency of soma_mcp. The server must start on a bare
+# interpreter (see .soma/cells/walls/wall-mcp-zero-deps.md), so we only use
+# pyyaml when it happens to be installed.
+try:
+    import yaml
+except ImportError:
+    yaml = None
 
 # Ensure soma_sdk is importable
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-# Import JIT engine (always available — stdlib only)
+# Import JIT engine (stdlib only — parses frontmatter without pyyaml)
 from soma_mcp.jit_engine import express as jit_express
+from soma_mcp.jit_engine import parse_frontmatter, warn
 
 # Import TTC Verifier
 try:
@@ -49,17 +57,13 @@ def resolve_workspace():
 
 
 def _parse_frontmatter(content):
-    """Parse YAML frontmatter robustly using pyyaml."""
-    if not content.startswith('---'):
-        return {}
-    end = content.find('---', 3)
-    if end == -1:
-        return {}
-    fm_text = content[3:end].strip()
-    try:
-        return yaml.safe_load(fm_text) or {}
-    except yaml.YAMLError:
-        return {}
+    """Parse YAML frontmatter.
+
+    Delegates to the shared implementation in jit_engine, which uses pyyaml when
+    installed and a stdlib subset parser otherwise. Returns {} when there is no
+    frontmatter and None when frontmatter is present but malformed.
+    """
+    return parse_frontmatter(content)
 
 
 def _list_cells_stdlib(workspace):
@@ -71,17 +75,63 @@ def _list_cells_stdlib(workspace):
     for cell_file in glob.glob(os.path.join(cells_dir, '**', '*.md'), recursive=True):
         if os.path.basename(cell_file) == 'README.md':
             continue
+        rel = os.path.relpath(cell_file, workspace)
         try:
-            with open(cell_file) as f:
+            with open(cell_file, encoding="utf-8") as f:
                 content = f.read()
             fm = _parse_frontmatter(content)
-            if fm:
-                fm['_name'] = os.path.splitext(os.path.basename(cell_file))[0]
-                fm['_path'] = os.path.relpath(cell_file, workspace)
-                cells.append(fm)
-        except Exception:
-            pass
+            if fm is None:
+                warn(f'skipped cell {rel}: malformed YAML frontmatter')
+                continue
+            if not fm:
+                warn(f'skipped cell {rel}: no frontmatter metadata')
+                continue
+            fm['_name'] = os.path.splitext(os.path.basename(cell_file))[0]
+            fm['_path'] = rel
+            cells.append(fm)
+        except Exception as e:
+            warn(f'skipped cell {rel}: {e.__class__.__name__}: {e}')
     return cells
+
+
+# Outcome vocabulary shared with the transport layer (see server._is_error_result).
+_STATUS_PASS = "PASS"
+_STATUS_FAIL = "FAIL"
+
+# Mirrors the "outcome" enum advertised in TOOL_DEFINITIONS for soma_report_outcome.
+_VALID_OUTCOMES = ("success", "partial", "failure")
+
+
+_VERDICT_RE = re.compile(r'^\s*VERDICT:\s*([A-Z_]+)')
+_PASSING_VERDICTS = ("APPROVED", "PASS", "SUCCESS", "OK")
+
+
+def _classify_propose_result(result):
+    """Classify a soma_propose_change return value as (status, verdict).
+
+    enzymes.ttc_verifier returns a human-readable report whose first line is
+    "VERDICT: <APPROVED|REJECTED|BLOCKED|ESCALATION_REQUIRED> ...". Only an
+    approving verdict counts as a pass: a rejection, an inconclusive gate and an
+    escalation hold all mean the change must not be treated as done.
+
+    Passing outcomes are whitelisted rather than failures blacklisted, so an
+    unrecognised report fails closed instead of telling the client that a
+    blocked change went through.
+    """
+    verdict = None
+    if isinstance(result, str):
+        match = _VERDICT_RE.match(result)
+        if match:
+            verdict = match.group(1)
+        elif result.lstrip().upper().startswith("SUCCESS"):
+            verdict = "SUCCESS"
+    elif isinstance(result, dict):
+        if "error" in result:
+            return _STATUS_FAIL, None
+        verdict = str(result.get("status", "")).upper() or None
+    if verdict is None:
+        return _STATUS_FAIL, None
+    return (_STATUS_PASS if verdict in _PASSING_VERDICTS else _STATUS_FAIL), verdict
 
 
 def get_governance():
@@ -100,7 +150,7 @@ def build_cell_create_prompt(description: str, domain_hint: str = None, cell_typ
         for cell_file in glob.glob(os.path.join(cells_dir, '**', '*.md'), recursive=True):
             if os.path.basename(cell_file) == 'README.md': continue
             try:
-                with open(cell_file) as f:
+                with open(cell_file, encoding="utf-8") as f:
                     content = f.read()
                 if content.startswith('---'):
                     examples.append(content[:500])
@@ -304,7 +354,12 @@ def execute_tool(name: str, args: dict):
         active_playbooks = jit_result.get('relevant_cells', [])
         
         result = soma_propose_change(file_path, proposed_content, active_playbooks)
-        return {"result": result}
+        status, verdict = _classify_propose_result(result)
+        # Explicit status so the transport does not have to sniff the message text.
+        payload = {"result": result, "status": status}
+        if verdict:
+            payload["verdict"] = verdict
+        return payload
         
     elif name == "soma_audit_security":
         content = args.get("proposed_content", "")
@@ -342,23 +397,37 @@ def execute_tool(name: str, args: dict):
     elif name == "soma_report_outcome":
         # v0.23: Agent reports execution outcome for fitness scoring
         workspace = resolve_workspace()
+        # Enforce the advertised enum here: persisting 'unknown' would silently
+        # poison fitness scoring with un-gradeable rows.
+        raw_outcome = args.get('outcome')
+        outcome_value = raw_outcome.strip().lower() if isinstance(raw_outcome, str) else None
+        if outcome_value not in _VALID_OUTCOMES:
+            return {
+                "error": (
+                    f"Invalid 'outcome': {raw_outcome!r}. "
+                    f"Expected one of {list(_VALID_OUTCOMES)}."
+                ),
+                "status": _STATUS_FAIL,
+            }
         outcome = {
             'timestamp': datetime.now(timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ'),
             'cells_used': args.get('cells_used', []),
-            'outcome': args.get('outcome', 'unknown'),
+            'outcome': outcome_value,
             'tests_passed': args.get('tests_passed'),
             'rework_count': args.get('rework_count', 0),
             'notes': args.get('notes', '')
         }
         outcomes_file = os.path.join(workspace, '.soma', 'outcomes.jsonl')
         os.makedirs(os.path.dirname(outcomes_file), exist_ok=True)
-        with open(outcomes_file, 'a') as f:
+        with open(outcomes_file, 'a', encoding="utf-8") as f:
             f.write(json.dumps(outcome) + '\n')
         return {'status': 'recorded', 'outcome': outcome}
 
     # All other tools require the full SDK (pyyaml)
     if not gov:
-        return {"error": "soma_sdk requires pyyaml. Install with: pip install pyyaml"}
+        if yaml is None:
+            return {"error": "soma_sdk requires pyyaml. Install with: pip install pyyaml"}
+        return {"error": "soma_sdk is not importable from this workspace; soma_grade, soma_coverage and soma_fitness are unavailable."}
 
     if name == "soma_grade":
         return gov.grade()

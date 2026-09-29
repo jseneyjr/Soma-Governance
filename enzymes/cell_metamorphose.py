@@ -46,7 +46,7 @@ def main():
     cell_filename = os.path.basename(cell_path)
     
     try:
-        with open(cell_path, 'r') as f:
+        with open(cell_path, 'r', encoding="utf-8") as f:
             content = f.read()
     except Exception as e:
         print(f"Error reading cell {cell_filename}: {e}")
@@ -146,7 +146,7 @@ def main():
         target_path = os.path.join(target_dir, cell_filename)
         
     try:
-        with open(target_path, 'w') as f:
+        with open(target_path, 'w', encoding="utf-8") as f:
             f.write("---\n")
             yaml.dump(metadata, f, default_flow_style=False, sort_keys=False)
             f.write("---\n")
@@ -175,7 +175,7 @@ def main():
     }
     
     try:
-        with open(meta_log, 'a') as f:
+        with open(meta_log, 'a', encoding="utf-8") as f:
             f.write(json.dumps(log_entry) + "\n")
     except Exception as e:
         print(f"Warning: Failed to log metamorphosis to {meta_log}: {e}")

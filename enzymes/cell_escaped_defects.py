@@ -36,7 +36,7 @@ def load_cells(cells_dir):
         if os.path.basename(cell_file) == 'README.md':
             continue
         try:
-            with open(cell_file) as f:
+            with open(cell_file, encoding="utf-8") as f:
                 content = f.read()
             if not content.startswith('---'):
                 continue
@@ -86,7 +86,7 @@ def record_escaped_defect(cell, event_type, files, severity, workspace):
         'files': files,
         'severity': severity
     }
-    with open(log_path, 'a') as f:
+    with open(log_path, 'a', encoding="utf-8") as f:
         f.write(json.dumps(entry) + '\n')
     
     return entry
@@ -100,7 +100,7 @@ def update_cell_escaped_rate(cell, workspace):
         return 0.0
     
     escaped = 0
-    with open(log_path) as f:
+    with open(log_path, encoding="utf-8") as f:
         for line in f:
             try:
                 entry = json.loads(line.strip())
@@ -190,7 +190,7 @@ def generate_report(cells, workspace):
     cell_escapes = {}
     total_escapes = 0
     if os.path.exists(log_path):
-        with open(log_path) as f:
+        with open(log_path, encoding="utf-8") as f:
             for line in f:
                 try:
                     entry = json.loads(line.strip())

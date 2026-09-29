@@ -22,7 +22,7 @@ def main():
     for jsonl_file in glob.glob(os.path.join(metrics_dir, '*.jsonl')):
         basename = os.path.basename(jsonl_file)
         try:
-            with open(jsonl_file) as f:
+            with open(jsonl_file, encoding="utf-8") as f:
                 for line in f:
                     line = line.strip()
                     if not line: continue
@@ -48,7 +48,7 @@ def main():
             if os.path.basename(cell_file) == 'README.md': continue
             total_cells += 1
             try:
-                with open(cell_file) as f: content = f.read()
+                with open(cell_file, encoding="utf-8") as f: content = f.read()
                 if content.startswith('---'):
                     fm = yaml.safe_load(content[3:content.find('---', 3)])
                     ct = fm.get('type', 'unknown')

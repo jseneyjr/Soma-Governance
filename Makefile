@@ -15,14 +15,15 @@ ENABLE_HOOKS      ?= true
 export TEAM_SIZE GIT_STRATEGY APPROVAL_CHAIN
 export RULES_SUBSET ENABLE_HOOKS SOMA_PLATFORM
 
-.PHONY: help info install install-windows \
+.PHONY: help info install install-gemini install-kiro install-copilot \
+        install-claude install-mcp install-windows \
         uninstall doctor validate update status test
 
 help: ## Show available targets
 	@echo "Soma — Adaptive Governance"
 	@echo ""
 	@echo "Workflow:"
-	@echo "  1. cp soma.conf.example soma.conf"
+	@echo "  1. cp install/soma.conf.example soma.conf"
 	@echo "  2. Edit soma.conf (set SOMA_PLATFORM, TEAM_SIZE, etc.)"
 	@echo "  3. make install"
 	@echo ""
@@ -105,13 +106,30 @@ doctor: ## Verify installation health & dependencies
 
 validate: ## Check script syntax and config values
 	@echo "Validating..."
-	@for s in install/install.sh enzymes/*.sh; do \
-	  if [ -f "$$s" ]; then bash -n "$$s" && echo "  ✅ $$s" || echo "  ❌ $$s"; fi; \
-	done
-	@if command -v python3 >/dev/null 2>&1; then \
-	  python3 -m json.tool install/hooks.json.template > /dev/null 2>&1 && echo "  ✅ install/hooks.json.template (valid JSON)" || echo "  ❌ install/hooks.json.template (invalid JSON)"; \
-	fi
-	@echo "Done!"
+	@failed=0; \
+	for s in install/install.sh install/uninstall.sh enzymes/*.sh install/hooks/*; do \
+	  if [ -f "$$s" ]; then \
+	    if bash -n "$$s" 2>/dev/null; then echo "  ✅ $$s"; \
+	    else echo "  ❌ $$s (syntax error)"; bash -n "$$s" || true; failed=1; fi; \
+	  fi; \
+	done; \
+	if command -v python3 >/dev/null 2>&1; then \
+	  for p in enzymes/*.py soma_mcp/*.py soma_sdk/*.py; do \
+	    if [ -f "$$p" ]; then \
+	      if python3 -m py_compile "$$p" 2>/dev/null; then :; \
+	      else echo "  ❌ $$p (syntax error)"; failed=1; fi; \
+	    fi; \
+	  done; \
+	  echo "  ✅ python syntax"; \
+	  if python3 -m json.tool install/hooks.json.template > /dev/null 2>&1; then \
+	    echo "  ✅ install/hooks.json.template (valid JSON)"; \
+	  else echo "  ❌ install/hooks.json.template (invalid JSON)"; failed=1; fi; \
+	else \
+	  echo "  ⚠️  python3 not found — skipping Python syntax and JSON checks"; \
+	fi; \
+	find . -name '__pycache__' -type d -prune -exec rm -rf {} + 2>/dev/null || true; \
+	if [ "$$failed" -ne 0 ]; then echo "FAILED"; exit 1; fi; \
+	echo "Done!"
 
 update: ## Pull latest and re-install
 	@echo "Pulling latest changes..."
@@ -124,7 +142,7 @@ status: ## Show installed vs repo diff
 	@case "$(SOMA_PLATFORM)" in \
 	  gemini) for rule in genome/*.md; do \
 	    name=$$(basename $$rule); \
-	    target=$(HOME)/.gemini/config/genome/$$name; \
+	    target=$(HOME)/.gemini/config/rules/$$name; \
 	    if [ ! -f "$$target" ]; then echo "  ❌ $$name (not installed)"; \
 	    elif diff -q "$$rule" "$$target" > /dev/null 2>&1; then echo "  ✅ $$name (in sync)"; \
 	    else echo "  ⚠️  $$name (modified)"; fi; \

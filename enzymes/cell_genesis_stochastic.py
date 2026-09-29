@@ -21,7 +21,7 @@ def main():
     counter = {'sessions': 0, 'last_stochastic': 0}
     if os.path.exists(counter_file):
         try:
-            with open(counter_file) as f:
+            with open(counter_file, encoding="utf-8") as f:
                 loaded = json.load(f)
                 if isinstance(loaded, dict):
                     counter.update(loaded)
@@ -36,7 +36,7 @@ def main():
     sessions_since = counter['sessions'] - counter['last_stochastic']
     
     if not args.force and sessions_since < interval:
-        with open(counter_file, 'w') as f:
+        with open(counter_file, 'w', encoding="utf-8") as f:
             json.dump(counter, f)
         return
     
@@ -69,7 +69,7 @@ def main():
     print(f'   Sessions since last: {sessions_since}')
     
     # Log the event
-    with open(os.path.join(metrics_dir, 'stochastic_genesis.jsonl'), 'a') as f:
+    with open(os.path.join(metrics_dir, 'stochastic_genesis.jsonl'), 'a', encoding="utf-8") as f:
         f.write(json.dumps({
             'timestamp': datetime.now(timezone.utc).isoformat() + 'Z',
             'template': os.path.relpath(template, workspace),
@@ -77,7 +77,7 @@ def main():
         }) + '\n')
     
     counter['last_stochastic'] = counter['sessions']
-    with open(counter_file, 'w') as f:
+    with open(counter_file, 'w', encoding="utf-8") as f:
         json.dump(counter, f)
 
 if __name__ == '__main__':

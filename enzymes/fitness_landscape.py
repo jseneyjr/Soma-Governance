@@ -33,7 +33,7 @@ def main():
         if os.path.basename(file_path) == 'README.md':
             continue
             
-        with open(file_path, 'r') as f:
+        with open(file_path, 'r', encoding="utf-8") as f:
             content = f.read()
             
         if not content.startswith('---'):
@@ -51,7 +51,24 @@ def main():
         if not metadata:
             continue
             
+        # `fitness` is a bare scalar in real cells (`fitness: 1.0`), not always a
+        # mapping. Calling .get() on it raised
+        #   AttributeError: 'float' object has no attribute 'get'
+        # and aborted the whole run. cell_fitness.py, outcome_engine.py,
+        # cell_promote.py and jit_engine all normalize this the same way.
         fitness = metadata.get('fitness', {})
+        if not isinstance(fitness, dict):
+            if isinstance(fitness, bool) or fitness is None:
+                fitness = {}
+            elif isinstance(fitness, (int, float)):
+                fitness = {'score': float(fitness)}
+            elif isinstance(fitness, str):
+                try:
+                    fitness = {'score': float(fitness)}
+                except ValueError:
+                    fitness = {}
+            else:
+                fitness = {}
         triggers = fitness.get('triggers', 0)
         raw_score = fitness.get('score')
         

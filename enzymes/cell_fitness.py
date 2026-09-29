@@ -33,6 +33,21 @@ def antifragile_bonus(metadata):
     stress_events = metadata.get('fitness', {}).get('stress_survived', 0)
     return 1.0 + (0.05 * min(stress_events, 10))
 
+def format_snr(value):
+    """Render an SNR value for human-readable table output.
+
+    `snr_db` is None in the JSON payload when SNR is infinite (true positives
+    with zero false positives) because RFC 8259 has no `Infinity` literal.
+    Only the table output renders the infinity symbol.
+    """
+    if value is None:
+        return '\u221e'
+    try:
+        return f"{float(value):.1f}"
+    except (TypeError, ValueError):
+        return str(value)
+
+
 def decayed_fitness(raw_score, last_trigger_date, telomere_days=30):
     if last_trigger_date is None or raw_score is None:
         return raw_score
@@ -54,11 +69,11 @@ def main():
     total_sessions = 30
     conf_path = os.path.join(workspace, "soma.conf")
     if os.path.exists(conf_path):
-        with open(conf_path) as f:
+        with open(conf_path, encoding="utf-8") as f:
             for line in f:
                 if line.startswith("TOTAL_SESSIONS="):
                     try:
-                        total_sessions = int(line.strip().split("=")[1])
+                        total_sessions = int(line.strip().split("=", 1)[1])
                     except Exception:
                         pass
 
@@ -71,7 +86,7 @@ def main():
         if os.path.basename(file_path) == 'README.md':
             continue
         
-        with open(file_path, 'r') as f:
+        with open(file_path, 'r', encoding='utf-8') as f:
             content = f.read()
         
         if not content.startswith('---'):
@@ -116,7 +131,12 @@ def main():
             if tp > 0 and fp > 0:
                 snr_db = round(10 * math.log10(tp / fp), 1)
             elif tp > 0:
-                snr_db = float('inf')
+                # tp > 0 and fp == 0 -> SNR is mathematically infinite.
+                # float('inf') would make json.dumps emit a bare `Infinity`,
+                # which RFC 8259 forbids; strict non-Python MCP clients reject
+                # the frame. None is the JSON-safe encoding of "infinite";
+                # format_snr() renders it as the infinity symbol for humans.
+                snr_db = None
             else:
                 snr_db = 0.0
 
@@ -197,7 +217,7 @@ def main():
             
             metrics_dir = os.path.join(workspace, '.soma', 'metrics')
             os.makedirs(metrics_dir, exist_ok=True)
-            with open(os.path.join(metrics_dir, 'decay_transitions.jsonl'), 'a') as mf:
+            with open(os.path.join(metrics_dir, 'decay_transitions.jsonl'), 'a', encoding='utf-8') as mf:
                 mf.write(json.dumps({
                     'timestamp': datetime.now(timezone.utc).isoformat() + "Z",
                     'cell_id': cell_name,
@@ -214,7 +234,7 @@ def main():
         escaped_defects_log = os.path.join(workspace, '.soma', 'metrics', 'escaped_defects.jsonl')
         escaped_count = 0
         if os.path.exists(escaped_defects_log):
-            with open(escaped_defects_log) as edf:
+            with open(escaped_defects_log, encoding='utf-8') as edf:
                 for eline in edf:
                     try:
                         eentry = json.loads(eline.strip())
@@ -259,7 +279,7 @@ def main():
             if not team_repo or not metrics_repo:
                 conf_path = os.path.join(workspace, "soma.conf")
                 if os.path.exists(conf_path):
-                    with open(conf_path) as f:
+                    with open(conf_path, encoding="utf-8") as f:
                         for line in f:
                             line = line.strip()
                             if line.startswith("TEAM_REPO=") and not line.startswith("#"):
@@ -281,11 +301,11 @@ def main():
         total_sessions = 30
         conf_path = os.path.join(workspace, "soma.conf")
         if os.path.exists(conf_path):
-            with open(conf_path) as f:
+            with open(conf_path, encoding="utf-8") as f:
                 for line in f:
                     if line.startswith("TOTAL_SESSIONS="):
                         try:
-                            total_sessions = int(line.strip().split("=")[1])
+                            total_sessions = int(line.strip().split("=", 1)[1])
                         except Exception:
                             pass
 
@@ -300,7 +320,7 @@ def main():
             hypothesis_stats = {}
             for snap in snapshots:
                 try:
-                    with open(snap, 'r') as f:
+                    with open(snap, 'r', encoding='utf-8') as f:
                         data = json.load(f)
                     if not isinstance(data, list):
                         continue
@@ -355,14 +375,16 @@ def main():
                 score_str = f"{r['score']:.2f}" if r['score'] is not None else "null"
                 enh_str = f"{r['enhanced_fitness']:.2f}" if r['enhanced_fitness'] is not None else "null"
                 bayes_mean = f"{r['bayesian']['mean']:.2f} ({r['bayesian']['certainty']})" if 'bayesian' in r else ""
-                print(f"{r['cell']:<20} | {r['type']:<12} | {r.get('enforcement', 'advisory'):<10} | {r['triggers']:<8} | {r['tp']:<4} | {r['fp']:<4} | {r.get('escaped_defects', 0):<3} | {enh_str:<6} | {score_str:<6} | {r['status']:<10} | {bayes_mean:<13} | {r.get('snr_db', 0):<5}")
+                snr_str = format_snr(r.get('snr_db', 0.0))
+                print(f"{r['cell']:<20} | {r['type']:<12} | {r.get('enforcement', 'advisory'):<10} | {r['triggers']:<8} | {r['tp']:<4} | {r['fp']:<4} | {r.get('escaped_defects', 0):<3} | {enh_str:<6} | {score_str:<6} | {r['status']:<10} | {bayes_mean:<13} | {snr_str:<5}")
         else:
             print(f"{'Cell':<20} | {'Type':<12} | {'Tier':<10} | {'Triggers':<8} | {'TP':<4} | {'FP':<4} | {'Esc':<3} | {'EnhFit':<6} | {'Raw':<6} | {'Status':<10} | {'SNR':<5}")
             print("-" * 110)
             for r in results:
                 score_str = f"{r['score']:.2f}" if r['score'] is not None else "null"
                 enh_str = f"{r['enhanced_fitness']:.2f}" if r['enhanced_fitness'] is not None else "null"
-                print(f"{r['cell']:<20} | {r['type']:<12} | {r.get('enforcement', 'advisory'):<10} | {r['triggers']:<8} | {r['tp']:<4} | {r['fp']:<4} | {r.get('escaped_defects', 0):<3} | {enh_str:<6} | {score_str:<6} | {r['status']:<10} | {r.get('snr_db', 0):<5}")
+                snr_str = format_snr(r.get('snr_db', 0.0))
+                print(f"{r['cell']:<20} | {r['type']:<12} | {r.get('enforcement', 'advisory'):<10} | {r['triggers']:<8} | {r['tp']:<4} | {r['fp']:<4} | {r.get('escaped_defects', 0):<3} | {enh_str:<6} | {score_str:<6} | {r['status']:<10} | {snr_str:<5}")
 
 
 if __name__ == "__main__":

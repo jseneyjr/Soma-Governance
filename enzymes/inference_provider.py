@@ -3,6 +3,31 @@ import os
 import sys
 from abc import ABC, abstractmethod
 
+
+class InferenceUnavailableError(RuntimeError):
+    """No usable inference backend for this call site.
+
+    Subclasses RuntimeError so existing broad `except Exception` handlers
+    (e.g. ttc_oracle.evaluate_change) keep working unchanged.
+    """
+
+
+def _stdin_is_interactive():
+    """True only when stdin is a real TTY we may safely read from.
+
+    Under the stdio MCP server stdin carries the client's JSON-RPC requests;
+    reading it would swallow them. sys.stdin can also be None (pythonw,
+    some service supervisors) or a stream whose isatty() raises.
+    """
+    stream = getattr(sys, 'stdin', None)
+    if stream is None:
+        return False
+    try:
+        return bool(stream.isatty())
+    except Exception:
+        return False
+
+
 def read_config_key(workspace, key):
     if not workspace:
         return None
@@ -10,7 +35,7 @@ def read_config_key(workspace, key):
     # Check soma.conf
     conf_path = os.path.join(workspace, 'soma.conf')
     if os.path.exists(conf_path):
-        with open(conf_path) as f:
+        with open(conf_path, encoding='utf-8') as f:
             for line in f:
                 line = line.strip()
                 if line.startswith(f"{key}=") and not line.startswith('#'):
@@ -19,7 +44,7 @@ def read_config_key(workspace, key):
     # Check .soma/credentials.conf
     creds_path = os.path.join(workspace, '.soma', 'credentials.conf')
     if os.path.exists(creds_path):
-        with open(creds_path) as f:
+        with open(creds_path, encoding='utf-8') as f:
             for line in f:
                 line = line.strip()
                 if line.startswith(f"{key}=") and not line.startswith('#'):
@@ -110,13 +135,37 @@ class OpenAIProvider(InferenceProvider):
         return int(len(text.split()) * 1.35)
 
 class PromptOnlyProvider(InferenceProvider):
+    """Last-resort provider: hands the prompt to a human on an interactive TTY.
+
+    This is the fallback `resolve_provider` returns when no API key resolves,
+    so it can be reached from inside the stdio MCP server — where stdout IS the
+    JSON-RPC transport and stdin IS the client's request stream. Writing the
+    prompt to stdout would inject non-JSON into the framing, and reading stdin
+    would consume the client's requests and block until EOF, hanging the server
+    permanently. So: diagnostics go to stderr, and a non-interactive stdin
+    raises instead of reading.
+    """
+
     def generate(self, prompt: str, model: str = None) -> str:
-        print("\n--- PROMPT TO MANUALLY PASTE ---")
-        print(prompt)
-        print("--------------------------------\n")
-        print("Please paste the response below (end with EOF / Ctrl+D):")
+        if not _stdin_is_interactive():
+            raise InferenceUnavailableError(
+                "No inference provider is configured and stdin is not a TTY, so "
+                "the prompt-only fallback cannot be used here (reading stdin "
+                "would consume the MCP JSON-RPC request stream and hang the "
+                "server). Configure a provider via GEMINI_API_KEY, "
+                "ANTHROPIC_API_KEY or OPENAI_API_KEY in the environment, "
+                "soma.conf, or .soma/credentials.conf."
+            )
+
+        # stderr only: stdout may be a JSON-RPC transport.
+        print("\n--- PROMPT TO MANUALLY PASTE ---", file=sys.stderr)
+        print(prompt, file=sys.stderr)
+        print("--------------------------------\n", file=sys.stderr)
+        print("Please paste the response below (end with EOF / Ctrl+D):",
+              file=sys.stderr)
+        sys.stderr.flush()
         return sys.stdin.read().strip()
-        
+
     def count_tokens(self, text: str, model: str = None) -> int:
         return int(len(text.split()) * 1.35)
 
@@ -157,5 +206,9 @@ def resolve_provider(workspace=None, provider_name=None):
         return GeminiProvider(api_key=None)
     except Exception:
         pass
-        
+
+    # Fallback. Note on stderr (never stdout — it may be a JSON-RPC transport)
+    # so an unconfigured install is diagnosable instead of silently degrading.
+    print("[soma] No inference provider configured; falling back to "
+          "prompt-only (interactive TTY required).", file=sys.stderr)
     return PromptOnlyProvider()

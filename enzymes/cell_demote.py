@@ -57,7 +57,7 @@ def main():
     actual_rule_name = os.path.basename(rule_path)[:-3]
 
     try:
-        with open(rule_path, 'r') as f:
+        with open(rule_path, 'r', encoding="utf-8") as f:
             content = f.read()
     except Exception as e:
         print(f"Error reading rule {actual_rule_name}: {e}")
@@ -113,7 +113,7 @@ def main():
     target_path = os.path.join(cells_dir, f"{cell_name}.md")
     
     try:
-        with open(target_path, 'w') as f:
+        with open(target_path, 'w', encoding="utf-8") as f:
             f.write("---\n")
             yaml.dump(metadata, f, default_flow_style=False, sort_keys=False)
             f.write("---\n")
@@ -141,7 +141,7 @@ def main():
     }
     
     try:
-        with open(demotions_log, 'a') as f:
+        with open(demotions_log, 'a', encoding="utf-8") as f:
             f.write(json.dumps(log_entry) + "\n")
     except Exception as e:
         print(f"Warning: Failed to log demotion to {demotions_log}: {e}")

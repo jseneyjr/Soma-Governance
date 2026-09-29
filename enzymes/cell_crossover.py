@@ -22,7 +22,7 @@ def find_cell(workspace, cell_id):
     return matches[0]
 
 def parse_cell(file_path):
-    with open(file_path, 'r') as f:
+    with open(file_path, 'r', encoding="utf-8") as f:
         content = f.read()
     if not content.startswith('---'):
         return None, content
@@ -135,7 +135,7 @@ def main():
     }
 
     # Write new cell
-    with open(out_path, 'w') as f:
+    with open(out_path, 'w', encoding="utf-8") as f:
         f.write("---\n")
         yaml.dump(new_meta, f, default_flow_style=False, sort_keys=False)
         f.write("---\n")
@@ -163,7 +163,7 @@ def main():
         'merged_type': merged_type
     }
     
-    with open(metrics_file, 'a') as f:
+    with open(metrics_file, 'a', encoding="utf-8") as f:
         f.write(json.dumps(log_entry) + '\n')
 
 if __name__ == "__main__":

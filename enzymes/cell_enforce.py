@@ -21,7 +21,7 @@ def load_cells(cells_dir):
     for cell_file in glob.glob(os.path.join(cells_dir, '**', '*.md'), recursive=True):
         if os.path.basename(cell_file) == 'README.md': continue
         try:
-            with open(cell_file) as f: content = f.read()
+            with open(cell_file, encoding="utf-8") as f: content = f.read()
             if not content.startswith('---'): continue
             end_idx = content.find('---', 3)
             fm = yaml.safe_load(content[3:end_idx])
@@ -215,7 +215,7 @@ class Gate_{re.sub(r"[^a-zA-Z0-9]", "_", name)}:
 def update_cell_enforcement_artifact(cell, artifact_path, workspace):
     """Add enforcement_artifact field to cell YAML."""
     cell_path = cell['_path']
-    with open(cell_path) as f:
+    with open(cell_path, encoding="utf-8") as f:
         content = f.read()
     
     if 'enforcement_artifact:' in content:
@@ -248,7 +248,7 @@ def update_cell_enforcement_artifact(cell, artifact_path, workspace):
         new_lines.append(f'enforcement_artifact: {rel_path}')
     
     new_content = '---' + '\n'.join(new_lines) + body
-    with open(cell_path, 'w') as f:
+    with open(cell_path, 'w', encoding="utf-8") as f:
         f.write(new_content)
 
 
@@ -338,7 +338,7 @@ def main():
             generated.append({'cell': name, 'artifact': filename, 'tier': enforcement})
             continue
         
-        with open(artifact_path, 'w') as f:
+        with open(artifact_path, 'w', encoding="utf-8") as f:
             f.write(content)
         os.chmod(artifact_path, 0o755)
         

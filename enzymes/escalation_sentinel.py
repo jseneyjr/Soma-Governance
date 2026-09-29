@@ -12,10 +12,10 @@ def set_review_mode(workspace, mode):
     if not os.path.exists(conf_path):
         return
     
-    with open(conf_path, 'r') as f:
+    with open(conf_path, 'r', encoding="utf-8") as f:
         lines = f.readlines()
         
-    with open(conf_path, 'w') as f:
+    with open(conf_path, 'w', encoding="utf-8") as f:
         for line in lines:
             if line.startswith("REVIEW_MODE="):
                 f.write(f"REVIEW_MODE={mode}\n")
@@ -37,7 +37,7 @@ def get_frontmatter(content):
         return None, content
 
 def write_frontmatter(filepath, metadata, body):
-    with open(filepath, 'w') as f:
+    with open(filepath, 'w', encoding="utf-8") as f:
         f.write("---\n")
         yaml.dump(metadata, f, default_flow_style=False, sort_keys=False)
         f.write("---\n")
@@ -67,7 +67,7 @@ def main():
 
     for fpath in queued_files:
         filename = os.path.basename(fpath)
-        with open(fpath, 'r') as f:
+        with open(fpath, 'r', encoding="utf-8") as f:
             content = f.read()
             
         metadata, body = get_frontmatter(content)

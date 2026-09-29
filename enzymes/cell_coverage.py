@@ -22,7 +22,7 @@ def main():
     for cell_file in glob.glob(os.path.join(cells_dir, '**', '*.md'), recursive=True):
         if os.path.basename(cell_file) == 'README.md': continue
         try:
-            with open(cell_file) as f: content = f.read()
+            with open(cell_file, encoding="utf-8") as f: content = f.read()
             if not content.startswith('---'): continue
             fm = yaml.safe_load(content[3:content.find('---', 3)])
             paths = fm.get('target_paths', [])
