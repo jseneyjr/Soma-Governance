@@ -52,6 +52,13 @@ class Governance:
             cmd.append('--json')
         
         result = subprocess.run(cmd, capture_output=True, text=True, cwd=str(self.root))
+        if result.returncode != 0:
+            err_msg = result.stderr.strip() or result.stdout.strip()
+            if json_output:
+                return {'error': f'Command failed with exit code {result.returncode}', 'details': err_msg}
+            else:
+                raise RuntimeError(f'Command failed with exit code {result.returncode}: {err_msg}')
+                
         if json_output and result.stdout.strip():
             try:
                 return json.loads(result.stdout)

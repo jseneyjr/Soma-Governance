@@ -1,7 +1,14 @@
 #!/usr/bin/env python3
-import os, sys, argparse, glob, yaml, json, math, subprocess
-from datetime import datetime, timedelta
+import argparse
+import glob
+import json
+import math
+import os
+import subprocess
+
+import yaml
 from soma_resolve import resolve_workspace
+
 
 def letter_grade(pct):
     if pct >= 97: return 'A+'
@@ -33,6 +40,8 @@ def main():
             with open(cell_file) as f: content = f.read()
             if not content.startswith('---'): continue
             fm = yaml.safe_load(content[3:content.find('---', 3)])
+            if isinstance(fm.get('fitness'), (int, float)):
+                fm['fitness'] = {'score': float(fm['fitness'])}
             cells.append(fm | {'_name': os.path.splitext(os.path.basename(cell_file))[0]})
         except Exception: pass
     

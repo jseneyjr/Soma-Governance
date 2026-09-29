@@ -1,15 +1,15 @@
-import os
-import sys
 import glob
 import json
+import os
 import re
-from datetime import datetime
+import sys
+from datetime import datetime, timezone
 
 # Ensure soma_sdk is importable
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 # Import JIT engine (always available — stdlib only)
-from soma_mcp.jit_engine import express as jit_express, get_git_diff_files
+from soma_mcp.jit_engine import express as jit_express
 
 # Import TTC Verifier
 try:
@@ -28,8 +28,11 @@ except ImportError:
 def resolve_workspace():
     """Find the project root containing .soma/cells/."""
     soma_root = os.environ.get("SOMA_ROOT")
-    if soma_root and os.path.isdir(os.path.join(soma_root, ".soma", "cells")):
-        return os.path.abspath(soma_root)
+    if soma_root:
+        if os.path.isdir(os.path.join(soma_root, ".soma", "cells")):
+            return os.path.abspath(soma_root)
+        else:
+            raise ValueError(f"SOMA_ROOT is set to {soma_root} but no .soma/cells found there.")
 
     cwd = os.getcwd()
     if os.path.isdir(os.path.join(cwd, ".soma", "cells")):
@@ -283,7 +286,7 @@ TOOL_DEFINITIONS = [
     },
     {
         "name": "soma_audit_security",
-        "description": "Run a specialized Security Organ audit on a proposed diff. Required for Tempest-level escalations.",
+        "description": "Run a basic Security prototype audit on a proposed diff.",
         "inputSchema": {
             "type": "object",
             "properties": {
@@ -295,7 +298,7 @@ TOOL_DEFINITIONS = [
     },
     {
         "name": "soma_audit_performance",
-        "description": "Run a specialized Performance Organ audit on a proposed diff. Required for Tempest-level escalations.",
+        "description": "Run a basic Performance prototype audit on a proposed diff.",
         "inputSchema": {
             "type": "object",
             "properties": {
@@ -355,7 +358,7 @@ def execute_tool(name: str, args: dict):
         content = args.get("proposed_content", "")
         # Prototype: Basic keyword scanning for hot-paths and inefficiencies
         flags = []
-        if content.count("for ") > 2 and "for " in content and "in " in content:
+        if content.count("for ") > 2 and "in " in content:
             # Very naive nested loop check
             flags.append("- Potential O(N^2) or deeply nested loop detected in hot path.")
         if ".query(" in content and "SELECT *" in content:
@@ -365,10 +368,6 @@ def execute_tool(name: str, args: dict):
             return {"status": "FAIL", "feedback": "\n".join(flags), "instruction": "Optimize the code and resubmit."}
         return {"status": "PASS", "feedback": "Performance Audit passed. No obvious bottlenecks detected."}
 
-    # All other tools require the full SDK (pyyaml)
-    if not gov:
-        return {"error": "soma_sdk requires pyyaml. Install with: pip install pyyaml"}
-    
     if name == "soma_scan":
         # v0.23: JIT expression — returns only relevant cells, not everything
         workspace = resolve_workspace()
@@ -379,7 +378,7 @@ def execute_tool(name: str, args: dict):
         # v0.23: Agent reports execution outcome for fitness scoring
         workspace = resolve_workspace()
         outcome = {
-            'timestamp': datetime.utcnow().strftime('%Y-%m-%dT%H:%M:%SZ'),
+            'timestamp': datetime.now(timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ'),
             'cells_used': args.get('cells_used', []),
             'outcome': args.get('outcome', 'unknown'),
             'tests_passed': args.get('tests_passed'),
@@ -392,19 +391,17 @@ def execute_tool(name: str, args: dict):
             f.write(json.dumps(outcome) + '\n')
         return {'status': 'recorded', 'outcome': outcome}
 
-    elif name == "soma_grade":
-        if not gov:
-            return {"error": "soma_sdk requires pyyaml. Install with: pip install pyyaml"}
+    # All other tools require the full SDK (pyyaml)
+    if not gov:
+        return {"error": "soma_sdk requires pyyaml. Install with: pip install pyyaml"}
+
+    if name == "soma_grade":
         return gov.grade()
         
     elif name == "soma_coverage":
-        if not gov:
-            return {"error": "soma_sdk requires pyyaml. Install with: pip install pyyaml"}
         return gov.coverage_report()
         
     elif name == "soma_fitness":
-        if not gov:
-            return {"error": "soma_sdk requires pyyaml. Install with: pip install pyyaml"}
         return gov.fitness_landscape(bayesian=args.get("bayesian", False))
         
     else:

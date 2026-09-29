@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
-import os
-import sys
 import argparse
 import glob
 import json
-import yaml
+import os
 from datetime import datetime
+
+import yaml
 from soma_resolve import resolve_workspace
 
 
@@ -89,6 +89,9 @@ def main():
         cell_name = os.path.basename(file_path)
         cell_type = metadata.get('type', 'unknown')
         fitness = metadata.get('fitness', {})
+        if isinstance(fitness, (int, float)):
+            fitness = {'score': float(fitness)}
+            metadata['fitness'] = fitness
         triggers = fitness.get('triggers', 0)
         tp = fitness.get('true_positives', 0)
         fp = fitness.get('false_positives', 0)
