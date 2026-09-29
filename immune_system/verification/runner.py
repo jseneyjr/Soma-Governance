@@ -10,6 +10,7 @@ from typing import Optional
 from . import ToolEvidence
 from . import persistence_checker
 from . import call_graph
+from . import import_guard
 
 
 def run_layer1(
@@ -50,11 +51,11 @@ def run_layer1(
                 exclude_names={'main', '_parse_args', 'parse_args'}
             ))
 
-    # ── Branch Coverage (placeholder — requires pytest execution) ─────
-    # TODO: Implement branch_coverage.check() once the wrapper is built
-
-    # ── Mutation Testing (placeholder — requires test execution) ──────
-    # TODO: Implement mutation_tester.check() once the harness is built
+    # ── Import Guards ─────────────────────────────────────────────────
+    for filepath in changed_files:
+        full_path = os.path.join(repo_root, filepath)
+        if os.path.exists(full_path) and filepath.endswith('.py'):
+            results.append(import_guard.check(full_path, project_root=repo_root))
 
     return results
 
