@@ -338,6 +338,36 @@ case "$PLATFORM" in
       install_hooks "$REPO_DIR" "$TARGET_HOOKS"
     fi
 
+    if [ "$LOCAL_INSTALL" = "true" ]; then
+      KIRO_MCP_DIR="$(pwd)/.kiro/settings"
+      KIRO_ROOT="$(pwd)"
+    else
+      KIRO_MCP_DIR="$RESOLVED_HOME/.kiro/settings"
+      KIRO_ROOT="$RESOLVED_HOME"
+    fi
+    [ "$DRY_RUN" = "true" ] || mkdir -p "$KIRO_MCP_DIR"
+    KIRO_MCP_FILE="$KIRO_MCP_DIR/mcp.json"
+    if [ "$DRY_RUN" = "true" ]; then
+      log_info "[dry-run] would create/update mcp.json at $(normalize_path "$KIRO_MCP_FILE")"
+    else
+      backup_file "$KIRO_MCP_FILE"
+      cat > "$KIRO_MCP_FILE" <<EOF
+{
+  "mcpServers": {
+    "soma": {
+      "command": "python3",
+      "args": ["-m", "soma_mcp"],
+      "cwd": "$REPO_DIR",
+      "env": {
+        "SOMA_ROOT": "$KIRO_ROOT"
+      }
+    }
+  }
+}
+EOF
+      log_info "created mcp.json"
+    fi
+
     echo ""
     if [ "$DRY_RUN" = "true" ]; then
       echo "Dry-run complete. Would install $count rules, $skill_count skills to $(normalize_path "$TARGET_RULES")"
@@ -495,7 +525,7 @@ case "$PLATFORM" in
         log_info "[dry-run] would create/update .mcp.json at $(normalize_path "$MCP_FILE")"
       else
         backup_file "$MCP_FILE"
-        echo '{"mcpServers": {"soma": {"command": "python3", "args": ["-m", "soma_mcp"]}}}' > "$MCP_FILE"
+        echo '{"mcpServers": {"soma": {"command": "python3", "args": ["-m", "soma_mcp"], "cwd": "'"$REPO_DIR"'", "env": {"SOMA_ROOT": "'"$TARGET_DIR"'"}}}}' > "$MCP_FILE"
         log_info "created .mcp.json"
       fi
     fi
@@ -532,7 +562,10 @@ case "$PLATFORM" in
     "soma": {
       "command": "python3",
       "args": ["-m", "soma_mcp"],
-      "cwd": "$TARGET_DIR"
+      "cwd": "$REPO_DIR",
+      "env": {
+        "SOMA_ROOT": "$TARGET_DIR"
+      }
     }
   }
 }
