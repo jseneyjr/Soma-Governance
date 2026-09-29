@@ -252,6 +252,7 @@ def format_cell_guidance(cell):
 
     return {
         'name': name,
+        '_path': cell.get('_path', ''),
         'type': ctype,
         'enforcement': type_label,
         'hypothesis': hypothesis,

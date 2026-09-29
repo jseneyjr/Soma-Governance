@@ -11,6 +11,12 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 # Import JIT engine (always available — stdlib only)
 from soma_mcp.jit_engine import express as jit_express, get_git_diff_files
 
+# Import TTC Verifier
+try:
+    from enzymes.ttc_verifier import soma_propose_change
+except ImportError:
+    soma_propose_change = None
+
 # Try importing Governance SDK (requires pyyaml); fall back to stdlib-only impl
 try:
     from soma_sdk.governance import Governance
@@ -262,6 +268,42 @@ TOOL_DEFINITIONS = [
             "type": "object",
             "properties": {}
         }
+    },
+    {
+        "name": "soma_propose_change",
+        "description": "The new gateway MCP tool. Propose a change to a file. The system will verify the change against active JIT rules before writing to the file.",
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "file_path": {"type": "string", "description": "Absolute or relative path to the file to change."},
+                "proposed_content": {"type": "string", "description": "The complete proposed file content."}
+            },
+            "required": ["file_path", "proposed_content"]
+        }
+    },
+    {
+        "name": "soma_audit_security",
+        "description": "Run a specialized Security Organ audit on a proposed diff. Required for Tempest-level escalations.",
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "file_path": {"type": "string", "description": "Path to the file being changed."},
+                "proposed_content": {"type": "string", "description": "The complete proposed file content."}
+            },
+            "required": ["file_path", "proposed_content"]
+        }
+    },
+    {
+        "name": "soma_audit_performance",
+        "description": "Run a specialized Performance Organ audit on a proposed diff. Required for Tempest-level escalations.",
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "file_path": {"type": "string", "description": "Path to the file being changed."},
+                "proposed_content": {"type": "string", "description": "The complete proposed file content."}
+            },
+            "required": ["file_path", "proposed_content"]
+        }
     }
 ]
 
@@ -281,6 +323,47 @@ def execute_tool(name: str, args: dict):
         if gov:
             return gov.list_cells()
         return _list_cells_stdlib(resolve_workspace())
+
+    elif name == "soma_propose_change":
+        if not soma_propose_change:
+            return {"error": "soma_propose_change not available"}
+        workspace = resolve_workspace()
+        file_path = args.get('file_path')
+        proposed_content = args.get('proposed_content')
+        
+        # Express JIT rules for the given file to get active playbooks
+        jit_result = jit_express(workspace, changed_files=[file_path])
+        active_playbooks = jit_result.get('relevant_cells', [])
+        
+        result = soma_propose_change(file_path, proposed_content, active_playbooks)
+        return {"result": result}
+        
+    elif name == "soma_audit_security":
+        content = args.get("proposed_content", "")
+        # Prototype: Basic keyword scanning for secrets and OWASP basics
+        flags = []
+        if "password=" in content.lower() or "secret=" in content.lower():
+            flags.append("- Hardcoded secret or password detected.")
+        if "eval(" in content:
+            flags.append("- eval() detected. Potential injection vector.")
+            
+        if flags:
+            return {"status": "FAIL", "feedback": "\n".join(flags), "instruction": "Fix these issues and resubmit."}
+        return {"status": "PASS", "feedback": "Security Audit passed. No OWASP flaws or exposed secrets detected."}
+        
+    elif name == "soma_audit_performance":
+        content = args.get("proposed_content", "")
+        # Prototype: Basic keyword scanning for hot-paths and inefficiencies
+        flags = []
+        if content.count("for ") > 2 and "for " in content and "in " in content:
+            # Very naive nested loop check
+            flags.append("- Potential O(N^2) or deeply nested loop detected in hot path.")
+        if ".query(" in content and "SELECT *" in content:
+            flags.append("- Inefficient DB query (SELECT *) detected. Select only needed columns.")
+            
+        if flags:
+            return {"status": "FAIL", "feedback": "\n".join(flags), "instruction": "Optimize the code and resubmit."}
+        return {"status": "PASS", "feedback": "Performance Audit passed. No obvious bottlenecks detected."}
 
     # All other tools require the full SDK (pyyaml)
     if not gov:

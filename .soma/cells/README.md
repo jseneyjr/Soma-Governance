@@ -19,10 +19,12 @@ Required fields:
 - `expiry_sessions` / `expiry_days`: TTL for the cell
 - `fitness`: Tracking block with `triggers`, `true_positives`, `false_positives`
 
-## Fitness Lifecycle
-Cells undergo evolutionary selection based on their fitness score (TP / Triggers * Weight):
+## Fitness Lifecycle & Verification (v0.25)
+Cells are actively enforced pre-commit by the **Test-Time Compute (TTC) Verifier**, which rejects agent proposals that violate them. 
+
+Cells undergo evolutionary selection based on their fitness score (TP / Triggers * Weight). Evolutionary pruning and structural changes (like apoptosis or crossover) occur during the organism's **Sleep** phase:
 - **SURVIVE**: Score > 0.7 (Highly effective, kept)
 - **ADAPT**: Score 0.3 - 0.7 (Needs tuning)
-- **EXTINCT**: Score < 0.3 (Candidate for pruning)
-- **DORMANT**: 0 triggers past expiry (Candidate for pruning)
+- **EXTINCT**: Score < 0.3 (Candidate for pruning during Sleep)
+- **DORMANT**: 0 triggers past expiry (Candidate for pruning during Sleep)
 - **NEW**: 0 triggers within expiry (Undergoing testing)

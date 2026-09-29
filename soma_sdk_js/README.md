@@ -1,6 +1,6 @@
 # soma-steering
 
-Adaptive governance framework for AI coding assistants.
+Adaptive governance framework for AI coding assistants. Soma models your codebase as a living organism with an immune system that evolves based on observed agent behavior.
 
 ## Installation
 
@@ -41,7 +41,7 @@ await gov.createCellFromDescription(
   { domain: 'rl' }
 );
 
-// Signal a cell
+// Signal a cell (Outcome capture)
 await gov.signal('wall-gae-truncation', 'tp', { survival_day: 12 });
 
 // Run analysis
@@ -50,6 +50,8 @@ const trends = await gov.trends({ days: 30 });
 const entropy = await gov.entropy();
 const adversarial = await gov.adversarial('wall-gae-truncation');
 ```
+
+> **Note on v0.25+**: This SDK provides programmatic access to the governance cells, analysis, and manual signaling. For full end-to-end biological execution (including Interoception, Test-Time Compute (TTC), Coherence checking, and Sleep cycles), use the Python Master Orchestrator (`soma_run.py`) provided in the core repository.
 
 ## API
 
