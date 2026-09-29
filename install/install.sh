@@ -63,7 +63,7 @@ DETECTED_OS="$(detect_os)"
 RESOLVED_HOME="$(resolve_home "$DETECTED_OS")"
 
 # ── Migration: .prism/ → .soma/ ──
-# Auto-detect and migrate existing Prism installations
+# Auto-detect and migrate existing Prism (legacy) installations
 migrate_prism_to_soma() {
   local target_dir="$1"
   local old_dir="$target_dir/.prism"

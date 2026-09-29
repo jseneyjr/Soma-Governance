@@ -7,7 +7,7 @@ def main():
     # Add basic commands if necessary, or just a placeholder for now.
     args = parser.parse_args()
     gov = Governance()
-    print("Prism SDK initialized.")
+    print("Soma SDK initialized.")
 
 if __name__ == '__main__':
     main()

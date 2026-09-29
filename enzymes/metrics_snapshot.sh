@@ -145,7 +145,7 @@ def main():
         output.pop("metrics_dir", None)
         print(json.dumps(output, indent=2))
     else:
-        print("=== PRISM AI STEERING: METRICS SNAPSHOT ===")
+        print("=== SOMA: METRICS SNAPSHOT ===")
         if raw_mode:
             print(f"Timestamp: {metrics.get('timestamp')}")
         print(f"Metrics Dir: {metrics_dir}")

@@ -351,7 +351,7 @@ Micro informs macro. Cells feed back into the forest floor. The system discovers
 
 ### Named Anti-Pattern: Write-Only Knowledge Base
 
-A system accumulates lessons, rules, or post-mortems but never closes the loop — knowledge is written to disk but never queried during decisions, never validated against outcomes, and never pruned when proven wrong. Prism's fitness function detects this automatically: a cell with zero `triggers` in its `expiry_sessions` window scores null and is pruned. This mechanism transforms a passive knowledge accumulator into an active, self-validating epistemic system.
+A system accumulates lessons, rules, or post-mortems but never closes the loop — knowledge is written to disk but never queried during decisions, never validated against outcomes, and never pruned when proven wrong. Soma's fitness function detects this automatically: a cell with zero `triggers` in its `expiry_sessions` window scores null and is pruned. This mechanism transforms a passive knowledge accumulator into an active, self-validating epistemic system.
 
 This anti-pattern was independently discovered in a cross-domain RL training pipeline where 40 game post-mortems were stored in a JSON knowledge base but never referenced during gameplay decisions.
 
@@ -438,7 +438,7 @@ Compliance went from **7.8/10 to 9.8/10** and waste dropped from **~56% to 1.1%*
 
 ### Phase 17: Evolutionary Computation (v0.17.0)
 
-Formalized Prism's implicit genetic algorithm with explicit operators from evolutionary computation, immunology, and confidence theory:
+Formalized Soma's implicit genetic algorithm with explicit operators from evolutionary computation, immunology, and confidence theory:
 
 - **GA Operators**: Crossover merges complementary cell hypotheses; tournament selection preserves population diversity during pruning.
 - **Confidence Telomere Shortening**: Cell fitness decays exponentially unless reinforced by new evidence. A cell with fitness 0.85 that hasn't triggered in 60 days decays to 0.21 — automatic extinction without hard expiry dates.
@@ -447,4 +447,4 @@ Formalized Prism's implicit genetic algorithm with explicit operators from evolu
 - **Immune System Pattern**: Effector cells provide acute, aggressive protection during incidents (3 sessions, 3x weight, Tempest review). Memory cells provide permanent dormant protection that activates on re-exposure.
 - **Fitness Landscape Visualization**: ASCII dashboard showing decayed fitness across all active cells — making governance ROI measurable and visual.
 
-This phase brought the script count to 25 and established Prism as a formal evolutionary computation system operating on natural language hypotheses.
+This phase brought the script count to 25 and established Soma as a formal evolutionary computation system operating on natural language hypotheses.

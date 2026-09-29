@@ -1,16 +1,16 @@
-# Prism Governance Benchmark Protocol v1.0
+# Soma Governance Benchmark Protocol v1.0
 
 > Standardized methodology for measuring governance effectiveness across projects.
 
 ## Purpose
 
-Provide a reproducible benchmark so any team can measure Prism's impact and contribute comparable data.
+Provide a reproducible benchmark so any team can measure Soma's impact and contribute comparable data.
 
 ## Protocol
 
 ### Phase 1: Baseline (Ungoverned)
 1. Select a target repository
-2. Run 10 ungoverned sessions (no Prism rules, skills, or cells active)
+2. Run 10 ungoverned sessions (no Soma rules, skills, or cells active)
 3. Record per-session:
    - Waste rate (tokens wasted / tokens used)
    - FPSR (first-pass success rate)
@@ -18,12 +18,12 @@ Provide a reproducible benchmark so any team can measure Prism's impact and cont
    - Session duration
 
 ### Phase 2: Genesis
-4. Install Prism: `make install` or `bash install/install.sh <platform> --local`
+4. Install Soma: `make install` or `bash install/install.sh <platform> --local`
 5. Run Genesis skill to generate initial cells
 6. If domain templates exist (`templates/`), verify they were seeded
 
 ### Phase 3: Governed Sessions
-7. Run 30 governed sessions with full Prism stack (rules + skills + hooks + cells)
+7. Run 30 governed sessions with full Soma stack (rules + skills + hooks + cells)
 8. Record per-session:
    - Same metrics as baseline
    - Cell triggers (which cells fired)
@@ -69,7 +69,7 @@ Provide a reproducible benchmark so any team can measure Prism's impact and cont
 
 ## Reproducibility Requirements
 
-- Record Prism version (`cat VERSION`)
+- Record Soma version (`cat VERSION`)
 - Record platform and OS
 - Record `soma.conf` settings (sanitized)
 - Use `metrics_snapshot.sh` from session 1

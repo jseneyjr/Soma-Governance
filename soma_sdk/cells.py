@@ -51,7 +51,7 @@ class CellFitness:
 
 @dataclass
 class Cell:
-    """A Prism immune cell."""
+    """A Soma immune cell."""
     name: str
     type: str  # wall | vacuole | membrane | chloroplast | plasmodesmata
     hypothesis: str = ''
