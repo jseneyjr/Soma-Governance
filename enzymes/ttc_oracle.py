@@ -71,7 +71,7 @@ Respond ONLY with REJECTED or APPROVED as specified above. Do not include any ot
             return "APPROVED"
         return result
     except Exception as e:
-        return f"APPROVED: Oracle evaluation failed ({str(e)})"
+        return f"REJECTED: Oracle evaluation failed ({str(e)})"
 
 if __name__ == "__main__":
     if len(sys.argv) < 3:

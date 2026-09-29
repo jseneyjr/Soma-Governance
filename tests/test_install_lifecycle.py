@@ -180,8 +180,35 @@ def test_uninstall_preserves_cells_without_purge_flag(fake_home, bash, tmp_path)
 
     assert marker.exists(), "user-authored cell was deleted by uninstall"
 
+# ── SOMA-C05 (runtime) ──────────────────────────────────────────────────
+
+def test_backup_restore_cycle_preserves_preexisting_rules(fake_home, bash):
+    """SOMA-C05: backup writes genome/organs but restore read rules/skills,
+    so restore was dead code.  This verifies end-to-end: install over existing
+    rules, uninstall with restore, and check pre-existing content is back."""
+    rules_dir = fake_home / ".kiro" / "steering"
+    rules_dir.mkdir(parents=True)
+    sentinel = rules_dir / "user-rule.md"
+    sentinel.write_text("# My precious rule\n", encoding="utf-8")
+
+    # Install overwrites/merges into the target
+    assert install(fake_home, "kiro", bash=bash).returncode == 0
+
+    # Uninstall WITH restore (no --no-restore flag)
+    proc = run([bash, UNINSTALL, "kiro", "--force"],
+               env={"HOME": str(fake_home)}, timeout=120)
+    assert proc.returncode == 0, f"uninstall failed: {proc.stderr[-500:]}"
+
+    assert sentinel.exists(), (
+        "pre-existing rule was not restored after uninstall"
+    )
+    assert sentinel.read_text(encoding="utf-8").strip() == "# My precious rule", (
+        "restored rule content does not match original"
+    )
+
 
 # ── SOMA-H07 ────────────────────────────────────────────────────────────
+
 
 def test_uninstall_does_not_hang_or_abort_without_a_tty(fake_home, bash):
     """SOMA-H07: `read -p` returns 1 at EOF, so under `set -e` the uninstaller

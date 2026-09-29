@@ -161,6 +161,6 @@ test: validate ## Run validation tests
 	@if command -v pytest >/dev/null 2>&1; then \
 	  pytest tests/ || exit 1; \
 	else \
-	  echo "  ⚠️  pytest not found, skipping Python tests."; \
+	  echo "  ❌  pytest not found. Install with: pip install pytest"; \
+	  exit 1; \
 	fi
-	@echo "All tests passed."

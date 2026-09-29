@@ -20,9 +20,15 @@ jobs:
         with:
           python-version: '3.11'
       
+      - name: Install test dependencies
+        run: pip install pytest
+
       - name: Run validation
         run: make validate
       
+      - name: Run test suite
+        run: make test
+
       - name: Check for hardcoded paths
         run: |
           # Exclude template examples like /home/<user>/ which are privacy instructions
@@ -48,8 +54,53 @@ jobs:
           fi
           echo "Privacy check complete"
 
-      - name: Dry-run install
-        run: bash install/install.sh gemini --dry-run
+      - name: Dry-run install (all platforms)
+        run: |
+          for platform in gemini kiro copilot claude mcp; do
+            echo "=== $platform ==="
+            bash install/install.sh "$platform" --dry-run || exit 1
+          done
 
       - name: Dry-run uninstall
         run: bash install/uninstall.sh gemini --dry-run --force
+
+  validate-windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Parse PowerShell installer
+        shell: pwsh
+        run: |
+          $errors = $null
+          [System.Management.Automation.Language.Parser]::ParseFile(
+            "$PWD/install/install.ps1", [ref]$null, [ref]$errors
+          )
+          if ($errors.Count -gt 0) {
+            $errors | ForEach-Object { Write-Error $_.Message }
+            exit 1
+          }
+          Write-Host "install.ps1 parsed successfully"
+
+      - name: Parse PowerShell uninstaller
+        shell: pwsh
+        run: |
+          $errors = $null
+          [System.Management.Automation.Language.Parser]::ParseFile(
+            "$PWD/install/uninstall.ps1", [ref]$null, [ref]$errors
+          )
+          if ($errors.Count -gt 0) {
+            $errors | ForEach-Object { Write-Error $_.Message }
+            exit 1
+          }
+          Write-Host "uninstall.ps1 parsed successfully"
+
+      - name: Dry-run PowerShell install
+        shell: pwsh
+        run: |
+          $result = & pwsh -File install/install.ps1 -DryRun 2>&1
+          Write-Host $result
+          if ($result -match 'Installed 0 rules') {
+            Write-Error "PowerShell dry-run reported 0 rules — SOMA-C11 regression"
+            exit 1
+          }

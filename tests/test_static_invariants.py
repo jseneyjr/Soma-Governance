@@ -75,9 +75,12 @@ def test_hook_scripts_resolve_their_directory(script, bash, tmp_path):
     path = os.path.join(REPO_ROOT, "enzymes", script)
     if not os.path.exists(path):
         pytest.skip(f"{script} not present")
-    proc = run([bash, "-c", f'source "{path}" 2>&1 || true'], timeout=60)
+    proc = run([bash, "-c", f'source "{path}" 2>&1'], timeout=60)
     combined = proc.stdout + proc.stderr
-    assert "No such file or directory" not in combined or "cd:" not in combined, (
+    assert proc.returncode == 0, (
+        f"{script} exited with code {proc.returncode}:\n{combined[:500]}"
+    )
+    assert "No such file or directory" not in combined and "cd:" not in combined, (
         f"{script} failed to resolve its own directory:\n{combined[:500]}"
     )
 
