@@ -11,6 +11,7 @@ import os
 import json
 import subprocess
 from typing import List, Dict
+from pathlib import Path
 
 class TTCVerifier:
     def __init__(self, active_playbooks: List[Dict]):
@@ -70,7 +71,7 @@ def soma_propose_change(file_path: str, proposed_content: str, active_playbooks:
         d = os.path.dirname(d)
 
     protocol = get_escalation_protocol(file_path, workspace)
-    if protocol in ["maelstrom", "tempest"]:
+    if protocol in ["trident", "maelstrom", "tempest"]:
         return (f"🛑 TEMPEST ESCALATION TRIGGERED for {file_path}.\n"
                 "This file is highly sensitive (Core Infrastructure / Auth).\n"
                 "ACTION REQUIRED: You must dispatch the 'Security Audit Organ' and 'Performance Audit Organ' "
@@ -98,15 +99,17 @@ def soma_propose_change(file_path: str, proposed_content: str, active_playbooks:
             return f"CRITICAL ERROR: TTC Oracle Rejected Proposal.\n{oracle_result}\nAction: Ensure you follow the architectural tenets and standards."
     except Exception as e:
         print(f"[TTC Oracle] Error running oracle: {e}")
+        return f"CRITICAL ERROR: TTC Oracle failed. Failing closed. Reason: {e}"
         
     print(f"[TTC] Proposal APPROVED. Executing file write to {file_path}...")
     
     # Containment check: prevent writes outside the workspace
     resolved_path = os.path.abspath(os.path.join(workspace, file_path))
-    if not resolved_path.startswith(os.path.abspath(workspace)):
+    if not Path(resolved_path).resolve().is_relative_to(Path(workspace).resolve()):
         return f"ERROR: Path traversal blocked. Cannot write to {file_path} outside workspace."
         
     try:
+        os.makedirs(os.path.dirname(resolved_path), exist_ok=True)
         with open(resolved_path, "w") as f:
             f.write(proposed_content)
     except Exception as e:

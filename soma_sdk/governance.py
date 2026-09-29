@@ -2,6 +2,7 @@
 import json
 import subprocess
 import sys
+import re
 from pathlib import Path
 
 import yaml
@@ -91,12 +92,17 @@ class Governance:
     def create_cell(self, hypothesis, type='vacuole', target_paths=None,
                     minimum_mode='breeze', tags=None, cell_id=None):
         """Create a new immune cell."""
-        args = ['--id', cell_id or hypothesis[:40], '--type', type,
+        raw_slug = cell_id or hypothesis[:40]
+        safe_slug = re.sub(r'[^a-zA-Z0-9_.-]', '-', raw_slug).strip('-')
+        
+        args = ['--id', safe_slug, '--type', type,
                 '--hypothesis', hypothesis]
         if target_paths:
             args.extend(['--target-paths', ','.join(target_paths)])
         if minimum_mode != 'breeze':
             args.extend(['--minimum-mode', minimum_mode])
+        if tags:
+            args.extend(['--tags', ','.join(tags)])
         
         return self._run_script('cell_create.sh', *args, json_output=False)
     
@@ -122,10 +128,7 @@ class Governance:
             for k, v in metric.items():
                 args.extend(['--metric', f'{k}={v}'])
         
-        script = self.scripts_dir / 'cell_signal.sh'
-        result = subprocess.run(['bash', str(script)] + args,
-                              capture_output=True, text=True, cwd=str(self.root))
-        return result.stdout
+        return self._run_script('cell_signal.sh', *args, json_output=False)
     
     # === Analysis ===
     
@@ -138,7 +141,10 @@ class Governance:
     
     def coverage_report(self, exclude=None):
         """Get cell coverage report."""
-        return self._run_script('cell_coverage.py')
+        args = []
+        if exclude:
+            args.extend(['--exclude', exclude])
+        return self._run_script('cell_coverage.py', *args)
     
     def replay(self, commits=20):
         """Replay governance against historical commits."""
