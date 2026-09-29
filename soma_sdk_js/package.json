@@ -1,6 +1,6 @@
 {
   "name": "soma-steering",
-  "version": "0.22.0",
+  "version": "0.23.0",
   "description": "Adaptive governance framework for AI coding assistants",
   "main": "index.js",
   "types": "index.d.ts",

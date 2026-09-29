@@ -1,5 +1,5 @@
 """Soma SDK — Adaptive governance for AI coding assistants."""
 from soma_sdk.governance import Governance
 
-__version__ = '0.22.0'
+__version__ = '0.23.0'
 __all__ = ['Governance']
