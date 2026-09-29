@@ -7,9 +7,9 @@ so that frozen champions can be displaced over time.
 import os
 import sys
 import subprocess
-import yaml
-
 import pytest
+
+yaml = pytest.importorskip("yaml")
 
 REPO_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, REPO_ROOT)
