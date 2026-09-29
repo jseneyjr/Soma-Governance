@@ -3,6 +3,11 @@ import os
 import sys
 from abc import ABC, abstractmethod
 
+try:
+    import keyring
+except ImportError:
+    keyring = None
+
 
 class InferenceUnavailableError(RuntimeError):
     """No usable inference backend for this call site.
@@ -57,6 +62,13 @@ def resolve_key(workspace, env_keys):
         val = os.environ.get(key)
         if val:
             return val
+        if keyring is not None:
+            try:
+                val = keyring.get_password('soma', key)
+                if val:
+                    return val
+            except Exception:
+                pass
         val = read_config_key(workspace, key)
         if val:
             return val

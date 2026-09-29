@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "soma-steering"
-version = "0.25.0"
+version = "0.31.0"
 description = "Adaptive governance framework for AI coding assistants"
 readme = "README.md"
 license = {text = "Apache-2.0"}
