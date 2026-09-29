@@ -287,20 +287,30 @@ Configure `TEAM_REPO` and optionally `ORG_REPO` in `soma.conf` for multi-team hi
 
 ## How Soma Differs
 
-A common critique of early agentic wrappers is that they ultimately degrade back into "Standard AI" — they get lazy, their context windows pollute, they hallucinate codebase assumptions, and they ignore their own system prompts when clean APIs give them a path of least resistance. 
+Recent academic studies ([arXiv:2602.11988](https://arxiv.org/abs/2602.11988), [arXiv:2607.27250](https://arxiv.org/abs/2607.27250), [arXiv:2510.04618](https://arxiv.org/abs/2510.04618)) have exposed the critical flaws in standard agentic coding tools and static context files (like `AGENTS.md` or `CLAUDE.md`). Soma was explicitly architected to solve the fatal traps identified in this research:
 
-Soma is built on the foundational premise that **LLMs are inherently lazy and must be mechanically governed**. 
+### 1. The Context Bloat Trap
+**The Research**: Injecting massive repository overviews into the context window does not improve task success, increases inference costs by over 20%, and leads to "brevity bias" or "context collapse" as the agent loses track of details over time.
+**Soma's Solution**: **JIT (Just-In-Time) Context Loading**. Soma does not load a monolithic rulebook. It only loads the specific immune cells (rules) related to the exact files the agent is currently touching. This keeps the token overhead at a flat ~4,380 idle tokens (3.4%), preventing context collapse.
+
+### 2. The Generic Advice Trap
+**The Research**: Context files are largely ignored by LLMs when they contain standard coding practices (which the models already know), and are only useful for "non-standard coding practices" or exact wiring/architectural quirks.
+**Soma's Solution**: **Repository-Specific Traps**. Soma's cells (Vacuoles, Chloroplasts) don't exist to tell the LLM to "write clean code." They exist exclusively to map traps the base model couldn't possibly know zero-shot (e.g., "The HUD calibration in the renderer is offset by 4px"). If a rule can't prove it caught a specific defect, it is pruned.
+
+### 3. The "Self-Grading" Trap
+**The Critique**: If an AI agent generates rules and then grades its own rules, isn't that just memory with extra steps? How do we know the cells are working, and it's not just the underlying foundation models getting better?
+**Soma's Solution**: **Escaped Defect Tracking**. Soma doesn't rely solely on LLM self-evaluation. It hooks directly into CI/CD pipelines, compiler exit codes, and test suite crashes to establish **Ground Truth**. If a cell fails to prevent a build crash, its fitness drops mechanically. If an LLM attempts to ignore a cell, **TTC (Test-Time Compute) Oracles** intercept the MCP tool call and violently reject the write. 
 
 | Feature | Standard AI Agents | Prompt Files (`.cursorrules`) | **Soma (Phase 25)** |
 |:--|:---:|:---:|:---:|
 | **Rule Enforcement** | Relies on LLM obedience | Relies on LLM obedience | **Mechanistic rejection via TTC Oracles** |
-| **Context Management** | Pollutes main thread | Fixed overhead | **JIT Context & Aggressive Subagent Delegation** |
+| **Context Management** | Pollutes main thread | Fixed 20%+ overhead | **JIT Context Loading** |
 | **Adaptability** | Static training | Manual updates | **Self-evolving via Darwinian fitness** |
-| **Learns from outcomes** | No | No | **Yes — TP/FP scoring + telomere shortening** |
+| **Ground Truth** | N/A | N/A | **Escaped Defect Tracking (CI/CD hooks)** |
 | **Failure modes caught** | Syntax errors | Generic guidelines | **Rework loops, lazy reads, and hallucinations** |
 | **Platform lock-in** | Vendor specific | Platform specific | **Universal via MCP stdio** |
 
-Instead of pleading with the AI in a system prompt to "think step-by-step," Soma acts as an evolutionary immune system. If an AI agent attempts to blindly write code without delegating research to subagents first, Soma's TTC Oracles intercept the MCP tool call and violently reject it. **Rules that can't prove themselves die. Agents that refuse to research are blocked.**
+Instead of pleading with the AI in a system prompt to "think step-by-step," Soma acts as an evolutionary immune system. **Rules that can't prove themselves die. Agents that refuse to research are blocked.**
 
 ---
 
