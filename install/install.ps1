@@ -151,7 +151,7 @@ function Assert-Enum {
         [string[]]$Allowed
     )
     if ($Allowed -notcontains $Value) {
-        Write-LogError "Invalid $Name: '$Value' (allowed: $($Allowed -join ' '))"
+        Write-LogError "Invalid ${Name}: '$Value' (allowed: $($Allowed -join ' '))"
         exit 1
     }
 }
