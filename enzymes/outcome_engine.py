@@ -472,8 +472,16 @@ def compute_fitness_signals(triggered_cells, outcomes):
             if cell['_name'] in cells_used:
                 outcome = mcp_entry.get('outcome', '')
                 if outcome == 'success':
-                    signal += 0.2
-                    reasons.append("agent reported success")
+                    # OVERCONFIDENCE PENALTY
+                    if test_outcome.get('verified') and test_outcome.get('passed') is False:
+                        signal -= 2.0
+                        reasons.append("agent claimed success but tests FAILED (overconfidence penalty)")
+                    elif not test_outcome.get('verified') and not build_outcome.get('verified') and git.get('reverts', 0) == 0:
+                        signal -= 1.0
+                        reasons.append("agent claimed success with zero verifiable evidence (overconfidence penalty)")
+                    else:
+                        signal += 0.2
+                        reasons.append("agent reported success")
                 elif outcome == 'failure':
                     signal -= 0.2
                     reasons.append("agent reported failure")
