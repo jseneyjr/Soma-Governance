@@ -106,6 +106,16 @@ def soma_propose_change(file_path: str, proposed_content: str, active_playbooks:
                     
         return f"CRITICAL ERROR: Proposal Rejected.\nReason: {result['reason']}\nAction: Generate a new proposal that fixes this violation."
     
+    # --- NEW: TTC Oracle Evaluation ---
+    try:
+        from enzymes.ttc_oracle import evaluate_change
+        oracle_result = evaluate_change(workspace, file_path, proposed_content)
+        if oracle_result.startswith("REJECTED"):
+            print(f"[TTC Oracle] {oracle_result}")
+            return f"CRITICAL ERROR: TTC Oracle Rejected Proposal.\n{oracle_result}\nAction: Ensure you follow the architectural tenets and standards."
+    except Exception as e:
+        print(f"[TTC Oracle] Error running oracle: {e}")
+        
     print(f"[TTC] Proposal APPROVED. Executing file write to {file_path}...")
     try:
         with open(file_path, "w") as f:
