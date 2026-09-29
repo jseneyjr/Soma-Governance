@@ -80,7 +80,10 @@ if [ ! -d "$CELLS_DIR" ]; then
 fi
 
 # Find cell matches
-readarray -t MATCHES < <(find "$CELLS_DIR" -type f -name "*${CELL_ID}*")
+MATCHES=()
+while IFS= read -r line; do
+  [ -n "$line" ] && MATCHES+=("$line")
+done <<< "$(find "$CELLS_DIR" -type f -name "*${CELL_ID}*")"
 if [ ${#MATCHES[@]} -eq 0 ]; then
   echo "Error: No cells found matching '$CELL_ID' in $CELLS_DIR."
   exit 1
@@ -102,6 +105,7 @@ import sys
 import json
 import yaml
 from datetime import datetime
+from datetime import timezone
 import os
 
 file_path = sys.argv[1]
@@ -160,7 +164,7 @@ fitness['triggers'] = triggers
 fitness['true_positives'] = tp
 fitness['false_positives'] = fp
 fitness['score'] = new_score
-fitness['last_trigger_date'] = datetime.utcnow().isoformat() + "Z"
+fitness['last_trigger_date'] = datetime.now(timezone.utc).isoformat() + "Z"
 
 if stress:
     fitness['stress_survived'] = fitness.get('stress_survived', 0) + 1
@@ -189,7 +193,7 @@ if metric_key:
     try:
         os.makedirs(os.path.dirname(metrics_file), exist_ok=True)
         metric_entry = {
-            "timestamp": datetime.utcnow().isoformat() + "Z",
+            "timestamp": datetime.now(timezone.utc).isoformat() + "Z",
             "outcome": outcome,
             metric_key: metric_val
         }

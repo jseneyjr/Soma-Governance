@@ -7,6 +7,7 @@ import json
 import yaml
 import shutil
 from datetime import datetime
+from datetime import timezone
 from soma_resolve import resolve_workspace
 
 def main():
@@ -100,7 +101,7 @@ def main():
                     'score': None
                 }
                 new_metadata['lineage'] = [cell_name]
-                new_metadata['created'] = datetime.utcnow().strftime("%Y-%m-%d")
+                new_metadata['created'] = datetime.now(timezone.utc).strftime("%Y-%m-%d")
                 
                 # Dump new frontmatter
                 new_frontmatter = yaml.dump(new_metadata, sort_keys=False, default_flow_style=False)
@@ -112,7 +113,7 @@ def main():
                 print(f"  -> Generated {v2_name}")
                 
                 adaptations.append({
-                    "timestamp": datetime.utcnow().isoformat() + "Z",
+                    "timestamp": datetime.now(timezone.utc).isoformat() + "Z",
                     "type": "adaptation",
                     "original_cell": cell_name,
                     "new_cell": v2_name,

@@ -1,5 +1,6 @@
 ---
 type: vacuole
+target_paths: ["*"]
 hypothesis: "Manual AWS changes cause terraform state drift"
 prediction: "Terraform plan will show unexpected modifications in SG rules"
 falsification: "If 3 consecutive plans show no drift, prune"

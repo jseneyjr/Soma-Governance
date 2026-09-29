@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 import os, sys, argparse, random, glob, json
 from datetime import datetime
+from datetime import timezone
 
 from soma_resolve import resolve_workspace
 
@@ -70,7 +71,7 @@ def main():
     # Log the event
     with open(os.path.join(metrics_dir, 'stochastic_genesis.jsonl'), 'a') as f:
         f.write(json.dumps({
-            'timestamp': datetime.utcnow().isoformat() + 'Z',
+            'timestamp': datetime.now(timezone.utc).isoformat() + 'Z',
             'template': os.path.relpath(template, workspace),
             'session': counter['sessions']
         }) + '\n')

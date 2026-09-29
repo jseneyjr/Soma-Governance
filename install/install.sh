@@ -225,7 +225,8 @@ case "$PLATFORM" in
 
     # Install rules
     count=0; skipped=0
-    for rule in "$SOURCE_DIR"/*.md; do
+    while IFS= read -r rule; do
+      [ -n "$rule" ] || continue
       name="$(basename "$rule")"
       if ! should_install "$name"; then
         log_skip "$name (not in $RULES_SUBSET subset)"
@@ -240,7 +241,7 @@ case "$PLATFORM" in
         log_info "$name"
       fi
       count=$((count + 1))
-    done
+    done <<< "$(find "$SOURCE_DIR" -type f -name "*.md" | sort)"
 
     # Install skills
     skill_count=0
@@ -292,7 +293,8 @@ case "$PLATFORM" in
     [ "$DRY_RUN" = "true" ] || mkdir -p "$TARGET_RULES" "$TARGET_SKILLS"
 
     count=0; skipped=0
-    for rule in "$SOURCE_DIR"/*.md; do
+    while IFS= read -r rule; do
+      [ -n "$rule" ] || continue
       name="$(basename "$rule")"
       if ! should_install "$name"; then
         log_skip "$name (not in $RULES_SUBSET subset)"
@@ -310,7 +312,7 @@ case "$PLATFORM" in
         log_info "$name"
       fi
       count=$((count + 1))
-    done
+    done <<< "$(find "$SOURCE_DIR" -type f -name "*.md" | sort)"
 
     # Install skills (parity with Gemini)
     skill_count=0
@@ -389,7 +391,8 @@ EOF
       [ "$DRY_RUN" = "true" ] || mkdir -p "$TARGET_DIR"
 
       count=0; skipped=0
-      for rule in "$SOURCE_DIR"/*.md; do
+      while IFS= read -r rule; do
+        [ -n "$rule" ] || continue
         filename="$(basename "$rule")"
         if ! should_install "$filename"; then
           log_skip "$filename (not in $RULES_SUBSET subset)"
@@ -406,7 +409,7 @@ EOF
           log_info "${name}.instructions.md"
         fi
         count=$((count + 1))
-      done
+      done <<< "$(find "$SOURCE_DIR" -type f -name "*.md" | sort)"
 
       # Team overrides for Copilot project mode
       apply_team_overrides "$TARGET_DIR"
@@ -437,7 +440,8 @@ EOF
       fi
 
       count=0; skipped=0
-      for rule in "$SOURCE_DIR"/*.md; do
+      while IFS= read -r rule; do
+        [ -n "$rule" ] || continue
         filename="$(basename "$rule")"
         if ! should_install "$filename"; then
           log_skip "$filename (not in $RULES_SUBSET subset)"
@@ -454,7 +458,7 @@ EOF
           log_info "$filename"
         fi
         count=$((count + 1))
-      done
+      done <<< "$(find "$SOURCE_DIR" -type f -name "*.md" | sort)"
 
       echo ""
       if [ "$DRY_RUN" = "true" ]; then
@@ -494,7 +498,8 @@ EOF
     fi
 
     count=0; skipped=0; skill_count=0
-    for rule in "$SOURCE_DIR"/*.md; do
+    while IFS= read -r rule; do
+      [ -n "$rule" ] || continue
       filename="$(basename "$rule")"
       if ! should_install "$filename"; then
         log_skip "$filename (not in $RULES_SUBSET subset)"
@@ -511,7 +516,7 @@ EOF
         log_info "$filename"
       fi
       count=$((count + 1))
-    done
+    done <<< "$(find "$SOURCE_DIR" -type f -name "*.md" | sort)"
 
     # Count skills for tracking purposes
     if [ -d "$SKILLS_SOURCE" ]; then

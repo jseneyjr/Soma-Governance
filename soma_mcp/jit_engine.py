@@ -20,55 +20,24 @@ import json
 import re
 import subprocess
 import fnmatch
+import yaml
 
 # Ensure parent dir is importable
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 
-def _parse_frontmatter_stdlib(content):
-    """Parse YAML frontmatter using only stdlib (no pyyaml required).
-
-    Handles simple key: value pairs, inline lists, and block lists.
-    """
+def _parse_frontmatter(content):
+    """Parse YAML frontmatter robustly using pyyaml."""
     if not content.startswith('---'):
         return {}
     end = content.find('---', 3)
     if end == -1:
         return {}
     fm_text = content[3:end].strip()
-    result = {}
-    current_key = None
-    current_list = None
-    for line in fm_text.split('\n'):
-        stripped = line.strip()
-        if not stripped or stripped.startswith('#'):
-            continue
-        # List item under a key
-        if stripped.startswith('- ') and current_key and current_list is not None:
-            val = stripped[2:].strip().strip('"').strip("'")
-            current_list.append(val)
-            result[current_key] = current_list
-            continue
-        # Inline list: key: [val1, val2]
-        m = re.match(r'^(\w[\w_-]*)\s*:\s*\[(.+)\]$', stripped)
-        if m:
-            current_key = m.group(1)
-            vals = [v.strip().strip('"').strip("'") for v in m.group(2).split(',')]
-            result[current_key] = vals
-            current_list = None
-            continue
-        # Key: value
-        m = re.match(r'^(\w[\w_-]*)\s*:\s*(.*)$', stripped)
-        if m:
-            current_key = m.group(1)
-            val = m.group(2).strip().strip('"').strip("'")
-            if val == '':
-                current_list = []
-            else:
-                result[current_key] = val
-                current_list = None
-            continue
-    return result
+    try:
+        return yaml.safe_load(fm_text) or {}
+    except Exception:
+        return {}
 
 
 def _get_body(content):
@@ -110,7 +79,7 @@ def load_all_cells(workspace):
         try:
             with open(cell_file) as f:
                 content = f.read()
-            fm = _parse_frontmatter_stdlib(content)
+            fm = _parse_frontmatter(content)
             if fm:
                 fm['_name'] = os.path.splitext(os.path.basename(cell_file))[0]
                 fm['_path'] = os.path.relpath(cell_file, workspace)
@@ -127,6 +96,8 @@ def match_cells_to_files(cells, changed_files):
     matched = []
     for cell in cells:
         target_paths = cell.get('target_paths', [])
+        if not target_paths:
+            continue
         if isinstance(target_paths, str):
             target_paths = [target_paths]
 
@@ -147,36 +118,41 @@ def match_cells_to_files(cells, changed_files):
 
 
 def get_fitness_score(cell):
-    """Extract fitness score from cell, with Bayesian fallback."""
+    """Extract fitness score from cell."""
     fitness = cell.get('fitness', '')
+    impact_weight = cell.get('impact_weight', 1.0)
+    try:
+        impact_weight = float(impact_weight)
+    except (ValueError, TypeError):
+        impact_weight = 1.0
+
     if isinstance(fitness, dict):
         score = fitness.get('score')
-        if score is not None:
-            try:
-                return float(score)
-            except (ValueError, TypeError):
-                pass
-        # Compute from tp/fp if available
+        # Compute from tp/triggers if available
         tp = fitness.get('true_positives', 0)
-        fp = fitness.get('false_positives', 0)
+        triggers = fitness.get('triggers', 0)
         try:
-            tp, fp = int(tp), int(fp)
-            if tp + fp > 0:
-                return tp / (tp + fp)
+            tp, triggers = int(tp), int(triggers)
+            if triggers > 0:
+                return (tp / triggers) * impact_weight
         except (ValueError, TypeError):
             pass
-    # Parse from string (stdlib parser gives us strings)
+        if score is not None:
+            try:
+                return float(score) * impact_weight
+            except (ValueError, TypeError):
+                pass
+
     triggers = cell.get('triggers', '0')
     tp = cell.get('true_positives', '0')
-    fp = cell.get('false_positives', '0')
     try:
         tp_int = int(tp)
-        fp_int = int(fp)
-        if tp_int + fp_int > 0:
-            return tp_int / (tp_int + fp_int)
+        triggers_int = int(triggers)
+        if triggers_int > 0:
+            return (tp_int / triggers_int) * impact_weight
     except (ValueError, TypeError):
         pass
-    return 0.5  # Uninformative prior for new cells
+    return 0.5 * impact_weight
 
 
 def rank_cells(matched_cells):
@@ -275,7 +251,7 @@ def load_genome_rules(workspace, changed_files):
         try:
             with open(rule_file) as f:
                 content = f.read()
-            fm = _parse_frontmatter_stdlib(content)
+            fm = _parse_frontmatter(content)
             # Only include non-standard rules
             non_standard = fm.get('non_standard', 'false')
             if str(non_standard).lower() not in ('true', 'yes', '1'):

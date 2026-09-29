@@ -10,6 +10,7 @@ import glob
 import json
 import yaml
 from datetime import datetime
+from datetime import timezone
 from soma_resolve import resolve_workspace
 
 # The 11 built-in core rules that must not be demoted
@@ -89,7 +90,7 @@ def main():
     
     demotion_entry = {
         "reason": args.reason,
-        "timestamp": datetime.utcnow().isoformat() + "Z"
+        "timestamp": datetime.now(timezone.utc).isoformat() + "Z"
     }
     
     if 'demoted_contexts' not in metadata:
@@ -133,7 +134,7 @@ def main():
     demotions_log = os.path.join(metrics_dir, "demotions.jsonl")
     
     log_entry = {
-        "timestamp": datetime.utcnow().isoformat() + "Z",
+        "timestamp": datetime.now(timezone.utc).isoformat() + "Z",
         "rule": actual_rule_name,
         "cell": cell_name,
         "reason": args.reason

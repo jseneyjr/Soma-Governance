@@ -1,5 +1,6 @@
 ---
 type: membrane
+target_paths: ["*"]
 hypothesis: "Reward scaling causes policy divergence over time"
 prediction: "Action probabilities will become deterministic (entropy < 0.1)"
 falsification: "If entropy stays above 0.5 for 1000 steps, prune"

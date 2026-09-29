@@ -1,5 +1,6 @@
 ---
 type: wall
+target_paths: ["*"]
 hypothesis: "Model weights contain NaNs or infinite values after checkpoint load"
 prediction: "Checkpoints saved after iteration 10k will corrupt during load"
 falsification: "If 5 consecutive checkpoints load cleanly, prune"

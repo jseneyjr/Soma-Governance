@@ -20,14 +20,18 @@ if [ "$INVOCATION_NUM" != "1" ] && [ "$(( INVOCATION_NUM % 100 ))" != "0" ]; the
     exit 0
 fi
 
-if [ -f "$HOME/.gemini/antigravity/scratch/soma/soma.conf" ]; then
-    source "$HOME/.gemini/antigravity/scratch/soma/soma.conf"
+DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "$DIR/common.sh"
+RESOLVED_HOME=$(resolve_home)
+
+if [ -f "$RESOLVED_HOME/.gemini/antigravity/scratch/soma/soma.conf" ]; then
+    source "$RESOLVED_HOME/.gemini/antigravity/scratch/soma/soma.conf"
 fi
 
 DEFAULT_REVIEW_MODE=${DEFAULT_REVIEW_MODE:-gale}
 MINIMUM_REVIEW_MODE=${MINIMUM_REVIEW_MODE:-breeze}
 
-LOGS_REPO="$HOME/.gemini/antigravity/scratch/ai-conversation-logs"
+LOGS_REPO="$RESOLVED_HOME/.gemini/antigravity/scratch/ai-conversation-logs"
 CRITICAL="$LOGS_REPO/governance/pending_critical.md"
 LAST_CRITICAL="$LOGS_REPO/governance/last_critical.md"
 AUTO_LOG="$LOGS_REPO/governance/auto_applied_log.jsonl"
@@ -208,10 +212,10 @@ echo "$MERGED"
 
 # === Homeostatic Governance ===
 # Read recent waste rate and adjust review intensity suggestion
-if [ -d "$HOME/.gemini/antigravity/scratch/ai-conversation-logs/governance" ]; then
+if [ -d "$RESOLVED_HOME/.gemini/antigravity/scratch/ai-conversation-logs/governance" ]; then
   RECENT_WASTE=$(python3 -c "
 import os, json, glob
-gov_dir = os.path.expanduser('~/.gemini/antigravity/scratch/ai-conversation-logs/governance')
+gov_dir = os.path.expanduser('$RESOLVED_HOME/.gemini/antigravity/scratch/ai-conversation-logs/governance')
 sweeps = sorted(glob.glob(os.path.join(gov_dir, '*.json')))[-5:]  # last 5 sessions
 if not sweeps:
     print('unknown')

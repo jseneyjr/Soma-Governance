@@ -1,5 +1,6 @@
 ---
 type: membrane
+target_paths: ["*"]
 hypothesis: "Deployments during peak hours cause latency spikes"
 prediction: "P99 latency will exceed 500ms for 5 minutes post-deploy"
 falsification: "If 3 peak-hour deploys maintain P99 < 200ms, prune"

@@ -24,7 +24,7 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 # Configurable data directory — defaults to Antigravity location
-SOMA_DATA_DIR="${SOMA_DATA_DIR:-$HOME/.gemini/antigravity}"
+SOMA_DATA_DIR="${SOMA_DATA_DIR:-$RESOLVED_HOME/.gemini/antigravity}"
 GOVERNANCE_DIR="$SOMA_DATA_DIR/scratch/ai-conversation-logs/governance"
 BRAIN_DIR="$SOMA_DATA_DIR/brain"
 METRICS_DIR="$GOVERNANCE_DIR/session_metrics"

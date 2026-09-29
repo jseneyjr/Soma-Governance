@@ -10,6 +10,7 @@ import json
 import yaml
 import shutil
 from datetime import datetime
+from datetime import timezone
 from soma_resolve import resolve_workspace
 
 METAMORPHOSIS_PATHS = {
@@ -121,7 +122,7 @@ def main():
     new_type = best_path['target']
     metadata['type'] = new_type
     metadata['metamorphosed_from'] = current_type
-    metadata['metamorphosis_date'] = datetime.utcnow().isoformat() + "Z"
+    metadata['metamorphosis_date'] = datetime.now(timezone.utc).isoformat() + "Z"
     
     gen = metadata.get('lineage', {}).get('generation', 0) if isinstance(metadata.get('lineage'), dict) else 0
     metadata['lineage'] = {
@@ -165,7 +166,7 @@ def main():
     meta_log = os.path.join(metrics_dir, "metamorphosis.jsonl")
     
     log_entry = {
-        "timestamp": datetime.utcnow().isoformat() + "Z",
+        "timestamp": datetime.now(timezone.utc).isoformat() + "Z",
         "cell": cell_filename,
         "old_type": current_type,
         "new_type": new_type,

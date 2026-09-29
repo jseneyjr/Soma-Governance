@@ -12,6 +12,7 @@ Usage:
 """
 import os, sys, argparse, glob, yaml, json, re
 from datetime import datetime
+from datetime import timezone
 from soma_resolve import resolve_workspace
 
 
@@ -46,7 +47,7 @@ def generate_precommit_check(cell, workspace):
 # Auto-generated enforcement artifact for: {name}
 # Type: {cell_type} | Tier: mechanical
 # Hypothesis: {hypothesis}
-# Generated: {datetime.utcnow().isoformat()}Z
+# Generated: {datetime.now(timezone.utc).isoformat()}Z
 #
 # This check runs as part of the pre-commit hook.
 # To disable: remove this file or demote the cell to advisory.
@@ -76,14 +77,14 @@ if [ "$MATCHED" -eq 1 ]; then
     [ -f "$SCRIPT_DIR/cell_signal.sh" ] && bash "$SCRIPT_DIR/cell_signal.sh" "{name}" tp 2>/dev/null
 fi
 
-exit 0  # Mechanical: warn but don't block
+exit 1  # Mechanical: block commit
 '''
     elif cell_type == 'membrane':
         check = f'''#!/bin/bash
 # Auto-generated enforcement artifact for: {name}
 # Type: {cell_type} | Tier: mechanical
 # Hypothesis: {hypothesis}
-# Generated: {datetime.utcnow().isoformat()}Z
+# Generated: {datetime.now(timezone.utc).isoformat()}Z
 
 set -uo pipefail
 
@@ -107,14 +108,14 @@ if [ "$MATCHED" -eq 1 ]; then
     echo "   Recommend elevated review before merging."
 fi
 
-exit 0
+exit 1  # Mechanical: block commit
 '''
     else:  # vacuole, chloroplast, etc.
         check = f'''#!/bin/bash
 # Auto-generated enforcement artifact for: {name}
 # Type: {cell_type} | Tier: mechanical
 # Hypothesis: {hypothesis}
-# Generated: {datetime.utcnow().isoformat()}Z
+# Generated: {datetime.now(timezone.utc).isoformat()}Z
 
 set -uo pipefail
 
@@ -137,7 +138,7 @@ if [ "$MATCHED" -eq 1 ]; then
     echo "   Hypothesis: {hypothesis[:80]}"
 fi
 
-exit 0
+exit 1  # Mechanical: block commit
 '''
     return check
 
@@ -152,7 +153,7 @@ def generate_gate_assertion(cell, workspace):
     assertion = f'''# Auto-generated gate assertion for: {name}
 # Type: {cell_type} | Tier: gate
 # Hypothesis: {hypothesis}
-# Generated: {datetime.utcnow().isoformat()}Z
+# Generated: {datetime.now(timezone.utc).isoformat()}Z
 #
 # This assertion is a deterministic gate that cannot be bypassed
 # without modifying this file. It was auto-generated when the cell

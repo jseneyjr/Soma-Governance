@@ -1,5 +1,6 @@
 ---
 type: vacuole
+target_paths: ["*"]
 hypothesis: "Upstream API changes cause downstream pipeline failures"
 prediction: "JSON parsing errors will increase by 20% after API updates"
 falsification: "If API updates happen without parsing errors for 2 weeks, prune"

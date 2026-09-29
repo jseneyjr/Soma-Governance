@@ -123,13 +123,13 @@ for root, dirs, files in os.walk(cells_dir):
                         "hypothesis": hypo_val,
                         "target_paths": tp_list,
                         "peak_fitness": score,
-                        "extinction_date": datetime.datetime.utcnow().strftime("%Y-%m-%d"),
+                        "extinction_date": datetime.datetime.now(timezone.utc).strftime("%Y-%m-%d"),
                         "reactivation_patterns": tp_list
                     }
                     with open(spores_file, "a") as sf:
                         sf.write(json.dumps(spore) + "\n")
             elif category == "DORMANT" and not dormant:
-                timestamp = datetime.datetime.utcnow().isoformat() + "Z"
+                timestamp = datetime.datetime.now(timezone.utc).isoformat() + "Z"
                 new_content = content.replace("fitness:", f"dormant_since: {timestamp}\nfitness:")
                 with open(fpath, 'w') as file:
                     file.write(new_content)
@@ -137,5 +137,5 @@ for root, dirs, files in os.walk(cells_dir):
                 
             if action:
                 with open(fitness_log, 'a') as log:
-                    log.write(json.dumps({"timestamp": datetime.datetime.utcnow().isoformat() + "Z", "cell": f, "action": action}) + "\n")
+                    log.write(json.dumps({"timestamp": datetime.datetime.now(timezone.utc).isoformat() + "Z", "cell": f, "action": action}) + "\n")
 PYEOF

@@ -6,6 +6,7 @@ import glob
 import json
 import yaml
 from datetime import datetime
+from datetime import timezone
 from soma_resolve import resolve_workspace
 
 def resolve_metrics_dir(workspace):
@@ -261,7 +262,7 @@ This rule was promoted from local cell {cand['cell_name']} after demonstrating h
                     print("Also synced to team repo")
             
             promotions.append({
-                "timestamp": datetime.utcnow().isoformat() + "Z",
+                "timestamp": datetime.now(timezone.utc).isoformat() + "Z",
                 "type": "speciation",
                 "original_cell": cand['cell_name'],
                 "new_rule": rule_name,

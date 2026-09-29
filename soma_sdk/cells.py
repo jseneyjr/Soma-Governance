@@ -17,10 +17,7 @@ class CellFitness:
     def raw_score(self):
         if self.triggers == 0:
             return None
-        tp, fp = self.true_positives, self.false_positives
-        if tp + fp == 0:
-            return None
-        return tp / (tp + fp)
+        return self.true_positives / self.triggers
     
     @property
     def snr_db(self):
@@ -35,7 +32,7 @@ class CellFitness:
     def bayesian(self, confidence=0.90):
         """Beta-Binomial posterior with Jeffrey's prior."""
         a = self.true_positives + 0.5
-        b = self.false_positives + 0.5
+        b = max(0, self.triggers - self.true_positives) + 0.5
         mean = a / (a + b)
         std = math.sqrt((a * b) / ((a + b) ** 2 * (a + b + 1)))
         z = 1.645  # 90% CI

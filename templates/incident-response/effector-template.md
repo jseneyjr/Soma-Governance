@@ -8,6 +8,7 @@ expiry_days: 7
 created: "template"
 impact_weight: 3.0
 response_type: effector
+target_paths: ["*"]
 minimum_mode: tempest
 decay_to:
   type: membrane

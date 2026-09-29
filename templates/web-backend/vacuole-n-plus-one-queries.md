@@ -1,5 +1,6 @@
 ---
 type: vacuole
+target_paths: ["*"]
 hypothesis: "Fetching user feeds causes N+1 database queries"
 prediction: "Database query count will scale linearly with feed items"
 falsification: "If query count is constant regardless of feed size, prune"

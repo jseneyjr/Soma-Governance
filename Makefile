@@ -68,53 +68,7 @@ install-windows: ## Install rules and skills for Windows using PowerShell
 
 uninstall: ## Remove installed genome, organs, and hooks
 	@echo "Uninstalling Soma for $(SOMA_PLATFORM)..."
-	@case "$(SOMA_PLATFORM)" in \
-	  gemini) \
-	    echo "  Removing rules from $(HOME)/.gemini/config/genome/"; \
-	    rm -f $(HOME)/.gemini/config/genome/providence.md $(HOME)/.gemini/config/genome/cost-optimization.md \
-	      $(HOME)/.gemini/config/genome/subagent-delegation.md $(HOME)/.gemini/config/genome/testing.md \
-	      $(HOME)/.gemini/config/genome/git-workflow.md $(HOME)/.gemini/config/genome/destructive-ops.md \
-	      $(HOME)/.gemini/config/genome/documentation.md $(HOME)/.gemini/config/genome/architectural-tenets.md \
-	      $(HOME)/.gemini/config/genome/feature-specs.md $(HOME)/.gemini/config/genome/polyglot-standards.md \
-	      $(HOME)/.gemini/config/genome/desktop-automation.md; \
-	    echo "  Removing hooks"; \
-	    rm -f $(HOME)/.gemini/config/plugins/governance/hooks.json; \
-	    echo "  Removing skills"; \
-	    for skill_dir in organs/*/; do \
-	      skill=$$(basename "$$skill_dir"); \
-	      rm -rf $(HOME)/.gemini/config/organs/$$skill; \
-	    done; \
-	    echo "Done! Rules, hooks, and skills removed."; \
-	    ;; \
-	  kiro) \
-	    echo "  Removing rules from $(HOME)/.kiro/steering/"; \
-	    rm -rf $(HOME)/.kiro/steering/; \
-	    echo "  Removing skills from $(HOME)/.kiro/organs/"; \
-	    for skill_dir in organs/*/; do \
-	      skill=$$(basename "$$skill_dir"); \
-	      rm -rf $(HOME)/.kiro/organs/$$skill; \
-	    done; \
-	    echo "  Removing hooks from $(HOME)/.kiro/hooks/"; \
-	    rm -f $(HOME)/.kiro/hooks/hooks.json; \
-	    echo "Done! Rules, skills, and hooks removed."; \
-	    ;; \
-	  copilot) \
-	    echo "  Removing $(HOME)/copilot-instructions.md"; \
-	    rm -f $(HOME)/copilot-instructions.md; \
-	    echo "Done!"; \
-	    ;; \
-	  claude) \
-	    echo "  Removing $(HOME)/.claude/CLAUDE.md and local CLAUDE.md/.mcp.json"; \
-	    rm -f $(HOME)/.claude/CLAUDE.md; \
-	    rm -f CLAUDE.md .mcp.json; \
-	    echo "Done!"; \
-	    ;; \
-	  mcp) \
-	    echo "  Removing local .mcp.json"; \
-	    rm -f .mcp.json; \
-	    echo "Done!"; \
-	    ;; \
-	esac
+	@bash install/uninstall.sh $(SOMA_PLATFORM)
 
 doctor: ## Verify installation health & dependencies
 	@echo "Running health check..."
@@ -185,4 +139,10 @@ status: ## Show installed vs repo diff
 	esac
 
 test: validate ## Run validation tests
+	@echo "Running test suite..."
+	@if command -v pytest >/dev/null 2>&1; then \
+	  pytest tests/ || exit 1; \
+	else \
+	  echo "  ⚠️  pytest not found, skipping Python tests."; \
+	fi
 	@echo "All tests passed."
