@@ -1,7 +1,7 @@
 ---
 name: resource-consolidation-hgt-
 type: gene
-hgt_source: /home/nseney/.gemini/antigravity/scratch/rimworld_agent/.soma/playbooks/raid_defense.md
+hgt_source: /home/<user>/.gemini/antigravity/scratch/rimworld_agent/.soma/playbooks/raid_defense.md
 trigger: universal
 ---
 
