@@ -15,6 +15,7 @@ from soma_resolve import resolve_workspace
 import json
 import re
 import datetime
+from datetime import timezone
 import subprocess
 
 def parse_args():
@@ -122,7 +123,7 @@ def main():
     }
     
     if raw_mode:
-        metrics["timestamp"] = datetime.datetime.utcnow().isoformat() + "Z"
+        metrics["timestamp"] = datetime.datetime.now(timezone.utc).isoformat() + "Z"
         
     compare_data = None
     if compare_file and os.path.exists(compare_file):
@@ -131,10 +132,10 @@ def main():
 
     # Save snapshot to configured metrics directory
     if save:
-        ts = datetime.datetime.utcnow().strftime("%Y%m%dT%H%M%SZ")
+        ts = datetime.datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
         save_path = os.path.join(metrics_dir, f"snapshot-{ts}.json")
         save_metrics = dict(metrics)
-        save_metrics["timestamp"] = datetime.datetime.utcnow().isoformat() + "Z"
+        save_metrics["timestamp"] = datetime.datetime.now(timezone.utc).isoformat() + "Z"
         save_metrics.pop("metrics_dir", None)  # Don't persist the path itself
         with open(save_path, "w") as f:
             json.dump(save_metrics, f, indent=2)

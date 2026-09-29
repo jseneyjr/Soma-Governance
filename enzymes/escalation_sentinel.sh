@@ -293,7 +293,7 @@ main() {
   echo "BRANCH_OPS=${branch_ops}"
 
   # Human-readable summary to stderr
-  >&2 echo "⚡ Escalation Sentinel: ${protocol^^} recommended"
+  >&2 echo "⚡ Escalation Sentinel: $(echo "$protocol" | tr '[:lower:]' '[:upper:]') recommended"
   >&2 echo "   ${reasons:-Default classification}"
   >&2 echo "   Files: ${total_files} (${high_count} high, ${medium_count} medium, ${low_count} low, ${test_count} test)"
 }

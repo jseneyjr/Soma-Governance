@@ -3,6 +3,7 @@ import json
 import os
 import re
 import sys
+import yaml
 from datetime import datetime, timezone
 
 # Ensure soma_sdk is importable
@@ -47,54 +48,18 @@ def resolve_workspace():
     return cwd
 
 
-def _parse_frontmatter_stdlib(content):
-    """Parse YAML frontmatter using only stdlib (no pyyaml required).
-    
-    Handles simple key: value pairs, lists, and nested values.
-    Falls back gracefully for complex YAML.
-    """
+def _parse_frontmatter(content):
+    """Parse YAML frontmatter robustly using pyyaml."""
     if not content.startswith('---'):
         return {}
     end = content.find('---', 3)
     if end == -1:
         return {}
     fm_text = content[3:end].strip()
-    result = {}
-    current_key = None
-    current_list = None
-    for line in fm_text.split('\n'):
-        stripped = line.strip()
-        if not stripped or stripped.startswith('#'):
-            continue
-        # List item under a key
-        if stripped.startswith('- ') and current_key and current_list is not None:
-            val = stripped[2:].strip().strip('"').strip("'")
-            current_list.append(val)
-            result[current_key] = current_list
-            continue
-        # Key: value pair
-        match = re.match(r'^([a-zA-Z_][a-zA-Z0-9_]*)\s*:\s*(.*)', stripped)
-        if match:
-            key = match.group(1)
-            val = match.group(2).strip()
-            if val == '' or val == '|' or val == '>':
-                # Could be a list or block scalar following
-                current_key = key
-                current_list = []
-                result[key] = val
-            elif val.startswith('[') and val.endswith(']'):
-                # Inline list
-                items = [v.strip().strip('"').strip("'") for v in val[1:-1].split(',') if v.strip()]
-                result[key] = items
-                current_key = key
-                current_list = None
-            else:
-                result[key] = val.strip('"').strip("'")
-                current_key = key
-                current_list = None
-        else:
-            current_list = None
-    return result
+    try:
+        return yaml.safe_load(fm_text) or {}
+    except yaml.YAMLError:
+        return {}
 
 
 def _list_cells_stdlib(workspace):
@@ -109,7 +74,7 @@ def _list_cells_stdlib(workspace):
         try:
             with open(cell_file) as f:
                 content = f.read()
-            fm = _parse_frontmatter_stdlib(content)
+            fm = _parse_frontmatter(content)
             if fm:
                 fm['_name'] = os.path.splitext(os.path.basename(cell_file))[0]
                 fm['_path'] = os.path.relpath(cell_file, workspace)
@@ -274,7 +239,7 @@ TOOL_DEFINITIONS = [
     },
     {
         "name": "soma_propose_change",
-        "description": "The new gateway MCP tool. Propose a change to a file. The system will verify the change against active JIT rules before writing to the file.",
+        "description": "(PROTOTYPE - ADVISORY ONLY) The gateway MCP tool. Propose a change to a file. The system will verify the change against active JIT rules before writing to the file.",
         "inputSchema": {
             "type": "object",
             "properties": {

@@ -1,5 +1,6 @@
 ---
 type: wall
+target_paths: ["*"]
 hypothesis: "Retrying failed jobs duplicates records in the warehouse"
 prediction: "Record counts will increase when the same file is processed twice"
 falsification: "If processing the same file twice yields the same record count, prune"

@@ -71,12 +71,11 @@ def soma_propose_change(file_path: str, proposed_content: str, active_playbooks:
 
     protocol = get_escalation_protocol(file_path, workspace)
     if protocol in ["maelstrom", "tempest"]:
-        if "TEMPEST_OVERRIDE" not in proposed_content:
-            return (f"🛑 TEMPEST ESCALATION TRIGGERED for {file_path}.\n"
-                    "This file is highly sensitive (Core Infrastructure / Auth).\n"
-                    "ACTION REQUIRED: You must dispatch the 'Security Audit Organ' and 'Performance Audit Organ' "
-                    "subagents to review this proposed change concurrently.\n"
-                    "Once they approve, append '# TEMPEST_OVERRIDE' to your proposed content and submit again.")
+        return (f"🛑 TEMPEST ESCALATION TRIGGERED for {file_path}.\n"
+                "This file is highly sensitive (Core Infrastructure / Auth).\n"
+                "ACTION REQUIRED: You must dispatch the 'Security Audit Organ' and 'Performance Audit Organ' "
+                "subagents to review this proposed change concurrently.\n"
+                "Changes to this file require out-of-band approval.")
 
     print(f"[TTC] Agent proposed change to {file_path}. Protocol: {protocol}. Running Verifier...")
     verifier = TTCVerifier(active_playbooks)
@@ -88,22 +87,6 @@ def soma_propose_change(file_path: str, proposed_content: str, active_playbooks:
     
     import re
     if result["status"] == "REJECTED":
-        # Log as True Positive for the active cell that caught this!
-        playbook = result.get("playbook")
-        if playbook and playbook.get("_path"):
-            full_path = os.path.join(workspace, playbook["_path"])
-            if os.path.exists(full_path):
-                try:
-                    with open(full_path, "r") as f:
-                        content = f.read()
-                    def inc(m): return f"{m.group(1)}{int(m.group(2)) + 1}"
-                    content = re.sub(r'(triggers:\s*)(\d+)', inc, content)
-                    content = re.sub(r'(true_positives:\s*)(\d+)', inc, content)
-                    with open(full_path, "w") as f:
-                        f.write(content)
-                except Exception:
-                    pass
-                    
         return f"CRITICAL ERROR: Proposal Rejected.\nReason: {result['reason']}\nAction: Generate a new proposal that fixes this violation."
     
     # --- NEW: TTC Oracle Evaluation ---
@@ -117,8 +100,14 @@ def soma_propose_change(file_path: str, proposed_content: str, active_playbooks:
         print(f"[TTC Oracle] Error running oracle: {e}")
         
     print(f"[TTC] Proposal APPROVED. Executing file write to {file_path}...")
+    
+    # Containment check: prevent writes outside the workspace
+    resolved_path = os.path.abspath(os.path.join(workspace, file_path))
+    if not resolved_path.startswith(os.path.abspath(workspace)):
+        return f"ERROR: Path traversal blocked. Cannot write to {file_path} outside workspace."
+        
     try:
-        with open(file_path, "w") as f:
+        with open(resolved_path, "w") as f:
             f.write(proposed_content)
     except Exception as e:
         return f"ERROR: Failed to write to {file_path}: {e}"

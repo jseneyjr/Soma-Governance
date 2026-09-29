@@ -1,5 +1,6 @@
 ---
 type: wall
+target_paths: ["*"]
 hypothesis: "Hardcoded secrets exist in infrastructure code"
 prediction: "TF files contain AWS_SECRET_ACCESS_KEY strings"
 falsification: "If security scanner finds 0 secrets in 5 runs, prune"

@@ -87,10 +87,11 @@ else
       for f in "$RESOLVED_HOME"/.kiro/steering/*.md; do
         [ -f "$f" ] && FILES_TO_REMOVE+=("$f")
       done
-      for d in "$RESOLVED_HOME"/.kiro/organs/*; do
+      for d in "$RESOLVED_HOME"/.kiro/skills/*; do
         [ -d "$d" ] && DIRS_TO_REMOVE+=("$d")
       done
       [ -d "$RESOLVED_HOME/.kiro/hooks" ] && DIRS_TO_REMOVE+=("$RESOLVED_HOME/.kiro/hooks")
+      [ -f "$RESOLVED_HOME/.kiro/settings/mcp.json" ] && FILES_TO_REMOVE+=("$RESOLVED_HOME/.kiro/settings/mcp.json")
       ;;
     copilot)
       [ -d "$REPO_DIR/.github/instructions" ] && DIRS_TO_REMOVE+=("$REPO_DIR/.github/instructions")
@@ -134,12 +135,14 @@ fi
 
 echo ""
 echo "The following will be removed/modified:"
+set +u
 for f in "${FILES_TO_REMOVE[@]}"; do echo "  - [FILE] $f"; done
 for d in "${DIRS_TO_REMOVE[@]}"; do echo "  - [DIR]  $d"; done
 for m in "${MODIFY_FILES[@]}"; do echo "  - [MOD]  $m (remove soma sections)"; done
 
 if [ ${#FILES_TO_REMOVE[@]} -eq 0 ] && [ ${#DIRS_TO_REMOVE[@]} -eq 0 ] && [ ${#MODIFY_FILES[@]} -eq 0 ]; then
   echo "Nothing to remove."
+  set -u
   exit 0
 fi
 
@@ -147,12 +150,14 @@ if [ "$DRY_RUN" = "false" ] && [ "$FORCE" = "false" ]; then
   read -p "Proceed with deletion? (y/N): " confirm
   if [[ ! "$confirm" =~ ^[Yy]$ ]]; then
     echo "Aborted."
+    set -u
     exit 0
   fi
 fi
 
 if [ "$DRY_RUN" = "true" ]; then
   echo "Dry-run complete."
+  set -u
   exit 0
 fi
 
@@ -165,14 +170,12 @@ done
 
 for m in "${MODIFY_FILES[@]}"; do
   if [ -f "$m" ]; then
-    # Removes everything between # Copilot Global Instructions and the end (or just deletes the auto-gen stuff)
-    # The install script appends to it with a comment "> Auto-generated from soma."
-    # We will just remove lines starting from "# Copilot Global Instructions" or "# Soma Governance Rules" to the end of the file.
     sed -i.bak '/^# Copilot Global Instructions/,$d' "$m" && rm -f "$m.bak"
     sed -i.bak '/^# Soma Governance Rules/,$d' "$m" && rm -f "$m.bak"
     echo "Cleaned $m"
   fi
 done
+set -u
 
 # Try to clean hooks from claude settings.json
 for settings_file in "$(pwd)/.claude/settings.json" "$RESOLVED_HOME/.claude/settings.json"; do

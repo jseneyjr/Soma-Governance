@@ -15,6 +15,7 @@ Usage:
 """
 import os, sys, argparse, glob, yaml, json, subprocess, math
 from datetime import datetime
+from datetime import timezone
 from soma_resolve import resolve_workspace
 
 def match_glob(filepath, pattern):
@@ -77,7 +78,7 @@ def record_escaped_defect(cell, event_type, files, severity, workspace):
     
     log_path = os.path.join(metrics_dir, 'escaped_defects.jsonl')
     entry = {
-        'timestamp': datetime.utcnow().isoformat() + 'Z',
+        'timestamp': datetime.now(timezone.utc).isoformat() + 'Z',
         'cell': cell['_name'],
         'cell_type': cell.get('type', ''),
         'enforcement': cell.get('enforcement', 'advisory'),

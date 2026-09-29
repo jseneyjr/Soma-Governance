@@ -4,6 +4,7 @@ import glob
 import json
 import os
 from datetime import datetime
+from datetime import timezone
 
 import yaml
 from soma_resolve import resolve_workspace
@@ -192,41 +193,13 @@ def main():
             metadata['fitness']['true_positives'] = 0
             metadata['fitness']['false_positives'] = 0
             
-            gen = metadata.get('lineage', {}).get('generation', 0) if isinstance(metadata.get('lineage'), dict) else 0
-            metadata['lineage'] = {
-                'parent_id': cell_name,
-                'created_by': "decay",
-                'generation': gen + 1,
-                'siblings': []
-            }
-            
-            target_plural = new_type + "s" if new_type != "plasmodesmata" else "plasmodesmata"
-            target_dir = os.path.join(workspace, '.soma', 'cells', target_plural)
-            os.makedirs(target_dir, exist_ok=True)
-            new_path = os.path.join(target_dir, cell_name)
-            
-            end_idx = content.find('---', 3)
-            body_str = content[end_idx+3:]
-            
-            with open(new_path, 'w') as out_f:
-                out_f.write("---\n")
-                yaml.dump(metadata, out_f, default_flow_style=False, sort_keys=False)
-                out_f.write("---\n")
-                if body_str.startswith('\n'):
-                    out_f.write(body_str[1:])
-                else:
-                    out_f.write(body_str)
-                    
-            if os.path.abspath(new_path) != os.path.abspath(file_path):
-                os.remove(file_path)
-                
-            status = "TRANSFORMED"
+            status = "DECAYING"
             
             metrics_dir = os.path.join(workspace, '.soma', 'metrics')
             os.makedirs(metrics_dir, exist_ok=True)
             with open(os.path.join(metrics_dir, 'decay_transitions.jsonl'), 'a') as mf:
                 mf.write(json.dumps({
-                    'timestamp': datetime.utcnow().isoformat() + "Z",
+                    'timestamp': datetime.now(timezone.utc).isoformat() + "Z",
                     'cell_id': cell_name,
                     'from_type': cell_type,
                     'to_type': new_type

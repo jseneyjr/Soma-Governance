@@ -22,6 +22,7 @@ import json
 import re
 import glob
 import fnmatch
+import yaml
 from datetime import datetime
 
 
@@ -302,49 +303,20 @@ def capture_mcp_outcomes(workspace):
     return outcomes
 
 
-# ── Frontmatter Parser (stdlib only) ─────────────────────────────────
+# ── Frontmatter Parser ────────────────────────────────────────────────
 
-def _parse_frontmatter_stdlib(content):
-    """Parse YAML frontmatter using only stdlib (no pyyaml required)."""
+def _parse_frontmatter(content):
+    """Parse YAML frontmatter robustly using pyyaml."""
     if not content.startswith('---'):
         return {}
     end = content.find('---', 3)
     if end == -1:
         return {}
     fm_text = content[3:end].strip()
-    result = {}
-    current_key = None
-    current_list = None
-    for line in fm_text.split('\n'):
-        stripped = line.strip()
-        if not stripped or stripped.startswith('#'):
-            continue
-        if stripped.startswith('- ') and current_key and current_list is not None:
-            val = stripped[2:].strip().strip('"').strip("'")
-            current_list.append(val)
-            result[current_key] = current_list
-            continue
-        match = re.match(r'^([a-zA-Z_][a-zA-Z0-9_]*)\s*:\s*(.*)', stripped)
-        if match:
-            key = match.group(1)
-            val = match.group(2).strip()
-            if val == '' or val == '|' or val == '>':
-                current_key = key
-                current_list = []
-                result[key] = val
-            elif val.startswith('[') and val.endswith(']'):
-                items = [v.strip().strip('"').strip("'")
-                         for v in val[1:-1].split(',') if v.strip()]
-                result[key] = items
-                current_key = key
-                current_list = None
-            else:
-                result[key] = val.strip('"').strip("'")
-                current_key = key
-                current_list = None
-        else:
-            current_list = None
-    return result
+    try:
+        return yaml.safe_load(fm_text) or {}
+    except Exception:
+        return {}
 
 
 # ── Cell Matching ────────────────────────────────────────────────────
@@ -377,7 +349,7 @@ def match_cells_to_changes(workspace, changed_files):
         try:
             with open(cell_file, 'r') as f:
                 content = f.read()
-            fm = _parse_frontmatter_stdlib(content)
+            fm = _parse_frontmatter(content)
             target_paths = fm.get('target_paths', [])
             if isinstance(target_paths, str):
                 target_paths = [target_paths]
@@ -503,7 +475,7 @@ def compute_fitness_signals(triggered_cells, outcomes):
 # ── Cell Fitness Update ──────────────────────────────────────────────
 
 def update_cell_fitness(workspace, fitness_signals):
-    """Update cell frontmatter with fitness signals."""
+    """Update cell frontmatter with fitness signals using yaml."""
     for sig in fitness_signals:
         fpath = sig['_path']
         signal = sig['signal']
@@ -511,17 +483,36 @@ def update_cell_fitness(workspace, fitness_signals):
             with open(fpath, 'r') as f:
                 content = f.read()
 
-            def inc(m):
-                return f"{m.group(1)}{int(m.group(2)) + 1}"
-
-            content = re.sub(r'(triggers:\s*)(\d+)', inc, content)
+            if not content.startswith('---'): continue
+            end = content.find('---', 3)
+            if end == -1: continue
+            
+            fm_text = content[3:end].strip()
+            fm = yaml.safe_load(fm_text) or {}
+            
+            # Normalize fitness to dict
+            fitness = fm.get('fitness', {'score': 100, 'impact_weight': 1.0})
+            if isinstance(fitness, (int, float)):
+                fitness = {'score': float(fitness), 'impact_weight': 1.0}
+            elif isinstance(fitness, str):
+                try:
+                    fitness = {'score': float(fitness), 'impact_weight': 1.0}
+                except ValueError:
+                    fitness = {'score': 100.0, 'impact_weight': 1.0}
+            
+            fm['triggers'] = fm.get('triggers', 0) + 1
             if signal > 0:
-                content = re.sub(r'(true_positives:\s*)(\d+)', inc, content)
+                fm['true_positives'] = fm.get('true_positives', 0) + 1
             elif signal < 0:
-                content = re.sub(r'(false_positives:\s*)(\d+)', inc, content)
+                fm['false_positives'] = fm.get('false_positives', 0) + 1
+                
+            fm['fitness'] = fitness
 
+            new_fm = yaml.dump(fm, sort_keys=False, default_flow_style=False)
+            new_content = f"---\n{new_fm}---\n{content[end+3:].lstrip()}"
+            
             with open(fpath, 'w') as f:
-                f.write(content)
+                f.write(new_content)
         except Exception:
             pass
 

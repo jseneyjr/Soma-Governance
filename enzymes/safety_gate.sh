@@ -1,6 +1,10 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+DIR="$(cd \"$(dirname \"${BASH_SOURCE[0]}\")\" && pwd)"
+source "$DIR/common.sh"
+RESOLVED_HOME=$(resolve_home)
+
 # Safety Gate — PreToolUse hook
 # Gates destructive run_command operations. Returns force_ask for dangerous patterns.
 # Output contract: {"decision": "allow"} or {"decision": "force_ask", "reason": "..."}
@@ -135,7 +139,7 @@ fi
 
 # --- Logging ---
 
-GATE_LOG="$HOME/.gemini/antigravity/scratch/ai-conversation-logs/governance/gate_events.jsonl"
+GATE_LOG="$RESOLVED_HOME/.gemini/antigravity/scratch/ai-conversation-logs/governance/gate_events.jsonl"
 GATE_LOG_DIR="$(dirname "$GATE_LOG")"
 
 # Create log directory if missing (graceful)

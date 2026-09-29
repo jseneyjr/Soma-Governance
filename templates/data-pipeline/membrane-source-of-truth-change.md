@@ -1,5 +1,6 @@
 ---
 type: membrane
+target_paths: ["*"]
 hypothesis: "Switching data sources causes metric discrepancies"
 prediction: "Daily Active Users metric will drift by >5% between old and new sources"
 falsification: "If discrepancy is <1% for 7 consecutive days, prune"

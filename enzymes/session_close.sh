@@ -1,6 +1,10 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+DIR="$(cd \"$(dirname \"${BASH_SOURCE[0]}\")\" && pwd)"
+source "$DIR/common.sh"
+RESOLVED_HOME=$(resolve_home)
+
 # Session Close — Stop hook
 # Exports conversation logs and syncs both repos when session ends.
 
@@ -15,7 +19,7 @@ SCRIPT_DIR="$(cd -P "$(dirname "$PRG")" && pwd)"
 
 # Resolve repo root relative to this script (enzymes/ -> repo root)
 STEERING_REPO="$(cd -P "$SCRIPT_DIR/.." && pwd)"
-LOGS_REPO="$HOME/.gemini/antigravity/scratch/ai-conversation-logs"
+LOGS_REPO="$RESOLVED_HOME/.gemini/antigravity/scratch/ai-conversation-logs"
 EXPORT_SCRIPT="$STEERING_REPO/enzymes/export_logs.sh"
 
 # Clean stale git locks (only if no process is actively using them)

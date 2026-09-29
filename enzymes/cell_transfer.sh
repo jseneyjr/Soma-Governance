@@ -60,6 +60,7 @@ import sys
 import os
 import json
 from datetime import datetime
+from datetime import timezone
 
 source_file = sys.argv[1]
 target_dir = sys.argv[2]
@@ -105,7 +106,7 @@ metadata['fitness']['score'] = None
 metadata['expiry_sessions'] = 5
 
 metadata['transferred_from'] = source_basename
-metadata['transfer_date'] = datetime.utcnow().isoformat() + 'Z'
+metadata['transfer_date'] = datetime.now(timezone.utc).isoformat() + 'Z'
 
 gen = metadata.get('lineage', {}).get('generation', 0) if isinstance(metadata.get('lineage'), dict) else 0
 metadata['lineage'] = {
@@ -130,7 +131,7 @@ os.makedirs(metrics_dir, exist_ok=True)
 transfers_log = os.path.join(metrics_dir, 'transfers.jsonl')
 
 log_entry = {
-    'timestamp': datetime.utcnow().isoformat() + 'Z',
+    'timestamp': datetime.now(timezone.utc).isoformat() + 'Z',
     'cell': filename,
     'target_project': target_basename
 }

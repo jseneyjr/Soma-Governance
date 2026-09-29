@@ -2,6 +2,7 @@
 import os, sys, argparse, glob, yaml, json
 from fnmatch import fnmatch
 from datetime import datetime
+from datetime import timezone
 from soma_resolve import resolve_workspace
 
 def main():
@@ -84,7 +85,7 @@ def main():
         metrics_dir = os.path.join(workspace, '.soma', 'metrics')
         os.makedirs(metrics_dir, exist_ok=True)
         with open(os.path.join(metrics_dir, 'quorum_events.jsonl'), 'a') as f:
-            quorum['timestamp'] = datetime.utcnow().isoformat() + 'Z'
+            quorum['timestamp'] = datetime.now(timezone.utc).isoformat() + 'Z'
             f.write(json.dumps(quorum) + '\n')
     else:
         if args.json:

@@ -45,3 +45,18 @@ def resolve_workspace(caller_file=None):
 
     # 5. Fallback to CWD
     return cwd
+
+
+def get_cells_dir(workspace):
+    """Get the path to the cells directory."""
+    return os.path.join(workspace, '.soma', 'cells')
+
+
+def get_metrics_dir(workspace):
+    """Get the path to the metrics directory."""
+    return os.path.join(workspace, '.soma', 'metrics')
+
+
+def get_outcomes_file(workspace):
+    """Get the path to the outcomes file."""
+    return os.path.join(workspace, '.soma', 'outcomes.jsonl')

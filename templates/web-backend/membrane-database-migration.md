@@ -1,5 +1,6 @@
 ---
 type: membrane
+target_paths: ["*"]
 hypothesis: "Database migrations with DROP COLUMN cause staging failures"
 prediction: "Staging pipeline will fail on >50% of DROP COLUMN migrations"
 falsification: "If 10 migrations with DROP COLUMN succeed, prune"

@@ -1,5 +1,6 @@
 ---
 type: vacuole
+target_paths: ["*"]
 hypothesis: "Observation space contains future information leaking to agent"
 prediction: "Agent performance drops significantly when testing on held-out environment"
 falsification: "If test performance is within 10% of train performance, prune"

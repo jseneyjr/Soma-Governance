@@ -47,7 +47,10 @@ class Governance:
         if not script.exists():
             raise FileNotFoundError(f'Script not found: {script_name}')
         
-        cmd = [sys.executable, str(script)] + list(args)
+        if script.suffix == '.sh':
+            cmd = ['bash', str(script)] + list(args)
+        else:
+            cmd = [sys.executable, str(script)] + list(args)
         if json_output:
             cmd.append('--json')
         

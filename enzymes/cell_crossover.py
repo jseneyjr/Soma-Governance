@@ -6,6 +6,7 @@ import glob
 import yaml
 import json
 from datetime import datetime
+from datetime import timezone
 import re
 from soma_resolve import resolve_workspace
 
@@ -96,7 +97,7 @@ def main():
     slug = re.sub(r'[^a-z0-9 ]', '', merged_hypothesis.lower())
     slug = re.sub(r'\s+', '-', slug)[:50].strip('-')
 
-    date_str = datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%SZ")
+    date_str = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
 
     type_plural = get_type_plural(merged_type)
     out_dir = os.path.join(workspace, '.soma', 'cells', type_plural)

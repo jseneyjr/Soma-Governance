@@ -1,5 +1,6 @@
 ---
 type: wall
+target_paths: ["*"]
 hypothesis: "Authentication tokens are logged in plaintext"
 prediction: "Log files will contain 'Bearer eyJ' strings"
 falsification: "If logs pass regex scan for JWTs 5 times, prune"

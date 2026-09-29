@@ -1,5 +1,6 @@
 ---
 type: wall
+target_paths: ["*"]
 hypothesis: "Gradients explode during PPO update phase"
 prediction: "Gradient norm will exceed 100 in the first 5 epochs"
 falsification: "If gradient norm stays below 10 for 50 epochs, prune"
