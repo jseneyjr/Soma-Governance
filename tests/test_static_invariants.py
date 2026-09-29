@@ -150,6 +150,14 @@ def test_backup_and_restore_directory_names_agree():
     uninstall = read(os.path.join(REPO_ROOT, "install", "uninstall.sh"))
 
     created = set(re.findall(r'"\$BACKUP_DIR/([A-Za-z0-9_.-]+)"', install))
+    # install.sh also copies flat files via: cp "source/FILE" "$BACKUP_DIR/"
+    # where the filename is inferred from the source, not explicit in the target.
+    # Match patterns like: cp ".../<filename>" "$BACKUP_DIR/"
+    for m in re.finditer(
+        r'cp\s+(?:-r\s+)?"[^"]*?/([A-Za-z0-9_.-]+)"\s+"\$BACKUP_DIR/"',
+        install,
+    ):
+        created.add(m.group(1))
     referenced = set()
     for line in uninstall.splitlines():
         if line.lstrip().startswith("#") or line.lstrip().startswith("echo"):

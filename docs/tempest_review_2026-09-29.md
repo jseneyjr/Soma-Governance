@@ -18,13 +18,13 @@ The session fixed **22 of 31 genesis findings** — an impressive throughput. Ho
 
 ### TEMPEST-01 — CI does not run the new test suite (SOMA-H06 unfixed)
 
-[`.github/workflows/validate.yml`](file:///home/nseney/.gemini/antigravity/scratch/soma-governance-review/Soma-Governance/.github/workflows/validate.yml) was not modified. The workflow runs `make validate` only. It does not:
+[`.github/workflows/validate.yml`](.github/workflows/validate.yml) was not modified. The workflow runs `make validate` only. It does not:
 - Install `pytest`
 - Run `make test`
 - Include a `windows-latest` matrix entry
 - Parse `install.ps1` or `uninstall.ps1`
 
-The entire new test suite is a local-only safety net. The Makefile `test` target ([Makefile:159-165](file:///home/nseney/.gemini/antigravity/scratch/soma-governance-review/Soma-Governance/Makefile#L159-L165)) also degrades to a vacuous pass when pytest is missing:
+The entire new test suite is a local-only safety net. The Makefile `test` target ([Makefile:159-165](Makefile#L159-L165)) also degrades to a vacuous pass when pytest is missing:
 
 ```make
 @if command -v pytest >/dev/null 2>&1; then \
@@ -43,7 +43,7 @@ The "All tests passed." line executes unconditionally — even when pytest was s
 
 ### TEMPEST-02 — Test assertion logic bug masks C02 regression
 
-[`tests/test_static_invariants.py:80`](file:///home/nseney/.gemini/antigravity/scratch/soma-governance-review/Soma-Governance/tests/test_static_invariants.py#L80):
+[`tests/test_static_invariants.py:80`](tests/test_static_invariants.py#L80):
 ```python
 assert "No such file or directory" not in combined or "cd:" not in combined, (
 ```
@@ -58,7 +58,7 @@ Additionally, line 78 uses `source "$path" 2>&1 || true`, which discards the exi
 
 ### TEMPEST-03 — TTC Oracle remains fail-open (SOMA-H10 partial)
 
-[`enzymes/ttc_oracle.py:74`](file:///home/nseney/.gemini/antigravity/scratch/soma-governance-review/Soma-Governance/enzymes/ttc_oracle.py#L74):
+[`enzymes/ttc_oracle.py:74`](enzymes/ttc_oracle.py#L74):
 ```python
 except Exception as e:
     return f"APPROVED: Oracle evaluation failed ({str(e)})"
@@ -74,7 +74,7 @@ Any exception (network timeout, malformed input, configuration error) results in
 
 ### TEMPEST-W01 — Backup restore never tested at runtime (SOMA-C05 partial coverage)
 
-Every integration test passes `--no-restore` ([test_install_lifecycle.py:72](file:///home/nseney/.gemini/antigravity/scratch/soma-governance-review/Soma-Governance/tests/test_install_lifecycle.py#L72)). The backup directory name fix (genome→rules, organs→skills) was verified by static grep only, never by actually running a restore.
+Every integration test passes `--no-restore` ([test_install_lifecycle.py:72](tests/test_install_lifecycle.py#L72)). The backup directory name fix (genome→rules, organs→skills) was verified by static grep only, never by actually running a restore.
 
 ### TEMPEST-W02 — `.bak.*` orphan cleanup not addressed (SOMA-M05 partial)
 
@@ -98,18 +98,18 @@ The `elif` reordering fix was verified by code reading but has no integration te
 
 | Finding | Verdict | Evidence |
 |:--------|:--------|:---------|
-| **SOMA-C01** | ✅ FIXED | `yaml` import guarded with try/except + regex fallback in both [tools.py:6-9](file:///home/nseney/.gemini/antigravity/scratch/soma-governance-review/Soma-Governance/soma_mcp/tools.py#L6-L9) and [jit_engine.py:23-26](file:///home/nseney/.gemini/antigravity/scratch/soma-governance-review/Soma-Governance/soma_mcp/jit_engine.py#L23-L26) |
-| **SOMA-C02** | ✅ FIXED | Escaped quotes removed in [safety_gate.sh:4](file:///home/nseney/.gemini/antigravity/scratch/soma-governance-review/Soma-Governance/enzymes/safety_gate.sh#L4) and [session_close.sh:4](file:///home/nseney/.gemini/antigravity/scratch/soma-governance-review/Soma-Governance/enzymes/session_close.sh#L4) |
-| **SOMA-C03** | ✅ FIXED | Portable `awk` title-case + `set -euo pipefail` in [cell_create.sh](file:///home/nseney/.gemini/antigravity/scratch/soma-governance-review/Soma-Governance/enzymes/cell_create.sh#L3) |
+| **SOMA-C01** | ✅ FIXED | `yaml` import guarded with try/except + regex fallback in both [tools.py:6-9](soma_mcp/tools.py#L6-L9) and [jit_engine.py:23-26](soma_mcp/jit_engine.py#L23-L26) |
+| **SOMA-C02** | ✅ FIXED | Escaped quotes removed in [safety_gate.sh:4](enzymes/safety_gate.sh#L4) and [session_close.sh:4](enzymes/session_close.sh#L4) |
+| **SOMA-C03** | ✅ FIXED | Portable `awk` title-case + `set -euo pipefail` in [cell_create.sh](enzymes/cell_create.sh#L3) |
 | **SOMA-C04** | ✅ FIXED | Manifest now records `INSTALLED_FILES`/`INSTALLED_SKILLS`/`INSTALLED_HOOKS` arrays at copy sites |
-| **SOMA-C05** | ✅ FIXED | Restore paths corrected (genome→rules, organs→skills) in [uninstall.sh:248-269](file:///home/nseney/.gemini/antigravity/scratch/soma-governance-review/Soma-Governance/install/uninstall.sh#L248-L269) |
+| **SOMA-C05** | ✅ FIXED | Restore paths corrected (genome→rules, organs→skills) in [uninstall.sh:248-269](install/uninstall.sh#L248-L269) |
 | **SOMA-C06** | ✅ FIXED | Backup retention with `MAX_BACKUPS=3` and oldest-first pruning |
-| **SOMA-C07** | ✅ FIXED | Platform validation with `--force` override at [uninstall.sh:55-60](file:///home/nseney/.gemini/antigravity/scratch/soma-governance-review/Soma-Governance/install/uninstall.sh#L55-L60) |
+| **SOMA-C07** | ✅ FIXED | Platform validation with `--force` override at [uninstall.sh:55-60](install/uninstall.sh#L55-L60) |
 | **SOMA-C08** | ✅ FIXED | `elif` chain reordered: `TARGET_FILE` tested before `TARGET_DIR` |
 | **SOMA-C09** | ✅ FIXED | Process substitution replaced with command substitution; `SOMA_MANIFEST` env var used (path injection resolved) |
 | **SOMA-C10** | ✅ FIXED | User data gated behind `--purge-data` flag |
 | **SOMA-C11** | ✅ FIXED | `Resolve-Path (Join-Path $ScriptDir "..")` added |
-| **SOMA-C12** | ✅ FIXED | New 823-line [uninstall.ps1](file:///home/nseney/.gemini/antigravity/scratch/soma-governance-review/Soma-Governance/install/uninstall.ps1) with manifest/restore parity |
+| **SOMA-C12** | ✅ FIXED | New 823-line [uninstall.ps1](install/uninstall.ps1) with manifest/restore parity |
 | **SOMA-H01** | ✅ FIXED | Validate recipe exits non-zero on syntax errors |
 | **SOMA-H03** | ✅ FIXED | Stale `config/genome`→`config/rules` paths corrected |
 | **SOMA-H04** | ✅ FIXED | **91/91** `open()` calls now have `encoding="utf-8"` (mechanically verified) |
@@ -143,7 +143,7 @@ The `elif` reordering fix was verified by code reading but has no integration te
 
 | ID | Severity | Location | Issue |
 |:---|:---------|:---------|:------|
-| **TEMPEST-02** | 🔴 Critical | [test_static_invariants.py:80](file:///home/nseney/.gemini/antigravity/scratch/soma-governance-review/Soma-Governance/tests/test_static_invariants.py#L80) | `or` should be `and` in assertion — masks safety gate regressions |
+| **TEMPEST-02** | 🔴 Critical | [test_static_invariants.py:80](tests/test_static_invariants.py#L80) | `or` should be `and` in assertion — masks safety gate regressions |
 | **TEMPEST-W04** | ⚠️ Warning | `enzymes/ttc_verifier.py` `__main__` | Self-test writes `src/App.jsx` to cwd |
 
 ---

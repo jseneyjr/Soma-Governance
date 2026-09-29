@@ -76,7 +76,9 @@ def main():
     if total_tp > 0 and total_fp > 0:
         system_snr = 10 * math.log10(total_tp / total_fp)
     elif total_tp > 0:
-        system_snr = float('inf')
+        # None is the JSON-safe encoding of "infinite" (RFC 8259 forbids bare
+        # Infinity); format_snr() in cell_fitness.py renders it as ∞ for humans.
+        system_snr = None
     else:
         system_snr = 0.0
     
@@ -118,7 +120,7 @@ def main():
         },
         'signal_quality': {
             'precision': round(system_precision, 4),
-            'snr_db': round(system_snr, 1) if system_snr != float('inf') else 'inf',
+            'snr_db': round(system_snr, 1) if system_snr is not None else None,
             'total_tp': total_tp,
             'total_fp': total_fp
         },
@@ -139,7 +141,7 @@ def main():
         print(f'  {type_diagnosis}')
         print(f'\nSignal Quality:')
         print(f'  Precision: {system_precision:.1%} ({total_tp} TP / {total_fp} FP)')
-        snr_str = f'{system_snr:.1f} dB' if system_snr != float('inf') else '\u221e dB (perfect)'
+        snr_str = f'{system_snr:.1f} dB' if system_snr is not None else '\u221e dB (perfect)'
         print(f'  System SNR: {snr_str}')
         print(f'\nOverall: {activity_diagnosis}')
 

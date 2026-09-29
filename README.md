@@ -3,14 +3,15 @@
 [![License: Apache 2.0](https://img.shields.io/badge/License-Apache_2.0-blue?style=flat-square)](LICENSE)
 [![Genome](https://img.shields.io/badge/Genome-11_Genes-green?style=flat-square)](#-genome)
 [![Organs](https://img.shields.io/badge/Organs-15-purple?style=flat-square)](#-organs)
-[![Enzymes](https://img.shields.io/badge/Enzymes-39-red?style=flat-square)](#%EF%B8%8F-enzymes)
+[![Enzymes](https://img.shields.io/badge/Enzymes-51-red?style=flat-square)](#%EF%B8%8F-enzymes)
 [![Cells](https://img.shields.io/badge/Cells-5_Types-orange?style=flat-square)](#-cells)
-[![Version](https://img.shields.io/badge/Version-0.25.0-informational?style=flat-square)](docs/CHANGELOG.md)
+[![Tests](https://img.shields.io/badge/Tests-178-brightgreen?style=flat-square)](#testing--ci)
+[![Version](https://img.shields.io/badge/Version-0.30.0-informational?style=flat-square)](docs/CHANGELOG.md)
 [![Blog Post](https://img.shields.io/badge/Blog-dev.to-black?style=flat-square&logo=devdotto)](https://dev.to/nseney1/rules-that-cant-prove-themselves-die-adaptive-governance-for-ai-coding-agents-25bn)
 
 **Your codebase is a living organism. Soma gives it an immune system.**
 
-Soma is an adaptive governance framework that generates, measures, and evolves its own rules based on observed agent behavior. Built on biological natural selection, it ensures AI coding agents remain grounded, efficient, and safe — then gets out of the way.
+Soma is an adaptive governance framework that generates, measures, and evolves its own rules based on observed agent behavior. Built on biological natural selection and adversarial verification, it ensures AI coding agents remain grounded, efficient, and safe — then gets out of the way.
 
 > **The Problem**: Ungoverned AI coding agents waste 25–56% of tokens in circular rework loops, hallucinated API calls, and broken assumptions. Static rule files (`.cursorrules`, `CLAUDE.md`) help but never adapt.
 >
@@ -37,6 +38,8 @@ bash install/install.sh gemini --local
 # Other platforms
 bash install/install.sh kiro       # AWS Kiro
 bash install/install.sh copilot    # GitHub Copilot
+bash install/install.sh claude     # Claude Code (.mcp.json + CLAUDE.md)
+bash install/install.sh mcp        # Any MCP-compatible agent
 ```
 
 ### MCP Server (Recommended)
@@ -55,7 +58,7 @@ Add Soma as an MCP server in your AI agent's config — **zero API key needed**.
 }
 ```
 
-Works with Gemini Antigravity, Claude Code, Cursor, and any MCP-compatible agent. Tools exposed: `soma_create_cell`, `soma_scan`, `soma_grade`, `soma_coverage`, `soma_fitness`, `soma_list_cells`.
+Works with Gemini Antigravity, Claude Code, Cursor, and any MCP-compatible agent. Tools exposed: `soma_create_cell`, `soma_scan`, `soma_grade`, `soma_coverage`, `soma_fitness`, `soma_list_cells`, `soma_report_outcome`, `soma_propose_change`, `soma_audit_security`, `soma_audit_performance`.
 
 ### SDK
 
@@ -106,27 +109,89 @@ Works with **any AI provider** — Gemini, Anthropic, OpenAI — or via MCP stdi
 Soma models your codebase as a living organism. Every component maps to biology:
 
 ```text
-┌─────────────────────────────────────────────────────────────┐
-│  🧬 GENOME (genome/)         11 Genes — inherited DNA      │
-│  🫀 ORGANS (organs/)          15 Organs — complex skills    │
-│  ⚗️  ENZYMES (enzymes/)       39 Enzymes — catalytic scripts│
-├─────────────────────────────────────────────────────────────┤
-│  🌲 BIOME (Global)      → Environmental Pressure Levels    │
-│     Breeze → Gale → Trident → Maelstrom → Tempest          │
-│  🍄 FOREST FLOOR        → Analytical Prongs                │
-│     Spores → Mycelium → Roots → Thorns → Bedrock → Mulch   │
-│  🌱 CELLS (.soma/cells/) → Adaptive Immune Response        │
-│     Vacuoles · Chloroplasts · Walls · Membranes             │
-└─────────────────────────────────────────────────────────────┘
+┌─────────────────────────────────────────────────────────────────┐
+│  🧬 GENOME (genome/)           11 Genes — inherited DNA        │
+│  🫀 ORGANS (organs/)           15 Organs — complex skills       │
+│  ⚗️  ENZYMES (enzymes/)        51 Enzymes — catalytic scripts   │
+├─────────────────────────────────────────────────────────────────┤
+│  🛡️ IMMUNE SYSTEM              Two-Layer Verification          │
+│     Layer 1: Deterministic AST tools (ungameable)               │
+│     Layer 2: Adversarial information-partitioned agents         │
+├─────────────────────────────────────────────────────────────────┤
+│  🌲 BIOME (Global)       → Environmental Pressure Levels       │
+│     Breeze → Gale → Trident → Maelstrom → Tempest              │
+│  🍄 FOREST FLOOR         → Analytical Prongs                   │
+│     Spores → Mycelium → Roots → Thorns → Bedrock → Mulch       │
+│  🌱 CELLS (.soma/cells/) → Adaptive Immune Response            │
+│     Vacuoles · Chloroplasts · Walls · Membranes · Plasmodesmata │
+└─────────────────────────────────────────────────────────────────┘
 ```
 
 | Biological Layer | Directory | What It Contains |
 |:-----------------|:----------|:-----------------|
 | **Genome** | `genome/` | 11 Genes — the organism's DNA. Inherited behavioral rules, rarely mutated. |
 | **Organs** | `organs/` | 15 Organs — complex multi-cell structures. Skills like adaptive-reviewer, genesis, security-audit. |
-| **Enzymes** | `enzymes/` | 39 Enzymes — small catalysts. Scripts that drive specific reactions (fitness scoring, cell creation, team sync). |
-| **Immune System** | `immune_system/` | Mulch queue, immune data. The organism's self-defense memory. |
+| **Enzymes** | `enzymes/` | 51 Enzymes — small catalysts. Scripts that drive specific reactions (fitness scoring, cell creation, team sync). |
+| **Immune System** | `immune_system/` | Two-layer verification framework + mulch queue. The organism's self-defense and trust-but-verify layer. |
 | **Cells** | `.soma/cells/` | Per-repo adaptive invariants. Generated, tested, evolved, or driven to extinction. |
+
+---
+
+## 🛡️ Immune System — Two-Layer Verification
+
+Soma v0.30 introduces a two-layer verification framework that eliminates the "trust the agent" problem through deterministic tooling and adversarial information asymmetry.
+
+### Layer 1: Deterministic Tools (Ungameable)
+
+AST-based analysis tools that produce objective evidence — no LLM judgment involved:
+
+| Tool | What It Catches |
+|:-----|:----------------|
+| `persistence_checker` | Dict mutations missing serialization (the exact bug class that caused v0.30's epoch persistence gap) |
+| `call_graph` | Orphan/dead functions defined but never called |
+| `mutation_tester` | Tautological tests that pass regardless of code mutations |
+| `branch_coverage` | Uncovered branches via `pytest-cov` / stdlib `trace` fallback |
+| `import_guard` | Unguarded third-party imports that crash CI (born from its own CI failure) |
+
+All tools return `ToolEvidence` with a boolean verdict — the `runner.py` orchestrator produces a combined gate verdict.
+
+### Layer 2: Adversarial Information-Partitioned Agents
+
+Two agents review the same change but see **different information**:
+
+```text
+┌─────────────────┐     ┌──────────────────┐
+│   SPEC AGENT    │     │   CODE AGENT     │
+│ Sees: task spec │     │ Sees: code + tests│
+│ Predicts: risks │     │ Claims: what holds│
+└────────┬────────┘     └────────┬─────────┘
+         │                       │
+         └───────┐   ┌──────────┘
+                 ▼   ▼
+         ┌───────────────┐
+         │    ARBITER     │
+         │ (Set Algebra)  │
+         │ 14 Risk Cats   │
+         │ SHIP/BLOCK/    │
+         │ REVISE         │
+         └───────────────┘
+```
+
+- **No collusion**: Agents can't agree on answers because they don't see the same inputs.
+- **Deterministic arbiter**: Uses pure set intersection/difference over a fixed 14-category risk taxonomy — no LLM in the arbitration loop.
+- **Verdicts**: `SHIP` (convergence), `BLOCK` (critical divergence), `REVISE` (non-critical divergence).
+
+### Transcript Verifier
+
+Independently verifies subagent self-reported claims against JSONL transcript evidence:
+
+```python
+from immune_system.verification.transcript_verifier import extract_metrics, verify_claim
+
+metrics = extract_metrics("path/to/transcript.jsonl")
+result = verify_claim(metrics, claimed_first_pass=True, claimed_test_count=45)
+# → ToolEvidence(verdict=False, detail="Agent claimed first-pass but transcript shows 3 fix cycles")
+```
 
 ---
 
@@ -227,7 +292,7 @@ Generate → Score (Telomere Shortening) → Adapt / Crossover → Differentiate
 
 **Evolutionary operators**: Crossover (merges high-fitness cells), Tournament Selection (diversity-preserving), Differentiation (vacuoles harden into walls), Telomere Shortening (confidence decays unless reinforced), Apoptosis (immediate eviction on excess false positives), Horizontal Gene Transfer (cross-project sharing with probation), Lineage Tracking (phylogenetic provenance).
 
-**Research-grade analysis**: Bayesian Fitness (Beta-Binomial posterior), Quorum Sensing (systemic multi-cell triggers), Coverage Maps, Governance Replay ("would today's cells have caught this bug?"), Counterfactual ROI, Adversarial Testing, Entropy Rate (fossilization detection), Report Card (A+ through F).
+**Research-grade analysis**: Bayesian Fitness (Beta-Binomial posterior with Laplace smoothing), Quorum Sensing (systemic multi-cell triggers), Coverage Maps, Governance Replay ("would today's cells have caught this bug?"), Counterfactual ROI, Adversarial Testing, Entropy Rate (fossilization detection), Report Card (A+ through F).
 
 **Tiered enforcement**: Cells earn their enforcement tier through demonstrated defect prevention — `advisory` (prompt injection) → `mechanical` (pre-commit block at 85%) → `gate` (runtime assertion at 95%). Escaped Defect Tracking from CI/tests/crashes provides ground truth that breaks the self-evaluation loop.
 
@@ -235,14 +300,16 @@ Generate → Score (Telomere Shortening) → Adapt / Crossover → Differentiate
 
 ## ⚗️ Enzymes
 
-39 catalytic scripts that drive the organism's reactions. See [SCRIPTS.md](docs/SCRIPTS.md) for full documentation.
+51 catalytic scripts that drive the organism's reactions. See [SCRIPTS.md](docs/SCRIPTS.md) for full documentation.
 
 | Category | Enzymes |
 |:---------|:--------|
-| **Cell Lifecycle** | `cell_fitness.py`, `cell_selection.sh`, `cell_adapt.py`, `cell_scan.py`, `cell_signal.sh`, `cell_create.sh`, `cell_crossover.py`, `cell_metamorphose.py`, `cell_promote.py`, `cell_transfer.sh`, `cell_enforce.py` |
-| **Analysis** | `cell_quorum.py`, `cell_coverage.py`, `immune_replay.py`, `immune_trends.py`, `immune_grade.py`, `immune_entropy.py`, `cell_adversarial.py`, `cell_deps.py`, `cell_escaped_defects.py` |
+| **Cell Lifecycle** | `cell_fitness.py`, `cell_selection.sh`, `cell_adapt.py`, `cell_scan.py`, `cell_signal.sh`, `cell_create.sh`, `cell_create_nl.py`, `cell_crossover.py`, `cell_metamorphose.py`, `cell_promote.py`, `cell_demote.py`, `cell_transfer.sh`, `cell_enforce.py`, `cell_tournament.py` |
+| **Analysis** | `cell_quorum.py`, `cell_coverage.py`, `immune_replay.py`, `immune_trends.py`, `immune_grade.py`, `immune_entropy.py`, `cell_adversarial.py`, `cell_deps.py`, `cell_escaped_defects.py`, `fitness_landscape.py`, `bayesian_score.py` |
+| **Perception & Homeostasis** | `soma_interoception.py`, `resilience_engine.py`, `soma_coherence.py`, `outcome_engine.py` |
 | **AI-Assisted** | `cell_create_nl.py` — NL cell creation via any LLM provider or MCP host delegation |
-| **Infrastructure** | `immune_init.sh`, `session_close.sh`, `escalation_sentinel.sh`, `soma_resolve.py`, `safety_gate.sh`, `team_sync.sh`, `metrics_snapshot.sh`, `token_census.py` |
+| **Infrastructure** | `immune_init.sh`, `session_close.sh`, `escalation_sentinel.sh`, `escalation_sentinel.py`, `soma_resolve.py`, `safety_gate.sh`, `liveness_sentinel.sh`, `team_sync.sh`, `metrics_snapshot.sh`, `token_census.py`, `sweep_session.py` |
+| **Orchestration** | `soma_cli.py`, `soma_run.py`, `soma_sleep.py`, `hgt_ribosome.py`, `ttc_oracle.py`, `ttc_verifier.py`, `inference_provider.py` |
 
 ---
 
@@ -252,7 +319,7 @@ Copy [`soma.conf.example`](install/soma.conf.example) → `soma.conf` to customi
 
 | Variable | Default | Description |
 |:---------|:--------|:------------|
-| `SOMA_PLATFORM` | `gemini` | Target AI platform: `gemini`, `kiro`, `copilot` |
+| `SOMA_PLATFORM` | `gemini` | Target AI platform: `gemini`, `kiro`, `copilot`, `claude`, `mcp` |
 | `SOMA_INFERENCE_PROVIDER` | `auto` | LLM provider: `auto`, `gemini`, `anthropic`, `openai`, `prompt-only` |
 | `DEFAULT_REVIEW_MODE` | `gale` | Session default review intensity |
 | `CELL_TELOMERE_DAYS` | `30` | Days for fitness confidence to halve |
@@ -270,7 +337,7 @@ Copy [`soma.conf.example`](install/soma.conf.example) → `soma.conf` to customi
 | **macOS** | Zsh / Bash | `make install` | `bash install/uninstall.sh` | ✅ | ✅ | ✅ |
 | **WSL** | Bash | `make install` | `bash install/uninstall.sh` | ✅ | ✅ | ✅ |
 | **Windows (Git Bash)** | Bash | `make install` | `bash install/uninstall.sh` | ✅ | ✅ | ✅ |
-| **Windows (PowerShell)** | PowerShell | `.\install.ps1` | `.\install\uninstall.ps1` | ✅ | ✅ | ❌ |
+| **Windows (PowerShell)** | PowerShell | `.\\install.ps1` | `.\\install\\uninstall.ps1` | ✅ | ✅ | ❌ |
 
 ### Team Setup
 
@@ -299,18 +366,19 @@ Recent academic studies ([arXiv:2602.11988](https://arxiv.org/abs/2602.11988), [
 
 ### 3. The "Self-Grading" Trap
 **The Critique**: If an AI agent generates rules and then grades its own rules, isn't that just memory with extra steps? How do we know the cells are working, and it's not just the underlying foundation models getting better?
-**Soma's Solution**: **Escaped Defect Tracking**. Soma doesn't rely solely on LLM self-evaluation. It hooks directly into CI/CD pipelines, compiler exit codes, and test suite crashes to establish **Ground Truth**. If a cell fails to prevent a build crash, its fitness drops mechanically. If an LLM attempts to ignore a cell, **TTC (Test-Time Compute) Oracles** intercept the MCP tool call and violently reject the write. 
+**Soma's Solution**: **Two-Layer Verification**. Layer 1 uses deterministic AST tools (mutation testing, call graph analysis, branch coverage, import guards) that produce objective evidence no LLM can game. Layer 2 uses adversarial information-partitioned agents — a Spec Agent and Code Agent that can't collude because they see different inputs — with a deterministic set-algebra Arbiter. The Transcript Verifier independently checks subagent claims against actual execution logs. Additionally, Escaped Defect Tracking hooks into CI/CD exit codes to establish ground truth.
 
-| Feature | Standard AI Agents | Prompt Files (`.cursorrules`) | **Soma (Phase 25)** |
+| Feature | Standard AI Agents | Prompt Files (`.cursorrules`) | **Soma (v0.30)** |
 |:--|:---:|:---:|:---:|
 | **Rule Enforcement** | Relies on LLM obedience | Relies on LLM obedience | **Mechanistic rejection via TTC Oracles** |
+| **Verification** | Self-grading | None | **Two-layer: deterministic tools + adversarial agents** |
 | **Context Management** | Pollutes main thread | Fixed 20%+ overhead | **JIT Context Loading** |
 | **Adaptability** | Static training | Manual updates | **Self-evolving via Darwinian fitness** |
 | **Ground Truth** | N/A | N/A | **Escaped Defect Tracking (CI/CD hooks)** |
 | **Failure modes caught** | Syntax errors | Generic guidelines | **Rework loops, lazy reads, and hallucinations** |
 | **Platform lock-in** | Vendor specific | Platform specific | **Universal via MCP stdio** |
 
-Instead of pleading with the AI in a system prompt to "think step-by-step," Soma acts as an evolutionary immune system. **Rules that can't prove themselves die. Agents that refuse to research are blocked.**
+Instead of pleading with the AI in a system prompt to "think step-by-step," Soma acts as an evolutionary immune system. **Rules that can't prove themselves die. Agents that refuse to research are blocked. Claims that don't match the tape are caught.**
 
 ---
 
@@ -320,6 +388,7 @@ Instead of pleading with the AI in a system prompt to "think step-by-step," Soma
 - **Total System Idle Overhead**: 4,380 tokens/turn (stabilized via JIT Context)
 - **Waste Rate**: < 1.0% in best governed sessions (via Last Gasp & TTC Oracles)
 - **Calibrated Token Ratio**: 1.35 measured directly against models
+- **Verification Framework**: 178 tests across 14 test files
 
 See [METRICS.md](docs/METRICS.md) for a complete system breakdown. See [BENCHMARK.md](docs/BENCHMARK.md) for the standardized governance effectiveness benchmark.
 
@@ -327,15 +396,51 @@ See [METRICS.md](docs/METRICS.md) for a complete system breakdown. See [BENCHMAR
 
 1. **Evidence over intuition** — Every gene traces back to observed steps wasted. No gene exists "just in case."
 2. **Accuracy over speed** — The agent must never sacrifice correctness to save tokens.
-3. **Genes as a system** — Cross-references between genes are intentional. Providence §3 mandates read-before-write; refactoring-pilot operationalizes it as a phased workflow.
-4. **Continuous validation** — Governance is a living system that evolves with each session. TTC Oracles validate actions before they waste context.
-5. **Installation completeness** — Governance installed at partial fidelity provides false assurance. Every installer path must deploy genome, organs, and hooks with the same completeness.
-6. **Hypothesis-driven governance** — Every extension must carry its own falsifiability criteria. Generated cells (Chloroplasts, Vacuoles) must specify what they predict, how to measure it, and when to prune if unvalidated. The scientific method is not just how we evolve the system — it IS the system.
-7. **Independent validation** — Self-evaluated fitness is necessary but not sufficient. Escaped defects from CI, tests, and crashes provide the ground truth that breaks the agent-grades-itself loop.
+3. **Convergence as verification** — Independent agents with asymmetric information arriving at the same conclusion is stronger evidence than any single agent's assessment.
+4. **Genes as a system** — Cross-references between genes are intentional. Providence §3 mandates read-before-write; refactoring-pilot operationalizes it as a phased workflow.
+5. **Continuous validation** — Governance is a living system that evolves with each session. TTC Oracles validate actions before they waste context.
+6. **Installation completeness** — Governance installed at partial fidelity provides false assurance. Every installer path must deploy genome, organs, and hooks with the same completeness.
+7. **Hypothesis-driven governance** — Every extension must carry its own falsifiability criteria. Generated cells (Chloroplasts, Vacuoles) must specify what they predict, how to measure it, and when to prune if unvalidated. The scientific method is not just how we evolve the system — it IS the system.
+8. **Independent validation** — Self-evaluated fitness is necessary but not sufficient. Escaped defects from CI, tests, and crashes provide the ground truth that breaks the agent-grades-itself loop.
+
+## Testing & CI
+
+### Test Suite
+
+```bash
+make test       # Full validation + pytest
+make validate   # Shell syntax, Python compilation, JSON templates
+make doctor     # System health check
+```
+
+**178 tests** across 14 test files covering:
+
+| Suite | Tests | Coverage |
+|:------|:-----:|:---------|
+| Static invariants | 23 | AST checks, encoding, backup naming, zero-dep MCP |
+| Import guard | 21 | Third-party import detection, stdlib classification |
+| Bayesian fitness | 19 | Laplace scoring, monotonicity, wall budgets, JIT stats |
+| Critical fixes | 17 | Shared scoring, status classification, decay idempotency |
+| Transcript verifier | 13 | Metric extraction from JSONL, claim verification |
+| Arbiter | 12 | Set operations on risk taxonomy, convergence/divergence |
+| Immune verify | 12 | Information-partitioned prompts, schema validation |
+| Install lifecycle | 11 | Multi-platform install/uninstall, manifest integrity |
+| Layer 1 runner | 11 | Orchestration, persistence gaps, orphan detection, gates |
+| Exponential decay | 10 | Mathematical properties, champion displacement |
+| Mutation tester | 6 | AST mutation generation, survival detection |
+| Branch coverage | 4 | Trace/pytest-cov branch coverage |
+| Decay integration | 4 | End-to-end decay across on-disk YAML |
+| Local promotion | 2 | Promotion path applies decay before scoring |
+
+### CI/CD Pipeline
+
+GitHub Actions runs on `ubuntu-latest`, `macos-latest`, and `windows-latest`:
+- **Linux/macOS**: Shell syntax validation → Python compilation → pytest → hardcoded path audit → script count invariant (≥16) → privacy audit → dry-run install sweep (all 5 platforms)
+- **Windows**: PowerShell AST parsing → dry-run install with rule count assertion
 
 ## Phylogeny
 
-Soma has evolved across 25 measured phases, from manually written logic into a self-adapting organism:
+Soma has evolved across 30 measured phases, from manually written logic into a self-adapting organism:
 
 | Phases | Theme |
 |:-------|:------|
@@ -353,6 +458,8 @@ Soma has evolved across 25 measured phases, from manually written logic into a s
 | 21 | **Tiered Enforcement** — Advisory → mechanical → gate promotion lifecycle |
 | 22 | **Soma Rebirth** — Biological naming unification, subagent scaling |
 | 23–25 | **TTC & JIT Context** — Last Gasp, TTC Oracles, zero-waste validation |
+| 26–29 | **Perception & Homeostasis** — Interoception, resilience engine, signal coherence |
+| 30 | **Two-Layer Verification** — Deterministic tools, adversarial pairing, transcript verification |
 
 Read [PHYLOGENY.md](docs/PHYLOGENY.md) for the complete evolutionary narrative.
 
@@ -363,29 +470,12 @@ Read [PHYLOGENY.md](docs/PHYLOGENY.md) for the complete evolutionary narrative.
 | [**Blog Post**](https://dev.to/nseney1/rules-that-cant-prove-themselves-die-adaptive-governance-for-ai-coding-agents-25bn) | "Rules That Can't Prove Themselves Die" — full introduction |
 | [CHANGELOG](docs/CHANGELOG.md) | Release history |
 | [PHYLOGENY](docs/PHYLOGENY.md) | Phase-by-phase evolutionary narrative |
-| [SCRIPTS](docs/SCRIPTS.md) | Full enzyme catalog (39 scripts) |
+| [SCRIPTS](docs/SCRIPTS.md) | Full enzyme catalog (51 scripts) |
 | [BENCHMARK](docs/BENCHMARK.md) | Reproducible governance effectiveness protocol |
 | [METRICS](docs/METRICS.md) | Empirical measurement methodology |
 | [ABSTRACT](docs/ABSTRACT.md) | Research paper abstract |
 | [CONTRIBUTING](docs/CONTRIBUTING.md) | Contribution guidelines |
 | [Templates](templates/README.md) | Domain-specific cell template packs |
-
-## 🛡️ Production Audit & Stability
-
-Soma is rigorously tested for production-grade agentic workflows. In our latest architectural sweep (Phase 25):
-- **First Pass Success Rate (FPSR)**: Stabilized at **97.3%** for massive (1,700+ step) refactoring sessions.
-- **Context Overhead**: Fixed at **~4,380 idle tokens**, managed dynamically via JIT Context.
-- **Waste Rate**: Reduced to **< 1.0%** circular rework loops.
-- **Mechanical Enforcement**: Test-Time Compute (TTC) Oracles now proactively intercept and reject overconfident LLM hallucinations *before* they execute file modifications.
-
-Soma runs securely as an isolated MCP server (JSON-RPC over stdio) with zero API keys exposed to the environment, and zero syntax errors across its 39 core bash enzymes.
-
-### Testing & CI
-
-- **Test suite**: `make test` runs pytest against `tests/` (requires `pip install pytest`)
-- **Validation**: `make validate` checks shell syntax, Python compilation, and JSON templates
-- **CI matrix**: GitHub Actions runs on `ubuntu-latest`, `macos-latest`, and `windows-latest`
-- **Windows CI**: PowerShell scripts are parsed for syntax errors; dry-run install asserts non-zero rule count
 
 ## Next Steps
 

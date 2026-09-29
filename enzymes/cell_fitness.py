@@ -7,6 +7,7 @@ from datetime import datetime
 from datetime import timezone
 
 import yaml
+from bayesian_score import bayesian_score
 from soma_resolve import resolve_workspace
 
 
@@ -115,10 +116,15 @@ def main():
         
 
         if triggers == 0:
-            score = None
+            # Bayesian posterior mean: Beta(1,1) → 0.5 (maximally uncertain)
+            score = bayesian_score(0, 0, impact_weight)
             snr_db = 0.0
+            is_unobserved = True
         else:
-            score = (tp / triggers) * impact_weight
+            # Bayesian posterior mean: Beta(tp+1, fp+1) / Laplace smoothing
+            # Converges to raw tp/triggers as triggers increase
+            score = bayesian_score(tp, triggers, impact_weight)
+            is_unobserved = False
             
             trigger_rate = triggers / max(total_sessions, 1)
             specificity_penalty = 1.0 - min(trigger_rate, 1.0)
@@ -173,7 +179,7 @@ def main():
             else:
                 status = "APOPTOSIS"
 
-        elif dec_score is not None:
+        elif not is_unobserved and dec_score is not None:
             if dec_score > 0.7:
                 status = "SURVIVE"
             elif 0.3 <= dec_score <= 0.7:
@@ -269,7 +275,7 @@ def main():
     if args.prune:
         results = [r for r in results if r['status'] in ("EXTINCT", "DORMANT")]
     elif args.promote:
-        results = [r for r in results if r['score'] is not None and r['score'] > 0.7]
+        results = [r for r in results if r['score'] is not None and r['score'] > 0.7 and r.get('triggers', 0) > 0]
 
     if args.cross_repo:
         def resolve_metrics_dir(workspace):

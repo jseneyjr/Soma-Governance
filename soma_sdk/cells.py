@@ -26,7 +26,7 @@ class CellFitness:
         if tp > 0 and fp > 0:
             return round(10 * math.log10(tp / fp), 1)
         elif tp > 0:
-            return float('inf')
+            return None  # JSON-safe encoding of infinite SNR (RFC 8259)
         return 0.0
     
     def bayesian(self, confidence=0.90):
