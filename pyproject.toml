@@ -51,3 +51,6 @@ include-package-data = true
 
 [tool.setuptools.package-data]
 soma_sdk = ["py.typed"]
+
+[tool.pytest.ini_options]
+pythonpath = ["."]
