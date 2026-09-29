@@ -1,6 +1,6 @@
 """Analysis utilities for governance metrics."""
 import math
-from typing import Dict, List
+from typing import Dict
 
 
 def shannon_diversity(type_counts: Dict[str, int]) -> dict:

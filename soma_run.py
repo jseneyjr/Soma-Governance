@@ -26,21 +26,21 @@ Usage:
   soma.end_session()
 """
 
+import json
 import os
 import sys
-import json
 from dataclasses import dataclass, field
-from typing import Optional, List, Dict
+from typing import Dict, List, Optional
 
 # Add Soma enzymes to path
 SOMA_DIR = os.path.dirname(os.path.abspath(__file__))
 ENZYMES_DIR = os.path.join(SOMA_DIR, "enzymes")
 sys.path.insert(0, ENZYMES_DIR)
 
-from soma_interoception import calculate_internal_state
 from resilience_engine import calculate_stress_response
-from ttc_verifier import TTCVerifier, soma_propose_change
 from soma_coherence import CoherenceSignal, check_coherence
+from soma_interoception import calculate_internal_state
+from ttc_verifier import soma_propose_change
 
 
 @dataclass
@@ -111,18 +111,18 @@ class SomaOrchestrator:
         )
         print(f"[2/3] Resilience: {resilience['status']}")
         if resilience["status"] == "CRITICAL_STRESS":
-            print(f"  ⚠️  Graceful Reset triggered.")
+            print("  ⚠️  Graceful Reset triggered.")
             print(f"  {resilience['payload']}")
             self.state.consecutive_failures = 0  # Reset after intervention
             self.state.turns_since_grounding = 0
             return {"gate": "RESET", "stage": "resilience", "detail": resilience}
         elif resilience["status"] == "CONTEXT_DRIFT":
-            print(f"  ⚠️  Grounding Probe triggered.")
+            print("  ⚠️  Grounding Probe triggered.")
             print(f"  {resilience['payload']}")
             self.state.turns_since_grounding = 0  # Reset drift counter
 
         # ── Stage 3: TTC Verifier ───────────────────────────────
-        print(f"[3/3] TTC Verifier: running...")
+        print("[3/3] TTC Verifier: running...")
         ttc_result = soma_propose_change(file_path, proposal, self.active_playbooks)
         approved = "SUCCESS" in ttc_result
         self.state.last_ttc_approved = approved
@@ -187,7 +187,7 @@ class SomaOrchestrator:
     def end_session(self) -> Dict:
         """Run Sleep Engine + check for HGT triggers."""
         print(f"\n{'═'*60}")
-        print(f"🧬 SOMA SESSION END — Sleep Cycle Starting")
+        print("🧬 SOMA SESSION END — Sleep Cycle Starting")
         print(f"{'═'*60}")
 
         sleep_script = os.path.join(ENZYMES_DIR, "soma_sleep.py")
@@ -208,8 +208,7 @@ class SomaOrchestrator:
             flags_path = os.path.join(self.workspace, ".soma", "metrics", "coherence_flags.jsonl")
             os.makedirs(os.path.dirname(flags_path), exist_ok=True)
             with open(flags_path, "a") as f:
-                for flag in self.state.coherence_flags:
-                    f.write(json.dumps({"flag": flag, "turns": self.state.turns_elapsed}) + "\n")
+                f.writelines(json.dumps({"flag": flag, "turns": self.state.turns_elapsed}) + "\n" for flag in self.state.coherence_flags)
             print(f"  📋 {len(self.state.coherence_flags)} coherence flag(s) logged for Sleep analysis.")
 
         summary = {

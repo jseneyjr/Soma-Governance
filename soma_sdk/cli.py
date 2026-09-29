@@ -1,6 +1,8 @@
 """Command Line Interface for Soma."""
 import argparse
+
 from soma_sdk.governance import Governance
+
 
 def main():
     parser = argparse.ArgumentParser(description="Soma CLI")
