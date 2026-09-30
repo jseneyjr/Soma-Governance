@@ -22,7 +22,10 @@ import json
 import re
 import glob
 import fnmatch
-import yaml
+try:
+    import yaml
+except ImportError:
+    yaml = None
 from datetime import datetime, timezone
 
 
@@ -302,6 +305,113 @@ def capture_mcp_outcomes(workspace):
         pass
     return outcomes
 
+
+def capture_human_insight_signals(workspace):
+    """Read NEW human insight annotations and produce fitness signals.
+
+    Uses a byte-offset cursor (.soma/insight_cursor) to only process
+    insights added since the last run, preventing runaway fitness
+    inflation from re-applying historical insights.
+
+    Returns signals compatible with update_cell_fitness() schema:
+      - _path: absolute path to cell file
+      - signal: float (positive = boost)
+      - cell: cell name
+      - reasons: list of explanation strings
+      - verified: True (human ground truth)
+      - signal_type: 'human_insight' or 'blind_spot'
+      - weight: configurable (default 0.5)
+      - files: context files from the insight
+
+    Blind spot signals (uncovered insights) have _path=None and are
+    excluded from update_cell_fitness but included for reporting.
+    """
+    insights_file = os.path.join(workspace, '.soma', 'human_insights.jsonl')
+    if not os.path.isfile(insights_file):
+        return []
+
+    # Read cursor — byte offset of last processed position
+    cursor_file = os.path.join(workspace, '.soma', 'insight_cursor')
+    cursor_offset = 0
+    if os.path.isfile(cursor_file):
+        try:
+            with open(cursor_file, 'r', encoding='utf-8') as f:
+                cursor_offset = int(f.read().strip())
+        except (ValueError, OSError):
+            cursor_offset = 0
+
+    # Read configurable weight
+    weight = 0.5
+    config_path = os.path.join(workspace, '.soma', 'config.yaml')
+    if os.path.isfile(config_path):
+        try:
+            with open(config_path, 'r', encoding='utf-8') as f:
+                config = yaml.safe_load(f) or {}
+            weight = float(config.get('insight_signal_weight', 0.5))
+        except Exception:
+            pass
+
+    # Build cell name → file path index
+    cell_paths = {}
+    cells_dir = os.path.join(workspace, '.soma', 'cells')
+    if os.path.isdir(cells_dir):
+        for cell_file in glob.glob(os.path.join(cells_dir, '**', '*.md'), recursive=True):
+            name = os.path.splitext(os.path.basename(cell_file))[0]
+            cell_paths[name] = cell_file
+
+    signals = []
+    new_offset = cursor_offset
+    try:
+        with open(insights_file, 'r', encoding='utf-8') as f:
+            f.seek(cursor_offset)
+            for line in f:
+                if not line.strip():
+                    continue
+                try:
+                    record = json.loads(line)
+                except json.JSONDecodeError:
+                    continue
+
+                if record.get('was_covered'):
+                    # Covered insight — boost matching cells
+                    for cell_name in record.get('covering_cells', []):
+                        cell_path = cell_paths.get(cell_name)
+                        if cell_path:
+                            signals.append({
+                                'cell': cell_name,
+                                '_path': cell_path,
+                                'signal': weight,
+                                'reasons': [f"human insight: {record.get('insight', '')[:80]}"],
+                                'verified': True,
+                                'signal_type': 'human_insight',
+                                'weight': weight,
+                                'files': record.get('context_files', []),
+                            })
+                else:
+                    # Uncovered insight — governance blind spot
+                    signals.append({
+                        'cell': None,
+                        '_path': None,
+                        'signal': 0.0,
+                        'reasons': [f"blind spot: {record.get('insight', '')[:80]}"],
+                        'verified': True,
+                        'signal_type': 'blind_spot',
+                        'weight': weight,
+                        'files': record.get('context_files', []),
+                    })
+            new_offset = f.tell()
+    except Exception:
+        pass
+
+    # Advance cursor so these insights aren't reprocessed
+    if new_offset > cursor_offset:
+        try:
+            with open(cursor_file, 'w', encoding='utf-8') as f:
+                f.write(str(new_offset))
+        except OSError:
+            pass
+
+    return signals
 
 # ── Frontmatter Parser ────────────────────────────────────────────────
 
@@ -621,20 +731,36 @@ def main():
     if mcp:
         outcomes['mcp'] = mcp
 
+    # Human insight signals (verified ground truth from user annotations)
+    insight_signals = capture_human_insight_signals(workspace)
+    blind_spots = [s for s in insight_signals if s.get('signal_type') == 'blind_spot']
+    cell_boosts = [s for s in insight_signals if s.get('_path') is not None]
+
+    if blind_spots:
+        print(f"    {len(blind_spots)} governance blind spot(s) detected from human insights")
+
     # 2. Match cells to changed files
     changed_files = _get_changed_files(workspace)
     triggered = match_cells_to_changes(workspace, changed_files)
 
-    if not triggered:
+    if not triggered and not cell_boosts:
         print("    No cells matched changed files.")
         return
 
     # 3. Compute fitness signals (ACE reflector step)
-    signals = compute_fitness_signals(triggered, outcomes)
+    signals = compute_fitness_signals(triggered, outcomes) if triggered else []
+
+    # Merge human insight signals, deduplicating cells already scored
+    existing_paths = {s['_path'] for s in signals if '_path' in s}
+    for boost in cell_boosts:
+        if boost['_path'] not in existing_paths:
+            signals.append(boost)
+            existing_paths.add(boost['_path'])
 
     # 4. Update cells and log with full provenance
-    update_cell_fitness(workspace, signals)
-    append_fitness_log(workspace, signals, outcomes)
+    if signals:
+        update_cell_fitness(workspace, signals)
+        append_fitness_log(workspace, signals, outcomes)
 
     # 5. Print summary
     verified_count = sum(1 for s in signals if s.get('verified'))
