@@ -20,7 +20,7 @@ def create_cell_from_description(description, domain_hint=None, cell_type=None, 
     provider = resolve_provider(workspace, provider_name)
     
     # Load existing cells as examples
-    import glob, yaml
+    import glob
     examples = []
     cells_dir = os.path.join(workspace, '.soma', 'cells')
     if os.path.isdir(cells_dir):
@@ -168,7 +168,15 @@ def create_cell_from_insight_cluster(cluster: dict, workspace: str) -> str:
                     if _yaml is not None:
                         existing_fm = _yaml.safe_load(fm_text_existing) or {}
                     else:
+                        # Lightweight line-based extraction without pyyaml
                         existing_fm = {}
+                        for fm_line in fm_text_existing.splitlines():
+                            fm_line = fm_line.strip()
+                            if ':' in fm_line:
+                                k, _, v = fm_line.partition(':')
+                                v = v.strip()
+                                if k.strip() == 'triggers' and v.isdigit():
+                                    existing_fm.setdefault('fitness', {})['triggers'] = int(v)
                     existing_fitness = existing_fm.get('fitness')
                     if existing_fitness and isinstance(existing_fitness, dict):
                         if existing_fitness.get('triggers', 0) > 0:
@@ -235,7 +243,6 @@ def main():
         return
     
     # Parse the generated YAML to determine type and create filename
-    import yaml
     try:
         if cell_content.startswith('```'):
             # Strip markdown code fences if present
@@ -245,7 +252,18 @@ def main():
         
         if cell_content.startswith('---'):
             yaml_block = cell_content[3:cell_content.find('---', 3)]
-            fm = yaml.safe_load(yaml_block)
+            if _yaml is not None:
+                fm = _yaml.safe_load(yaml_block)
+            else:
+                # Lightweight fallback: extract type and hypothesis
+                fm = {}
+                for fm_line in yaml_block.splitlines():
+                    fm_line = fm_line.strip()
+                    if ':' in fm_line:
+                        k, _, v = fm_line.partition(':')
+                        k, v = k.strip(), v.strip().strip('"').strip("'")
+                        if k in ('type', 'hypothesis', 'id'):
+                            fm[k] = v
         else:
             print('Warning: Could not parse generated YAML frontmatter')
             fm = {}
