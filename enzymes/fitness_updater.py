@@ -131,6 +131,8 @@ def extract_modified_files(transcript_path, platform=None):
                 if args:
                     break
             # Try each known target file key
+            if not isinstance(args, dict):
+                continue
             for tf_key in target_file_keys:
                 target = args.get(tf_key, "")
                 if isinstance(target, str):

@@ -29,32 +29,50 @@ def _load_fitness_evidence(workspace):
         Dict mapping cell_id -> {'triggers': int, 'tp': int, 'fp': int}
     """
     fitness_file = os.path.join(workspace, '.soma', 'evidence', 'fitness.jsonl')
+    outcomes_file = os.path.join(workspace, '.soma', 'evidence', 'outcomes.jsonl')
     evidence = collections.defaultdict(lambda: {'triggers': 0, 'tp': 0, 'fp': 0})
 
-    if not os.path.isfile(fitness_file):
-        return evidence
-
-    try:
-        with open(fitness_file, 'r', encoding='utf-8') as f:
-            for line in f:
-                line = line.strip()
-                if not line:
-                    continue
-                try:
-                    record = json.loads(line)
-                    cell_id = record.get('cell_id', '')
-                    if not cell_id:
+    # Read trigger events from fitness.jsonl
+    # Schema: {"cell_id": "...", "triggered_at": "...", "matched_files": [...]}
+    # Every record IS a trigger event (presence = triggered)
+    if os.path.isfile(fitness_file):
+        try:
+            with open(fitness_file, 'r', encoding='utf-8') as f:
+                for line in f:
+                    line = line.strip()
+                    if not line:
                         continue
-                    if record.get('triggered'):
-                        evidence[cell_id]['triggers'] += 1
-                        if record.get('true_positive'):
+                    try:
+                        record = json.loads(line)
+                        cell_id = record.get('cell_id', '')
+                        if cell_id:
+                            evidence[cell_id]['triggers'] += 1
+                    except (json.JSONDecodeError, ValueError):
+                        continue
+        except Exception:
+            pass
+
+    # Read outcome signals from outcomes.jsonl (if available)
+    # Schema: {"cell_id": "...", "outcome": "tp"|"fp", ...}
+    if os.path.isfile(outcomes_file):
+        try:
+            with open(outcomes_file, 'r', encoding='utf-8') as f:
+                for line in f:
+                    line = line.strip()
+                    if not line:
+                        continue
+                    try:
+                        record = json.loads(line)
+                        cell_id = record.get('cell_id', '')
+                        outcome = record.get('outcome', '')
+                        if cell_id and outcome in ('tp', 'true_positive'):
                             evidence[cell_id]['tp'] += 1
-                        else:
+                        elif cell_id and outcome in ('fp', 'false_positive'):
                             evidence[cell_id]['fp'] += 1
-                except (json.JSONDecodeError, ValueError):
-                    continue
-    except Exception:
-        pass
+                    except (json.JSONDecodeError, ValueError):
+                        continue
+        except Exception:
+            pass
 
     return evidence
 
@@ -108,20 +126,19 @@ def _classify_cell(cell, evidence, expired_ids):
     triggers = ev['triggers']
     tp = ev['tp']
     fp = ev['fp']
+    has_outcomes = (tp + fp) > 0
 
-    # Noisy: > 50% false positives with at least 3 triggers
-    if triggers >= 3 and fp > tp:
-        precision = tp / triggers if triggers > 0 else 0
-        return 'noisy', f'{fp}/{triggers} false positives (precision: {precision:.0%})'
+    if has_outcomes:
+        # We have outcome data — classify by precision
+        if triggers >= 3 and fp > tp:
+            precision = tp / triggers if triggers > 0 else 0
+            return 'noisy', f'{fp}/{triggers} false positives (precision: {precision:.0%})'
+        return 'healthy', f'{tp}/{triggers} true positives'
 
-    # Underperforming: low precision with decent sample
+    # No outcome data yet — classify by trigger volume only
     if triggers >= 5:
-        precision = tp / triggers
-        if precision < 0.5:
-            return 'underperforming', f'Precision {precision:.0%} ({tp}/{triggers} TP)'
-
-    # Healthy
-    return 'healthy', f'{tp}/{triggers} true positives'
+        return 'active', f'{triggers} triggers (no outcome data yet)'
+    return 'healthy', f'{triggers} trigger(s) recorded'
 
 
 def generate_checkpoint(workspace, session_count=None):
@@ -207,7 +224,10 @@ def main():
                         help='Session count for session-based expiry')
     args = parser.parse_args()
 
-    workspace = resolve_workspace(args.workspace)
+    # Set SOMA_ROOT so resolve_workspace uses the explicit path
+    if args.workspace != '.':
+        os.environ['SOMA_ROOT'] = os.path.abspath(args.workspace)
+    workspace = resolve_workspace()
     report = generate_checkpoint(workspace, session_count=args.session_count)
 
     if args.json:

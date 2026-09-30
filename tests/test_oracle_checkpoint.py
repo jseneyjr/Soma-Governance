@@ -47,8 +47,16 @@ def make_cell(cells_dir, name, cell_type="vacuole", created_days_ago=10,
 
 
 def write_fitness_records(evidence_dir, records):
-    """Write fitness records to fitness.jsonl."""
+    """Write trigger records to fitness.jsonl (real schema)."""
     filepath = os.path.join(evidence_dir, 'fitness.jsonl')
+    with open(filepath, 'w') as f:
+        for record in records:
+            f.write(json.dumps(record) + '\n')
+
+
+def write_outcome_records(evidence_dir, records):
+    """Write outcome records to outcomes.jsonl."""
+    filepath = os.path.join(evidence_dir, 'outcomes.jsonl')
     with open(filepath, 'w') as f:
         for record in records:
             f.write(json.dumps(record) + '\n')
@@ -82,15 +90,16 @@ class TestOracleCheckpointBasics:
         assert 'unobserved' in report['classifications']
         assert 'new-cell' in [c['cell_id'] for c in report['classifications']['unobserved']]
 
-    def test_cell_with_high_tp_is_healthy(self, workspace):
+    def test_cell_with_triggers_is_healthy(self, workspace):
         from oracle_checkpoint import generate_checkpoint
         cells_dir = str(workspace / ".soma" / "cells")
         make_cell(cells_dir, "good-cell")
         evidence_dir = str(workspace / ".soma" / "evidence")
+        # Real schema: each record IS a trigger event
         write_fitness_records(evidence_dir, [
-            {'cell_id': 'good-cell', 'triggered': True, 'true_positive': True},
-            {'cell_id': 'good-cell', 'triggered': True, 'true_positive': True},
-            {'cell_id': 'good-cell', 'triggered': True, 'true_positive': True},
+            {'cell_id': 'good-cell', 'triggered_at': '2026-09-30', 'matched_files': ['a.py']},
+            {'cell_id': 'good-cell', 'triggered_at': '2026-09-30', 'matched_files': ['b.py']},
+            {'cell_id': 'good-cell', 'triggered_at': '2026-09-30', 'matched_files': ['c.py']},
         ])
         report = generate_checkpoint(str(workspace))
         assert 'healthy' in report['classifications']
@@ -105,11 +114,18 @@ class TestOracleCheckpointClassifications:
         cells_dir = str(workspace / ".soma" / "cells")
         make_cell(cells_dir, "noisy-cell")
         evidence_dir = str(workspace / ".soma" / "evidence")
+        # Real schema: triggers in fitness.jsonl, outcomes in outcomes.jsonl
         write_fitness_records(evidence_dir, [
-            {'cell_id': 'noisy-cell', 'triggered': True, 'true_positive': False},
-            {'cell_id': 'noisy-cell', 'triggered': True, 'true_positive': False},
-            {'cell_id': 'noisy-cell', 'triggered': True, 'true_positive': False},
-            {'cell_id': 'noisy-cell', 'triggered': True, 'true_positive': True},
+            {'cell_id': 'noisy-cell', 'triggered_at': '2026-09-30', 'matched_files': ['a.py']},
+            {'cell_id': 'noisy-cell', 'triggered_at': '2026-09-30', 'matched_files': ['b.py']},
+            {'cell_id': 'noisy-cell', 'triggered_at': '2026-09-30', 'matched_files': ['c.py']},
+            {'cell_id': 'noisy-cell', 'triggered_at': '2026-09-30', 'matched_files': ['d.py']},
+        ])
+        write_outcome_records(evidence_dir, [
+            {'cell_id': 'noisy-cell', 'outcome': 'fp'},
+            {'cell_id': 'noisy-cell', 'outcome': 'fp'},
+            {'cell_id': 'noisy-cell', 'outcome': 'fp'},
+            {'cell_id': 'noisy-cell', 'outcome': 'tp'},
         ])
         report = generate_checkpoint(str(workspace))
         assert 'noisy' in report['classifications']
@@ -142,8 +158,9 @@ class TestOracleCheckpointRecommendations:
         cells_dir = str(workspace / ".soma" / "cells")
         make_cell(cells_dir, "good-cell", created_days_ago=1, expiry_days=60)
         evidence_dir = str(workspace / ".soma" / "evidence")
+        # Real schema: trigger event
         write_fitness_records(evidence_dir, [
-            {'cell_id': 'good-cell', 'triggered': True, 'true_positive': True},
+            {'cell_id': 'good-cell', 'triggered_at': '2026-09-30', 'matched_files': ['a.py']},
         ])
         report = generate_checkpoint(str(workspace))
         critical = [r for r in report.get('recommendations', []) if r.get('severity') == 'critical']

@@ -93,9 +93,15 @@ def audit_expiry(workspace, session_count=None):
                 elif hasattr(created_val, 'isoformat'):  # date object
                     created_date = datetime.combine(created_val, datetime.min.time())
                 else:
-                    created_str = str(created_val)
-                    fmt = "%Y-%m-%dT%H:%M:%SZ" if 'T' in created_str else "%Y-%m-%d"
-                    created_date = datetime.strptime(created_str, fmt)
+                    # Flexible parsing: try fromisoformat, then fallback formats
+                    created_str = str(created_val).replace('Z', '+00:00')
+                    try:
+                        created_date = datetime.fromisoformat(created_str)
+                        if created_date.tzinfo:
+                            created_date = created_date.replace(tzinfo=None)
+                    except ValueError:
+                        fmt = "%Y-%m-%d"
+                        created_date = datetime.strptime(created_str[:10], fmt)
                 days_elapsed = (now - created_date).days
                 if days_elapsed > expiry_days:
                     expired = True
@@ -197,7 +203,10 @@ def main():
                         help='Number of sessions elapsed (for session-based expiry)')
     args = parser.parse_args()
 
-    workspace = resolve_workspace(args.workspace)
+    # Set SOMA_ROOT so resolve_workspace uses the explicit path
+    if args.workspace != '.':
+        os.environ['SOMA_ROOT'] = os.path.abspath(args.workspace)
+    workspace = resolve_workspace()
     results = audit_expiry(workspace, session_count=args.session_count)
 
     if args.json:
