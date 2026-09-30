@@ -26,7 +26,7 @@ from the transcript archive. If files are lost or suspected of tampering:
 
 ```bash
 # Re-run fitness updater on all transcripts
-for t in ~/.gemini/antigravity/brain/*/system_generated/logs/transcript.jsonl; do
+for t in ~/.gemini/antigravity/brain/*/.system_generated/logs/transcript.jsonl; do
     python3 enzymes/fitness_updater.py "$t"
 done
 ```

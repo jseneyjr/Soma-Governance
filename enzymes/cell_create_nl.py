@@ -130,17 +130,20 @@ def create_cell_from_insight_cluster(cluster: dict, workspace: str) -> str:
 
     # Collision safety: check fitness.jsonl for existing trigger data
     if os.path.isfile(filepath):
-        evidence_dir = os.path.join(os.path.dirname(os.path.dirname(filepath)),
-                                     'evidence')
+        evidence_dir = os.path.join(workspace, '.soma', 'evidence')
         fitness_file = os.path.join(evidence_dir, 'fitness.jsonl')
         if os.path.isfile(fitness_file):
             try:
                 cell_id = frontmatter.get('id', '')
                 with open(fitness_file, 'r', encoding='utf-8') as f:
                     for line in f:
-                        if cell_id and cell_id in line:
-                            # Cell has fitness evidence — don't overwrite
-                            return filepath
+                        try:
+                            record = json.loads(line)
+                            if record.get('cell_id') == cell_id:
+                                # Cell has fitness evidence — don't overwrite
+                                return filepath
+                        except (json.JSONDecodeError, ValueError):
+                            continue
             except Exception:
                 pass
 

@@ -81,7 +81,7 @@ def resolve_transcript_id(transcript_path, platform=None):
     names (e.g. 'logs', '.system_generated' for Antigravity).
     """
     config = _get_platform_config(platform)
-    candidate = Path(transcript_path).parent
+    candidate = Path(transcript_path).resolve().parent
     while candidate.name in config["id_skip_dirs"]:
         candidate = candidate.parent
     return candidate.name

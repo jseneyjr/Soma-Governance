@@ -16,9 +16,9 @@ Any `import` of a package not in the Python standard library and not listed as a
 
 ```python
 try:
-    import yaml
+    import toml
 except ImportError:
-    yaml = None
+    toml = None
 ```
 
 ## Scope
@@ -64,13 +64,16 @@ When reviewing or writing code that adds an `import` statement:
 
 ## Violation Detection
 
-The naive `grep '^import yaml$'` misses compound imports (`import os, yaml`)
+The naive `grep '^import toml$'` misses compound imports (`import os, toml`)
 and indented imports inside functions. Use AST-based detection:
 
 ```bash
-# AST-based scan for unguarded yaml imports
+# AST-based scan for unguarded optional imports
+# NOTE: yaml (pyyaml) is a REQUIRED dependency — bare import is fine.
+# This script checks for truly optional packages only.
 python3 -c "
 import ast, glob
+REQUIRED = {'yaml', 'pytest', 'pyyaml'}  # bare import OK
 for f in glob.glob('enzymes/**/*.py', recursive=True) + \
          glob.glob('soma_mcp/**/*.py', recursive=True) + \
          glob.glob('soma_sdk/**/*.py', recursive=True):
@@ -78,18 +81,19 @@ for f in glob.glob('enzymes/**/*.py', recursive=True) + \
     tree = ast.parse(open(f).read())
     for node in ast.walk(tree):
         if isinstance(node, ast.Import):
-            if any(a.name == 'yaml' for a in node.names):
+            for alias in node.names:
+                if alias.name in REQUIRED: continue
                 in_try = any(isinstance(p, ast.Try) and
                     any(c is node for c in ast.walk(p))
                     for p in ast.walk(tree))
                 if not in_try:
-                    print(f'{f}:{node.lineno}')
+                    print(f'{f}:{node.lineno}: unguarded import {alias.name}')
 "
 ```
 
 Also check shell scripts with embedded Python:
 ```bash
-grep -n 'import.*yaml' enzymes/*.sh | grep -v 'try:'
+grep -n 'import.*toml' enzymes/*.sh | grep -v 'try:'
 ```
 
 Any match is a violation.
