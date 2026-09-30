@@ -16,10 +16,10 @@ from collections import defaultdict
 from pathlib import Path
 from typing import Any
 
-# Minimum path depth to count as a valid "read" for compliance.
-# Rejects root ("/") and near-root ("/repo") reads that would
-# trivially match every write.
-_MIN_READ_DEPTH = 2
+# Maximum number of directory levels a read can be above a write
+# and still count as having "read" that file. Prevents repo-root
+# grep from blanket-approving all writes.
+_MAX_ANCESTOR_DISTANCE = 3
 
 
 # ── Tool-call pattern definitions per rule ──────────────────────────
@@ -64,7 +64,7 @@ def _extract_tool_calls(steps: list[dict]) -> list[dict]:
                 or args.get("SearchPath")
             )
             # Strip surrounding quotes from serialized arguments
-            target_file = _sanitize_path(raw_path) if raw_path else None
+            target_file = _sanitize_path(raw_path) if isinstance(raw_path, str) else None
             calls.append({
                 "step_index": step.get("step_index", 0),
                 "tool_name": name,
@@ -128,9 +128,9 @@ def _paths_match(read_path: str, write_path: str) -> bool:
     Handles cases where grep_search uses a directory path that is a
     parent of the written file, or an exact file match.
 
-    Security: Rejects root or near-root reads that would trivially
-    match every write. Normalizes paths to handle relative/absolute
-    mismatches.
+    Security: Rejects reads that are too far above the write target
+    in the directory tree. A grep on the repo root should not count
+    as having "read" every file in the project.
     """
     # Normalize both paths to resolve .., ., and trailing slashes
     rp = os.path.normpath(read_path)
@@ -140,15 +140,16 @@ def _paths_match(read_path: str, write_path: str) -> bool:
     if rp == wp:
         return True
 
-    # Reject root or near-root reads (too broad to be meaningful)
-    # Count path components: "/" has 0, "/repo" has 1, "/repo/src" has 2
-    rp_depth = len(Path(rp).parts) - (1 if rp.startswith("/") else 0)
-    if rp_depth < _MIN_READ_DEPTH:
+    # Reject root path reads unconditionally
+    if rp in ("/", "."):
         return False
 
     # Directory ancestor check: read_path is a parent of write_path
     if wp.startswith(rp + os.sep):
-        return True
+        # Count how many levels separate the read dir from the write file
+        relative = os.path.relpath(wp, rp)
+        distance = len(Path(relative).parts) - 1  # subtract the filename
+        return distance <= _MAX_ANCESTOR_DISTANCE
 
     return False
 

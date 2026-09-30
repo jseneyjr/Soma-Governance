@@ -50,6 +50,7 @@ Cell types:
 - plasmodesmata: Cross-service contract. Use for API/data shape agreements.
 
 YAML fields required:
+- id: (filename stem, e.g. 'trap-missing-tests' for trap-missing-tests.md)
 - type: (one of above)
 - domain: (one of: efficiency, correctness, security, style, governance)
 - hypothesis: (clear, testable statement)
@@ -100,7 +101,11 @@ def create_cell_from_insight_cluster(cluster: dict, workspace: str) -> str:
 
     hypothesis = f"Human attention pattern detected: {category} in {files_str}"
 
+    # Compute slug before building frontmatter (used as id)
+    slug = re.sub(r"[^a-z0-9]+", "-", category.lower())[:50].strip("-") or "unknown"
+
     frontmatter = {
+        "id": slug,
         "type": "vacuole",
         "domain": "correctness",
         "hypothesis": hypothesis,
@@ -143,7 +148,6 @@ def create_cell_from_insight_cluster(cluster: dict, workspace: str) -> str:
     cell_content = f"---\n{fm_text}---\n\n{body}"
 
     # Determine filename
-    slug = re.sub(r"[^a-z0-9]+", "-", category.lower())[:50].strip("-") or "unknown"
     filename = f"vacuole-{slug}.md"
 
     target_dir = os.path.join(workspace, ".soma", "cells", "vacuoles")

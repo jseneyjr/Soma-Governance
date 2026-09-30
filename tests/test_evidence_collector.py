@@ -423,8 +423,9 @@ class TestAdversarialPathMatching:
         # Root grep must NOT count as compliance
         assert results["non_compliant_count"] >= 1
 
-    def test_near_root_grep_does_not_match(self, tmp_path):
-        """grep_search on '/repo' (depth 1) must NOT satisfy compliance."""
+    def test_near_root_close_write_accepted(self, tmp_path):
+        """grep_search on '/repo' writing to '/repo/src/main.py' is
+        only 1 directory level — within MAX_ANCESTOR_DISTANCE."""
         from enzymes.evidence_collector import check_compliance
 
         steps = [
@@ -446,7 +447,8 @@ class TestAdversarialPathMatching:
         path.write_text("\n".join(json.dumps(s) for s in steps) + "\n")
 
         results = check_compliance(path, "read-before-write")
-        assert results["non_compliant_count"] >= 1
+        # distance = 1 (src/) ≤ MAX_ANCESTOR_DISTANCE (3) → compliant
+        assert results["compliant_count"] >= 1
 
     def test_directory_ancestor_read_at_sufficient_depth(self, tmp_path):
         """grep_search on '/repo/src' (depth 2) SHOULD satisfy compliance
@@ -472,6 +474,60 @@ class TestAdversarialPathMatching:
         path.write_text("\n".join(json.dumps(s) for s in steps) + "\n")
 
         results = check_compliance(path, "read-before-write")
+        assert results["compliant_count"] >= 1
+
+    def test_repo_root_at_realistic_depth_rejected(self, tmp_path):
+        """grep_search on a deep repo root like '/home/user/project' must
+        NOT blanket-approve all writes within the project."""
+        from enzymes.evidence_collector import check_compliance
+
+        steps = [
+            {"step_index": 0, "source": "MODEL", "type": "PLANNER_RESPONSE",
+             "created_at": "2026-01-01T00:00:00Z",
+             "tool_calls": [
+                 {"name": "grep_search",
+                  "args": {"SearchPath": "/home/user/project", "Query": "def"}},
+             ]},
+            {"step_index": 1, "source": "MODEL", "type": "PLANNER_RESPONSE",
+             "created_at": "2026-01-01T00:00:01Z",
+             "tool_calls": [
+                 {"name": "replace_file_content",
+                  "args": {"TargetFile": "/home/user/project/src/lib/utils/deep/file.py",
+                           "TargetContent": "x", "ReplacementContent": "y"}},
+             ]},
+        ]
+        path = tmp_path / "transcript.jsonl"
+        path.write_text("\n".join(json.dumps(s) for s in steps) + "\n")
+
+        results = check_compliance(path, "read-before-write")
+        # 4 levels deep (src/lib/utils/deep/) exceeds MAX_ANCESTOR_DISTANCE=3
+        assert results["non_compliant_count"] >= 1
+
+    def test_close_ancestor_accepted(self, tmp_path):
+        """grep_search on a directory 2 levels above write SHOULD
+        count as compliant."""
+        from enzymes.evidence_collector import check_compliance
+
+        steps = [
+            {"step_index": 0, "source": "MODEL", "type": "PLANNER_RESPONSE",
+             "created_at": "2026-01-01T00:00:00Z",
+             "tool_calls": [
+                 {"name": "grep_search",
+                  "args": {"SearchPath": "/home/user/project/src", "Query": "def"}},
+             ]},
+            {"step_index": 1, "source": "MODEL", "type": "PLANNER_RESPONSE",
+             "created_at": "2026-01-01T00:00:01Z",
+             "tool_calls": [
+                 {"name": "replace_file_content",
+                  "args": {"TargetFile": "/home/user/project/src/lib/main.py",
+                           "TargetContent": "x", "ReplacementContent": "y"}},
+             ]},
+        ]
+        path = tmp_path / "transcript.jsonl"
+        path.write_text("\n".join(json.dumps(s) for s in steps) + "\n")
+
+        results = check_compliance(path, "read-before-write")
+        # 2 levels (lib/main.py) within MAX_ANCESTOR_DISTANCE=3
         assert results["compliant_count"] >= 1
 
 
