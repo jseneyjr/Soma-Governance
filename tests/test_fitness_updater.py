@@ -15,8 +15,10 @@ import yaml
 
 # Will fail until implementation exists — that's the TDD red phase
 from enzymes.fitness_updater import (
+    detect_platform,
     extract_modified_files,
     match_cells,
+    resolve_transcript_id,
     update_fitness,
 )
 
@@ -295,3 +297,55 @@ class TestUpdateFitness:
         update_fitness(triggered, "session-001", evidence)
         assert (evidence / "fitness.jsonl").exists()
         assert (evidence / "sessions_processed.jsonl").exists()
+
+
+# ── Platform detection & transcript ID ──
+
+
+class TestDetectPlatform:
+    """Tests for auto-detecting platform from transcript content."""
+
+    def test_detects_antigravity_from_write_to_file(self, tmp_path):
+        """Transcript with write_to_file calls detects as antigravity."""
+        transcript = _make_transcript(tmp_path, [
+            {"name": "write_to_file", "arguments": {"TargetFile": "/a/b.py"}},
+        ])
+        assert detect_platform(transcript) == "antigravity"
+
+    def test_detects_antigravity_from_replace_file_content(self, tmp_path):
+        """Transcript with replace_file_content detects as antigravity."""
+        transcript = _make_transcript(tmp_path, [
+            {"name": "replace_file_content", "arguments": {"TargetFile": "/a/b.py"}},
+        ])
+        assert detect_platform(transcript) == "antigravity"
+
+    def test_defaults_on_unknown_tools(self, tmp_path):
+        """Transcript with no known write tools returns default."""
+        transcript = _make_transcript(tmp_path, [
+            {"name": "some_other_tool", "arguments": {"path": "/a/b.py"}},
+        ])
+        assert detect_platform(transcript) == "antigravity"  # default
+
+    def test_defaults_on_nonexistent_file(self, tmp_path):
+        """Nonexistent transcript returns default."""
+        assert detect_platform(tmp_path / "nope.jsonl") == "antigravity"
+
+
+class TestResolveTranscriptId:
+    """Tests for extracting conversation ID from transcript path."""
+
+    def test_antigravity_path(self, tmp_path):
+        """Standard Antigravity path resolves to conversation UUID."""
+        # Simulate: brain/<uuid>/.system_generated/logs/transcript.jsonl
+        t_dir = tmp_path / "abc-123" / ".system_generated" / "logs"
+        t_dir.mkdir(parents=True)
+        transcript = t_dir / "transcript.jsonl"
+        transcript.touch()
+        assert resolve_transcript_id(transcript, "antigravity") == "abc-123"
+
+    def test_flat_path(self, tmp_path):
+        """Transcript directly in a named directory resolves to dir name."""
+        transcript = tmp_path / "my-session" / "transcript.jsonl"
+        transcript.parent.mkdir(parents=True)
+        transcript.touch()
+        assert resolve_transcript_id(transcript, "antigravity") == "my-session"

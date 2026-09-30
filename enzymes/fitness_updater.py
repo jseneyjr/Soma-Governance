@@ -5,7 +5,7 @@ matches those files against cell target_paths globs, and appends fitness records
 to .soma/evidence/fitness.jsonl.
 
 Usage:
-    python3 enzymes/fitness_updater.py <transcript_path> [--cells-dir DIR] [--evidence-dir DIR] [--repo-root DIR]
+    python3 enzymes/fitness_updater.py <transcript_path> [--platform NAME] [--cells-dir DIR] [--evidence-dir DIR] [--repo-root DIR]
 """
 
 import json
@@ -18,19 +18,81 @@ from pathlib import Path
 import yaml
 
 
-# Tools that modify files (write operations)
-_WRITE_TOOLS = frozenset({
-    "write_to_file",
-    "replace_file_content",
-    "multi_replace_file_content",
-})
+# Platform-specific transcript format configs.
+# Each platform defines: write tool names, arg key variants, target file keys,
+# and directory names to skip when resolving conversation ID from path.
+PLATFORMS = {
+    "antigravity": {
+        "write_tools": {"write_to_file", "replace_file_content", "multi_replace_file_content"},
+        "target_file_keys": ["TargetFile"],
+        "args_keys": ["arguments", "args"],
+        "id_skip_dirs": {"logs", ".system_generated"},
+    },
+}
+
+DEFAULT_PLATFORM = "antigravity"
 
 
-def extract_modified_files(transcript_path):
+def _get_platform_config(platform=None):
+    """Get platform config by name, defaulting to DEFAULT_PLATFORM."""
+    name = platform or DEFAULT_PLATFORM
+    if name not in PLATFORMS:
+        raise ValueError(f"Unknown platform '{name}'. Known: {list(PLATFORMS.keys())}")
+    return PLATFORMS[name]
+
+
+def detect_platform(transcript_path):
+    """Auto-detect platform by probing transcript for known tool names.
+
+    Returns the platform name string, or DEFAULT_PLATFORM if no match.
+    """
+    transcript_path = Path(transcript_path)
+    if not transcript_path.exists():
+        return DEFAULT_PLATFORM
+
+    # Build reverse lookup: tool_name → platform
+    tool_to_platform = {}
+    for name, config in PLATFORMS.items():
+        for tool in config["write_tools"]:
+            tool_to_platform[tool] = name
+
+    try:
+        for line in transcript_path.open(encoding="utf-8"):
+            if not line.strip():
+                continue
+            try:
+                step = json.loads(line)
+            except (json.JSONDecodeError, ValueError):
+                continue
+            for tc in step.get("tool_calls", []):
+                tool_name = tc.get("name", "")
+                if tool_name in tool_to_platform:
+                    return tool_to_platform[tool_name]
+    except Exception:
+        pass
+
+    return DEFAULT_PLATFORM
+
+
+def resolve_transcript_id(transcript_path, platform=None):
+    """Extract a session/conversation ID from the transcript file path.
+
+    Walks up from the transcript file, skipping platform-specific directory
+    names (e.g. 'logs', '.system_generated' for Antigravity).
+    """
+    config = _get_platform_config(platform)
+    candidate = Path(transcript_path).parent
+    while candidate.name in config["id_skip_dirs"]:
+        candidate = candidate.parent
+    return candidate.name
+
+
+def extract_modified_files(transcript_path, platform=None):
     """Extract absolute file paths modified by write tool calls in a transcript.
 
     Args:
         transcript_path: Path to a transcript.jsonl file.
+        platform: Platform name (auto-detected if None).
 
     Returns:
         set[str]: Absolute paths of files modified during the session.
@@ -38,6 +100,11 @@ def extract_modified_files(transcript_path):
     transcript_path = Path(transcript_path)
     if not transcript_path.exists():
         return set()
+
+    config = _get_platform_config(platform)
+    write_tools = config["write_tools"]
+    args_keys = config["args_keys"]
+    target_file_keys = config["target_file_keys"]
 
     modified = set()
     try:
@@ -55,15 +122,21 @@ def extract_modified_files(transcript_path):
 
         for tc in step.get("tool_calls", []):
             tool_name = tc.get("name", "")
-            if tool_name not in _WRITE_TOOLS:
+            if tool_name not in write_tools:
                 continue
-            args = tc.get("arguments") or tc.get("args") or {}
-            target = args.get("TargetFile", "")
-            # Real transcripts encode values as JSON strings with wrapping quotes
-            if isinstance(target, str):
-                target = target.strip('"').strip("'")
-            if target:
-                modified.add(target)
+            # Try each known args key
+            args = {}
+            for key in args_keys:
+                args = tc.get(key) or args
+                if args:
+                    break
+            # Try each known target file key
+            for tf_key in target_file_keys:
+                target = args.get(tf_key, "")
+                if isinstance(target, str):
+                    target = target.strip('"').strip("'")
+                if target:
+                    modified.add(target)
 
     return modified
 
@@ -191,6 +264,8 @@ def main():
 
     parser = argparse.ArgumentParser(description="Update cell fitness from session transcript")
     parser.add_argument("transcript", help="Path to transcript.jsonl")
+    parser.add_argument("--platform", default=None,
+                        help=f"Platform name (auto-detected if omitted). Known: {list(PLATFORMS.keys())}")
     parser.add_argument("--cells-dir", default=None, help="Path to cells directory")
     parser.add_argument("--evidence-dir", default=None, help="Path to evidence directory")
     parser.add_argument("--repo-root", default=None, help="Repo root for relativizing paths")
@@ -203,15 +278,12 @@ def main():
     repo_root = args.repo_root or str(script_dir)
 
     transcript = Path(args.transcript)
-    # Path: brain/<conversation-id>/.system_generated/logs/transcript.jsonl
-    # Walk up to find the conversation ID directory
-    candidate = transcript.parent
-    while candidate.name in ("logs", ".system_generated"):
-        candidate = candidate.parent
-    transcript_id = candidate.name
+    platform = args.platform or detect_platform(transcript)
+    transcript_id = resolve_transcript_id(transcript, platform)
 
     print(f"Processing transcript: {transcript}")
-    modified = extract_modified_files(transcript)
+    print(f"  Platform: {platform}")
+    modified = extract_modified_files(transcript, platform=platform)
     print(f"  Modified files: {len(modified)}")
 
     triggered = match_cells(modified, cells_dir, repo_root=repo_root)
