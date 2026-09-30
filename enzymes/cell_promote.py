@@ -5,10 +5,7 @@ import argparse
 import glob
 import json
 import time
-try:
-    import yaml
-except ImportError:
-    yaml = None
+import yaml
 from datetime import datetime
 from datetime import timezone
 from bayesian_score import bayesian_score
@@ -243,7 +240,7 @@ def main():
                             import subprocess
                             subprocess.run([sys.executable, enforce_script, '--cell', cell_name], cwd=workspace)
                 else:
-                    print(f"[DRY-RUN] Would change tier of {cell_name}: {enforcement} -> {new_tier} ({reason})")
+                    print(f"No tier change for {cell_name}: already at {enforcement}")
                     
         return
 

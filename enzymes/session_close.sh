@@ -55,14 +55,14 @@ fi
 
 echo '{}'
 
+
 # === Automated Outcome Feedback ===
 echo "Running outcome engine..."
+SCRIPTS_DIR="$(cd -P "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 python3 "$SCRIPTS_DIR/outcome_engine.py" 2>/dev/null || true
 
 # === Automated Cell Evolution ===
 echo "Running cell evolution..."
-
-SCRIPTS_DIR="$(cd -P "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 # 1. Evaluate fitness with telomere shortening decay
 python3 "$SCRIPTS_DIR/cell_fitness.py" 2>/dev/null || true
@@ -73,26 +73,27 @@ bash "$SCRIPTS_DIR/cell_selection.sh" --execute 2>/dev/null || true
 # 3. Probabilistic crossover: if >5 cells with fitness >0.5, attempt one crossover
 CROSSOVER_CANDIDATES=$(python3 -c "
 import os, glob
-try:
-    import yaml
-except ImportError:
-    yaml = None
+import yaml
 cells = glob.glob(os.path.join(os.getcwd(), '.soma', 'cells', '**', '*.md'), recursive=True)
 high_fitness = []
-for f in cells:
-    if os.path.basename(f) == 'README.md': continue
-    try:
-        with open(f) as fh: content = fh.read()
-        if not content.startswith('---'): continue
-        fm = yaml.safe_load(content[3:content.find('---',3)])
-        score = fm.get('fitness',{}).get('score')
-        if score and score > 0.5:
-            high_fitness.append(os.path.splitext(os.path.basename(f))[0])
-    except Exception: pass
+evidence_file = os.path.join(os.getcwd(), '.soma', 'evidence', 'fitness.jsonl')
+cell_triggers = {}
+if os.path.isfile(evidence_file):
+    with open(evidence_file) as ef:
+        for line in ef:
+            try:
+                rec = json.loads(line.strip())
+                cid = rec.get('cell_id', '')
+                if cid:
+                    cell_triggers[cid] = cell_triggers.get(cid, 0) + 1
+            except Exception: pass
+for cid, count in cell_triggers.items():
+    if count >= 5:
+        high_fitness.append(cid)
 if len(high_fitness) >= 2:
     import random
     pair = random.sample(high_fitness, 2)
-    print(f'{pair[0]} {pair[1]}')  
+    print(f'{pair[0]} {pair[1]}')
 else:
     print('')
 " 2>/dev/null || echo '')
@@ -106,25 +107,32 @@ fi
 # 4. Check for metamorphosis candidates
 python3 -c "
 import os, glob
-try:
-    import yaml
-except ImportError:
-    yaml = None
+import yaml
 cells = glob.glob(os.path.join(os.getcwd(), '.soma', 'cells', '**', '*.md'), recursive=True)
+evidence_file = os.path.join(os.getcwd(), '.soma', 'evidence', 'fitness.jsonl')
+cell_triggers = {}
+if os.path.isfile(evidence_file):
+    with open(evidence_file) as ef:
+        for line in ef:
+            try:
+                rec = json.loads(line.strip())
+                cid = rec.get('cell_id', '')
+                if cid:
+                    cell_triggers[cid] = cell_triggers.get(cid, 0) + 1
+            except Exception: pass
 for f in cells:
     if os.path.basename(f) == 'README.md': continue
     try:
         with open(f) as fh: content = fh.read()
         if not content.startswith('---'): continue
         fm = yaml.safe_load(content[3:content.find('---',3)])
-        score = fm.get('fitness',{}).get('score')
-        triggers = fm.get('fitness',{}).get('triggers', 0)
         ctype = fm.get('type', '')
         name = os.path.splitext(os.path.basename(f))[0]
-        if ctype == 'vacuole' and score and score >= 0.8 and triggers >= 20:
-            print(f'  Metamorphosis candidate: {name} (vacuole→wall, fitness={score}, triggers={triggers})')
-        elif ctype == 'wall' and score and score >= 0.85 and triggers >= 25:
-            print(f'  Metamorphosis candidate: {name} (wall→rule, fitness={score}, triggers={triggers})')
+        triggers = cell_triggers.get(fm.get('id', name), 0)
+        if ctype == 'vacuole' and triggers >= 20:
+            print(f'  Metamorphosis candidate: {name} (vacuole→wall, triggers={triggers})')
+        elif ctype == 'wall' and triggers >= 25:
+            print(f'  Metamorphosis candidate: {name} (wall→rule, triggers={triggers})')
     except Exception: pass
 " 2>/dev/null || true
 
@@ -152,14 +160,23 @@ fi
 # === Session Dashboard ===
 python3 -c "
 import os, glob, json
-try:
-    import yaml
-except ImportError:
-    yaml = None
+import yaml
 
 cells_dir = os.path.join(os.getcwd(), '.soma', 'cells')
 if not os.path.isdir(cells_dir):
     exit(0)
+
+evidence_file = os.path.join(os.getcwd(), '.soma', 'evidence', 'fitness.jsonl')
+cell_triggers = {}
+if os.path.isfile(evidence_file):
+    with open(evidence_file) as ef:
+        for line in ef:
+            try:
+                rec = json.loads(line.strip())
+                cid = rec.get('cell_id', '')
+                if cid:
+                    cell_triggers[cid] = cell_triggers.get(cid, 0) + 1
+            except Exception: pass
 
 cells = glob.glob(os.path.join(cells_dir, '**', '*.md'), recursive=True)
 active = extinct = 0
@@ -169,8 +186,9 @@ for f in cells:
         with open(f) as fh: content = fh.read()
         if not content.startswith('---'): continue
         fm = yaml.safe_load(content[3:content.find('---',3)])
-        score = fm.get('fitness',{}).get('score')
-        if score is not None and score > 0.3:
+        name = fm.get('id', os.path.splitext(os.path.basename(f))[0])
+        triggers = cell_triggers.get(name, 0)
+        if triggers > 0:
             active += 1
         else:
             extinct += 1

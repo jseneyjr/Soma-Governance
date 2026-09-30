@@ -1,4 +1,6 @@
 ---
+id: testing
+domain: correctness
 name: Behavioral Testing Standards
 description: Enforces behavioral testing over implementation testing, requires sad paths, and minimizes brittle mocks.
 trigger: model_decision

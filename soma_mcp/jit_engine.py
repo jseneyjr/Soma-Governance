@@ -426,6 +426,9 @@ def load_all_cells(workspace):
             if not fm:
                 warn(f'skipped cell {rel}: no frontmatter metadata')
                 continue
+            # Skip expired cells (pruned by cell_expiry --prune)
+            if fm.get('expired_at'):
+                continue
             fm['_name'] = os.path.splitext(os.path.basename(cell_file))[0]
             fm['_path'] = rel
             fm['_body'] = _get_body(content)

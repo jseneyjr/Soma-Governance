@@ -1,4 +1,6 @@
 ---
+id: documentation
+domain: style
 name: Documentation Standards
 description: Enforces ADRs, concise READMEs, and meaningful code comments.
 trigger: model_decision

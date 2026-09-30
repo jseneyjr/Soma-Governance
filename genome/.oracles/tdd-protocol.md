@@ -1,4 +1,6 @@
 ---
+id: tdd-protocol
+domain: correctness
 name: TDD Protocol
 description: Enforces test-driven development with sequential phase gates. No implementation begins until tests exist and fail for the right reasons.
 trigger: model_decision

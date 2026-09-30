@@ -1,21 +1,21 @@
 # Soma
 
 [![License: Apache 2.0](https://img.shields.io/badge/License-Apache_2.0-blue?style=flat-square)](LICENSE)
-[![Core Rules](https://img.shields.io/badge/Core_Rules-11-green?style=flat-square)](#-core-rules)
+[![Core Rules](https://img.shields.io/badge/Core_Rules-15-green?style=flat-square)](#-core-rules)
 [![Agent Skills](https://img.shields.io/badge/Agent_Skills-15-purple?style=flat-square)](#-agent-skills)
-[![Automation Scripts](https://img.shields.io/badge/Automation_Scripts-51-red?style=flat-square)](#%EF%B8%8F-automation-scripts)
+[![Automation Scripts](https://img.shields.io/badge/Automation_Scripts-58-red?style=flat-square)](#%EF%B8%8F-automation-scripts)
 [![Adaptive Rules](https://img.shields.io/badge/Adaptive_Rules-5_Types-orange?style=flat-square)](#-adaptive-rules)
-[![Tests](https://img.shields.io/badge/Tests-178-brightgreen?style=flat-square)](#testing--ci)
-[![Version](https://img.shields.io/badge/Version-0.31.0-informational?style=flat-square)](docs/CHANGELOG.md)
+[![Tests](https://img.shields.io/badge/Tests-515%2B-brightgreen?style=flat-square)](#testing--ci)
+[![Version](https://img.shields.io/badge/Version-0.50.0-informational?style=flat-square)](docs/CHANGELOG.md)
 [![Blog Post](https://img.shields.io/badge/Blog-dev.to-black?style=flat-square&logo=devdotto)](https://dev.to/nseney1/rules-that-cant-prove-themselves-die-adaptive-governance-for-ai-coding-agents-25bn)
 
-**Adaptive AI governance framework for coding agents.**
+**Governance framework that makes AI coding agents trustworthy.**
 
-Soma is an adaptive governance framework that generates, measures, and evolves its own rules based on observed agent behavior. Built on evidence-based selection and adversarial verification, it ensures AI coding agents remain grounded, efficient, and safe — then gets out of the way.
+Soma makes AI agents trustworthy not by asking them to behave, but by making misbehavior structurally unprofitable. Built on evidence-based selection, adversarial verification, and incentive-compatible rule evolution, it ensures AI coding agents remain grounded, efficient, and safe — then proves it.
 
-> **The Problem**: Ungoverned AI coding agents waste 25–56% of tokens in circular rework loops, hallucinated API calls, and broken assumptions. Static rule files (`.cursorrules`, `CLAUDE.md`) help but never adapt.
+> **The Problem**: Ungoverned AI coding agents waste significant portions of tokens in circular rework loops, hallucinated API calls, and broken assumptions ([arXiv:2602.11988](https://arxiv.org/abs/2602.11988), [arXiv:2607.27250](https://arxiv.org/abs/2607.27250)). Static rule files (`.cursorrules`, `CLAUDE.md`) help but never adapt, and the agent can simply ignore them.
 >
-> **The Solution**: Soma reduces waste to under 1.0% while adding only ~4,380 idle context tokens (stabilized via JIT Context). Rules that stop proving themselves are retired. Rules that keep proving themselves get promoted. This is evidence-based governance.
+> **The Solution**: Soma reduces waste to under 1.0% in governed sessions while adding only ~3,800 idle context tokens (measured at v0.50 baseline, stabilized via JIT Context — down 8.6% from Phase 11 baseline despite adding 7 new enzymes). Rules that stop proving themselves expire and are pruned. Rules that keep proving themselves get promoted. Claims that don't match evidence are caught. This is incentive-compatible governance.
 
 > **Internal naming convention**: Soma uses a biological metaphor internally (genome, enzymes, organs, cells) to model rule evolution — see the codebase for details.
 
@@ -112,9 +112,9 @@ Soma models governance as a layered system of rules, skills, and automation. Eve
 
 ```text
 ┌─────────────────────────────────────────────────────────────────┐
-│  📐 CORE RULES (genome/)          11 Rules — inherited defaults │
+│  📐 CORE RULES (genome/)          15 Rules — inherited defaults │
 │  🔧 AGENT SKILLS (organs/)       15 Skills — complex behaviors  │
-│  ⚙️  AUTOMATION (enzymes/)        51 Scripts — task automation   │
+│  ⚙️  AUTOMATION (enzymes/)        58 Scripts — task automation   │
 ├─────────────────────────────────────────────────────────────────┤
 │  🛡️ REVIEW PROTOCOL              Two-Layer Verification         │
 │     Layer 1: Deterministic AST tools (ungameable)               │
@@ -131,9 +131,9 @@ Soma models governance as a layered system of rules, skills, and automation. Eve
 
 | Layer | Directory | What It Contains |
 |:------|:----------|:-----------------|
-| **Core Rules** | `genome/` | 11 rules — inherited behavioral defaults, rarely changed. |
+| **Core Rules** | `genome/` | 15 rules — inherited behavioral defaults, rarely changed. |
 | **Agent Skills** | `organs/` | 15 skills — complex multi-step behaviors like adaptive-reviewer, genesis, security-audit. |
-| **Automation Scripts** | `enzymes/` | 51 scripts — task-specific automation (fitness scoring, rule creation, team sync). |
+| **Automation Scripts** | `enzymes/` | 58 scripts — task-specific automation (fitness scoring, rule creation, team sync, evidence pipeline). |
 | **Review Protocol** | `immune_system/` | Two-layer verification framework + mulch queue. The system's trust-but-verify layer. |
 | **Adaptive Rules** | `.soma/cells/` | Per-repo adaptive invariants. Generated, tested, evolved, or retired. |
 
@@ -141,7 +141,7 @@ Soma models governance as a layered system of rules, skills, and automation. Eve
 
 ## 🛡️ Review Protocol — Two-Layer Verification
 
-Soma v0.30 introduces a two-layer verification framework that eliminates the "trust the agent" problem through deterministic tooling and adversarial information asymmetry.
+Soma's two-layer verification framework eliminates the "trust the agent" problem through deterministic tooling and adversarial information asymmetry.
 
 ### Layer 1: Deterministic Tools (Ungameable)
 
@@ -228,7 +228,7 @@ When code changes, the system mounts a review response. The intensity scales wit
 
 ## 📐 Core Rules
 
-The system's foundational rules — 11 rules that define inherited behavior. Always-on rules are loaded every session; conditional rules activate on demand.
+The system's foundational rules — 15 rules that define inherited behavior. Always-on rules are loaded every session; conditional rules activate on demand.
 
 | Rule | Trigger | Purpose |
 |:-----|:--------|:--------|
@@ -243,6 +243,10 @@ The system's foundational rules — 11 rules that define inherited behavior. Alw
 | [destructive-ops](genome/destructive-ops.md) | model_decision | Dry-run mandates for IaC, database mutations, bulk git |
 | [git-workflow](genome/.oracles/git-workflow.md) | model_decision | Conventional commits, .gitignore verification |
 | [desktop-automation](genome/desktop-automation.md) | model_decision | PyAutoGUI/xdotool safety, focus verification |
+| [core-change-protocol](genome/core-change-protocol.md) | model_decision | Approval gates for genome/enzyme modifications |
+| [tdd-protocol](genome/.oracles/tdd-protocol.md) | model_decision | Test-driven development with sequential phase gates |
+| [optional-import-guard](genome/.oracles/optional-import-guard.md) | model_decision | try/except guards on optional dependencies |
+| [hgt-resource-consolidation](genome/hgt-resource-consolidation-hgt.md) | model_decision | Cross-project rule sharing governance |
 
 ---
 
@@ -302,7 +306,7 @@ Generate → Score (Confidence Decay) → Adapt / Crossover → Differentiate �
 
 ## ⚙️ Automation Scripts
 
-51 task-specific scripts that drive the system's operations. See [SCRIPTS.md](docs/SCRIPTS.md) for full documentation.
+58 task-specific scripts that drive the system's operations. See [SCRIPTS.md](docs/SCRIPTS.md) for full documentation.
 
 | Category | Scripts |
 |:---------|:--------|
@@ -312,6 +316,7 @@ Generate → Score (Confidence Decay) → Adapt / Crossover → Differentiate �
 | **AI-Assisted** | `cell_create_nl.py` — NL rule creation via any LLM provider or MCP host delegation |
 | **Infrastructure** | `immune_init.sh`, `session_close.sh`, `escalation_sentinel.sh`, `escalation_sentinel.py`, `soma_resolve.py`, `safety_gate.sh`, `liveness_sentinel.sh`, `team_sync.sh`, `metrics_snapshot.sh`, `token_census.py`, `sweep_session.py` |
 | **Orchestration** | `soma_cli.py`, `soma_run.py`, `soma_sleep.py`, `hgt_ribosome.py`, `ttc_oracle.py`, `ttc_verifier.py`, `inference_provider.py` |
+| **Evidence Pipeline** | `fitness_updater.py`, `cell_expiry.py`, `oracle_checkpoint.py`, `evidence_collector.py`, `post_session_hook.sh` |
 
 ---
 
@@ -370,14 +375,15 @@ Recent academic studies ([arXiv:2602.11988](https://arxiv.org/abs/2602.11988), [
 **The Critique**: If an AI agent generates rules and then grades its own rules, isn't that just memory with extra steps? How do we know the rules are working, and it's not just the underlying foundation models getting better?
 **Soma's Solution**: **Two-Layer Verification**. Layer 1 uses deterministic AST tools (mutation testing, call graph analysis, branch coverage, import guards) that produce objective evidence no LLM can game. Layer 2 uses adversarial information-partitioned agents — a Spec Agent and Code Agent that can't collude because they see different inputs — with a deterministic set-algebra Arbiter. The Transcript Verifier independently checks subagent claims against actual execution logs. Additionally, Escaped Defect Tracking hooks into CI/CD exit codes to establish ground truth.
 
-| Feature | Standard AI Agents | Prompt Files (`.cursorrules`) | **Soma (v0.30)** |
+| Feature | Standard AI Agents | Prompt Files (`.cursorrules`) | **Soma (v0.50)** |
 |:--|:---:|:---:|:---:|
 | **Rule Enforcement** | Relies on LLM obedience | Relies on LLM obedience | **Mechanistic rejection via TTC Oracles** |
 | **Verification** | Self-grading | None | **Two-layer: deterministic tools + adversarial agents** |
-| **Context Management** | Pollutes main thread | Fixed 20%+ overhead | **JIT Context Loading** |
+| **Context Management** | Pollutes main thread | Fixed 20%+ overhead | **JIT Context Loading (~3,800 tokens idle)** |
 | **Adaptability** | Static training | Manual updates | **Self-evolving via evidence-based fitness** |
-| **Ground Truth** | N/A | N/A | **Escaped Defect Tracking (CI/CD hooks)** |
+| **Ground Truth** | N/A | N/A | **Escaped Defect Tracking + Evidence Pipeline** |
 | **Failure modes caught** | Syntax errors | Generic guidelines | **Rework loops, lazy reads, and hallucinations** |
+| **Rule Staleness** | Rules never expire | Rules never expire | **Time + session-based expiry enforcement** |
 | **Platform lock-in** | Vendor specific | Platform specific | **Universal via MCP stdio** |
 
 Instead of pleading with the AI in a system prompt to "think step-by-step," Soma acts as an evolutionary governance system. **Rules that can't prove themselves die. Agents that refuse to research are blocked. Claims that don't match the tape are caught.**
@@ -386,11 +392,11 @@ Instead of pleading with the AI in a system prompt to "think step-by-step," Soma
 
 ## Metrics
 
-- **First Pass Success Rate (FPSR)**: 97.3% (driven by Aggressive Subagent Delegation)
-- **Total System Idle Overhead**: 4,380 tokens/turn (stabilized via JIT Context)
-- **Waste Rate**: < 1.0% in best governed sessions (via Last Gasp & TTC Oracles)
-- **Calibrated Token Ratio**: 1.35 measured directly against models
-- **Verification Framework**: 178 tests across 14 test files
+- **Total System Idle Overhead**: ~3,800 tokens/turn (measured at v0.50 baseline — down 8.6% from Phase 11 despite 7 new enzymes)
+- **Typical Load** (genome + 3 matched cells): ~4,013 tokens/turn
+- **Waste Rate**: < 1.0% in governed sessions (via Last Gasp & TTC Oracles)
+- **Calibrated Token Ratio**: 1.35 measured directly against Gemini API
+- **Verification Framework**: 515+ tests across 20 test files
 
 See [METRICS.md](docs/METRICS.md) for a complete system breakdown. See [BENCHMARK.md](docs/BENCHMARK.md) for the standardized governance effectiveness benchmark.
 
@@ -415,10 +421,13 @@ make validate   # Shell syntax, Python compilation, JSON templates
 make doctor     # System health check
 ```
 
-**178 tests** across 14 test files covering:
+**515+ tests** across 20 test files covering:
 
 | Suite | Tests | Coverage |
 |:------|:-----:|:---------|
+| Rule content validation | ~40 | Behavioral content checks, parser agreement |
+| Rule metadata validation | ~30 | Frontmatter schema, required fields, type constraints |
+| Fitness updater | 26 | Evidence aggregation, platform detection, transcript parsing |
 | Static invariants | 23 | AST checks, encoding, backup naming, zero-dep MCP |
 | Import guard | 21 | Third-party import detection, stdlib classification |
 | Bayesian fitness | 19 | Laplace scoring, monotonicity, wall budgets, JIT stats |
@@ -428,7 +437,10 @@ make doctor     # System health check
 | Immune verify | 12 | Information-partitioned prompts, schema validation |
 | Install lifecycle | 11 | Multi-platform install/uninstall, manifest integrity |
 | Layer 1 runner | 11 | Orchestration, persistence gaps, orphan detection, gates |
+| Evidence collector | 10 | Rule compliance correlation, read-before-write detection |
 | Exponential decay | 10 | Mathematical properties, champion displacement |
+| Cell expiry | 8 | Day/session expiry, wall protection, prune mode |
+| Oracle checkpoint | 7 | Cell classification, recommendations, evidence pipeline |
 | Mutation tester | 6 | AST mutation generation, survival detection |
 | Branch coverage | 4 | Trace/pytest-cov branch coverage |
 | Decay integration | 4 | End-to-end decay across on-disk YAML |
@@ -442,7 +454,7 @@ GitHub Actions runs on `ubuntu-latest`, `macos-latest`, and `windows-latest`:
 
 ## Version History
 
-Soma has evolved across 30 measured phases, from manually written logic into a self-adapting governance framework:
+Soma has evolved across 50 measured phases, from manually written logic into a self-adapting governance framework:
 
 | Phases | Theme |
 |:-------|:------|
@@ -462,6 +474,7 @@ Soma has evolved across 30 measured phases, from manually written logic into a s
 | 23–25 | **TTC & JIT Context** — Last Gasp, TTC Oracles, zero-waste validation |
 | 26–29 | **Perception & Homeostasis** — Interoception, resilience engine, signal coherence |
 | 30 | **Two-Layer Verification** — Deterministic tools, adversarial pairing, transcript verification |
+| 31–50 | **Incentive-Compatible Governance** — Evidence pipeline, fitness ledger migration, cell expiry enforcement, oracle checkpoint, test hardening (tautological → behavioral), delegation verification, multi-platform support, 515+ tests |
 
 Read [PHYLOGENY.md](docs/PHYLOGENY.md) for the complete evolutionary narrative.
 

@@ -1,4 +1,6 @@
 ---
+id: architectural-tenets
+domain: governance
 name: Architectural Tenets
 description: Design constraints focusing on pragmatism, explicit trade-off analysis, and scale-to-zero preferences.
 trigger: model_decision

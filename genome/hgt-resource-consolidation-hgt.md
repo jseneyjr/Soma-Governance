@@ -1,5 +1,7 @@
 ---
-name: resource-consolidation-hgt-
+id: hgt-resource-consolidation-hgt
+domain: governance
+name: resource-consolidation-hgt
 type: gene
 hgt_source: /home/<user>/.gemini/antigravity/scratch/rimworld_agent/.soma/playbooks/raid_defense.md
 trigger: universal

@@ -8,10 +8,7 @@ import os, sys, argparse, json, subprocess
 from soma_resolve import resolve_workspace
 from inference_provider import resolve_provider
 
-try:
-    import yaml as _yaml
-except ImportError:  # pragma: no cover
-    _yaml = None
+import yaml
 
 def create_cell_from_description(description, domain_hint=None, cell_type=None, provider_name=None):
     """Use AI to generate cell YAML from natural language."""
@@ -20,7 +17,7 @@ def create_cell_from_description(description, domain_hint=None, cell_type=None, 
     provider = resolve_provider(workspace, provider_name)
     
     # Load existing cells as examples
-    import glob, yaml
+    import glob
     examples = []
     cells_dir = os.path.join(workspace, '.soma', 'cells')
     if os.path.isdir(cells_dir):
@@ -50,7 +47,9 @@ Cell types:
 - plasmodesmata: Cross-service contract. Use for API/data shape agreements.
 
 YAML fields required:
+- id: (filename stem, e.g. 'trap-missing-tests' for trap-missing-tests.md)
 - type: (one of above)
+- domain: (one of: efficiency, correctness, security, style, governance)
 - hypothesis: (clear, testable statement)
 - prediction: (what will happen if the hypothesis is violated)
 - falsification: (how to prove this cell is no longer needed)
@@ -58,8 +57,6 @@ YAML fields required:
 - minimum_mode: (breeze | gale | trident | maelstrom | tempest)
 - tags: (list of relevant tags)
 
-Optionally include:
-- fitness: (triggers: 0, true_positives: 0, false_positives: 0, score: null)
 
 Existing cells in this project for reference:
 {example_text}
@@ -99,8 +96,14 @@ def create_cell_from_insight_cluster(cluster: dict, workspace: str) -> str:
 
     hypothesis = f"Human attention pattern detected: {category} in {files_str}"
 
+    # Compute slug before building frontmatter (used as id and filename)
+    slug = re.sub(r"[^a-z0-9]+", "-", category.lower())[:50].strip("-") or "unknown"
+    cell_id = f"vacuole-{slug}"
+
     frontmatter = {
+        "id": cell_id,
         "type": "vacuole",
+        "domain": "correctness",
         "hypothesis": hypothesis,
         "prediction": f"Recurring {category} issues will continue if unaddressed",
         "falsification": f"No {category} insights observed for 60 days",
@@ -108,32 +111,9 @@ def create_cell_from_insight_cluster(cluster: dict, workspace: str) -> str:
         "minimum_mode": "breeze",
         "origin": "human_insight",
         "tags": ["auto-generated", "insight-cluster", category],
-        "fitness": {
-            "triggers": 0,
-            "true_positives": 0,
-            "false_positives": 0,
-            "score": None,
-        },
     }
 
-    # Build YAML frontmatter — works with or without pyyaml
-    if _yaml is not None:
-        fm_text = _yaml.dump(frontmatter, default_flow_style=False, sort_keys=False)
-    else:
-        # Minimal manual serialisation for the known shape
-        lines = []
-        for key, value in frontmatter.items():
-            if isinstance(value, list):
-                lines.append(f"{key}:")
-                for item in value:
-                    lines.append(f"  - {item}")
-            elif isinstance(value, dict):
-                lines.append(f"{key}:")
-                for k, v in value.items():
-                    lines.append(f"  {k}: {v}")
-            else:
-                lines.append(f"{key}: {value}")
-        fm_text = "\n".join(lines) + "\n"
+    fm_text = yaml.dump(frontmatter, default_flow_style=False, sort_keys=False)
 
     body = f"This vacuole was auto-generated from a cluster of human insights " \
            f"about **{category}** (confidence {confidence:.2f}).\n"
@@ -141,7 +121,6 @@ def create_cell_from_insight_cluster(cluster: dict, workspace: str) -> str:
     cell_content = f"---\n{fm_text}---\n\n{body}"
 
     # Determine filename
-    slug = re.sub(r"[^a-z0-9]+", "-", category.lower())[:50].strip("-") or "unknown"
     filename = f"vacuole-{slug}.md"
 
     target_dir = os.path.join(workspace, ".soma", "cells", "vacuoles")
@@ -149,26 +128,24 @@ def create_cell_from_insight_cluster(cluster: dict, workspace: str) -> str:
 
     filepath = os.path.join(target_dir, filename)
 
-    # Collision safety: preserve existing cell fitness metadata
+    # Collision safety: check fitness.jsonl for existing trigger data
     if os.path.isfile(filepath):
-        try:
-            with open(filepath, 'r', encoding='utf-8') as f:
-                existing = f.read()
-            if '---' in existing:
-                end = existing.find('---', 3)
-                if end != -1:
-                    fm_text_existing = existing[3:end].strip()
-                    if _yaml is not None:
-                        existing_fm = _yaml.safe_load(fm_text_existing) or {}
-                    else:
-                        existing_fm = {}
-                    existing_fitness = existing_fm.get('fitness')
-                    if existing_fitness and isinstance(existing_fitness, dict):
-                        if existing_fitness.get('triggers', 0) > 0:
-                            # Cell has accumulated fitness data — don't overwrite
-                            return filepath
-        except Exception:
-            pass
+        evidence_dir = os.path.join(workspace, '.soma', 'evidence')
+        fitness_file = os.path.join(evidence_dir, 'fitness.jsonl')
+        if os.path.isfile(fitness_file):
+            try:
+                cell_id = frontmatter.get('id', '')
+                with open(fitness_file, 'r', encoding='utf-8') as f:
+                    for line in f:
+                        try:
+                            record = json.loads(line)
+                            if record.get('cell_id') == cell_id:
+                                # Cell has fitness evidence — don't overwrite
+                                return filepath
+                        except (json.JSONDecodeError, ValueError):
+                            continue
+            except Exception:
+                pass
 
     with open(filepath, "w", encoding="utf-8") as f:
         f.write(cell_content)
@@ -228,7 +205,6 @@ def main():
         return
     
     # Parse the generated YAML to determine type and create filename
-    import yaml
     try:
         if cell_content.startswith('```'):
             # Strip markdown code fences if present

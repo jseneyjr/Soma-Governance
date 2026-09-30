@@ -1,26 +1,34 @@
 ---
+id: trap-hardcoded-paths
+domain: correctness
 type: vacuole
 enforcement: advisory
 promotion_threshold: 0.85
-demotion_threshold: 0.30
-hypothesis: "Hardcoded platform paths (e.g. ~/.gemini, ~/.kiro) in scripts break cross-platform installs"
-prediction: "Will flag hardcoded paths where dynamic SOMA_PLATFORM logic is required"
-falsification: "0 findings in 10 sessions → prune"
+demotion_threshold: 0.3
+hypothesis: Hardcoded platform paths (e.g. ~/.gemini, ~/.kiro) in scripts break cross-platform
+  installs
+prediction: Will flag hardcoded paths where dynamic SOMA_PLATFORM logic is required
+falsification: 0 findings in 10 sessions → prune
 target_paths:
-  - "enzymes/*.sh"
-  - "enzymes/*.py"
-  - "install/*.sh"
+- enzymes/*.sh
+- enzymes/*.py
+- install/*.sh
 expiry_sessions: 10
 expiry_days: 30
-created: "2026-09-28"
+created: '2026-09-28'
 impact_weight: 0.8
+tags:
+- portability
+- cross-platform
+- anti-pattern
 fitness:
-  triggers: 2
-  true_positives: 1
-  false_positives: 1
-tags: [portability, cross-platform, anti-pattern]
+  score: null
+  impact_weight: 1.0
+  triggers: 4
+  true_positives: 0
+  false_positives: 4
+  last_trigger_date: '2026-09-30T20:09:18Z'
 ---
-
 Scripts should use SOMA_PLATFORM and resolve_home() to determine paths dynamically,
 not hardcode ~/.gemini or ~/.kiro. Hardcoded paths break on other platforms and
 prevent new platform support (e.g., Claude Code).

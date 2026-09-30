@@ -1,4 +1,6 @@
 ---
+id: core-change-protocol
+domain: governance
 activation: |
   Changes touching: enzymes/outcome_engine.py, enzymes/cell_fitness.py,
   enzymes/cell_escaped_defects.py, soma_mcp/jit_engine.py,

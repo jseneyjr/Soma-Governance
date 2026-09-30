@@ -17,8 +17,6 @@ import shutil
 
 import pytest
 
-pytest.importorskip("yaml")  # enzymes require PyYAML at import time
-
 REPO_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, REPO_ROOT)
 sys.path.insert(0, os.path.join(REPO_ROOT, 'soma_mcp'))
@@ -27,60 +25,59 @@ sys.path.insert(0, os.path.join(REPO_ROOT, 'soma_mcp'))
 # ── Bayesian Fitness Scoring (cell_fitness.py) ────────────────────────────
 
 class TestBayesianFitnessScoring:
-    """Verify the Laplace-smoothed Bayesian posterior mean replaces raw precision."""
+    """Verify bayesian_fitness() from cell_fitness.py produces correct behavior."""
 
     def test_zero_triggers_returns_0_5(self):
-        """A brand-new cell with no data should score 0.5 (maximally uncertain),
-        not None. This is the core fix for small-sample instability."""
-        # Beta(1, 1) → mean = 1/2 = 0.5
-        tp, triggers = 0, 0
-        score = (tp + 1) / (triggers + 2)
-        assert score == pytest.approx(0.5)
+        """A brand-new cell with no data should score 0.5 (maximally uncertain)."""
+        sys.path.insert(0, os.path.join(REPO_ROOT, 'enzymes'))
+        from cell_fitness import bayesian_fitness
+        result = bayesian_fitness(tp=0, fp=0)
+        assert result['mean'] == pytest.approx(0.5)
 
     def test_perfect_small_sample_not_1_0(self):
-        """A cell with 1/1 perfect record should NOT score 1.0.
-        Bayesian smoothing should produce 2/3 ≈ 0.667."""
-        tp, triggers = 1, 1
-        score = (tp + 1) / (triggers + 2)
-        assert score == pytest.approx(2/3, rel=1e-3)
-        assert score < 1.0, "Perfect 1/1 must not score 1.0"
+        """A cell with 1 TP / 0 FP should NOT score 1.0 — prior pulls it down."""
+        sys.path.insert(0, os.path.join(REPO_ROOT, 'enzymes'))
+        from cell_fitness import bayesian_fitness
+        result = bayesian_fitness(tp=1, fp=0)
+        assert result['mean'] < 1.0, "Perfect 1/0 must not score 1.0"
 
-    def test_perfect_5_of_5_below_raw(self):
-        """5/5 triggers → raw would be 1.0, Bayesian gives 6/7 ≈ 0.857."""
-        tp, triggers = 5, 5
-        score = (tp + 1) / (triggers + 2)
-        assert score == pytest.approx(6/7, rel=1e-3)
-        assert score < 0.9, "5/5 should be below 0.9 with smoothing"
+    def test_all_false_positives_below_0_5(self):
+        """A cell with 0 TP / 5 FP should score well below 0.5."""
+        sys.path.insert(0, os.path.join(REPO_ROOT, 'enzymes'))
+        from cell_fitness import bayesian_fitness
+        result = bayesian_fitness(tp=0, fp=5)
+        assert result['mean'] < 0.15
 
     def test_large_sample_converges_to_raw(self):
-        """At 100 triggers, Bayesian and raw precision should be nearly identical."""
-        tp, triggers = 90, 100
-        raw = tp / triggers  # 0.9
-        bayesian = (tp + 1) / (triggers + 2)  # 91/102 ≈ 0.892
-        assert abs(bayesian - raw) < 0.01, \
-            f"At n=100, Bayesian ({bayesian:.4f}) should be within 0.01 of raw ({raw})"
+        """At 100 observations, Bayesian and raw should be nearly identical."""
+        sys.path.insert(0, os.path.join(REPO_ROOT, 'enzymes'))
+        from cell_fitness import bayesian_fitness
+        result = bayesian_fitness(tp=90, fp=10)
+        raw = 90 / 100
+        assert abs(result['mean'] - raw) < 0.01
 
-    def test_zero_tp_high_triggers_near_zero(self):
-        """A cell that triggers often but never catches real bugs should score near 0."""
-        tp, triggers = 0, 20
-        score = (tp + 1) / (triggers + 2)
-        assert score == pytest.approx(1/22, rel=1e-3)
-        assert score < 0.1
+    def test_certainty_low_for_small_samples(self):
+        """Fewer than 5 observations -> certainty must be 'low'."""
+        sys.path.insert(0, os.path.join(REPO_ROOT, 'enzymes'))
+        from cell_fitness import bayesian_fitness
+        result = bayesian_fitness(tp=1, fp=1)
+        assert result['certainty'] == 'low'
 
-    def test_monotonicity_with_fixed_triggers(self):
-        """More true positives → higher score, for fixed trigger count."""
-        triggers = 10
-        scores = [(tp + 1) / (triggers + 2) for tp in range(triggers + 1)]
+    def test_certainty_medium_for_moderate_samples(self):
+        """5-19 observations -> certainty must be 'medium'."""
+        sys.path.insert(0, os.path.join(REPO_ROOT, 'enzymes'))
+        from cell_fitness import bayesian_fitness
+        result = bayesian_fitness(tp=5, fp=5)
+        assert result['certainty'] == 'medium'
+
+    def test_monotonicity_with_increasing_tp(self):
+        """More true positives -> higher score, for fixed false positives."""
+        sys.path.insert(0, os.path.join(REPO_ROOT, 'enzymes'))
+        from cell_fitness import bayesian_fitness
+        scores = [bayesian_fitness(tp=tp, fp=5)['mean'] for tp in range(11)]
         for i in range(len(scores) - 1):
-            assert scores[i] < scores[i+1], \
+            assert scores[i] < scores[i + 1], \
                 f"Score must increase: tp={i} ({scores[i]:.4f}) < tp={i+1} ({scores[i+1]:.4f})"
-
-    def test_impact_weight_multiplier(self):
-        """Impact weight should multiply the Bayesian score."""
-        tp, triggers = 5, 10
-        base = (tp + 1) / (triggers + 2)
-        weighted = base * 0.7
-        assert weighted == pytest.approx(base * 0.7)
 
 
 # ── JIT Engine: get_fitness_score() ───────────────────────────────────────

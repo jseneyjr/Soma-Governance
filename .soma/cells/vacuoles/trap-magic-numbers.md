@@ -1,11 +1,14 @@
 ---
+id: trap-magic-numbers
+domain: style
 type: vacuole
-hypothesis: Hardcoded numeric literals represent brittle magic numbers that reduce code adaptability.
-prediction: Extracting these numbers into configuration or constants will increase the fitness of the codebase.
+hypothesis: Hardcoded numeric literals represent brittle magic numbers that reduce
+  code adaptability.
+prediction: Extracting these numbers into configuration or constants will increase
+  the fitness of the codebase.
 falsification: The numbers are mathematically fundamental constants that never change.
 expiry_sessions: 50
 impact_weight: 0.8
-fitness: 1.0
 ---
 
 # Trap: Magic Numbers

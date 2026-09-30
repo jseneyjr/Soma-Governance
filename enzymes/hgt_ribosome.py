@@ -11,10 +11,7 @@ since the translation task is straightforward noun-stripping and abstraction.
 import os
 import sys
 import argparse
-try:
-    import yaml
-except ImportError:
-    yaml = None
+import yaml
 import re
 
 def parse_frontmatter(content):
@@ -90,12 +87,15 @@ def main():
     
     # Create filename based on abstract name
     first_line = translated_body.split('\n')[0]
-    filename_base = re.sub(r'[^a-z0-9]+', '-', first_line.lower().replace('#', '').strip())
-    filename = f"hgt-{filename_base}.md"
+    filename_base = re.sub(r'[^a-z0-9]+', '-', first_line.lower().replace('#', '').strip()).strip('-')
+    gene_id = f"hgt-{filename_base}"
+    filename = f"{gene_id}.md"
     
     output_path = os.path.join(genome_dir, filename)
     
     new_metadata = {
+        "id": gene_id,
+        "domain": "governance",
         "name": filename_base,
         "type": "gene",
         "hgt_source": args.source_file,

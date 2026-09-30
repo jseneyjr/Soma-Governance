@@ -6,10 +6,7 @@ import math
 import os
 import subprocess
 
-try:
-    import yaml
-except ImportError:
-    yaml = None
+import yaml
 from soma_resolve import resolve_workspace
 
 

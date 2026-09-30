@@ -9,7 +9,7 @@ import subprocess
 import sys
 import pytest
 
-yaml = pytest.importorskip("yaml")
+import yaml
 
 REPO_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, REPO_ROOT)
@@ -60,27 +60,17 @@ class TestLocalPromotionDecay:
         assert not would_promote, \
             f"After decay, cell should NOT promote (score={decayed_score:.4f}, triggers={decayed['triggers']})"
 
-    def test_local_code_path_calls_apply_decay(self):
-        """Verify that the --local code path in cell_promote.py actually
-        calls apply_decay. This is an AST/source-level test to catch
-        if someone removes the call."""
-        import ast
+    def test_apply_decay_reduces_stale_triggers(self):
+        """Verify apply_decay actually reduces trigger count for stale cells.
+        This is the behavioral contract: if a cell hasn't been seen in >1 hour,
+        decay must reduce its triggers to prevent stale count inflation."""
+        import time
+        from cell_promote import apply_decay
 
-        source_path = os.path.join(REPO_ROOT, "enzymes", "cell_promote.py")
-        with open(source_path, 'r', encoding='utf-8') as f:
-            source = f.read()
-
-        # Find the --local block (after "if args.local:")
-        local_block_start = source.find("if args.local:")
-        assert local_block_start != -1, "Could not find 'if args.local:' in cell_promote.py"
-
-        # Find the end of the local block (next top-level else/elif at same indent)
-        local_block_end = source.find("\n    else:", local_block_start)
-        if local_block_end == -1:
-            local_block_end = len(source)
-
-        local_block = source[local_block_start:local_block_end]
-
-        assert "apply_decay" in local_block, \
-            "The --local promotion path does NOT call apply_decay(). " \
-            "Decay must be applied before scoring to prevent stale count inflation."
+        meta = {'fitness': {
+            'triggers': 100, 'true_positives': 90, 'false_positives': 10,
+            'last_decay_epoch': int(time.time()) - 7200  # 2 hours ago
+        }}
+        apply_decay(meta)
+        assert meta['fitness']['triggers'] < 100, \
+            "apply_decay must reduce triggers for stale cells"

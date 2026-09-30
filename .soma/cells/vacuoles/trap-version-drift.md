@@ -1,24 +1,26 @@
 ---
+id: trap-version-drift
+domain: correctness
 type: vacuole
 enforcement: advisory
-hypothesis: "Version numbers across VERSION, pyproject.toml, soma_sdk/__init__.py, and soma_sdk_js/package.json must stay in sync"
-prediction: "Will catch version drift when bumping versions in one file but not others"
-falsification: "0 version mismatches in 10 sessions → prune"
+hypothesis: Version numbers across VERSION, pyproject.toml, soma_sdk/__init__.py,
+  and soma_sdk_js/package.json must stay in sync
+prediction: Will catch version drift when bumping versions in one file but not others
+falsification: "0 version mismatches in 10 sessions \u2192 prune"
 target_paths:
-  - "VERSION"
-  - "pyproject.toml"
-  - "soma_sdk/__init__.py"
-  - "soma_sdk_js/package.json"
+- VERSION
+- pyproject.toml
+- soma_sdk/__init__.py
+- soma_sdk_js/package.json
 expiry_sessions: 10
 expiry_days: 45
-created: "2026-09-28"
+created: '2026-09-28'
 impact_weight: 1.0
 minimum_mode: breeze
-fitness:
-  triggers: 3
-  true_positives: 2
-  false_positives: 1
-tags: [versioning, consistency, release]
+tags:
+- versioning
+- consistency
+- release
 ---
 
 Version consistency is enforced across 4 sources:
