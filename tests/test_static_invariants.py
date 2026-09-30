@@ -293,6 +293,19 @@ def test_powershell_uninstaller_exists():
     )
 
 
+def test_powershell_scripts_with_non_ascii_have_utf8_bom():
+    """Windows PowerShell 5.1 decodes BOM-less scripts as ANSI (cp1252): the
+    em-dash's trailing 0x94 byte becomes a closing quote and the installer
+    fails to parse at all."""
+    offenders = []
+    for path in iter_source_files(REPO_ROOT, (".ps1", ".psm1")):
+        with open(path, "rb") as f:
+            data = f.read()
+        if not data.isascii() and not data.startswith(b"\xef\xbb\xbf"):
+            offenders.append(os.path.relpath(path, REPO_ROOT))
+    assert not offenders, f"non-ASCII PowerShell scripts missing UTF-8 BOM: {offenders}"
+
+
 def test_rule_basenames_are_unique_when_flattened():
     """install.sh flattens genome/**/*.md into one directory, so a duplicate
     basename would silently overwrite, last write winning."""
