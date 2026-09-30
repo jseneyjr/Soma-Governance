@@ -47,6 +47,7 @@ info: ## Show current configuration
 	@echo "└───────────────────────────────┘"
 
 install: ## Install for configured platform (SOMA_PLATFORM)
+	@pip install -e . --quiet 2>/dev/null || pip install -e . 2>/dev/null || echo "  ⚠️  pip install -e . failed (soma CLI may not be on PATH)"
 	@bash install/install.sh $(SOMA_PLATFORM)
 
 install-gemini: ## Install rules for Gemini/Antigravity (alias)

@@ -1,0 +1,5 @@
+genome/providence.md
+genome/destructive-ops.md
+genome/.oracles/testing.md
+genome/cost-optimization.md
+genome/.oracles/git-workflow.md

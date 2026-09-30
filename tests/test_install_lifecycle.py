@@ -238,3 +238,43 @@ def test_dry_run_install_writes_nothing(fake_home, bash, tmp_path, platform):
 
     created = list(fake_home.rglob("*")) + list(project.rglob("*"))
     assert not created, f"dry-run created files for {platform}: {created[:5]}"
+
+
+# ── Starter Pack ────────────────────────────────────────────────────────
+
+REPO_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+STARTER_PACK = os.path.join(REPO_ROOT, "install", "starter_pack.txt")
+
+
+def test_starter_pack_file_exists():
+    """The starter_pack.txt manifest must exist."""
+    assert os.path.isfile(STARTER_PACK), f"Missing: {STARTER_PACK}"
+
+
+def test_starter_pack_has_five_entries():
+    """Exactly 5 rules in the starter pack."""
+    with open(STARTER_PACK) as f:
+        entries = [line.strip() for line in f if line.strip()]
+    assert len(entries) == 5, f"Expected 5 entries, got {len(entries)}: {entries}"
+
+
+def test_starter_pack_files_exist():
+    """Every file listed in starter_pack.txt must exist in the repo."""
+    with open(STARTER_PACK) as f:
+        entries = [line.strip() for line in f if line.strip()]
+    for entry in entries:
+        path = os.path.join(REPO_ROOT, entry)
+        assert os.path.isfile(path), f"Starter rule not found: {entry} ({path})"
+
+
+def test_starter_rules_match_init():
+    """Starter pack manifest matches STARTER_RULES_LEGACY in soma_cli/init.py."""
+    from soma_cli.init import STARTER_RULES_LEGACY
+    with open(STARTER_PACK) as f:
+        manifest = {line.strip() for line in f if line.strip()}
+    init_paths = set(STARTER_RULES_LEGACY.values())
+    assert manifest == init_paths, (
+        f"Manifest and STARTER_RULES_LEGACY diverge:\n"
+        f"  manifest only: {manifest - init_paths}\n"
+        f"  init.py only: {init_paths - manifest}"
+    )

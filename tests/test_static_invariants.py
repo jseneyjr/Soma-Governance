@@ -395,7 +395,7 @@ def test_version_is_single_sourced():
 def test_cli_exits_nonzero_on_unknown_command():
     """SOMA-M03: main() returned None on the unknown-command path, so the
     console script produced exit 0 while printing an error."""
-    proc = run([sys.executable, os.path.join(REPO_ROOT, "enzymes", "soma_cli.py"),
+    proc = run([sys.executable, os.path.join(REPO_ROOT, "enzymes", "soma_cli_legacy.py"),
                 "definitely-not-a-command"])
     assert proc.returncode != 0, (
         f"CLI reported an unknown command but exited 0:\n{proc.stdout}{proc.stderr}"
