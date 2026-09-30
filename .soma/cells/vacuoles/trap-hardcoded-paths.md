@@ -24,10 +24,10 @@ tags:
 fitness:
   score: null
   impact_weight: 1.0
-  triggers: 3
+  triggers: 4
   true_positives: 0
-  false_positives: 3
-  last_trigger_date: '2026-09-30T20:05:49Z'
+  false_positives: 4
+  last_trigger_date: '2026-09-30T20:09:18Z'
 ---
 Scripts should use SOMA_PLATFORM and resolve_home() to determine paths dynamically,
 not hardcode ~/.gemini or ~/.kiro. Hardcoded paths break on other platforms and
