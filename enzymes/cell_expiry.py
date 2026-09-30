@@ -83,11 +83,19 @@ def audit_expiry(workspace, session_count=None):
 
         # Check expiry_days
         expiry_days = metadata.get('expiry_days')
-        created_str = metadata.get('created')
-        if expiry_days and created_str:
+        created_val = metadata.get('created')
+        if expiry_days and created_val:
             try:
-                fmt = "%Y-%m-%dT%H:%M:%SZ" if 'T' in str(created_str) else "%Y-%m-%d"
-                created_date = datetime.strptime(str(created_str), fmt)
+                expiry_days = int(expiry_days)
+                # PyYAML may parse unquoted dates into datetime objects
+                if isinstance(created_val, datetime):
+                    created_date = created_val
+                elif hasattr(created_val, 'isoformat'):  # date object
+                    created_date = datetime.combine(created_val, datetime.min.time())
+                else:
+                    created_str = str(created_val)
+                    fmt = "%Y-%m-%dT%H:%M:%SZ" if 'T' in created_str else "%Y-%m-%d"
+                    created_date = datetime.strptime(created_str, fmt)
                 days_elapsed = (now - created_date).days
                 if days_elapsed > expiry_days:
                     expired = True
@@ -99,10 +107,15 @@ def audit_expiry(workspace, session_count=None):
         # Check expiry_sessions (only if not already expired by days)
         if not expired and session_count is not None:
             expiry_sessions = metadata.get('expiry_sessions')
-            if expiry_sessions and session_count > expiry_sessions:
-                expired = True
-                reason = 'expiry_sessions'
-                details = f"{session_count} sessions elapsed (limit: {expiry_sessions})"
+            if expiry_sessions:
+                try:
+                    expiry_sessions = int(expiry_sessions)
+                    if session_count > expiry_sessions:
+                        expired = True
+                        reason = 'expiry_sessions'
+                        details = f"{session_count} sessions elapsed (limit: {expiry_sessions})"
+                except (ValueError, TypeError):
+                    pass
 
         if expired:
             status = 'EXPIRY_WARNING' if is_wall else 'EXPIRED'
@@ -208,6 +221,9 @@ def main():
     if args.prune:
         pruned = prune_expired(workspace, results)
         print(f"\nPruned {pruned} cell(s)")
+        # Re-check: if all expired cells were pruned, exit 0
+        if pruned > 0:
+            return 0
 
     return 0 if not any(r['status'] == 'EXPIRED' for r in results) else 1
 
