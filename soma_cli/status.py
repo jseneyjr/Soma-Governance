@@ -9,11 +9,19 @@ import yaml
 
 
 def _repo_root(args: argparse.Namespace) -> Path:
-    """Find the Soma repo root, allowing test overrides via _root or _project_root."""
+    """Find the Soma install root (where genome/ lives)."""
     root = getattr(args, "_root", getattr(args, "_project_root", None))
     if root is not None:
         return Path(root)
     return Path(__file__).resolve().parent.parent
+
+
+def _project_root(args: argparse.Namespace) -> Path:
+    """Find the project root (where .soma/ lives)."""
+    root = getattr(args, "_root", getattr(args, "_project_root", None))
+    if root is not None:
+        return Path(root)
+    return Path.cwd()
 
 
 def _parse_frontmatter(content: str) -> dict:
@@ -106,6 +114,7 @@ def _read_trigger_counts(fitness_file: Path) -> dict[str, int]:
 def run_status(args: argparse.Namespace) -> int:
     """Show active rules and stats."""
     root = _repo_root(args)
+    proj = _project_root(args)
 
     # 1. Count core rules: .md files in genome/ and genome/.oracles/ (exclude README.md)
     core_files: list[Path] = []
@@ -122,14 +131,14 @@ def run_status(args: argparse.Namespace) -> int:
 
     # 2. Count adaptive rules: .md files in .soma/cells/ recursively (exclude README.md)
     adaptive_files: list[Path] = []
-    cells_dir = root / ".soma" / "cells"
+    cells_dir = proj / ".soma" / "cells"
     if cells_dir.is_dir():
         for p in sorted(cells_dir.rglob("*.md")):
             if p.is_file() and p.name.lower() != "readme.md":
                 adaptive_files.append(p)
 
     # 3. Read trigger counts from .soma/evidence/fitness.jsonl
-    fitness_file = root / ".soma" / "evidence" / "fitness.jsonl"
+    fitness_file = proj / ".soma" / "evidence" / "fitness.jsonl"
     trigger_counts = _read_trigger_counts(fitness_file)
 
     # 4. Process all rules and calculate character overhead

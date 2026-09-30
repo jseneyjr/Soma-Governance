@@ -69,12 +69,14 @@ def detect_project_type(project_root: Path) -> str:
 
 # ── Rules directory per platform ────────────────────────────────────────────
 
-def get_rules_dir(platform: str, home: Path | None = None) -> Path:
+def get_rules_dir(platform: str, home: Path | None = None,
+                  project_root: Path | None = None) -> Path:
     """Return the target rules directory for the given platform.
 
     Args:
         platform: One of 'gemini', 'claude', 'cursor', 'copilot'.
         home: Home directory override (for testing).
+        project_root: Project directory override (for copilot, which is project-relative).
 
     Returns:
         Path to the platform's rules directory.
@@ -85,12 +87,15 @@ def get_rules_dir(platform: str, home: Path | None = None) -> Path:
     if home is None:
         home = Path.home()
     home = Path(home)
+    if project_root is None:
+        project_root = Path.cwd()
+    project_root = Path(project_root)
 
     dirs = {
         "gemini": home / ".gemini" / "config" / "rules",
         "claude": home / ".claude",
         "cursor": home / ".cursor" / "rules",
-        "copilot": home / ".github" / "copilot",
+        "copilot": project_root / ".github" / "copilot",
     }
     if platform not in dirs:
         raise ValueError(
@@ -209,6 +214,9 @@ def run_init(args: argparse.Namespace) -> int:
     if dry_run:
         print("  Dry run complete. No files were created.")
         print(f"  Target: {rules_dir}")
+    elif not installed:
+        print("  ❌ No rules were installed. Check that Soma source files exist.")
+        return 1
     else:
         print("  Done! Your next agent session will be governed.")
         print(f"  Rules installed to: {rules_dir}")
