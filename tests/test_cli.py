@@ -51,10 +51,12 @@ class TestCLIDispatch:
         ("report", []),
         ("doctor", []),
     ])
-    def test_subcommand_runs_without_crash(self, cmd, extra_args):
+    def test_subcommand_runs_without_crash(self, cmd, extra_args, capsys):
         from soma_cli.cli import main
         result = main([cmd] + extra_args)
-        assert result in (0, 1)  # doctor may return 1 in CI/sandbox
+        assert result in (0, 1)
+        captured = capsys.readouterr()
+        assert 'Traceback' not in captured.err
 
     def test_unknown_command_returns_nonzero(self):
         from soma_cli.cli import main

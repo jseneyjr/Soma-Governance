@@ -6,7 +6,6 @@ from __future__ import annotations
 
 import argparse
 import importlib.resources
-import os
 import shutil
 from pathlib import Path
 
@@ -158,22 +157,22 @@ def install_starter_rules(
             print(f"  ⚠️  {name}: source not found")
             continue
 
+        dest = rules_dir / f"{name}.md"
+
+        # Security: reject symlink destinations to prevent arbitrary
+        # file overwrite (e.g. symlink pointing to ~/.bashrc)
+        if dest.is_symlink():
+            print(f"  ⚠️  {name}: skipped (destination is a symlink)")
+            continue
+
+        # Don't overwrite user-customized rules unless forced
+        if dest.exists() and not force:
+            print(f"  ℹ️  {name}: already exists, skipping (use --force to overwrite)")
+            installed.append(name)
+            continue
+
         if not dry_run:
             rules_dir.mkdir(parents=True, exist_ok=True)
-            dest = rules_dir / f"{name}.md"
-
-            # Security: reject symlink destinations to prevent arbitrary
-            # file overwrite (e.g. symlink pointing to ~/.bashrc)
-            if dest.is_symlink():
-                print(f"  ⚠️  {name}: skipped (destination is a symlink)")
-                continue
-
-            # Don't overwrite user-customized rules unless forced
-            if dest.exists() and not force:
-                print(f"  ℹ️  {name}: already exists, skipping (use --force to overwrite)")
-                installed.append(name)
-                continue
-
             shutil.copy2(source, dest)
 
         installed.append(name)
@@ -296,13 +295,13 @@ def _install_claude_md(rules_dir: Path, force: bool = False) -> None:
     Claude Code reads CLAUDE.md, not individual .md files. We concatenate
     all installed rules between SOMA markers so we can update them later.
     """
-    claude_md = rules_dir.parent / "CLAUDE.md"  # ~/.claude/CLAUDE.md
+    claude_md = rules_dir / "CLAUDE.md"  # ~/.claude/CLAUDE.md
 
     # Build the soma governance section
     sections = []
     for rule_file in sorted(rules_dir.glob("*.md")):
-        if rule_file.is_file():
-            content = rule_file.read_text().strip()
+        if rule_file.is_file() and rule_file.name != "CLAUDE.md":
+            content = rule_file.read_text(encoding="utf-8").strip()
             sections.append(f"## {rule_file.stem}\n\n{content}")
 
     if not sections:
@@ -316,20 +315,36 @@ def _install_claude_md(rules_dir: Path, force: bool = False) -> None:
     )
 
     if claude_md.exists():
-        existing = claude_md.read_text()
-        if SOMA_MARKER_START in existing and SOMA_MARKER_END in existing:
+        existing = claude_md.read_text(encoding="utf-8")
+        has_start = SOMA_MARKER_START in existing
+        has_end = SOMA_MARKER_END in existing
+
+        if has_start and has_end:
+            start_idx = existing.index(SOMA_MARKER_START)
+            end_idx = existing.index(SOMA_MARKER_END) + len(SOMA_MARKER_END)
+            # Guard against inverted markers
+            if start_idx >= end_idx:
+                print("  ⚠️  CLAUDE.md has corrupted SOMA markers, skipping")
+                return
             if not force:
                 print("  ℹ️  CLAUDE.md already has Soma rules (use --force to update)")
                 return
             # Replace existing section
-            start_idx = existing.index(SOMA_MARKER_START)
-            end_idx = existing.index(SOMA_MARKER_END) + len(SOMA_MARKER_END)
             updated = existing[:start_idx] + soma_block + existing[end_idx:]
-            claude_md.write_text(updated)
+            claude_md.write_text(updated, encoding="utf-8")
+        elif has_start or has_end:
+            # Partial markers — refuse without --force to avoid corruption
+            if not force:
+                print("  ⚠️  CLAUDE.md has partial SOMA markers (use --force to replace)")
+                return
+            # Force: remove the orphan marker line and append fresh block
+            lines = existing.splitlines(True)
+            lines = [l for l in lines if SOMA_MARKER_START not in l and SOMA_MARKER_END not in l]
+            claude_md.write_text("".join(lines).rstrip() + "\n\n" + soma_block, encoding="utf-8")
         else:
-            # Append
-            claude_md.write_text(existing.rstrip() + "\n\n" + soma_block)
+            # No markers — append
+            claude_md.write_text(existing.rstrip() + "\n\n" + soma_block, encoding="utf-8")
     else:
-        claude_md.write_text(soma_block)
+        claude_md.write_text(soma_block, encoding="utf-8")
 
     print(f"  📝 Updated {claude_md}")

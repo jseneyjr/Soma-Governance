@@ -12,7 +12,10 @@ import json
 import os
 import sys
 import fnmatch
-import fcntl
+try:
+    import fcntl
+except ImportError:
+    fcntl = None  # type: ignore[assignment]  # Windows fallback
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -265,7 +268,8 @@ def update_fitness(triggered_cells, transcript_id, evidence_dir):
     # Append fitness records
     if triggered_cells:
         with open(fitness_path, "a", encoding="utf-8") as f:
-            fcntl.flock(f, fcntl.LOCK_EX)
+            if fcntl is not None:
+                fcntl.flock(f, fcntl.LOCK_EX)
             try:
                 for cell in triggered_cells:
                     record = {
@@ -276,11 +280,13 @@ def update_fitness(triggered_cells, transcript_id, evidence_dir):
                     }
                     f.write(json.dumps(record) + "\n")
             finally:
-                fcntl.flock(f, fcntl.LOCK_UN)
+                if fcntl is not None:
+                    fcntl.flock(f, fcntl.LOCK_UN)
 
     # Record session as processed
     with open(ledger_path, "a", encoding="utf-8") as f:
-        fcntl.flock(f, fcntl.LOCK_EX)
+        if fcntl is not None:
+            fcntl.flock(f, fcntl.LOCK_EX)
         try:
             ledger_record = {
                 "transcript_id": transcript_id,
@@ -289,7 +295,8 @@ def update_fitness(triggered_cells, transcript_id, evidence_dir):
             }
             f.write(json.dumps(ledger_record) + "\n")
         finally:
-            fcntl.flock(f, fcntl.LOCK_UN)
+            if fcntl is not None:
+                fcntl.flock(f, fcntl.LOCK_UN)
 
 
 def main():

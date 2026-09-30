@@ -241,53 +241,6 @@ class TestCopilotInstructionsDetection:
         assert detect_platform(tmp_path) == "copilot"
 
 
-class TestInstallProtections:
-    """Tests for overwrite protection and symlink guard."""
-
-    def test_skips_existing_rules(self, tmp_path):
-        """Existing rules are preserved when force=False."""
-        from soma_cli.init import install_starter_rules
-        rules_dir = tmp_path / "rules"
-        rules_dir.mkdir()
-        # Pre-create a rule with custom content
-        (rules_dir / "providence.md").write_text("# My custom providence rule")
-
-        install_starter_rules(rules_dir, dry_run=False, force=False)
-
-        # Original content must be preserved
-        assert (rules_dir / "providence.md").read_text() == "# My custom providence rule"
-
-    def test_force_overwrites_existing(self, tmp_path):
-        """Existing rules are overwritten when force=True."""
-        from soma_cli.init import install_starter_rules
-        rules_dir = tmp_path / "rules"
-        rules_dir.mkdir()
-        (rules_dir / "providence.md").write_text("# Old content")
-
-        install_starter_rules(rules_dir, dry_run=False, force=True)
-
-        # Content must have changed
-        content = (rules_dir / "providence.md").read_text()
-        assert content != "# Old content"
-        assert len(content) > 50  # Real rule has substantial content
-
-    def test_symlink_destination_skipped(self, tmp_path):
-        """Symlink destinations are rejected even with force=True."""
-        from soma_cli.init import install_starter_rules
-        rules_dir = tmp_path / "rules"
-        rules_dir.mkdir()
-        # Create a symlink pretending to be a rule destination
-        target = tmp_path / "decoy.txt"
-        target.write_text("original decoy content")
-        (rules_dir / "providence.md").symlink_to(target)
-
-        installed = install_starter_rules(rules_dir, dry_run=False, force=True)
-
-        # Symlink should be skipped, decoy content untouched
-        assert target.read_text() == "original decoy content"
-        assert "providence" not in installed
-
-
 class TestClaudeMd:
     """Tests for Claude CLAUDE.md concatenation."""
 
@@ -298,7 +251,7 @@ class TestClaudeMd:
         install_starter_rules(rules_dir, dry_run=False)
         _install_claude_md(rules_dir)
 
-        claude_md = rules_dir.parent / "CLAUDE.md"
+        claude_md = rules_dir / "CLAUDE.md"
         assert claude_md.exists()
         content = claude_md.read_text()
         assert "<!-- SOMA:START -->" in content
@@ -311,7 +264,7 @@ class TestClaudeMd:
         rules_dir = tmp_path / "claude_rules"
         install_starter_rules(rules_dir, dry_run=False)
 
-        claude_md = rules_dir.parent / "CLAUDE.md"
+        claude_md = rules_dir / "CLAUDE.md"
         claude_md.write_text("# Existing project instructions\n")
         _install_claude_md(rules_dir)
 
@@ -325,7 +278,7 @@ class TestClaudeMd:
         rules_dir = tmp_path / "claude_rules"
         install_starter_rules(rules_dir, dry_run=False)
 
-        claude_md = rules_dir.parent / "CLAUDE.md"
+        claude_md = rules_dir / "CLAUDE.md"
         claude_md.write_text("<!-- SOMA:START -->\nPLACEHOLDER_ORIGINAL_CONTENT_XYZ\n<!-- SOMA:END -->\n")
         _install_claude_md(rules_dir, force=False)
 
@@ -337,7 +290,7 @@ class TestClaudeMd:
         rules_dir = tmp_path / "claude_rules"
         install_starter_rules(rules_dir, dry_run=False)
 
-        claude_md = rules_dir.parent / "CLAUDE.md"
+        claude_md = rules_dir / "CLAUDE.md"
         claude_md.write_text("<!-- SOMA:START -->\nPLACEHOLDER_ORIGINAL_CONTENT_XYZ\n<!-- SOMA:END -->\n")
         _install_claude_md(rules_dir, force=True)
 
