@@ -3,22 +3,31 @@ id: trap-unverified-delegation
 domain: correctness
 type: vacuole
 enforcement: advisory
-hypothesis: "Subagent self-reports are cheap talk — edits must be verified against file contents"
-prediction: "Accepting subagent completion reports without grepping for actual file changes leads to silent regressions where claimed fixes never landed"
-falsification: "If 20 consecutive subagent delegations all pass post-hoc file verification, this vacuole is unnecessary"
+hypothesis: Subagent self-reports are cheap talk — edits must be verified against
+  file contents
+prediction: Accepting subagent completion reports without grepping for actual file
+  changes leads to silent regressions where claimed fixes never landed
+falsification: If 20 consecutive subagent delegations all pass post-hoc file verification,
+  this vacuole is unnecessary
 target_paths:
-  - "enzymes/*.py"
-  - "enzymes/*.sh"
-  - "tests/*.py"
-  - "soma_mcp/*.py"
+- enzymes/*.py
+- enzymes/*.sh
+- tests/*.py
+- soma_mcp/*.py
 triggers:
-  - delegation
-  - subagent
+- delegation
+- subagent
 minimum_mode: standard
 expiry_sessions: 30
 expiry_days: 90
+fitness:
+  score: null
+  impact_weight: 1.0
+  triggers: 2
+  true_positives: 0
+  false_positives: 2
+  last_trigger_date: '2026-09-30T19:57:33Z'
 ---
-
 # Trap: Unverified Delegation
 
 When a subagent reports "done", **verify the claim against the actual file contents**

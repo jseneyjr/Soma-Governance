@@ -153,28 +153,8 @@ def test_parsers_agree_on_id_and_domain():
     If these diverge, tests pass on rules that production silently skips
     (or vice versa) — the oracle table pattern at the parser level.
     """
-    import yaml
     from tests.test_rule_metadata import parse_frontmatter as test_parser
-
-    # Use yaml.safe_load as the reference (same as JIT engine when yaml available)
-    def jit_parser(text):
-        if not text.startswith("---"):
-            return None
-        end = text.find("---", 3)
-        if end == -1:
-            return None
-        fm_text = text[3:end].strip()
-        if not fm_text:
-            return {}
-        try:
-            data = yaml.safe_load(fm_text)
-        except Exception:
-            return None
-        if data is None:
-            return {}
-        if not isinstance(data, dict):
-            return None
-        return data
+    from soma_mcp.jit_engine import parse_frontmatter as jit_parser
 
     rule_dirs = [
         REPO_ROOT / "genome",

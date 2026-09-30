@@ -193,47 +193,63 @@ class TestClaimVerification:
 
 
 class TestRealTranscripts:
-    """Validate against the ACTUAL subagent transcripts from this session."""
+    """Validate against ACTUAL subagent transcripts from a prior session.
 
-    LANE_A = "/home/nseney/.gemini/antigravity/brain/9739cd63-0ab0-4f36-9551-9abc11d4a7cd/.system_generated/logs/transcript.jsonl"
-    LANE_B = "/home/nseney/.gemini/antigravity/brain/abbe31f4-341b-4b5d-a7b2-a0a06f004558/.system_generated/logs/transcript.jsonl"
-    LANE_C = "/home/nseney/.gemini/antigravity/brain/ffef2cc0-a0f0-46e0-9da5-678126093a73/.system_generated/logs/transcript.jsonl"
+    Set SOMA_TEST_BRAIN_DIR to the Antigravity brain directory to enable.
+    Skips automatically when transcripts are unavailable.
+    """
+
+    BRAIN_DIR = os.environ.get('SOMA_TEST_BRAIN_DIR', os.path.expanduser('~/.gemini/antigravity/brain'))
+    LANE_A_ID = "9739cd63-0ab0-4f36-9551-9abc11d4a7cd"
+    LANE_B_ID = "abbe31f4-341b-4b5d-a7b2-a0a06f004558"
+    LANE_C_ID = "ffef2cc0-a0f0-46e0-9da5-678126093a73"
+
+    @classmethod
+    def _transcript_path(cls, conv_id):
+        return os.path.join(cls.BRAIN_DIR, conv_id, '.system_generated', 'logs', 'transcript.jsonl')
 
     @pytest.mark.skipif(
-        not os.path.exists("/home/nseney/.gemini/antigravity/brain/9739cd63-0ab0-4f36-9551-9abc11d4a7cd/.system_generated/logs/transcript.jsonl"),
+        not os.path.exists(os.path.join(
+            os.environ.get('SOMA_TEST_BRAIN_DIR', os.path.expanduser('~/.gemini/antigravity/brain')),
+            "9739cd63-0ab0-4f36-9551-9abc11d4a7cd", '.system_generated', 'logs', 'transcript.jsonl')),
         reason="Lane A transcript not available"
     )
     def test_lane_a_was_genuine_first_pass(self):
         """Lane A (mutation_tester) claimed first-pass — verify from transcript."""
         from immune_system.verification.transcript_verifier import extract_metrics
 
-        metrics = extract_metrics(self.LANE_A)
+        metrics = extract_metrics(self._transcript_path(self.LANE_A_ID))
         assert metrics.pytest_runs == 1, f"Expected 1 pytest run, got {metrics.pytest_runs}"
         assert metrics.first_run_failed == 0, f"Expected 0 failures, got {metrics.first_run_failed}"
         assert metrics.fix_cycles == 0
 
     @pytest.mark.skipif(
-        not os.path.exists("/home/nseney/.gemini/antigravity/brain/abbe31f4-341b-4b5d-a7b2-a0a06f004558/.system_generated/logs/transcript.jsonl"),
+        not os.path.exists(os.path.join(
+            os.environ.get('SOMA_TEST_BRAIN_DIR', os.path.expanduser('~/.gemini/antigravity/brain')),
+            "abbe31f4-341b-4b5d-a7b2-a0a06f004558", '.system_generated', 'logs', 'transcript.jsonl')),
         reason="Lane B transcript not available"
     )
     def test_lane_b_was_not_first_pass(self):
         """Lane B (branch_coverage) should show iteration — verify from transcript."""
         from immune_system.verification.transcript_verifier import extract_metrics
 
-        metrics = extract_metrics(self.LANE_B)
+        metrics = extract_metrics(self._transcript_path(self.LANE_B_ID))
         assert metrics.pytest_runs >= 2, f"Expected >=2 pytest runs, got {metrics.pytest_runs}"
         assert metrics.first_run_failed > 0, f"Expected failures on first run"
         assert metrics.fix_cycles > 0, f"Expected fix cycles > 0"
 
     @pytest.mark.skipif(
-        not os.path.exists("/home/nseney/.gemini/antigravity/brain/ffef2cc0-a0f0-46e0-9da5-678126093a73/.system_generated/logs/transcript.jsonl"),
+        not os.path.exists(os.path.join(
+            os.environ.get('SOMA_TEST_BRAIN_DIR', os.path.expanduser('~/.gemini/antigravity/brain')),
+            "ffef2cc0-a0f0-46e0-9da5-678126093a73", '.system_generated', 'logs', 'transcript.jsonl')),
         reason="Lane C transcript not available"
     )
     def test_lane_c_was_genuine_first_pass(self):
         """Lane C (immune_verify) claimed first-pass — verify from transcript."""
         from immune_system.verification.transcript_verifier import extract_metrics
 
-        metrics = extract_metrics(self.LANE_C)
+        metrics = extract_metrics(self._transcript_path(self.LANE_C_ID))
         assert metrics.pytest_runs == 1, f"Expected 1 pytest run, got {metrics.pytest_runs}"
         assert metrics.first_run_failed == 0, f"Expected 0 failures, got {metrics.first_run_failed}"
         assert metrics.fix_cycles == 0
+

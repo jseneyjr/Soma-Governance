@@ -240,7 +240,7 @@ def main():
                             import subprocess
                             subprocess.run([sys.executable, enforce_script, '--cell', cell_name], cwd=workspace)
                 else:
-                    print(f"[DRY-RUN] Would change tier of {cell_name}: {enforcement} -> {new_tier} ({reason})")
+                    print(f"No tier change for {cell_name}: already at {enforcement}")
                     
         return
 

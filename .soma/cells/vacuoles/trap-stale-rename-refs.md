@@ -7,7 +7,7 @@ hypothesis: Bulk renames leave stale references to old names in files not covere
   by the rename script
 prediction: Will catch orphaned references to 'prism', 'steering', 'rules/', 'skills/',
   'scripts/' after rename operations
-falsification: "0 stale references found in 5 sessions \u2192 prune"
+falsification: 0 stale references found in 5 sessions → prune
 target_paths:
 - enzymes/*.py
 - enzymes/*.sh
@@ -27,8 +27,14 @@ tags:
 - migration
 - anti-pattern
 - high-value
+fitness:
+  score: null
+  impact_weight: 1.0
+  triggers: 2
+  true_positives: 0
+  false_positives: 2
+  last_trigger_date: '2026-09-30T19:57:33Z'
 ---
-
 After the Phase 22 Soma Rebirth rename, multiple stale references survived:
 - `scripts_dir = "$repo_dir/scripts"` in common.sh (CRITICAL — broke all hooks)
 - `prism_root` variable names in soma_resolve.py and soma_mcp/tools.py  

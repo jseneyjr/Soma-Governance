@@ -3,23 +3,32 @@ id: trap-fix-one-not-all
 domain: correctness
 type: vacuole
 enforcement: advisory
-hypothesis: "When a pattern is fixed in one file, the same pattern exists in sibling files"
-prediction: "Fixing a bug in one enzyme without grepping for the same pattern across all enzymes leads to partial fixes that auditors catch later"
-falsification: "If 10 consecutive multi-file bug fixes all pass the refactoring sweep check on first attempt, this vacuole is unnecessary"
+hypothesis: When a pattern is fixed in one file, the same pattern exists in sibling
+  files
+prediction: Fixing a bug in one enzyme without grepping for the same pattern across
+  all enzymes leads to partial fixes that auditors catch later
+falsification: If 10 consecutive multi-file bug fixes all pass the refactoring sweep
+  check on first attempt, this vacuole is unnecessary
 target_paths:
-  - "enzymes/*.py"
-  - "enzymes/*.sh"
-  - "soma_mcp/*.py"
-  - "tests/*.py"
+- enzymes/*.py
+- enzymes/*.sh
+- soma_mcp/*.py
+- tests/*.py
 triggers:
-  - pattern_fix
-  - bug_fix
-  - refactor
+- pattern_fix
+- bug_fix
+- refactor
 minimum_mode: standard
 expiry_sessions: 30
 expiry_days: 90
+fitness:
+  score: null
+  impact_weight: 1.0
+  triggers: 2
+  true_positives: 0
+  false_positives: 2
+  last_trigger_date: '2026-09-30T19:57:33Z'
 ---
-
 # Refactoring Sweep: Fix One → Fix All
 
 When fixing a pattern in one file, **grep for the same pattern across all sibling files** before closing the fix.

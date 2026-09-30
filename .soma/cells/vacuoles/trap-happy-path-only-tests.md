@@ -5,8 +5,8 @@ type: vacuole
 enforcement: advisory
 hypothesis: Test suites that only validate happy paths miss adversarial edge cases
   that auditors consistently find
-prediction: "Sessions with \u22651 negative test per public function will have fewer\
-  \ audit-surfaced bugs"
+prediction: Sessions with ≥1 negative test per public function will have fewer audit-surfaced
+  bugs
 falsification: Negative test ratio shows no correlation with audit finding count after
   20 sessions
 target_paths:
@@ -19,8 +19,14 @@ tags:
 - adversarial
 - quality
 - anti-pattern
+fitness:
+  score: null
+  impact_weight: 1.0
+  triggers: 2
+  true_positives: 0
+  false_positives: 2
+  last_trigger_date: '2026-09-30T19:57:33Z'
 ---
-
 When reviewing test files, check that every public function under test has at
 least one **negative or adversarial test case** — a test that verifies the
 function correctly rejects, handles, or survives bad input.

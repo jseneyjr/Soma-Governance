@@ -55,14 +55,14 @@ fi
 
 echo '{}'
 
+
 # === Automated Outcome Feedback ===
 echo "Running outcome engine..."
+SCRIPTS_DIR="$(cd -P "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 python3 "$SCRIPTS_DIR/outcome_engine.py" 2>/dev/null || true
 
 # === Automated Cell Evolution ===
 echo "Running cell evolution..."
-
-SCRIPTS_DIR="$(cd -P "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 # 1. Evaluate fitness with telomere shortening decay
 python3 "$SCRIPTS_DIR/cell_fitness.py" 2>/dev/null || true

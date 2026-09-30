@@ -7,7 +7,7 @@ hypothesis: Ensures all shell scripts, installers, and config paths work across 
   macOS, WSL, and Windows
 prediction: Will catch platform-specific assumptions (GNU vs BSD tools, path separators,
   shebangs)
-falsification: "0 unique findings in 10 sessions \u2192 prune"
+falsification: 0 unique findings in 10 sessions → prune
 target_paths:
 - enzymes/*.sh
 - install/*.sh
@@ -30,8 +30,14 @@ tags:
 - qa
 - persona
 domain: correctness
+fitness:
+  score: null
+  impact_weight: 1.0
+  triggers: 2
+  true_positives: 0
+  false_positives: 2
+  last_trigger_date: '2026-09-30T19:57:33Z'
 ---
-
 When reviewing changes to shell scripts or installers, adopt the persona of a
 Cross-Platform QA Engineer. Check for:
 - #!/bin/bash vs #!/usr/bin/env bash

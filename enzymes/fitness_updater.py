@@ -28,16 +28,33 @@ PLATFORMS = {
         "args_keys": ["arguments", "args"],
         "id_skip_dirs": {"logs", ".system_generated"},
     },
+    "claude": {
+        "write_tools": {"write_to_file", "edit_file", "create_file"},
+        "target_file_keys": ["path", "file_path", "TargetFile"],
+        "args_keys": ["arguments", "args", "input"],
+        "id_skip_dirs": {"logs"},
+    },
+}
+
+# Generic fallback: union of all known write tools and arg keys
+PLATFORMS["generic"] = {
+    "write_tools": PLATFORMS["antigravity"]["write_tools"] | PLATFORMS["claude"]["write_tools"],
+    "target_file_keys": list(set(PLATFORMS["antigravity"]["target_file_keys"] + PLATFORMS["claude"]["target_file_keys"])),
+    "args_keys": list(set(PLATFORMS["antigravity"]["args_keys"] + PLATFORMS["claude"]["args_keys"])),
+    "id_skip_dirs": PLATFORMS["antigravity"]["id_skip_dirs"] | PLATFORMS["claude"]["id_skip_dirs"],
 }
 
 DEFAULT_PLATFORM = "antigravity"
 
 
 def _get_platform_config(platform=None):
-    """Get platform config by name, defaulting to DEFAULT_PLATFORM."""
+    """Get platform config by name, defaulting to DEFAULT_PLATFORM.
+    Falls back to 'generic' for unknown platforms."""
     name = platform or DEFAULT_PLATFORM
     if name not in PLATFORMS:
-        raise ValueError(f"Unknown platform '{name}'. Known: {list(PLATFORMS.keys())}")
+        import sys
+        print(f"Warning: unknown platform '{name}', using generic config", file=sys.stderr)
+        return PLATFORMS["generic"]
     return PLATFORMS[name]
 
 
@@ -51,10 +68,16 @@ def detect_platform(transcript_path):
         return DEFAULT_PLATFORM
 
     # Build reverse lookup: tool_name → platform
+    # Skip 'generic' (it's a fallback, not detectable) and prefer
+    # more specific platforms by iterating them first
     tool_to_platform = {}
     for name, config in PLATFORMS.items():
+        if name == "generic":
+            continue
         for tool in config["write_tools"]:
-            tool_to_platform[tool] = name
+            # Don't overwrite — first registered platform wins
+            if tool not in tool_to_platform:
+                tool_to_platform[tool] = name
 
     try:
         for line in transcript_path.open(encoding="utf-8"):
