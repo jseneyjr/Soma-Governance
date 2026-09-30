@@ -55,7 +55,7 @@ def _check_rules(platform: str | None) -> bool:
     rules_dir = get_rules_dir(platform)
     md_files = [
         p for p in rules_dir.glob("*.md")
-        if p.name.lower() != "readme.md"
+        if p.name.lower() not in ("readme.md", "claude.md")
     ] if rules_dir.is_dir() else []
     if md_files:
         print(f"  ✅ Rules installed ({len(md_files)} .md files in {rules_dir})")

@@ -4,6 +4,7 @@ Parses a target function from a file using AST, generates mutations
 (operator swaps, constant replacements, line removals), runs the test
 suite against each mutant, and reports surviving mutations.
 """
+from __future__ import annotations
 
 import ast
 import copy
