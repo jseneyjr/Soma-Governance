@@ -35,6 +35,9 @@ def _check_platform() -> str | None:
     from soma_cli.init import detect_platform
 
     platform = detect_platform(Path.cwd())
+    # Fallback: check home directory for global AI configs
+    if platform == "unknown":
+        platform = detect_platform(Path.home())
     if platform != "unknown":
         print(f"  ✅ Platform detected: {platform}")
         return platform
@@ -50,7 +53,10 @@ def _check_rules(platform: str | None) -> bool:
     from soma_cli.init import get_rules_dir
 
     rules_dir = get_rules_dir(platform)
-    md_files = list(rules_dir.glob("*.md")) if rules_dir.is_dir() else []
+    md_files = [
+        p for p in rules_dir.glob("*.md")
+        if p.name.lower() != "readme.md"
+    ] if rules_dir.is_dir() else []
     if md_files:
         print(f"  ✅ Rules installed ({len(md_files)} .md files in {rules_dir})")
         return True
@@ -59,18 +65,21 @@ def _check_rules(platform: str | None) -> bool:
 
 
 def _check_evidence_dir() -> bool:
-    """Check .soma/evidence/ exists (or can be created) and is writable."""
+    """Check .soma/evidence/ exists and is writable (read-only check)."""
     evidence = Path.cwd() / ".soma" / "evidence"
-    try:
-        evidence.mkdir(parents=True, exist_ok=True)
+    if evidence.is_dir():
         if os.access(str(evidence), os.W_OK):
             print(f"  ✅ Evidence directory writable ({evidence})")
             return True
         print(f"  ❌ Evidence directory not writable ({evidence})")
         return False
-    except OSError as exc:
-        print(f"  ❌ Evidence directory error: {exc}")
-        return False
+    # Directory doesn't exist — check if parent is writable
+    parent = evidence.parent
+    if parent.is_dir() and os.access(str(parent), os.W_OK):
+        print(f"  ✅ Evidence directory can be created ({evidence})")
+        return True
+    print(f"  ❌ Evidence directory does not exist ({evidence})")
+    return False
 
 
 def _check_cli_resolvable() -> bool:

@@ -7,7 +7,7 @@ from datetime import date, datetime
 import json
 from pathlib import Path
 
-from soma_cli import resolve_root
+from soma_cli import resolve_root, sanitize_display
 
 import yaml
 
@@ -23,14 +23,23 @@ def _project_root(args: argparse.Namespace) -> Path:
 
 
 def _parse_frontmatter(content: str) -> dict:
-    """Extract YAML frontmatter if present. Caps input at 16KB for safety."""
+    """Extract YAML frontmatter if present.
+
+    Caps input at 16KB and rejects YAML alias patterns to prevent
+    Billion Laughs (anchor bomb) attacks.
+    """
     MAX_FRONTMATTER = 16_384
     stripped = content.lstrip()
     if stripped.startswith("---"):
         end = stripped.find("---", 3)
         if end != -1 and end <= MAX_FRONTMATTER:
+            fm_text = stripped[3:end]
+            # Reject YAML alias/anchor patterns that could cause
+            # exponential expansion (Billion Laughs attack)
+            if '&' in fm_text and '*' in fm_text:
+                return {}
             try:
-                fm = yaml.safe_load(stripped[3:end])
+                fm = yaml.safe_load(fm_text)
                 if isinstance(fm, dict):
                     return fm
             except Exception:
@@ -165,7 +174,7 @@ def run_status(args: argparse.Namespace) -> int:
             content = ""
         total_chars += len(content)
         fm = _parse_frontmatter(content)
-        rule_name = str(fm.get("id") or f.stem)
+        rule_name = sanitize_display(str(fm.get("id") or f.stem))
         triggers = trigger_counts.get(rule_name, trigger_counts.get(f.stem, 0))
         all_rules.append({
             "name": rule_name,
@@ -181,7 +190,7 @@ def run_status(args: argparse.Namespace) -> int:
             content = ""
         total_chars += len(content)
         fm = _parse_frontmatter(content)
-        rule_name = str(fm.get("id") or f.stem)
+        rule_name = sanitize_display(str(fm.get("id") or f.stem))
         triggers = trigger_counts.get(rule_name, trigger_counts.get(f.stem, 0))
         expiry_str = _format_adaptive_expiry(fm.get("created"), fm.get("expiry_days"))
         all_rules.append({

@@ -7,3 +7,4 @@ recursive-include organs *
 recursive-include templates *
 recursive-include install *
 recursive-include .soma *
+recursive-include soma_cli/starter_rules *.md
