@@ -25,20 +25,34 @@ except ImportError:
 
 This applies to ALL files in `enzymes/`, `soma_mcp/`, `immune_system/`, and `install/`.
 
+## Required Dependencies (bare import OK)
+
+These are listed in `pyproject.toml [project.dependencies]` — bare `import` is correct:
+
+| Package | Used For |
+|:--------|:---------|
+| `yaml` (pyyaml) | YAML frontmatter parsing |
+
 ## Known Optional Dependencies
 
 | Package | Used For | Fallback |
 |:--------|:---------|:---------|
-| `yaml` (pyyaml) | YAML frontmatter parsing | Manual parsing or `{}` |
 | `anthropic` | Anthropic API provider | Skip provider |
 | `google.generativeai` | Gemini API provider | Skip provider |
 | `openai` | OpenAI API provider | Skip provider |
 
 ## Why This Matters
 
-Unguarded `import yaml` has been the #1 recurring CI failure in this project. CI runs without `pyyaml` installed. A single unguarded import in ANY file transitively imported by tests crashes the entire test suite for that module.
+Unguarded imports of truly optional packages crash the entire test suite when
+the dependency isn't installed. The blast radius is recursive: `test_foo.py`
+imports `module_a.py` which imports `module_b.py` which has `import optional_lib`
+→ ALL tests touching `module_a` fail with `ModuleNotFoundError`.
 
-The blast radius is recursive: `test_foo.py` imports `module_a.py` which imports `module_b.py` which has `import yaml` → ALL tests touching `module_a` fail with `ModuleNotFoundError`.
+> **Historical note (2026-09-30):** `pyyaml` was previously listed in this
+> table as optional, which caused agents to add `try/except ImportError` guards
+> across 28 files. This contradicted `pyproject.toml` which declared pyyaml as
+> a required dependency. The guards introduced 118 lines of fragile fallback
+> code that produced bugs in 3 of 4 audit rounds. The table was the root cause.
 
 ## Enforcement
 
