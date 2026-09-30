@@ -9,7 +9,7 @@ import subprocess
 import sys
 import pytest
 
-yaml = pytest.importorskip("yaml")
+import yaml
 
 REPO_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, REPO_ROOT)
