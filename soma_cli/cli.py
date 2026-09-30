@@ -4,6 +4,8 @@
 User-facing interface uses plain language (rules, automations, etc).
 Internal code retains biological naming (genome, enzymes, cells).
 """
+from __future__ import annotations
+
 import argparse
 import sys
 

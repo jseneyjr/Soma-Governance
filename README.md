@@ -389,7 +389,7 @@ Recent academic studies ([arXiv:2602.11988](https://arxiv.org/abs/2602.11988), [
 **The Critique**: If an AI agent generates rules and then grades its own rules, isn't that just memory with extra steps? How do we know the rules are working, and it's not just the underlying foundation models getting better?
 **Soma's Solution**: **Two-Layer Verification**. Layer 1 uses deterministic AST tools (mutation testing, call graph analysis, branch coverage, import guards) that produce objective evidence no LLM can game. Layer 2 uses adversarial information-partitioned agents — a Spec Agent and Code Agent that can't collude because they see different inputs — with a deterministic set-algebra Arbiter. The Transcript Verifier independently checks subagent claims against actual execution logs. Additionally, Escaped Defect Tracking hooks into CI/CD exit codes to establish ground truth.
 
-| Feature | Standard AI Agents | Prompt Files (`.cursorrules`) | **Soma (v0.50)** |
+| Feature | Standard AI Agents | Prompt Files (`.cursorrules`) | **Soma (v0.51)** |
 |:--|:---:|:---:|:---:|
 | **Rule Enforcement** | Relies on LLM obedience | Relies on LLM obedience | **Mechanistic rejection via TTC Oracles** |
 | **Verification** | Self-grading | None | **Two-layer: deterministic tools + adversarial agents** |

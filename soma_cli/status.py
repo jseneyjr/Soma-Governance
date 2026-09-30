@@ -1,4 +1,6 @@
 """soma status — Show active rules and stats."""
+from __future__ import annotations
+
 import argparse
 from collections import defaultdict
 from datetime import date, datetime

@@ -7,4 +7,4 @@ while [ -h "$PRG" ]; do
   [[ $PRG != /* ]] && PRG="$DIR/$PRG"
 done
 REPO_DIR="$(cd -P "$(dirname "$PRG")" && pwd)"
-exec python3 -m soma_cli.cli "$@"
+PYTHONPATH="$REPO_DIR${PYTHONPATH:+:$PYTHONPATH}" exec python3 -m soma_cli.cli "$@"

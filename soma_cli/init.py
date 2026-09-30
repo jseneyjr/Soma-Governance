@@ -1,8 +1,9 @@
 """soma init — Set up governance for this project.
 
-Detects platform and project type, installs starter rules,
-and wires up the post-session hook.
+Detects platform and project type, installs starter rules.
 """
+from __future__ import annotations
+
 import argparse
 import os
 import shutil
@@ -193,7 +194,7 @@ def run_init(args: argparse.Namespace) -> int:
     try:
         # Use project_root as home override for testing
         home = getattr(args, "_project_root", None)
-        rules_dir = get_rules_dir(platform, home=home)
+        rules_dir = get_rules_dir(platform, home=home, project_root=project_root)
     except ValueError as e:
         print(f"  ❌ {e}")
         return 1

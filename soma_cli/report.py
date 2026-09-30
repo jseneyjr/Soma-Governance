@@ -53,10 +53,10 @@ def run_report(args: argparse.Namespace) -> int:
                 continue
             try:
                 record = json.loads(line)
-                if isinstance(record, dict) and isinstance(record.get("cell_id"), str) and record["cell_id"] and "triggered_at" in record:
+                if isinstance(record, dict) and isinstance(record.get("cell_id"), str) and record["cell_id"] and isinstance(record.get("triggered_at"), str):
                     _parse_timestamp(record["triggered_at"])
                     events.append(record)
-            except (json.JSONDecodeError, ValueError, KeyError):
+            except (json.JSONDecodeError, ValueError, KeyError, AttributeError, TypeError, RecursionError):
                 continue
 
     if not events:
