@@ -51,6 +51,7 @@ Cell types:
 
 YAML fields required:
 - type: (one of above)
+- domain: (one of: efficiency, correctness, security, style, governance)
 - hypothesis: (clear, testable statement)
 - prediction: (what will happen if the hypothesis is violated)
 - falsification: (how to prove this cell is no longer needed)
@@ -101,6 +102,7 @@ def create_cell_from_insight_cluster(cluster: dict, workspace: str) -> str:
 
     frontmatter = {
         "type": "vacuole",
+        "domain": "correctness",
         "hypothesis": hypothesis,
         "prediction": f"Recurring {category} issues will continue if unaddressed",
         "falsification": f"No {category} insights observed for 60 days",

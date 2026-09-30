@@ -11,9 +11,15 @@ Only aggregate integer metrics and ratios are produced.
 from __future__ import annotations
 
 import json
+import os
 from collections import defaultdict
 from pathlib import Path
 from typing import Any
+
+# Minimum path depth to count as a valid "read" for compliance.
+# Rejects root ("/") and near-root ("/repo") reads that would
+# trivially match every write.
+_MIN_READ_DEPTH = 2
 
 
 # ── Tool-call pattern definitions per rule ──────────────────────────
@@ -42,15 +48,23 @@ def _extract_tool_calls(steps: list[dict]) -> list[dict]:
     """
     calls = []
     for step in steps:
+        if not isinstance(step, dict):
+            continue
         for tc in step.get("tool_calls", []):
+            if not isinstance(tc, dict):
+                continue
             name = tc.get("name", "")
             args = tc.get("args", {})
+            if not isinstance(args, dict):
+                continue
             # Extract ONLY the file path — never content
-            target_file = (
+            raw_path = (
                 args.get("TargetFile")
                 or args.get("AbsolutePath")
                 or args.get("SearchPath")
             )
+            # Strip surrounding quotes from serialized arguments
+            target_file = _sanitize_path(raw_path) if raw_path else None
             calls.append({
                 "step_index": step.get("step_index", 0),
                 "tool_name": name,
@@ -59,12 +73,16 @@ def _extract_tool_calls(steps: list[dict]) -> list[dict]:
     return calls
 
 
-def _check_read_before_write(steps: list[dict], lookback: int = 15) -> dict:
+def _check_read_before_write(steps: list[dict]) -> dict:
     """Check read-before-write compliance.
 
     For each replace_file_content / multi_replace_file_content call,
     check whether the same file was read (view_file / grep_search)
-    within the preceding `lookback` tool calls.
+    at any prior point in the session.
+
+    Uses a session-level "files read" set instead of a fixed lookback
+    window, preventing false violations on multi-edit sessions where
+    intermediate operations push the initial read out of range.
 
     write_to_file (new file creation) is excluded — the rule applies
     only to modifications of existing files.
@@ -73,23 +91,28 @@ def _check_read_before_write(steps: list[dict], lookback: int = 15) -> dict:
     compliant = 0
     non_compliant = 0
 
-    for i, call in enumerate(calls):
-        if call["tool_name"] not in WRITE_TOOLS:
-            continue
+    # Session-level set of files that have been read
+    files_read: set[str] = set()
+
+    for call in calls:
         target = call["target_file"]
         if not target:
             continue
 
-        # Look back through preceding calls for a read of the same file
-        found_read = False
-        start = max(0, i - lookback)
-        for j in range(start, i):
-            prior = calls[j]
-            if (prior["tool_name"] in READ_TOOLS
-                    and prior["target_file"]
-                    and _paths_match(prior["target_file"], target)):
-                found_read = True
-                break
+        # Track reads
+        if call["tool_name"] in READ_TOOLS:
+            files_read.add(target)
+            continue
+
+        # Check writes
+        if call["tool_name"] not in WRITE_TOOLS:
+            continue
+
+        # Check if any prior read covers this write target
+        found_read = any(
+            _paths_match(read_path, target)
+            for read_path in files_read
+        )
 
         if found_read:
             compliant += 1
@@ -104,12 +127,29 @@ def _paths_match(read_path: str, write_path: str) -> bool:
 
     Handles cases where grep_search uses a directory path that is a
     parent of the written file, or an exact file match.
+
+    Security: Rejects root or near-root reads that would trivially
+    match every write. Normalizes paths to handle relative/absolute
+    mismatches.
     """
-    if read_path == write_path:
+    # Normalize both paths to resolve .., ., and trailing slashes
+    rp = os.path.normpath(read_path)
+    wp = os.path.normpath(write_path)
+
+    # Exact match after normalization
+    if rp == wp:
         return True
-    # grep_search on a directory covers files within it
-    if write_path.startswith(read_path.rstrip("/") + "/"):
+
+    # Reject root or near-root reads (too broad to be meaningful)
+    # Count path components: "/" has 0, "/repo" has 1, "/repo/src" has 2
+    rp_depth = len(Path(rp).parts) - (1 if rp.startswith("/") else 0)
+    if rp_depth < _MIN_READ_DEPTH:
+        return False
+
+    # Directory ancestor check: read_path is a parent of write_path
+    if wp.startswith(rp + os.sep):
         return True
+
     return False
 
 
@@ -122,16 +162,17 @@ _DETECTORS: dict[str, Any] = {
 # ── Public API ──────────────────────────────────────────────────────
 
 
-def check_compliance(transcript_path: Path, rule_id: str) -> dict:
+def check_compliance(transcript_path: Path | str, rule_id: str) -> dict:
     """Check a transcript for compliance with a specific rule.
 
     Args:
-        transcript_path: Path to a transcript.jsonl file.
+        transcript_path: Path to a transcript.jsonl file (str or Path).
         rule_id: The rule to check (must be in _DETECTORS).
 
     Returns:
         dict with 'compliant_count' and 'non_compliant_count' (integers).
     """
+    transcript_path = Path(transcript_path)
     detector = _DETECTORS.get(rule_id)
     if detector is None:
         return {"compliant_count": 0, "non_compliant_count": 0}
@@ -210,19 +251,31 @@ def aggregate_evidence(observations: list[dict]) -> dict:
 
 
 def _parse_transcript(path: Path) -> list[dict]:
-    """Parse a JSONL transcript file into a list of step dicts."""
+    """Parse a JSONL transcript file into a list of step dicts.
+
+    Streams line-by-line to handle large transcripts (>50MB)
+    without loading the entire file into memory.
+    """
     steps = []
-    text = path.read_text().strip()
-    if not text:
+    if not path.exists():
         return steps
-    for line in text.splitlines():
-        line = line.strip()
-        if line:
+    with open(path, encoding="utf-8", errors="replace") as f:
+        for line in f:
+            line = line.strip()
+            if not line:
+                continue
             try:
-                steps.append(json.loads(line))
+                parsed = json.loads(line)
+                if isinstance(parsed, dict):
+                    steps.append(parsed)
             except json.JSONDecodeError:
                 continue
     return steps
+
+
+def _sanitize_path(raw: str) -> str:
+    """Strip surrounding quotes and whitespace from a tool argument path."""
+    return raw.strip().strip('"').strip("'").strip()
 
 
 def _mean(values: list[float]) -> float:

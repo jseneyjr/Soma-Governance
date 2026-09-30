@@ -388,3 +388,193 @@ class TestSecurityInvariant:
         assert "/repo/" not in serialized
         assert "main.py" not in serialized
         assert "file contents" not in serialized
+
+
+# ── Contract: Adversarial Edge Cases ────────────────────────────────
+
+
+class TestAdversarialPathMatching:
+    """Path matching must resist evasion and over-matching."""
+
+    def test_root_grep_does_not_match_all_writes(self, tmp_path):
+        """grep_search on '/' must NOT satisfy read-before-write for
+        every subsequent file modification."""
+        from enzymes.evidence_collector import check_compliance
+
+        steps = [
+            {"step_index": 0, "source": "MODEL", "type": "PLANNER_RESPONSE",
+             "created_at": "2026-01-01T00:00:00Z",
+             "tool_calls": [
+                 {"name": "grep_search",
+                  "args": {"SearchPath": "/", "Query": "def"}},
+             ]},
+            {"step_index": 1, "source": "MODEL", "type": "PLANNER_RESPONSE",
+             "created_at": "2026-01-01T00:00:01Z",
+             "tool_calls": [
+                 {"name": "replace_file_content",
+                  "args": {"TargetFile": "/repo/src/main.py",
+                           "TargetContent": "x", "ReplacementContent": "y"}},
+             ]},
+        ]
+        path = tmp_path / "transcript.jsonl"
+        path.write_text("\n".join(json.dumps(s) for s in steps) + "\n")
+
+        results = check_compliance(path, "read-before-write")
+        # Root grep must NOT count as compliance
+        assert results["non_compliant_count"] >= 1
+
+    def test_near_root_grep_does_not_match(self, tmp_path):
+        """grep_search on '/repo' (depth 1) must NOT satisfy compliance."""
+        from enzymes.evidence_collector import check_compliance
+
+        steps = [
+            {"step_index": 0, "source": "MODEL", "type": "PLANNER_RESPONSE",
+             "created_at": "2026-01-01T00:00:00Z",
+             "tool_calls": [
+                 {"name": "grep_search",
+                  "args": {"SearchPath": "/repo", "Query": "def"}},
+             ]},
+            {"step_index": 1, "source": "MODEL", "type": "PLANNER_RESPONSE",
+             "created_at": "2026-01-01T00:00:01Z",
+             "tool_calls": [
+                 {"name": "replace_file_content",
+                  "args": {"TargetFile": "/repo/src/main.py",
+                           "TargetContent": "x", "ReplacementContent": "y"}},
+             ]},
+        ]
+        path = tmp_path / "transcript.jsonl"
+        path.write_text("\n".join(json.dumps(s) for s in steps) + "\n")
+
+        results = check_compliance(path, "read-before-write")
+        assert results["non_compliant_count"] >= 1
+
+    def test_directory_ancestor_read_at_sufficient_depth(self, tmp_path):
+        """grep_search on '/repo/src' (depth 2) SHOULD satisfy compliance
+        for writes to files within /repo/src/."""
+        from enzymes.evidence_collector import check_compliance
+
+        steps = [
+            {"step_index": 0, "source": "MODEL", "type": "PLANNER_RESPONSE",
+             "created_at": "2026-01-01T00:00:00Z",
+             "tool_calls": [
+                 {"name": "grep_search",
+                  "args": {"SearchPath": "/repo/src", "Query": "def"}},
+             ]},
+            {"step_index": 1, "source": "MODEL", "type": "PLANNER_RESPONSE",
+             "created_at": "2026-01-01T00:00:01Z",
+             "tool_calls": [
+                 {"name": "replace_file_content",
+                  "args": {"TargetFile": "/repo/src/main.py",
+                           "TargetContent": "x", "ReplacementContent": "y"}},
+             ]},
+        ]
+        path = tmp_path / "transcript.jsonl"
+        path.write_text("\n".join(json.dumps(s) for s in steps) + "\n")
+
+        results = check_compliance(path, "read-before-write")
+        assert results["compliant_count"] >= 1
+
+
+class TestMultiReplaceAndEdgeCases:
+    """Cover multi_replace_file_content and session-level tracking."""
+
+    def test_multi_replace_detected(self, tmp_path):
+        """multi_replace_file_content should be treated as a write."""
+        from enzymes.evidence_collector import check_compliance
+
+        steps = [
+            {"step_index": 0, "source": "MODEL", "type": "PLANNER_RESPONSE",
+             "created_at": "2026-01-01T00:00:00Z",
+             "tool_calls": [
+                 {"name": "multi_replace_file_content",
+                  "args": {"TargetFile": "/repo/src/main.py"}},
+             ]},
+        ]
+        path = tmp_path / "transcript.jsonl"
+        path.write_text("\n".join(json.dumps(s) for s in steps) + "\n")
+
+        results = check_compliance(path, "read-before-write")
+        assert results["non_compliant_count"] >= 1
+
+    def test_many_edits_same_file_stay_compliant(self, tmp_path):
+        """Reading a file once then editing it 20 times must count as
+        20 compliant writes, not 5 compliant + 15 non-compliant."""
+        from enzymes.evidence_collector import check_compliance
+
+        steps = [
+            {"step_index": 0, "source": "MODEL", "type": "PLANNER_RESPONSE",
+             "created_at": "2026-01-01T00:00:00Z",
+             "tool_calls": [
+                 {"name": "view_file",
+                  "args": {"AbsolutePath": "/repo/src/main.py"}},
+             ]},
+        ]
+        # Add 20 sequential edits
+        for i in range(1, 21):
+            steps.append({
+                "step_index": i, "source": "MODEL",
+                "type": "PLANNER_RESPONSE",
+                "created_at": f"2026-01-01T00:00:{i:02d}Z",
+                "tool_calls": [
+                    {"name": "replace_file_content",
+                     "args": {"TargetFile": "/repo/src/main.py",
+                              "TargetContent": f"v{i}", "ReplacementContent": f"v{i+1}"}},
+                ],
+            })
+        path = tmp_path / "transcript.jsonl"
+        path.write_text("\n".join(json.dumps(s) for s in steps) + "\n")
+
+        results = check_compliance(path, "read-before-write")
+        assert results["compliant_count"] == 20
+        assert results["non_compliant_count"] == 0
+
+    def test_str_path_accepted(self, compliant_transcript):
+        """check_compliance must accept str paths (not just Path objects)."""
+        from enzymes.evidence_collector import check_compliance
+
+        results = check_compliance(
+            str(compliant_transcript), rule_id="read-before-write"
+        )
+        assert results["compliant_count"] >= 1
+
+    def test_all_non_compliant_observations(self):
+        """All-non-compliant observations must not crash."""
+        from enzymes.evidence_collector import aggregate_evidence
+
+        observations = [
+            {"rule_id": "r1", "compliant": False,
+             "session_steps": 100, "session_fpsr": 0.1},
+            {"rule_id": "r1", "compliant": False,
+             "session_steps": 200, "session_fpsr": 0.2},
+        ]
+        evidence = aggregate_evidence(observations)
+        r = evidence["r1"]
+        assert r["compliant_avg_steps"] is None or r["compliant_avg_steps"] == 0
+        assert r["non_compliant_avg_steps"] == pytest.approx(150.0)
+
+    def test_quoted_path_arguments(self, tmp_path):
+        """Tool arguments with surrounding quotes must be handled."""
+        from enzymes.evidence_collector import check_compliance
+
+        steps = [
+            {"step_index": 0, "source": "MODEL", "type": "PLANNER_RESPONSE",
+             "created_at": "2026-01-01T00:00:00Z",
+             "tool_calls": [
+                 {"name": "view_file",
+                  "args": {"AbsolutePath": '"/repo/src/main.py"'}},
+             ]},
+            {"step_index": 1, "source": "MODEL", "type": "PLANNER_RESPONSE",
+             "created_at": "2026-01-01T00:00:01Z",
+             "tool_calls": [
+                 {"name": "replace_file_content",
+                  "args": {"TargetFile": "/repo/src/main.py",
+                           "TargetContent": "x", "ReplacementContent": "y"}},
+             ]},
+        ]
+        path = tmp_path / "transcript.jsonl"
+        path.write_text("\n".join(json.dumps(s) for s in steps) + "\n")
+
+        results = check_compliance(path, "read-before-write")
+        # After quote stripping, paths should match
+        assert results["compliant_count"] >= 1
+

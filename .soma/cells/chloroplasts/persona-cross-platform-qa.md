@@ -15,7 +15,7 @@ expiry_sessions: 15
 expiry_days: 60
 created: "2026-09-28"
 impact_weight: 1.1
-domain: "Cross-Platform Engineering"
+expertise_domain: "Cross-Platform Engineering"
 expertise: ["POSIX Shell", "Bash", "PowerShell", "BSD vs GNU", "Path Resolution"]
 fitness:
   triggers: 2

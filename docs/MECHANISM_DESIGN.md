@@ -81,7 +81,7 @@
 
 1. **Information asymmetry exploitation** (Layer 2 verification)
    - Two reviewers see different inputs → agreement is evidence, not collusion
-   - This is a direct implementation of debate-based oversight
+   - This is an independent multi-agent elicitation protocol with deterministic arbitration
 
 2. **Post-hoc revelation mechanism** (Transcript verifier)
    - Agents cannot benefit from false self-reports because claims are verified against logs

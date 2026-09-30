@@ -164,7 +164,7 @@ def test_domain_is_valid(rule_file):
     )
 
 
-@pytest.mark.parametrize("rule_file", get_genome_rules() + get_oracle_rules(),
+@pytest.mark.parametrize("rule_file", get_all_rules(),
                          ids=lambda p: str(p.relative_to(REPO_ROOT)))
 def test_id_matches_filename(rule_file):
     """Rule ID should match the filename (without extension)."""
@@ -177,10 +177,20 @@ def test_id_matches_filename(rule_file):
     )
 
 
+@pytest.mark.parametrize("rule_file", get_cell_rules(),
+                         ids=lambda p: f"cells/{p.parent.name}/{p.name}")
+def test_cell_rule_has_id(rule_file):
+    """Every cell rule MUST have an 'id' field in frontmatter."""
+    meta = parse_frontmatter(rule_file.read_text())
+    if meta is None:
+        pytest.skip("No frontmatter")
+    assert "id" in meta, f"{rule_file.name} missing 'id' field"
+
+
 def test_no_duplicate_rule_ids():
-    """All rule IDs across genome + oracles must be unique."""
+    """All rule IDs across genome + oracles + cells must be unique."""
     ids_seen: dict[str, str] = {}
-    for rule_file in get_genome_rules() + get_oracle_rules():
+    for rule_file in get_all_rules():
         meta = parse_frontmatter(rule_file.read_text())
         if meta and "id" in meta:
             rid = meta["id"]
@@ -188,3 +198,4 @@ def test_no_duplicate_rule_ids():
                 f"Duplicate id '{rid}': {ids_seen[rid]} and {rule_file.name}"
             )
             ids_seen[rid] = rule_file.name
+
