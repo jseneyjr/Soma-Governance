@@ -5,6 +5,7 @@ non_standard: true
 name: Providence Governance
 description: Global steering rule for codebase governance, claim verification, and provenance.
 trigger: always_on
+enforcement: gate
 ---
 # Gemini Providence & Governance
 

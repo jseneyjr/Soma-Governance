@@ -23,6 +23,13 @@ triggers:
 created: "2026-09-30"
 expiry_days: 90
 expiry_sessions: 30
+fitness:
+  score: null
+  impact_weight: 1.0
+  triggers: 0
+  true_positives: 0
+  false_positives: 0
+  last_trigger_date: null
 ---
 
 ## Trap: Local Green ≠ CI Green

@@ -21,6 +21,13 @@ tags:
 - versioning
 - consistency
 - release
+fitness:
+  score: null
+  impact_weight: 1.0
+  triggers: 0
+  true_positives: 0
+  false_positives: 0
+  last_trigger_date: null
 ---
 
 Version consistency is enforced across 4 sources:

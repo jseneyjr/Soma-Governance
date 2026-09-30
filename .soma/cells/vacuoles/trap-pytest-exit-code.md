@@ -6,8 +6,18 @@ hypothesis: Pytest exit code 5 (no tests collected) is currently penalizing vali
   scenarios where tests shouldn't run.
 prediction: Handling exit code 5 gracefully will improve outcome engine reliability.
 falsification: A lack of collected tests is always a critical failure.
+target_paths:
+- tests/*.py
+- enzymes/*.py
 expiry_sessions: 30
 impact_weight: 0.7
+fitness:
+  score: null
+  impact_weight: 1.0
+  triggers: 0
+  true_positives: 0
+  false_positives: 0
+  last_trigger_date: null
 ---
 
 # Trap: Pytest Exit Code 5

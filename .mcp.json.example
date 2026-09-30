@@ -1,0 +1,12 @@
+{
+  "mcpServers": {
+    "soma": {
+      "command": "python3",
+      "args": ["-m", "soma_mcp"],
+      "cwd": ".",
+      "env": {
+        "SOMA_ROOT": "."
+      }
+    }
+  }
+}

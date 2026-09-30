@@ -251,3 +251,76 @@ def test_glob_target_paths_match_files(rule_name, glob_pattern):
         f"Cell '{rule_name}' has target_path glob '{glob_pattern}' "
         f"which matches 0 files in the repo"
     )
+
+
+# ── Meta-test: schema test coverage gap detection ──
+# Validates that every cell subdirectory has corresponding parametrized
+# content coherence tests in test_rule_metadata.py. Without this, adding
+# a new cell type (e.g. "ribosomes/") silently lacks schema enforcement.
+
+
+def test_cell_subdirs_have_test_coverage():
+    """Every cell subdirectory with .md files must have a test function
+    in test_rule_metadata.py that parametrizes over its files.
+
+    This is the testable hypothesis behind trap-schema-test-gap: schema
+    test gaps cause frontmatter drift in unmonitored cell types.
+    """
+    import ast
+
+    cells_dir = REPO_ROOT / ".soma" / "cells"
+    if not cells_dir.exists():
+        pytest.skip("No .soma/cells/ directory")
+
+    # Find all cell subdirectories that contain .md files
+    cell_subdirs = set()
+    for md_file in cells_dir.rglob("*.md"):
+        if md_file.name == "README.md":
+            continue
+        # Get the immediate subdirectory name (vacuoles, walls, etc.)
+        rel = md_file.relative_to(cells_dir)
+        if len(rel.parts) >= 2:
+            cell_subdirs.add(rel.parts[0])
+
+    # Parse test_rule_metadata.py to find which cell types are tested
+    test_file = REPO_ROOT / "tests" / "test_rule_metadata.py"
+    source = test_file.read_text(encoding="utf-8")
+
+    # Known cell type mappings — test functions reference these
+    # by directory name or type name
+    tested_types = set()
+    # Check for function names and string references to cell subdirs
+    for subdir in cell_subdirs:
+        # Look for the subdirectory name in parametrize IDs or function names
+        if subdir in source:
+            tested_types.add(subdir)
+
+    untested = cell_subdirs - tested_types
+    assert not untested, (
+        f"Cell subdirectories {untested} have .md files but no "
+        f"corresponding test coverage in test_rule_metadata.py. "
+        f"Add parametrized content coherence tests for these types."
+    )
+
+
+def test_genome_rules_have_content_tests():
+    """Genome rules must be covered by content coherence tests,
+    not just structural/schema tests.
+
+    Checks that test_rule_metadata.py contains at least one test function
+    that validates genome rule content beyond basic frontmatter presence.
+    """
+    test_file = REPO_ROOT / "tests" / "test_rule_metadata.py"
+    source = test_file.read_text(encoding="utf-8")
+
+    # Must have at least these content tests (not just has_frontmatter/has_id)
+    content_tests = [
+        "test_genome_has_enforcement",
+        "test_genome_has_body_text",
+    ]
+    missing = [t for t in content_tests if t not in source]
+    assert not missing, (
+        f"Missing genome content coherence tests: {missing}. "
+        f"Genome rules need more than frontmatter/id checks."
+    )
+

@@ -2,6 +2,7 @@
 id: wall-oracles
 domain: governance
 type: wall
+enforcement: gate
 hypothesis: Oracles contain sensitive genome configuration.
 prediction: Shielding the oracles directory prevents corruption of core identity logic.
 falsification: Oracles are public and ephemeral.

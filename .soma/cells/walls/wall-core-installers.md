@@ -2,7 +2,7 @@
 id: wall-core-installers
 domain: correctness
 type: wall
-enforcement: advisory
+enforcement: gate
 promotion_threshold: 0.85
 demotion_threshold: 0.3
 hypothesis: Changes to install.sh, install.ps1, uninstall.sh, common.sh, and Makefile
