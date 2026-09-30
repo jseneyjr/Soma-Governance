@@ -43,7 +43,7 @@ def detect_platform(project_root: Path) -> str:
         return "claude"
     if (project_root / ".cursor").is_dir() or (project_root / ".cursorrules").is_file():
         return "cursor"
-    if (project_root / ".github" / "copilot").is_dir():
+    if (project_root / ".github" / "copilot").is_dir() or (project_root / ".github" / "copilot-instructions.md").is_file():
         return "copilot"
 
     return "unknown"
@@ -116,6 +116,7 @@ def check_existing_install(project_root: Path) -> bool:
 def install_starter_rules(
     rules_dir: Path,
     dry_run: bool = False,
+    force: bool = False,
 ) -> list[str]:
     """Install the 5 starter rules to the target directory.
 
@@ -132,12 +133,25 @@ def install_starter_rules(
     for name, source_rel in STARTER_RULES.items():
         source = repo / source_rel
         if not source.exists():
-            print(f"  ⚠️  {name}: source not found at {source}")
+            print(f"  ⚠️  {name}: source not found")
             continue
 
         if not dry_run:
             rules_dir.mkdir(parents=True, exist_ok=True)
             dest = rules_dir / f"{name}.md"
+
+            # Security: reject symlink destinations to prevent arbitrary
+            # file overwrite (e.g. symlink pointing to ~/.bashrc)
+            if dest.is_symlink():
+                print(f"  ⚠️  {name}: skipped (destination is a symlink)")
+                continue
+
+            # Don't overwrite user-customized rules unless forced
+            if dest.exists() and not force:
+                print(f"  ℹ️  {name}: already exists, skipping (use --force to overwrite)")
+                installed.append(name)
+                continue
+
             shutil.copy2(source, dest)
 
         installed.append(name)
@@ -205,7 +219,8 @@ def run_init(args: argparse.Namespace) -> int:
     else:
         print("  Installing 5 starter rules...")
 
-    installed = install_starter_rules(rules_dir, dry_run=dry_run)
+    force = getattr(args, 'force', False)
+    installed = install_starter_rules(rules_dir, dry_run=dry_run, force=force)
 
     for name in installed:
         print(f"    ✅ {name}")

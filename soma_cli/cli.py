@@ -25,6 +25,8 @@ def _build_parser() -> argparse.ArgumentParser:
                         help="Skip platform detection, force a platform")
     p_init.add_argument("--yes", "-y", action="store_true",
                         help="Skip confirmation prompts")
+    p_init.add_argument("--force", action="store_true",
+                        help="Overwrite existing rules")
 
     # soma status
     sub.add_parser("status", help="Show active rules and stats")
@@ -85,7 +87,13 @@ def main(argv: list[str] | None = None) -> int:
         parser.print_help()
         return 1
 
-    return handler(args)
+    try:
+        return handler(args)
+    except KeyboardInterrupt:
+        return 130
+    except Exception as e:
+        print(f"Error: {e}", file=sys.stderr)
+        return 1
 
 
 if __name__ == "__main__":

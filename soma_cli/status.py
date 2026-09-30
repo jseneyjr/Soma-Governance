@@ -7,23 +7,19 @@ from datetime import date, datetime
 import json
 from pathlib import Path
 
+from soma_cli import resolve_root
+
 import yaml
 
 
 def _repo_root(args: argparse.Namespace) -> Path:
     """Find the Soma install root (where genome/ lives)."""
-    root = getattr(args, "_root", getattr(args, "_project_root", None))
-    if root is not None:
-        return Path(root)
-    return Path(__file__).resolve().parent.parent
+    return resolve_root(args, default=Path(__file__).resolve().parent.parent)
 
 
 def _project_root(args: argparse.Namespace) -> Path:
     """Find the project root (where .soma/ lives)."""
-    root = getattr(args, "_root", getattr(args, "_project_root", None))
-    if root is not None:
-        return Path(root)
-    return Path.cwd()
+    return resolve_root(args)
 
 
 def _parse_frontmatter(content: str) -> dict:

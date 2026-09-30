@@ -10,6 +10,7 @@ import json
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
+from soma_cli import resolve_root
 from soma_cli.init import STARTER_RULES
 
 BASE_RULES = list(STARTER_RULES.keys())
@@ -34,11 +35,7 @@ def _parse_timestamp(ts: str) -> datetime:
 
 def run_report(args: argparse.Namespace) -> int:
     """Session report card."""
-    root_override = getattr(args, "_root", None)
-    if root_override is not None:
-        root = Path(root_override)
-    else:
-        root = Path.cwd()
+    root = resolve_root(args)
 
     evidence_path = root / ".soma" / "evidence" / "fitness.jsonl"
     if not evidence_path.is_file() or evidence_path.stat().st_size == 0:

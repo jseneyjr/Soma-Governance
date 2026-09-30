@@ -177,3 +177,112 @@ class TestRunInit:
         assert result == 0
         captured = capsys.readouterr()
         assert "claude" in captured.out.lower()
+
+
+class TestSkipExistingAndForce:
+    """Tests for skip-existing and --force overwrite logic."""
+
+    def test_skips_existing_rules(self, tmp_path):
+        """Pre-existing rule with custom content is preserved without --force."""
+        from soma_cli.init import install_starter_rules
+        rules_dir = tmp_path / "rules"
+        rules_dir.mkdir()
+        custom_content = "# My custom providence rule\nDo not touch."
+        (rules_dir / "providence.md").write_text(custom_content)
+
+        install_starter_rules(rules_dir, dry_run=False, force=False)
+
+        assert (rules_dir / "providence.md").read_text() == custom_content
+
+    def test_force_overwrites_existing(self, tmp_path):
+        """Pre-existing rule is overwritten when force=True."""
+        from soma_cli.init import install_starter_rules
+        rules_dir = tmp_path / "rules"
+        rules_dir.mkdir()
+        (rules_dir / "providence.md").write_text("old content")
+
+        install_starter_rules(rules_dir, dry_run=False, force=True)
+
+        new_content = (rules_dir / "providence.md").read_text()
+        assert new_content != "old content"
+        assert len(new_content) > 100  # real rule content
+
+
+class TestSymlinkGuard:
+    """Tests for symlink destination guard in install_starter_rules."""
+
+    def test_symlink_destination_skipped(self, tmp_path):
+        """Symlink destinations in rules_dir are not followed."""
+        from soma_cli.init import install_starter_rules
+        rules_dir = tmp_path / "rules"
+        rules_dir.mkdir()
+        target_file = tmp_path / "target.txt"
+        target_file.write_text("original target content")
+        (rules_dir / "providence.md").symlink_to(target_file)
+
+        install_starter_rules(rules_dir, dry_run=False, force=True)
+
+        # Symlink should still be a symlink (skipped, not overwritten)
+        assert (rules_dir / "providence.md").is_symlink()
+        # Target file should be untouched
+        assert target_file.read_text() == "original target content"
+
+
+class TestCopilotInstructionsDetection:
+    """Tests for copilot-instructions.md detection."""
+
+    def test_copilot_detected_instructions_file(self, tmp_path):
+        """copilot-instructions.md triggers copilot platform detection."""
+        from soma_cli.init import detect_platform
+        gh_dir = tmp_path / ".github"
+        gh_dir.mkdir()
+        (gh_dir / "copilot-instructions.md").write_text("# Instructions")
+
+        assert detect_platform(tmp_path) == "copilot"
+
+
+class TestInstallProtections:
+    """Tests for overwrite protection and symlink guard."""
+
+    def test_skips_existing_rules(self, tmp_path):
+        """Existing rules are preserved when force=False."""
+        from soma_cli.init import install_starter_rules
+        rules_dir = tmp_path / "rules"
+        rules_dir.mkdir()
+        # Pre-create a rule with custom content
+        (rules_dir / "providence.md").write_text("# My custom providence rule")
+
+        install_starter_rules(rules_dir, dry_run=False, force=False)
+
+        # Original content must be preserved
+        assert (rules_dir / "providence.md").read_text() == "# My custom providence rule"
+
+    def test_force_overwrites_existing(self, tmp_path):
+        """Existing rules are overwritten when force=True."""
+        from soma_cli.init import install_starter_rules
+        rules_dir = tmp_path / "rules"
+        rules_dir.mkdir()
+        (rules_dir / "providence.md").write_text("# Old content")
+
+        install_starter_rules(rules_dir, dry_run=False, force=True)
+
+        # Content must have changed
+        content = (rules_dir / "providence.md").read_text()
+        assert content != "# Old content"
+        assert len(content) > 50  # Real rule has substantial content
+
+    def test_symlink_destination_skipped(self, tmp_path):
+        """Symlink destinations are rejected even with force=True."""
+        from soma_cli.init import install_starter_rules
+        rules_dir = tmp_path / "rules"
+        rules_dir.mkdir()
+        # Create a symlink pretending to be a rule destination
+        target = tmp_path / "decoy.txt"
+        target.write_text("original decoy content")
+        (rules_dir / "providence.md").symlink_to(target)
+
+        installed = install_starter_rules(rules_dir, dry_run=False, force=True)
+
+        # Symlink should be skipped, decoy content untouched
+        assert target.read_text() == "original decoy content"
+        assert "providence" not in installed
