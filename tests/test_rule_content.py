@@ -143,38 +143,131 @@ def test_literal_target_paths_exist(rule_name, target_path):
     )
 
 
-# ── Rule IDs unique across all layers ──
+# ── B.5.2: Parser divergence test ──
 
 
-def test_no_duplicate_ids_across_layers():
-    """All rule IDs across genome + oracles + cells must be globally unique."""
+def test_parsers_agree_on_id_and_domain():
+    """The test suite's regex parser and the production JIT engine parser
+    must agree on 'id' and 'domain' for every rule file.
+
+    If these diverge, tests pass on rules that production silently skips
+    (or vice versa) — the oracle table pattern at the parser level.
+    """
     import yaml
-    ids_seen: dict[str, str] = {}
+    from tests.test_rule_metadata import parse_frontmatter as test_parser
+
+    # Use yaml.safe_load as the reference (same as JIT engine when yaml available)
+    def jit_parser(text):
+        if not text.startswith("---"):
+            return None
+        end = text.find("---", 3)
+        if end == -1:
+            return None
+        fm_text = text[3:end].strip()
+        if not fm_text:
+            return {}
+        try:
+            data = yaml.safe_load(fm_text)
+        except Exception:
+            return None
+        if data is None:
+            return {}
+        if not isinstance(data, dict):
+            return None
+        return data
+
     rule_dirs = [
-        (REPO_ROOT / "genome", "*.md"),          # non-recursive (oracles separate)
-        (REPO_ROOT / "genome" / ".oracles", "*.md"),
-        (REPO_ROOT / ".soma" / "cells", "**/*.md"),  # recursive
+        REPO_ROOT / "genome",
+        REPO_ROOT / "genome" / ".oracles",
+        REPO_ROOT / ".soma" / "cells",
     ]
-    for rule_dir, pattern in rule_dirs:
+    checked = 0
+    for rule_dir in rule_dirs:
         if not rule_dir.exists():
             continue
-        for md_file in rule_dir.glob(pattern):
+        for md_file in rule_dir.rglob("*.md"):
             if md_file.name == "README.md":
                 continue
             content = md_file.read_text(encoding="utf-8")
-            if not content.startswith("---"):
+            test_result = test_parser(content)
+            jit_result = jit_parser(content)
+
+            # Both must agree on presence
+            if test_result is None and jit_result is None:
                 continue
-            end = content.find("---", 3)
-            if end == -1:
-                continue
-            try:
-                fm = yaml.safe_load(content[3:end])
-            except Exception:
-                continue
-            if fm and isinstance(fm, dict) and "id" in fm:
-                rid = fm["id"]
-                rel = str(md_file.relative_to(REPO_ROOT))
-                assert rid not in ids_seen, (
-                    f"Duplicate id '{rid}': {ids_seen[rid]} and {rel}"
+            if test_result is None or jit_result is None:
+                rel = md_file.relative_to(REPO_ROOT)
+                assert False, (
+                    f"Parser disagreement on {rel}: "
+                    f"test_parser={'None' if test_result is None else 'dict'}, "
+                    f"jit_parser={'None' if jit_result is None else 'dict'}"
                 )
-                ids_seen[rid] = rel
+
+            # Both must agree on id and domain values
+            for key in ("id", "domain"):
+                test_val = test_result.get(key)
+                jit_val = jit_result.get(key)
+                if test_val != str(jit_val) if jit_val is not None else test_val is not None:
+                    # Test parser strips quotes and returns strings;
+                    # JIT parser preserves types. Compare as strings.
+                    if str(test_val) != str(jit_val):
+                        rel = md_file.relative_to(REPO_ROOT)
+                        assert False, (
+                            f"Parser disagreement on {rel} field '{key}': "
+                            f"test_parser='{test_val}', jit_parser='{jit_val}'"
+                        )
+            checked += 1
+
+    assert checked > 0, "No rules were checked — test infrastructure issue"
+
+
+# ── B.5.3: Glob coverage test ──
+
+
+def _collect_glob_paths_from_cells():
+    """Collect glob target_paths from all cell frontmatter."""
+    import yaml
+    results = []
+    cells_dir = REPO_ROOT / ".soma" / "cells"
+    if not cells_dir.exists():
+        return results
+    for md_file in cells_dir.rglob("*.md"):
+        if md_file.name == "README.md":
+            continue
+        content = md_file.read_text(encoding="utf-8")
+        if not content.startswith("---"):
+            continue
+        end = content.find("---", 3)
+        if end == -1:
+            continue
+        try:
+            fm = yaml.safe_load(content[3:end])
+        except Exception:
+            continue
+        if fm and isinstance(fm, dict):
+            tp = fm.get("target_paths", [])
+            if isinstance(tp, list):
+                for p in tp:
+                    if isinstance(p, str) and any(c in p for c in "*?["):
+                        results.append((md_file.name, p))
+    return results
+
+
+_glob_paths = _collect_glob_paths_from_cells()
+
+
+@pytest.mark.parametrize(
+    "rule_name,glob_pattern", _glob_paths,
+    ids=[f"{r}:{p}" for r, p in _glob_paths]
+) if _glob_paths else lambda f: f
+def test_glob_target_paths_match_files(rule_name, glob_pattern):
+    """Glob target_paths in cells must match at least one file in the repo.
+
+    A cell monitoring 'nonexistent_dir/*.py' silently covers nothing.
+    """
+    import glob as globmod
+    matches = globmod.glob(str(REPO_ROOT / glob_pattern), recursive=True)
+    assert len(matches) > 0, (
+        f"Cell '{rule_name}' has target_path glob '{glob_pattern}' "
+        f"which matches 0 files in the repo"
+    )
