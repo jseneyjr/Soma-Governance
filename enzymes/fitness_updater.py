@@ -57,8 +57,11 @@ def extract_modified_files(transcript_path):
             tool_name = tc.get("name", "")
             if tool_name not in _WRITE_TOOLS:
                 continue
-            args = tc.get("arguments", {})
+            args = tc.get("arguments") or tc.get("args") or {}
             target = args.get("TargetFile", "")
+            # Real transcripts encode values as JSON strings with wrapping quotes
+            if isinstance(target, str):
+                target = target.strip('"').strip("'")
             if target:
                 modified.add(target)
 
@@ -200,7 +203,12 @@ def main():
     repo_root = args.repo_root or str(script_dir)
 
     transcript = Path(args.transcript)
-    transcript_id = transcript.parent.name  # Use conversation ID as transcript ID
+    # Path: brain/<conversation-id>/.system_generated/logs/transcript.jsonl
+    # Walk up to find the conversation ID directory
+    candidate = transcript.parent
+    while candidate.name in ("logs", ".system_generated"):
+        candidate = candidate.parent
+    transcript_id = candidate.name
 
     print(f"Processing transcript: {transcript}")
     modified = extract_modified_files(transcript)
