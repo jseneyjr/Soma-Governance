@@ -134,7 +134,7 @@ class TestInstallStarterRules:
         assert len(STARTER_RULES) == 5
         expected = {"providence", "destructive-ops", "testing",
                     "cost-optimization", "git-workflow"}
-        assert set(STARTER_RULES.keys()) == expected
+        assert set(STARTER_RULES) == expected
 
 
 class TestExistingSomaDir:
@@ -286,3 +286,90 @@ class TestInstallProtections:
         # Symlink should be skipped, decoy content untouched
         assert target.read_text() == "original decoy content"
         assert "providence" not in installed
+
+
+class TestClaudeMd:
+    """Tests for Claude CLAUDE.md concatenation."""
+
+    def test_claude_md_created(self, tmp_path):
+        """CLAUDE.md is created when installing for Claude platform."""
+        from soma_cli.init import install_starter_rules, _install_claude_md
+        rules_dir = tmp_path / "claude_rules"
+        install_starter_rules(rules_dir, dry_run=False)
+        _install_claude_md(rules_dir)
+
+        claude_md = rules_dir.parent / "CLAUDE.md"
+        assert claude_md.exists()
+        content = claude_md.read_text()
+        assert "<!-- SOMA:START -->" in content
+        assert "<!-- SOMA:END -->" in content
+        assert "providence" in content.lower()
+
+    def test_claude_md_appends_to_existing(self, tmp_path):
+        """CLAUDE.md appends Soma section to existing content."""
+        from soma_cli.init import install_starter_rules, _install_claude_md
+        rules_dir = tmp_path / "claude_rules"
+        install_starter_rules(rules_dir, dry_run=False)
+
+        claude_md = rules_dir.parent / "CLAUDE.md"
+        claude_md.write_text("# Existing project instructions\n")
+        _install_claude_md(rules_dir)
+
+        content = claude_md.read_text()
+        assert content.startswith("# Existing project instructions")
+        assert "<!-- SOMA:START -->" in content
+
+    def test_claude_md_skips_without_force(self, tmp_path):
+        """CLAUDE.md soma section not replaced without --force."""
+        from soma_cli.init import install_starter_rules, _install_claude_md
+        rules_dir = tmp_path / "claude_rules"
+        install_starter_rules(rules_dir, dry_run=False)
+
+        claude_md = rules_dir.parent / "CLAUDE.md"
+        claude_md.write_text("<!-- SOMA:START -->\nPLACEHOLDER_ORIGINAL_CONTENT_XYZ\n<!-- SOMA:END -->\n")
+        _install_claude_md(rules_dir, force=False)
+
+        assert "PLACEHOLDER_ORIGINAL_CONTENT_XYZ" in claude_md.read_text()
+
+    def test_claude_md_replaces_with_force(self, tmp_path):
+        """CLAUDE.md soma section replaced with --force."""
+        from soma_cli.init import install_starter_rules, _install_claude_md
+        rules_dir = tmp_path / "claude_rules"
+        install_starter_rules(rules_dir, dry_run=False)
+
+        claude_md = rules_dir.parent / "CLAUDE.md"
+        claude_md.write_text("<!-- SOMA:START -->\nPLACEHOLDER_ORIGINAL_CONTENT_XYZ\n<!-- SOMA:END -->\n")
+        _install_claude_md(rules_dir, force=True)
+
+        content = claude_md.read_text()
+        assert "PLACEHOLDER_ORIGINAL_CONTENT_XYZ" not in content
+        assert "providence" in content.lower()
+
+
+class TestConfirmation:
+    """Tests for --yes confirmation prompt."""
+
+    def test_init_aborts_without_yes(self, tmp_path, monkeypatch, capsys):
+        """Init aborts when user says no to confirmation."""
+        from soma_cli.init import run_init
+        (tmp_path / ".gemini").mkdir()
+        monkeypatch.setattr("builtins.input", lambda _: "n")
+        args = argparse.Namespace(
+            dry_run=False, platform="gemini", yes=False, force=False,
+            _project_root=tmp_path,
+        )
+        result = run_init(args)
+        assert result == 0
+        assert "Aborted" in capsys.readouterr().out
+
+    def test_init_proceeds_with_yes(self, tmp_path, capsys):
+        """Init proceeds when --yes is passed."""
+        from soma_cli.init import run_init
+        (tmp_path / ".gemini").mkdir()
+        args = argparse.Namespace(
+            dry_run=False, platform="gemini", yes=True, force=False,
+            _project_root=tmp_path,
+        )
+        result = run_init(args)
+        assert result == 0
+        assert "Done!" in capsys.readouterr().out

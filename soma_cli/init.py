@@ -5,6 +5,7 @@ Detects platform and project type, installs starter rules.
 from __future__ import annotations
 
 import argparse
+import importlib.resources
 import os
 import shutil
 from pathlib import Path
@@ -12,9 +13,18 @@ from pathlib import Path
 
 # ── Starter Pack ────────────────────────────────────────────────────────────
 # The 5 rules that deliver immediate value on any project, any language.
-# Keys are the rule stems, values are the source paths relative to repo root.
+# Keys are the rule stems — files are bundled in soma_cli/starter_rules/.
 
-STARTER_RULES = {
+STARTER_RULES = [
+    "providence",
+    "destructive-ops",
+    "testing",
+    "cost-optimization",
+    "git-workflow",
+]
+
+# Legacy mapping for manifest cross-validation (starter_pack.txt)
+STARTER_RULES_LEGACY = {
     "providence": "genome/providence.md",
     "destructive-ops": "genome/destructive-ops.md",
     "testing": "genome/.oracles/testing.md",
@@ -23,9 +33,21 @@ STARTER_RULES = {
 }
 
 
-def _repo_root() -> Path:
-    """Resolve the Soma repo root (where genome/ lives)."""
-    return Path(__file__).resolve().parent.parent
+def _get_starter_rule_path(name: str) -> Path | None:
+    """Resolve the path to a bundled starter rule file.
+
+    Uses importlib.resources to find files inside the soma_cli package,
+    working in both editable installs and wheel distributions.
+    """
+    try:
+        ref = importlib.resources.files("soma_cli") / "starter_rules" / f"{name}.md"
+        # Materialize to a real path (works for both installed and editable)
+        path = Path(str(ref))
+        if path.is_file():
+            return path
+    except (TypeError, FileNotFoundError):
+        pass
+    return None
 
 
 # ── Detection ───────────────────────────────────────────────────────────────
@@ -123,16 +145,16 @@ def install_starter_rules(
     Args:
         rules_dir: Target directory for rules.
         dry_run: If True, don't create files.
+        force: If True, overwrite existing rules.
 
     Returns:
         List of installed rule names.
     """
-    repo = _repo_root()
     installed = []
 
-    for name, source_rel in STARTER_RULES.items():
-        source = repo / source_rel
-        if not source.exists():
+    for name in STARTER_RULES:
+        source = _get_starter_rule_path(name)
+        if source is None:
             print(f"  ⚠️  {name}: source not found")
             continue
 
@@ -213,7 +235,21 @@ def run_init(args: argparse.Namespace) -> int:
         print(f"  ❌ {e}")
         return 1
 
-    # 5. Install starter rules
+    # 5. Confirmation prompt (unless --yes or --dry-run)
+    skip_confirm = getattr(args, "yes", False) or dry_run
+    if not skip_confirm:
+        print(f"  Will install 5 starter rules to: {rules_dir}")
+        try:
+            answer = input("  Proceed? [Y/n] ").strip().lower()
+            if answer and answer not in ("y", "yes"):
+                print("  Aborted.")
+                return 0
+        except (EOFError, KeyboardInterrupt):
+            print("\n  Aborted.")
+            return 0
+    print()
+
+    # 6. Install starter rules
     if dry_run:
         print("  Installing 5 starter rules (dry run)...")
     else:
@@ -226,6 +262,10 @@ def run_init(args: argparse.Namespace) -> int:
         print(f"    ✅ {name}")
 
     print()
+
+    # 7. Claude-specific: concatenate rules into CLAUDE.md
+    if platform == "claude" and installed and not dry_run:
+        _install_claude_md(rules_dir, force=force)
 
     if dry_run:
         print("  Dry run complete. No files were created.")
@@ -242,3 +282,54 @@ def run_init(args: argparse.Namespace) -> int:
     print()
 
     return 0
+
+
+# ── Claude helpers ──────────────────────────────────────────────────────────
+
+SOMA_MARKER_START = "<!-- SOMA:START -->"
+SOMA_MARKER_END = "<!-- SOMA:END -->"
+
+
+def _install_claude_md(rules_dir: Path, force: bool = False) -> None:
+    """Concatenate installed rules into CLAUDE.md for Claude Code.
+
+    Claude Code reads CLAUDE.md, not individual .md files. We concatenate
+    all installed rules between SOMA markers so we can update them later.
+    """
+    claude_md = rules_dir.parent / "CLAUDE.md"  # ~/.claude/CLAUDE.md
+
+    # Build the soma governance section
+    sections = []
+    for rule_file in sorted(rules_dir.glob("*.md")):
+        if rule_file.is_file():
+            content = rule_file.read_text().strip()
+            sections.append(f"## {rule_file.stem}\n\n{content}")
+
+    if not sections:
+        return
+
+    soma_block = (
+        f"{SOMA_MARKER_START}\n"
+        f"# Soma Governance Rules\n\n"
+        + "\n\n---\n\n".join(sections)
+        + f"\n{SOMA_MARKER_END}\n"
+    )
+
+    if claude_md.exists():
+        existing = claude_md.read_text()
+        if SOMA_MARKER_START in existing and SOMA_MARKER_END in existing:
+            if not force:
+                print("  ℹ️  CLAUDE.md already has Soma rules (use --force to update)")
+                return
+            # Replace existing section
+            start_idx = existing.index(SOMA_MARKER_START)
+            end_idx = existing.index(SOMA_MARKER_END) + len(SOMA_MARKER_END)
+            updated = existing[:start_idx] + soma_block + existing[end_idx:]
+            claude_md.write_text(updated)
+        else:
+            # Append
+            claude_md.write_text(existing.rstrip() + "\n\n" + soma_block)
+    else:
+        claude_md.write_text(soma_block)
+
+    print(f"  📝 Updated {claude_md}")

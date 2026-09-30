@@ -268,13 +268,13 @@ def test_starter_pack_files_exist():
 
 
 def test_starter_rules_match_init():
-    """Starter pack manifest matches STARTER_RULES in soma_cli/init.py."""
-    from soma_cli.init import STARTER_RULES
+    """Starter pack manifest matches STARTER_RULES_LEGACY in soma_cli/init.py."""
+    from soma_cli.init import STARTER_RULES_LEGACY
     with open(STARTER_PACK) as f:
         manifest = {line.strip() for line in f if line.strip()}
-    init_paths = set(STARTER_RULES.values())
+    init_paths = set(STARTER_RULES_LEGACY.values())
     assert manifest == init_paths, (
-        f"Manifest and STARTER_RULES diverge:\n"
+        f"Manifest and STARTER_RULES_LEGACY diverge:\n"
         f"  manifest only: {manifest - init_paths}\n"
         f"  init.py only: {init_paths - manifest}"
     )

@@ -10,10 +10,12 @@ import json
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
-from soma_cli import resolve_root
+from soma_cli import resolve_root, sanitize_display
 from soma_cli.init import STARTER_RULES
 
-BASE_RULES = list(STARTER_RULES.keys())
+BASE_RULES = list(STARTER_RULES)
+
+MAX_EVENTS = 50_000
 
 CONTEXTUAL_EMOJIS = {
     "providence": "🛡️",
@@ -56,6 +58,10 @@ def run_report(args: argparse.Namespace) -> int:
             except (json.JSONDecodeError, ValueError, KeyError, AttributeError, TypeError, RecursionError):
                 continue
 
+    if len(events) > MAX_EVENTS:
+        print(f"Warning: truncating to last {MAX_EVENTS:,} of {len(events):,} events")
+        events = events[-MAX_EVENTS:]
+
     if not events:
         print("No session data yet. Run a governed session first.")
         return 0
@@ -93,7 +99,7 @@ def run_report(args: argparse.Namespace) -> int:
     # Count trigger events in selected session
     session_counts: dict[str, int] = {}
     for event in selected_session:
-        cid = event["cell_id"]
+        cid = sanitize_display(event["cell_id"])
         session_counts[cid] = session_counts.get(cid, 0) + 1
 
     base_set = set(BASE_RULES)

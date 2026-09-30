@@ -23,11 +23,12 @@ def _project_root(args: argparse.Namespace) -> Path:
 
 
 def _parse_frontmatter(content: str) -> dict:
-    """Extract YAML frontmatter if present."""
+    """Extract YAML frontmatter if present. Caps input at 16KB for safety."""
+    MAX_FRONTMATTER = 16_384
     stripped = content.lstrip()
     if stripped.startswith("---"):
         end = stripped.find("---", 3)
-        if end != -1:
+        if end != -1 and end <= MAX_FRONTMATTER:
             try:
                 fm = yaml.safe_load(stripped[3:end])
                 if isinstance(fm, dict):
@@ -114,18 +115,32 @@ def run_status(args: argparse.Namespace) -> int:
     root = _repo_root(args)
     proj = _project_root(args)
 
-    # 1. Count core rules: .md files in genome/ and genome/.oracles/ (exclude README.md)
+    # 1. Count installed rules: detect platform and scan rules dir
     core_files: list[Path] = []
-    genome_dir = root / "genome"
-    if genome_dir.is_dir():
-        for p in sorted(genome_dir.glob("*.md")):
-            if p.is_file() and p.name.lower() != "readme.md":
-                core_files.append(p)
-    oracles_dir = genome_dir / ".oracles"
-    if oracles_dir.is_dir():
-        for p in sorted(oracles_dir.glob("*.md")):
-            if p.is_file() and p.name.lower() != "readme.md":
-                core_files.append(p)
+    try:
+        from soma_cli.init import detect_platform, get_rules_dir
+        platform = detect_platform(proj)
+        if platform != "unknown":
+            rules_dir = get_rules_dir(platform, project_root=proj)
+            if rules_dir.is_dir():
+                for p in sorted(rules_dir.glob("*.md")):
+                    if p.is_file() and p.name.lower() != "readme.md":
+                        core_files.append(p)
+    except (ImportError, ValueError):
+        pass
+
+    # Fallback: scan genome/ if running from the Soma repo
+    if not core_files:
+        genome_dir = root / "genome"
+        if genome_dir.is_dir():
+            for p in sorted(genome_dir.glob("*.md")):
+                if p.is_file() and p.name.lower() != "readme.md":
+                    core_files.append(p)
+        oracles_dir = genome_dir / ".oracles"
+        if oracles_dir.is_dir():
+            for p in sorted(oracles_dir.glob("*.md")):
+                if p.is_file() and p.name.lower() != "readme.md":
+                    core_files.append(p)
 
     # 2. Count adaptive rules: .md files in .soma/cells/ recursively (exclude README.md)
     adaptive_files: list[Path] = []

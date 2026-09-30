@@ -12,6 +12,7 @@ import json
 import os
 import sys
 import fnmatch
+import fcntl
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -264,23 +265,31 @@ def update_fitness(triggered_cells, transcript_id, evidence_dir):
     # Append fitness records
     if triggered_cells:
         with open(fitness_path, "a", encoding="utf-8") as f:
-            for cell in triggered_cells:
-                record = {
-                    "cell_id": cell["cell_id"],
-                    "transcript_id": transcript_id,
-                    "triggered_at": now,
-                    "matched_files": cell.get("matched_files", []),
-                }
-                f.write(json.dumps(record) + "\n")
+            fcntl.flock(f, fcntl.LOCK_EX)
+            try:
+                for cell in triggered_cells:
+                    record = {
+                        "cell_id": cell["cell_id"],
+                        "transcript_id": transcript_id,
+                        "triggered_at": now,
+                        "matched_files": cell.get("matched_files", []),
+                    }
+                    f.write(json.dumps(record) + "\n")
+            finally:
+                fcntl.flock(f, fcntl.LOCK_UN)
 
     # Record session as processed
     with open(ledger_path, "a", encoding="utf-8") as f:
-        ledger_record = {
-            "transcript_id": transcript_id,
-            "processed_at": now,
-            "cells_triggered": len(triggered_cells),
-        }
-        f.write(json.dumps(ledger_record) + "\n")
+        fcntl.flock(f, fcntl.LOCK_EX)
+        try:
+            ledger_record = {
+                "transcript_id": transcript_id,
+                "processed_at": now,
+                "cells_triggered": len(triggered_cells),
+            }
+            f.write(json.dumps(ledger_record) + "\n")
+        finally:
+            fcntl.flock(f, fcntl.LOCK_UN)
 
 
 def main():
