@@ -5,8 +5,8 @@
 [![Agent Skills](https://img.shields.io/badge/Agent_Skills-15-purple?style=flat-square)](#-agent-skills)
 [![Automation Scripts](https://img.shields.io/badge/Automation_Scripts-58-red?style=flat-square)](#%EF%B8%8F-automation-scripts)
 [![Adaptive Rules](https://img.shields.io/badge/Adaptive_Rules-5_Types-orange?style=flat-square)](#-adaptive-rules)
-[![Tests](https://img.shields.io/badge/Tests-515%2B-brightgreen?style=flat-square)](#testing--ci)
-[![Version](https://img.shields.io/badge/Version-0.50.0-informational?style=flat-square)](docs/CHANGELOG.md)
+[![Tests](https://img.shields.io/badge/Tests-587%2B-brightgreen?style=flat-square)](#testing--ci)
+[![Version](https://img.shields.io/badge/Version-0.51.0-informational?style=flat-square)](docs/CHANGELOG.md)
 [![Blog Post](https://img.shields.io/badge/Blog-dev.to-black?style=flat-square&logo=devdotto)](https://dev.to/nseney1/rules-that-cant-prove-themselves-die-adaptive-governance-for-ai-coding-agents-25bn)
 
 **Governance framework that makes AI coding agents trustworthy.**
@@ -31,18 +31,32 @@ See the [NOTICE](NOTICE) file for our full local-only Data Privacy Statement.
 # Clone
 git clone https://github.com/nseney1/soma.git && cd soma
 
-# Option A: Global install (Gemini / Antigravity)
+# Install the CLI
+pip install -e .
+
+# Set up governance (auto-detects your platform)
+soma init --yes
+
+# See what's active
+soma status
+```
+
+<details>
+<summary>Alternative install methods</summary>
+
+```bash
+# Global install via Makefile (Gemini / Antigravity)
 make install
 
-# Option B: Project-local install (creates .soma/ in your repo)
-bash install/install.sh gemini --local
-
-# Other platforms
-bash install/install.sh kiro       # AWS Kiro
+# Shell installer for specific platforms
+bash install/install.sh gemini     # Google Gemini
 bash install/install.sh copilot    # GitHub Copilot
-bash install/install.sh claude     # Claude Code (.mcp.json + CLAUDE.md)
+bash install/install.sh claude     # Claude Code
+bash install/install.sh kiro       # AWS Kiro
 bash install/install.sh mcp        # Any MCP-compatible agent
 ```
+
+</details>
 
 ### MCP Server (Recommended)
 
@@ -396,7 +410,7 @@ Instead of pleading with the AI in a system prompt to "think step-by-step," Soma
 - **Typical Load** (genome + 3 matched cells): ~4,013 tokens/turn
 - **Waste Rate**: < 1.0% in governed sessions (via Last Gasp & TTC Oracles)
 - **Calibrated Token Ratio**: 1.35 measured directly against Gemini API
-- **Verification Framework**: 515+ tests across 20 test files
+- **Verification Framework**: 587+ tests across 20 test files
 
 See [METRICS.md](docs/METRICS.md) for a complete system breakdown. See [BENCHMARK.md](docs/BENCHMARK.md) for the standardized governance effectiveness benchmark.
 
@@ -435,7 +449,7 @@ make doctor     # System health check
 | Transcript verifier | 13 | Metric extraction from JSONL, claim verification |
 | Arbiter | 12 | Set operations on risk taxonomy, convergence/divergence |
 | Immune verify | 12 | Information-partitioned prompts, schema validation |
-| Install lifecycle | 11 | Multi-platform install/uninstall, manifest integrity |
+| Install lifecycle | 15 | Multi-platform install/uninstall, manifest integrity, starter pack |
 | Layer 1 runner | 11 | Orchestration, persistence gaps, orphan detection, gates |
 | Evidence collector | 10 | Rule compliance correlation, read-before-write detection |
 | Exponential decay | 10 | Mathematical properties, champion displacement |
