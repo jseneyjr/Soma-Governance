@@ -44,6 +44,7 @@ DECAY_TO_YAML=""
 TARGET_PATHS=""
 ID_OVERRIDE=""
 DESCRIPTION=""
+DOMAIN="correctness"
 
 # Parse arguments
 while [[ $# -gt 0 ]]; do
@@ -102,6 +103,10 @@ while [[ $# -gt 0 ]]; do
       ;;
     --from-description)
       DESCRIPTION="$2"
+      shift 2
+      ;;
+    -d|--domain)
+      DOMAIN="$2"
       shift 2
       ;;
     *)
@@ -260,6 +265,8 @@ fi
 
 cat > "$FILE_PATH" << EOF
 ---
+id: $SLUG
+domain: $DOMAIN
 type: $TYPE
 hypothesis: "$HYPOTHESIS"
 prediction: "$PREDICTION"

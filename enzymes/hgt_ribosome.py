@@ -90,12 +90,15 @@ def main():
     
     # Create filename based on abstract name
     first_line = translated_body.split('\n')[0]
-    filename_base = re.sub(r'[^a-z0-9]+', '-', first_line.lower().replace('#', '').strip())
-    filename = f"hgt-{filename_base}.md"
+    filename_base = re.sub(r'[^a-z0-9]+', '-', first_line.lower().replace('#', '').strip()).strip('-')
+    gene_id = f"hgt-{filename_base}"
+    filename = f"{gene_id}.md"
     
     output_path = os.path.join(genome_dir, filename)
     
     new_metadata = {
+        "id": gene_id,
+        "domain": "governance",
         "name": filename_base,
         "type": "gene",
         "hgt_source": args.source_file,
@@ -104,7 +107,16 @@ def main():
     
     with open(output_path, 'w', encoding="utf-8") as f:
         f.write("---\n")
-        yaml.dump(new_metadata, f, default_flow_style=False, sort_keys=False)
+        if yaml is not None:
+            yaml.dump(new_metadata, f, default_flow_style=False, sort_keys=False)
+        else:
+            for k, v in new_metadata.items():
+                if v is None:
+                    f.write(f"{k}: null\n")
+                elif isinstance(v, str):
+                    f.write(f'{k}: "{v}"\n')
+                else:
+                    f.write(f"{k}: {v}\n")
         f.write("---\n\n")
         f.write(translated_body)
         
