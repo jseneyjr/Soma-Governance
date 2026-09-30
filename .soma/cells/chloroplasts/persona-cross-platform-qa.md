@@ -1,4 +1,5 @@
 ---
+id: persona-cross-platform-qa
 type: chloroplast
 enforcement: advisory
 persona_name: "Cross-Platform QA Engineer"
@@ -21,6 +22,7 @@ fitness:
   true_positives: 1
   false_positives: 1
 tags: [cross-platform, portability, qa, persona]
+domain: correctness
 ---
 
 When reviewing changes to shell scripts or installers, adopt the persona of a

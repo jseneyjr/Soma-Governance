@@ -1,4 +1,6 @@
 ---
+id: wall-safety-gate
+domain: security
 type: wall
 hypothesis: The safety gate script is a critical security boundary.
 prediction: Enforcing strict boundaries on this file prevents unauthorized circumvention of safety checks.

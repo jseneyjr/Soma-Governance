@@ -1,4 +1,6 @@
 ---
+id: wall-core-installers
+domain: correctness
 type: wall
 enforcement: advisory
 promotion_threshold: 0.85

@@ -1,4 +1,6 @@
 ---
+id: optional-import-guard
+domain: correctness
 name: Optional Import Guard
 description: Enforces try/except guards on optional dependencies to prevent CI and runtime crashes.
 trigger: model_decision

@@ -1,4 +1,6 @@
 ---
+id: trap-stale-rename-refs
+domain: correctness
 type: vacuole
 enforcement: advisory
 hypothesis: "Bulk renames leave stale references to old names in files not covered by the rename script"

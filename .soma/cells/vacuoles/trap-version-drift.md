@@ -1,4 +1,6 @@
 ---
+id: trap-version-drift
+domain: correctness
 type: vacuole
 enforcement: advisory
 hypothesis: "Version numbers across VERSION, pyproject.toml, soma_sdk/__init__.py, and soma_sdk_js/package.json must stay in sync"

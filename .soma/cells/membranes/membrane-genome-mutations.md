@@ -1,4 +1,6 @@
 ---
+id: membrane-genome-mutations
+domain: governance
 type: membrane
 enforcement: advisory
 promotion_threshold: 0.85

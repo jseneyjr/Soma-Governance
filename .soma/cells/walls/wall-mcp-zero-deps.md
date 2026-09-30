@@ -1,4 +1,6 @@
 ---
+id: wall-mcp-zero-deps
+domain: correctness
 type: wall
 enforcement: advisory
 hypothesis: "The MCP server must work with zero external dependencies for maximum portability"

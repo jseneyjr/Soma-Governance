@@ -1,4 +1,6 @@
 ---
+id: trap-pytest-exit-code
+domain: correctness
 type: vacuole
 hypothesis: Pytest exit code 5 (no tests collected) is currently penalizing valid scenarios where tests shouldn't run.
 prediction: Handling exit code 5 gracefully will improve outcome engine reliability.

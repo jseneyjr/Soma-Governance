@@ -1,4 +1,6 @@
 ---
+id: wall-install-uninstall-parity
+domain: correctness
 type: wall
 enforcement: advisory
 hypothesis: "Every platform in the installer must have a matching uninstall path"

@@ -1,4 +1,6 @@
 ---
+id: contract-mcp-cli-parity
+domain: correctness
 type: plasmodesmata
 enforcement: advisory
 hypothesis: "The MCP server tools must expose the same capabilities as the CLI enzymes"

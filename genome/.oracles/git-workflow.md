@@ -1,4 +1,6 @@
 ---
+id: git-workflow
+domain: governance
 name: Git Workflow Standards
 description: Enforces consistent git practices across all projects with version control. Activate when working in a git-tracked repository.
 trigger: model_decision

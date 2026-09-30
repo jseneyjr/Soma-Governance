@@ -1,4 +1,6 @@
 ---
+id: trap-magic-numbers
+domain: style
 type: vacuole
 hypothesis: Hardcoded numeric literals represent brittle magic numbers that reduce code adaptability.
 prediction: Extracting these numbers into configuration or constants will increase the fitness of the codebase.

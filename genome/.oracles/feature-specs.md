@@ -1,4 +1,6 @@
 ---
+id: feature-specs
+domain: governance
 name: Feature Spec Standards
 description: Enforces rigorous, architect-level guidelines for defining new features, PRDs, and component breakdowns.
 trigger: model_decision

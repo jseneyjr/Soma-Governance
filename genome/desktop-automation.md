@@ -1,4 +1,6 @@
 ---
+id: desktop-automation
+domain: security
 non_standard: true
 name: Desktop & GUI Automation Safety
 description: Input safety protocols for desktop and game automation — coordinate clamping, window focus verification, closed-loop visual validation, headless display guards. Activate when writing scripts that inject mouse/keyboard inputs, manipulate OS windows, or automate graphical software (PyAutoGUI, xdotool, pynput, pygetwindow, game bots, screen automation, clicking, key injection).

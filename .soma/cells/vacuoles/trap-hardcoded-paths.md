@@ -1,4 +1,6 @@
 ---
+id: trap-hardcoded-paths
+domain: security
 type: vacuole
 enforcement: advisory
 promotion_threshold: 0.85

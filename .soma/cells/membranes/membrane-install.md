@@ -1,4 +1,6 @@
 ---
+id: membrane-install
+domain: governance
 type: membrane
 hypothesis: Install scripts represent high-risk operations requiring elevated governance.
 prediction: Enforcing maelstrom mode for install operations prevents unsafe system changes.

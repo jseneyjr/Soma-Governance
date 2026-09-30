@@ -1,4 +1,6 @@
 ---
+id: trap-install-paths
+domain: correctness
 type: vacuole
 hypothesis: Install scripts have divergent paths.
 prediction: Unifying install targets will prevent deployment errors.

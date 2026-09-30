@@ -1,4 +1,6 @@
 ---
+id: persona-mcp-specialist
+domain: style
 type: chloroplast
 hypothesis: A persona specialized in MCP (Model Context Protocol) enhances server integration.
 prediction: This persona will optimize `soma_mcp/server.py` and `soma_mcp/tools.py`.

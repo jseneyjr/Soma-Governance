@@ -1,4 +1,6 @@
 ---
+id: wall-oracles
+domain: governance
 type: wall
 hypothesis: Oracles contain sensitive genome configuration.
 prediction: Shielding the oracles directory prevents corruption of core identity logic.

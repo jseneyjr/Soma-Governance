@@ -1,4 +1,6 @@
 ---
+id: membrane-enzymes
+domain: governance
 type: membrane
 hypothesis: Core enzymes and workflows dictate agent behavior.
 prediction: Maelstrom mode enforcement here guarantees safe behavior modification.

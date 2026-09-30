@@ -1,4 +1,6 @@
 ---
+id: polyglot-standards
+domain: governance
 name: Polyglot Standards
 description: Enforces unified entrypoints (Makefiles/Justfiles) and containerization across all tech stacks.
 trigger: model_decision
