@@ -4,23 +4,23 @@ domain: correctness
 type: vacuole
 enforcement: advisory
 promotion_threshold: 0.85
-demotion_threshold: 0.30
-hypothesis: "Hardcoded platform paths (e.g. ~/.gemini, ~/.kiro) in scripts break cross-platform installs"
-prediction: "Will flag hardcoded paths where dynamic SOMA_PLATFORM logic is required"
-falsification: "0 findings in 10 sessions → prune"
+demotion_threshold: 0.3
+hypothesis: Hardcoded platform paths (e.g. ~/.gemini, ~/.kiro) in scripts break cross-platform
+  installs
+prediction: Will flag hardcoded paths where dynamic SOMA_PLATFORM logic is required
+falsification: "0 findings in 10 sessions \u2192 prune"
 target_paths:
-  - "enzymes/*.sh"
-  - "enzymes/*.py"
-  - "install/*.sh"
+- enzymes/*.sh
+- enzymes/*.py
+- install/*.sh
 expiry_sessions: 10
 expiry_days: 30
-created: "2026-09-28"
+created: '2026-09-28'
 impact_weight: 0.8
-fitness:
-  triggers: 2
-  true_positives: 1
-  false_positives: 1
-tags: [portability, cross-platform, anti-pattern]
+tags:
+- portability
+- cross-platform
+- anti-pattern
 ---
 
 Scripts should use SOMA_PLATFORM and resolve_home() to determine paths dynamically,

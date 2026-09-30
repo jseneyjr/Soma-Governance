@@ -2,26 +2,33 @@
 id: persona-cross-platform-qa
 type: chloroplast
 enforcement: advisory
-persona_name: "Cross-Platform QA Engineer"
-hypothesis: "Ensures all shell scripts, installers, and config paths work across Linux, macOS, WSL, and Windows"
-prediction: "Will catch platform-specific assumptions (GNU vs BSD tools, path separators, shebangs)"
-falsification: "0 unique findings in 10 sessions → prune"
+persona_name: Cross-Platform QA Engineer
+hypothesis: Ensures all shell scripts, installers, and config paths work across Linux,
+  macOS, WSL, and Windows
+prediction: Will catch platform-specific assumptions (GNU vs BSD tools, path separators,
+  shebangs)
+falsification: "0 unique findings in 10 sessions \u2192 prune"
 target_paths:
-  - "enzymes/*.sh"
-  - "install/*.sh"
-  - "install/*.ps1"
-  - "Makefile"
+- enzymes/*.sh
+- install/*.sh
+- install/*.ps1
+- Makefile
 expiry_sessions: 15
 expiry_days: 60
-created: "2026-09-28"
+created: '2026-09-28'
 impact_weight: 1.1
-expertise_domain: "Cross-Platform Engineering"
-expertise: ["POSIX Shell", "Bash", "PowerShell", "BSD vs GNU", "Path Resolution"]
-fitness:
-  triggers: 2
-  true_positives: 1
-  false_positives: 1
-tags: [cross-platform, portability, qa, persona]
+expertise_domain: Cross-Platform Engineering
+expertise:
+- POSIX Shell
+- Bash
+- PowerShell
+- BSD vs GNU
+- Path Resolution
+tags:
+- cross-platform
+- portability
+- qa
+- persona
 domain: correctness
 ---
 

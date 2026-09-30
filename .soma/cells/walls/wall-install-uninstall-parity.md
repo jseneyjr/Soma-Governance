@@ -3,23 +3,25 @@ id: wall-install-uninstall-parity
 domain: correctness
 type: wall
 enforcement: advisory
-hypothesis: "Every platform in the installer must have a matching uninstall path"
-prediction: "Adding a new platform to install.sh without updating uninstall.sh creates orphaned files"
-falsification: "Platform count matches between install.sh and uninstall.sh for 10 sessions → maintain"
+hypothesis: Every platform in the installer must have a matching uninstall path
+prediction: Adding a new platform to install.sh without updating uninstall.sh creates
+  orphaned files
+falsification: "Platform count matches between install.sh and uninstall.sh for 10\
+  \ sessions \u2192 maintain"
 target_paths:
-  - "install/install.sh"
-  - "install/install.ps1"
-  - "install/uninstall.sh"
+- install/install.sh
+- install/install.ps1
+- install/uninstall.sh
 expiry_sessions: 15
 expiry_days: 60
-created: "2026-09-28"
+created: '2026-09-28'
 impact_weight: 1.3
 minimum_mode: trident
-fitness:
-  triggers: 2
-  true_positives: 1
-  false_positives: 1
-tags: [install, uninstall, parity, lifecycle]
+tags:
+- install
+- uninstall
+- parity
+- lifecycle
 ---
 
 The install and uninstall scripts must support the same set of platforms. When adding

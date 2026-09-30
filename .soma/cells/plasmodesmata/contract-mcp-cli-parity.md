@@ -3,26 +3,27 @@ id: contract-mcp-cli-parity
 domain: correctness
 type: plasmodesmata
 enforcement: advisory
-hypothesis: "The MCP server tools must expose the same capabilities as the CLI enzymes"
-prediction: "New enzyme features added without corresponding MCP tool updates create feature gaps for non-Gemini users"
-falsification: "MCP and CLI are intentionally divergent by design → reclassify"
+hypothesis: The MCP server tools must expose the same capabilities as the CLI enzymes
+prediction: New enzyme features added without corresponding MCP tool updates create
+  feature gaps for non-Gemini users
+falsification: "MCP and CLI are intentionally divergent by design \u2192 reclassify"
 target_paths:
-  - "soma_mcp/tools.py"
-  - "enzymes/cell_create_nl.py"
-  - "enzymes/cell_scan.py"
-  - "enzymes/immune_grade.py"
-  - "enzymes/cell_fitness.py"
-  - "enzymes/cell_coverage.py"
+- soma_mcp/tools.py
+- enzymes/cell_create_nl.py
+- enzymes/cell_scan.py
+- enzymes/immune_grade.py
+- enzymes/cell_fitness.py
+- enzymes/cell_coverage.py
 expiry_sessions: 15
 expiry_days: 60
-created: "2026-09-28"
+created: '2026-09-28'
 impact_weight: 1.2
 minimum_mode: gale
-fitness:
-  triggers: 2
-  true_positives: 1
-  false_positives: 1
-tags: [mcp, api-surface, parity, cross-service]
+tags:
+- mcp
+- api-surface
+- parity
+- cross-service
 ---
 
 The MCP server (soma_mcp/tools.py) is the API contract for external agents.

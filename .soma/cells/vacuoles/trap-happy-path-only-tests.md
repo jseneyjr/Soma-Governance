@@ -3,20 +3,22 @@ id: trap-happy-path-only-tests
 domain: correctness
 type: vacuole
 enforcement: advisory
-hypothesis: "Test suites that only validate happy paths miss adversarial edge cases that auditors consistently find"
-prediction: "Sessions with ≥1 negative test per public function will have fewer audit-surfaced bugs"
-falsification: "Negative test ratio shows no correlation with audit finding count after 20 sessions"
+hypothesis: Test suites that only validate happy paths miss adversarial edge cases
+  that auditors consistently find
+prediction: "Sessions with \u22651 negative test per public function will have fewer\
+  \ audit-surfaced bugs"
+falsification: Negative test ratio shows no correlation with audit finding count after
+  20 sessions
 target_paths:
-  - "tests/*.py"
+- tests/*.py
 minimum_mode: breeze
-origin: "human_insight"
-created: "2026-09-30"
-tags: [testing, adversarial, quality, anti-pattern]
-fitness:
-  triggers: 0
-  true_positives: 0
-  false_positives: 0
-  score: null
+origin: human_insight
+created: '2026-09-30'
+tags:
+- testing
+- adversarial
+- quality
+- anti-pattern
 ---
 
 When reviewing test files, check that every public function under test has at

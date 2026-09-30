@@ -282,12 +282,7 @@ lineage:
   created_by: "manual"
   generation: 0
   siblings: []
-${OPTIONAL_YAML}fitness:
-  triggers: 0
-  true_positives: 0
-  false_positives: 0
-  score: null
----
+${OPTIONAL_YAML}---
 ## ${TYPE_TITLE}: $HYPOTHESIS_TRUNCATED
 
 $HYPOTHESIS

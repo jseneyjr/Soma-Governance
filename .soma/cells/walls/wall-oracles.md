@@ -7,7 +7,6 @@ prediction: Shielding the oracles directory prevents corruption of core identity
 falsification: Oracles are public and ephemeral.
 expiry_sessions: 100
 impact_weight: 1.0
-fitness: 1.0
 ---
 
 # Wall: Oracles

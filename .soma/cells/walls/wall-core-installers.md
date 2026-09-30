@@ -4,28 +4,28 @@ domain: correctness
 type: wall
 enforcement: advisory
 promotion_threshold: 0.85
-demotion_threshold: 0.30
-hypothesis: "Changes to install.sh, install.ps1, uninstall.sh, common.sh, and Makefile require install-flow review"
-prediction: "Will flag unreviewed changes to core installer infrastructure"
-falsification: "0 findings in 15 sessions → prune"
+demotion_threshold: 0.3
+hypothesis: Changes to install.sh, install.ps1, uninstall.sh, common.sh, and Makefile
+  require install-flow review
+prediction: Will flag unreviewed changes to core installer infrastructure
+falsification: "0 findings in 15 sessions \u2192 prune"
 target_paths:
-  - "install/install.sh"
-  - "install/install.ps1"
-  - "install/uninstall.sh"
-  - "install/hooks/*"
-  - "install/soma.conf.example"
-  - "enzymes/common.sh"
-  - "Makefile"
+- install/install.sh
+- install/install.ps1
+- install/uninstall.sh
+- install/hooks/*
+- install/soma.conf.example
+- enzymes/common.sh
+- Makefile
 expiry_sessions: 15
 expiry_days: 60
-created: "2026-09-28"
+created: '2026-09-28'
 impact_weight: 1.5
 minimum_mode: trident
-fitness:
-  triggers: 2
-  true_positives: 1
-  false_positives: 1
-tags: [install, cross-platform, safety-critical]
+tags:
+- install
+- cross-platform
+- safety-critical
 ---
 
 The install flow is the first thing every user touches. Breakage here means

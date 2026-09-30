@@ -57,8 +57,6 @@ YAML fields required:
 - minimum_mode: (breeze | gale | trident | maelstrom | tempest)
 - tags: (list of relevant tags)
 
-Optionally include:
-- fitness: (triggers: 0, true_positives: 0, false_positives: 0, score: null)
 
 Existing cells in this project for reference:
 {example_text}
@@ -113,12 +111,6 @@ def create_cell_from_insight_cluster(cluster: dict, workspace: str) -> str:
         "minimum_mode": "breeze",
         "origin": "human_insight",
         "tags": ["auto-generated", "insight-cluster", category],
-        "fitness": {
-            "triggers": 0,
-            "true_positives": 0,
-            "false_positives": 0,
-            "score": None,
-        },
     }
 
     fm_text = yaml.dump(frontmatter, default_flow_style=False, sort_keys=False)
@@ -136,23 +128,21 @@ def create_cell_from_insight_cluster(cluster: dict, workspace: str) -> str:
 
     filepath = os.path.join(target_dir, filename)
 
-    # Collision safety: preserve existing cell fitness metadata
+    # Collision safety: check fitness.jsonl for existing trigger data
     if os.path.isfile(filepath):
-        try:
-            with open(filepath, 'r', encoding='utf-8') as f:
-                existing = f.read()
-            if '---' in existing:
-                end = existing.find('---', 3)
-                if end != -1:
-                    fm_text_existing = existing[3:end].strip()
-                    existing_fm = yaml.safe_load(fm_text_existing) or {}
-                    existing_fitness = existing_fm.get('fitness')
-                    if existing_fitness and isinstance(existing_fitness, dict):
-                        if existing_fitness.get('triggers', 0) > 0:
-                            # Cell has accumulated fitness data — don't overwrite
+        evidence_dir = os.path.join(os.path.dirname(os.path.dirname(filepath)),
+                                     'evidence')
+        fitness_file = os.path.join(evidence_dir, 'fitness.jsonl')
+        if os.path.isfile(fitness_file):
+            try:
+                cell_id = frontmatter.get('id', '')
+                with open(fitness_file, 'r', encoding='utf-8') as f:
+                    for line in f:
+                        if cell_id and cell_id in line:
+                            # Cell has fitness evidence — don't overwrite
                             return filepath
-        except Exception:
-            pass
+            except Exception:
+                pass
 
     with open(filepath, "w", encoding="utf-8") as f:
         f.write(cell_content)

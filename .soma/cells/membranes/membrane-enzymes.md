@@ -7,7 +7,6 @@ prediction: Maelstrom mode enforcement here guarantees safe behavior modificatio
 falsification: Enzymes are purely descriptive and have no operational power.
 expiry_sessions: 80
 impact_weight: 1.0
-fitness: 1.0
 ---
 
 # Membrane: Enzymes Escalation
