@@ -3,9 +3,9 @@ requires = ["setuptools>=68.0", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "soma-steering"
-version = "0.31.0"
-description = "Adaptive governance framework for AI coding assistants"
+name = "soma-governance"
+version = "0.51.0"
+description = "Governance framework that makes AI coding agents trustworthy"
 readme = "README.md"
 license = {text = "Apache-2.0"}
 requires-python = ">=3.9"
@@ -28,7 +28,7 @@ dependencies = [
 ]
 
 [project.scripts]
-soma = "enzymes.soma_cli:main"
+soma = "soma_cli.cli:main"
 soma-mcp = "soma_mcp.server:main"
 
 [project.optional-dependencies]
@@ -44,7 +44,7 @@ Documentation = "https://github.com/nseney1/soma/tree/main/docs"
 Changelog = "https://github.com/nseney1/soma/blob/main/docs/CHANGELOG.md"
 
 [tool.setuptools.packages.find]
-include = ["soma_sdk*", "enzymes*", "soma_mcp*"]
+include = ["soma_cli*", "soma_sdk*", "enzymes*", "soma_mcp*"]
 
 [tool.setuptools]
 include-package-data = true
