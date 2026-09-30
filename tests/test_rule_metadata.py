@@ -118,6 +118,14 @@ def test_genome_rule_has_domain(rule_file):
 
 @pytest.mark.parametrize("rule_file", get_oracle_rules(),
                          ids=lambda p: f"oracles/{p.name}")
+def test_oracle_rule_has_frontmatter(rule_file):
+    """Every oracle rule MUST have YAML frontmatter."""
+    meta = parse_frontmatter(rule_file.read_text())
+    assert meta is not None, f"{rule_file.name} lacks YAML frontmatter"
+
+
+@pytest.mark.parametrize("rule_file", get_oracle_rules(),
+                         ids=lambda p: f"oracles/{p.name}")
 def test_oracle_rule_has_id(rule_file):
     """Every oracle rule MUST have an 'id' field in frontmatter."""
     meta = parse_frontmatter(rule_file.read_text())
@@ -136,7 +144,15 @@ def test_oracle_rule_has_domain(rule_file):
     assert "domain" in meta, f"{rule_file.name} missing 'domain' field"
 
 
-# ── Cell rules must have domain ──
+# ── Cell rules must have frontmatter and domain ──
+
+
+@pytest.mark.parametrize("rule_file", get_cell_rules(),
+                         ids=lambda p: f"cells/{p.parent.name}/{p.name}")
+def test_cell_rule_has_frontmatter(rule_file):
+    """Every cell rule MUST have YAML frontmatter."""
+    meta = parse_frontmatter(rule_file.read_text())
+    assert meta is not None, f"{rule_file.name} lacks YAML frontmatter"
 
 
 @pytest.mark.parametrize("rule_file", get_cell_rules(),

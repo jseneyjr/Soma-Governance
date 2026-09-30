@@ -101,11 +101,12 @@ def create_cell_from_insight_cluster(cluster: dict, workspace: str) -> str:
 
     hypothesis = f"Human attention pattern detected: {category} in {files_str}"
 
-    # Compute slug before building frontmatter (used as id)
+    # Compute slug before building frontmatter (used as id and filename)
     slug = re.sub(r"[^a-z0-9]+", "-", category.lower())[:50].strip("-") or "unknown"
+    cell_id = f"vacuole-{slug}"
 
     frontmatter = {
-        "id": slug,
+        "id": cell_id,
         "type": "vacuole",
         "domain": "correctness",
         "hypothesis": hypothesis,
