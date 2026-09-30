@@ -7,6 +7,8 @@ properly guarded (try/except or pytest.importorskip).
 Catches the exact class of bug that broke CI: a bare `import yaml` in
 a test file when PyYAML isn't in the project's dependency manifest.
 """
+from __future__ import annotations
+
 import ast
 import os
 import re

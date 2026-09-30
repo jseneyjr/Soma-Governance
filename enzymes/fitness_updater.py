@@ -250,27 +250,33 @@ def update_fitness(triggered_cells, transcript_id, evidence_dir):
 
     ledger_path = evidence_dir / "sessions_processed.jsonl"
     fitness_path = evidence_dir / "fitness.jsonl"
+    lock_path = evidence_dir / ".fitness.lock"
 
-    # Idempotency check: skip if already processed
-    if ledger_path.exists():
-        for line in ledger_path.read_text(encoding="utf-8").splitlines():
-            if not line.strip():
-                continue
-            try:
-                record = json.loads(line)
-                if record.get("transcript_id") == transcript_id:
-                    return  # Already processed
-            except (json.JSONDecodeError, ValueError):
-                continue
+    # Unified lock: protects idempotency check + both file writes
+    # as a single atomic transaction to prevent TOCTOU races and
+    # partial writes on crash between fitness.jsonl and ledger.
+    lock_fd = open(lock_path, "a", encoding="utf-8")
+    try:
+        if fcntl is not None:
+            fcntl.flock(lock_fd, fcntl.LOCK_EX)
 
-    now = datetime.now(timezone.utc).isoformat()
+        # Idempotency check (under lock to prevent TOCTOU)
+        if ledger_path.exists():
+            for line in ledger_path.read_text(encoding="utf-8").splitlines():
+                if not line.strip():
+                    continue
+                try:
+                    record = json.loads(line)
+                    if record.get("transcript_id") == transcript_id:
+                        return  # Already processed
+                except (json.JSONDecodeError, ValueError):
+                    continue
 
-    # Append fitness records
-    if triggered_cells:
-        with open(fitness_path, "a", encoding="utf-8") as f:
-            if fcntl is not None:
-                fcntl.flock(f, fcntl.LOCK_EX)
-            try:
+        now = datetime.now(timezone.utc).isoformat()
+
+        # Append fitness records
+        if triggered_cells:
+            with open(fitness_path, "a", encoding="utf-8") as f:
                 for cell in triggered_cells:
                     record = {
                         "cell_id": cell["cell_id"],
@@ -279,24 +285,20 @@ def update_fitness(triggered_cells, transcript_id, evidence_dir):
                         "matched_files": cell.get("matched_files", []),
                     }
                     f.write(json.dumps(record) + "\n")
-            finally:
-                if fcntl is not None:
-                    fcntl.flock(f, fcntl.LOCK_UN)
 
-    # Record session as processed
-    with open(ledger_path, "a", encoding="utf-8") as f:
-        if fcntl is not None:
-            fcntl.flock(f, fcntl.LOCK_EX)
-        try:
+        # Record session as processed (same lock scope as fitness write)
+        with open(ledger_path, "a", encoding="utf-8") as f:
             ledger_record = {
                 "transcript_id": transcript_id,
                 "processed_at": now,
                 "cells_triggered": len(triggered_cells),
             }
             f.write(json.dumps(ledger_record) + "\n")
-        finally:
-            if fcntl is not None:
-                fcntl.flock(f, fcntl.LOCK_UN)
+
+    finally:
+        if fcntl is not None:
+            fcntl.flock(lock_fd, fcntl.LOCK_UN)
+        lock_fd.close()
 
 
 def main():

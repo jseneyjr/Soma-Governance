@@ -8,6 +8,7 @@ with the fields required by the evidence enrichment pipeline:
 Written BEFORE adding the new fields — tests will fail on every rule
 that lacks them, proving they detect the gap.
 """
+from __future__ import annotations
 
 import os
 import re

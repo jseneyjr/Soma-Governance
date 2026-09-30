@@ -129,11 +129,13 @@ def run_status(args: argparse.Namespace) -> int:
     try:
         from soma_cli.init import detect_platform, get_rules_dir
         platform = detect_platform(proj)
+        if platform == "unknown":
+            platform = detect_platform(Path.home())
         if platform != "unknown":
             rules_dir = get_rules_dir(platform, project_root=proj)
             if rules_dir.is_dir():
                 for p in sorted(rules_dir.glob("*.md")):
-                    if p.is_file() and p.name.lower() != "readme.md":
+                    if p.is_file() and p.name.lower() not in ("readme.md", "claude.md"):
                         core_files.append(p)
     except (ImportError, ValueError):
         pass
