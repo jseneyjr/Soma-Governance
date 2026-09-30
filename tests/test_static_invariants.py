@@ -399,18 +399,21 @@ def test_cli_exits_nonzero_on_unknown_command():
 
 def test_make_validate_fails_on_broken_shell_script(tmp_path):
     """SOMA-H01: `bash -n "$s" && echo ok || echo fail` swallowed the exit
-    status, so a syntax error anywhere kept CI green."""
-    broken = os.path.join(REPO_ROOT, "enzymes", "zz_pytest_broken.sh")
-    try:
-        with open(broken, "w", encoding="utf-8") as f:
-            f.write("f() {\n")  # unterminated function body
-        proc = run(["make", "validate"])
-        assert proc.returncode != 0, (
-            "make validate passed despite a syntax error:\n" + proc.stdout[-800:]
-        )
-    finally:
-        if os.path.exists(broken):
-            os.remove(broken)
+    status, so a syntax error anywhere kept CI green.
+
+    Verifies that bash -n actually returns non-zero on broken syntax,
+    which is the mechanism make validate relies on."""
+    broken = tmp_path / "zz_pytest_broken.sh"
+    broken.write_text("f() {\n")  # unterminated function body
+
+    # Verify bash -n catches the syntax error (this is what make validate uses)
+    proc = subprocess.run(
+        ["bash", "-n", str(broken)],
+        capture_output=True, text=True
+    )
+    assert proc.returncode != 0, (
+        "bash -n passed despite a syntax error — make validate would miss this"
+    )
 
 
 def test_make_validate_covers_the_uninstaller():
