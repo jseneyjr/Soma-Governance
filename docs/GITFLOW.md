@@ -70,7 +70,7 @@ gitGraph
    git checkout -b release/vX.Y.Z
    ```
 2. Bump version in `pyproject.toml` and `VERSION`.
-3. Update [CHANGELOG.md](file:///home/nseney/Documents/soma/docs/CHANGELOG.md).
+3. Update [CHANGELOG.md](CHANGELOG.md).
 4. Run full test suite:
    ```bash
    make test
@@ -104,7 +104,7 @@ gitGraph
    git checkout main && git pull origin main
    git checkout -b hotfix/vX.Y.Z
    ```
-2. Fix the bug, bump patch version in `pyproject.toml` and `VERSION`, and update [CHANGELOG.md](file:///home/nseney/Documents/soma/docs/CHANGELOG.md).
+2. Fix the bug, bump patch version in `pyproject.toml` and `VERSION`, and update [CHANGELOG.md](CHANGELOG.md).
 3. PR `hotfix/vX.Y.Z` to `main`, get CI green.
 4. Merge PR and tag `vX.Y.Z` on `main`:
    ```bash
