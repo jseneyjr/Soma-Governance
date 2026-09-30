@@ -21,7 +21,7 @@ jobs:
           python-version: '3.11'
       
       - name: Install test dependencies
-        run: pip install pytest
+        run: pip install pytest pyyaml
 
       - name: Run validation
         run: make validate
