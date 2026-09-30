@@ -45,11 +45,15 @@ class TestCLIHelp:
 class TestCLIDispatch:
     """Verify subcommands dispatch to their handlers."""
 
-    @pytest.mark.parametrize("cmd", SUBCOMMANDS)
-    def test_subcommand_runs_without_crash(self, cmd):
+    @pytest.mark.parametrize("cmd,extra_args", [
+        ("init", ["--dry-run", "--platform", "gemini", "--yes"]),
+        ("status", []),
+        ("report", []),
+        ("doctor", []),
+    ])
+    def test_subcommand_runs_without_crash(self, cmd, extra_args):
         from soma_cli.cli import main
-        # Each stub returns 0
-        result = main([cmd])
+        result = main([cmd] + extra_args)
         assert result == 0
 
     def test_unknown_command_returns_nonzero(self):

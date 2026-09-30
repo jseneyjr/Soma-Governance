@@ -1,0 +1,192 @@
+"""Tests for soma status — Phase C test gate.
+
+All tests use tmp_path to avoid touching the real filesystem.
+"""
+import argparse
+from datetime import date, timedelta
+import json
+
+import pytest
+
+from soma_cli.status import run_status
+
+
+class TestStatus:
+    """Test suite for the soma status subcommand."""
+
+    def test_status_no_rules(self, tmp_path, capsys):
+        """Empty dirs → '0 active' and helpful message."""
+        (tmp_path / "genome").mkdir()
+        (tmp_path / ".soma" / "cells").mkdir(parents=True)
+        args = argparse.Namespace(_root=tmp_path)
+        ret = run_status(args)
+        assert ret == 0
+        captured = capsys.readouterr()
+        assert "0 active" in captured.out
+        assert "No rules found" in captured.out
+
+    def test_status_counts_core_rules(self, tmp_path, capsys):
+        """Create 3 .md files in mock genome/ dir → '3 active'."""
+        genome = tmp_path / "genome"
+        genome.mkdir()
+        (genome / "rule1.md").write_text("# Rule 1 content\n")
+        (genome / "rule2.md").write_text("# Rule 2 content\n")
+        (genome / "rule3.md").write_text("# Rule 3 content\n")
+        # README should be excluded
+        (genome / "README.md").write_text("# Readme info\n")
+
+        args = argparse.Namespace(_root=tmp_path)
+        ret = run_status(args)
+        assert ret == 0
+        captured = capsys.readouterr()
+        assert "3 active" in captured.out
+
+    def test_status_counts_adaptive_rules(self, tmp_path, capsys):
+        """Create 2 .md files in mock .soma/cells/ → counts them."""
+        cells = tmp_path / ".soma" / "cells"
+        cells.mkdir(parents=True)
+        (cells / "rule1.md").write_text("# Rule 1\n")
+        sub = cells / "patterns"
+        sub.mkdir()
+        (sub / "rule2.md").write_text("# Rule 2\n")
+        # README should be excluded
+        (cells / "README.md").write_text("# Ignore me\n")
+
+        args = argparse.Namespace(_root=tmp_path)
+        ret = run_status(args)
+        assert ret == 0
+        captured = capsys.readouterr()
+        assert "Adaptive rules: 2 (traps/patterns)" in captured.out
+
+    def test_status_reads_trigger_counts(self, tmp_path, capsys):
+        """Create mock fitness.jsonl with 3 entries for rule-a and 1 for rule-b → verify counts."""
+        genome = tmp_path / "genome"
+        genome.mkdir()
+        (genome / "rule-a.md").write_text("# Rule A\n")
+        (genome / "rule-b.md").write_text("# Rule B\n")
+
+        evidence = tmp_path / ".soma" / "evidence"
+        evidence.mkdir(parents=True)
+        records = [
+            {"cell_id": "rule-a"},
+            {"cell_id": "rule-a"},
+            {"cell_id": "rule-a"},
+            {"cell_id": "rule-b"},
+        ]
+        (evidence / "fitness.jsonl").write_text(
+            "\n".join(json.dumps(r) for r in records) + "\n"
+        )
+
+        args = argparse.Namespace(_root=tmp_path)
+        ret = run_status(args)
+        assert ret == 0
+        captured = capsys.readouterr()
+
+        lines = captured.out.splitlines()
+        rule_a_line = next((line for line in lines if "rule-a" in line), None)
+        rule_b_line = next((line for line in lines if "rule-b" in line), None)
+        assert rule_a_line is not None
+        assert rule_b_line is not None
+
+        # Verify exact counts associated with the rules
+        cols_a = rule_a_line.split()
+        cols_b = rule_b_line.split()
+        assert cols_a[0] == "rule-a"
+        assert cols_a[1] == "3"
+        assert cols_b[0] == "rule-b"
+        assert cols_b[1] == "1"
+
+    def test_status_output_no_biology_terms(self, tmp_path, capsys):
+        """Capture output, assert no 'enzyme', 'vacuole', 'genome', 'cell' in output."""
+        genome = tmp_path / "genome"
+        genome.mkdir()
+        (genome / "rule-a.md").write_text("# Rule A\n")
+
+        cells = tmp_path / ".soma" / "cells"
+        cells.mkdir(parents=True)
+        (cells / "rule-b.md").write_text(
+            "---\ncreated: 2026-09-01\nexpiry_days: 30\n---\n# Rule B\n"
+        )
+
+        evidence = tmp_path / ".soma" / "evidence"
+        evidence.mkdir(parents=True)
+        (evidence / "fitness.jsonl").write_text(
+            json.dumps({"cell_id": "rule-a"}) + "\n"
+        )
+
+        args = argparse.Namespace(_root=tmp_path)
+        ret = run_status(args)
+        assert ret == 0
+        captured = capsys.readouterr()
+
+        out_lower = captured.out.lower()
+        for term in ["enzyme", "vacuole", "genome", "cell"]:
+            assert term not in out_lower, (
+                f"Biology term '{term}' found in user output:\n{captured.out}"
+            )
+
+    def test_status_returns_zero(self, tmp_path):
+        """run_status returns 0."""
+        args = argparse.Namespace(_root=tmp_path)
+        assert run_status(args) == 0
+
+    def test_status_oracle_rules_counted(self, tmp_path, capsys):
+        """Core rules include .md files in genome/.oracles/."""
+        genome = tmp_path / "genome"
+        oracles = genome / ".oracles"
+        oracles.mkdir(parents=True)
+        (genome / "base.md").write_text("# Base\n")
+        (oracles / "oracle1.md").write_text("# Oracle 1\n")
+        (oracles / "README.md").write_text("# Ignore\n")
+
+        args = argparse.Namespace(_root=tmp_path)
+        ret = run_status(args)
+        assert ret == 0
+        captured = capsys.readouterr()
+        assert "2 active" in captured.out
+        assert "base" in captured.out
+        assert "oracle1" in captured.out
+
+    def test_status_context_load_calculation(self, tmp_path, capsys):
+        """Approximate context overhead divides total chars by 4."""
+        genome = tmp_path / "genome"
+        genome.mkdir()
+        content = "x" * 400
+        (genome / "rule1.md").write_text(content)
+
+        args = argparse.Namespace(_root=tmp_path)
+        ret = run_status(args)
+        assert ret == 0
+        captured = capsys.readouterr()
+        assert "~100 tokens (estimated)" in captured.out
+
+    def test_status_adaptive_rule_expiry_active(self, tmp_path, capsys):
+        """Active adaptive rules show remaining days."""
+        cells = tmp_path / ".soma" / "cells"
+        cells.mkdir(parents=True)
+        created = (date.today() - timedelta(days=10)).isoformat()
+        (cells / "pattern.md").write_text(
+            f"---\ncreated: {created}\nexpiry_days: 30\n---\n# Pattern\n"
+        )
+
+        args = argparse.Namespace(_root=tmp_path)
+        ret = run_status(args)
+        assert ret == 0
+        captured = capsys.readouterr()
+        # 30 - 10 = 20 days remaining
+        assert "20d" in captured.out
+
+    def test_status_adaptive_rule_expiry_expired(self, tmp_path, capsys):
+        """Expired adaptive rules show 'expired'."""
+        cells = tmp_path / ".soma" / "cells"
+        cells.mkdir(parents=True)
+        created = (date.today() - timedelta(days=40)).isoformat()
+        (cells / "stale.md").write_text(
+            f"---\ncreated: {created}\nexpiry_days: 30\n---\n# Stale\n"
+        )
+
+        args = argparse.Namespace(_root=tmp_path)
+        ret = run_status(args)
+        assert ret == 0
+        captured = capsys.readouterr()
+        assert "expired" in captured.out

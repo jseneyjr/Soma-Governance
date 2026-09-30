@@ -1,8 +1,162 @@
-"""soma report — Session report card."""
+"""soma report — Session report card.
+
+Displays a session summary box with triggered rules, event counts,
+and an ASCII bar chart proportional to max fires.
+"""
+from __future__ import annotations
+
 import argparse
+import json
+from datetime import datetime, timedelta, timezone
+from pathlib import Path
+
+from soma_cli.init import STARTER_RULES
+
+BASE_RULES = list(STARTER_RULES.keys())
+
+CONTEXTUAL_EMOJIS = {
+    "providence": "🛡️",
+    "testing": "📋",
+    "destructive-ops": "🔒",
+    "cost-optimization": "💰",
+    "git-workflow": "🌿",
+}
+
+
+def _parse_timestamp(ts: str) -> datetime:
+    """Parse an ISO timestamp string into a timezone-aware datetime."""
+    s = ts.replace("Z", "+00:00")
+    dt = datetime.fromisoformat(s)
+    if dt.tzinfo is None:
+        dt = dt.replace(tzinfo=timezone.utc)
+    return dt
 
 
 def run_report(args: argparse.Namespace) -> int:
     """Session report card."""
-    print("soma report: not yet implemented (Phase D)")
+    root_override = getattr(args, "_root", None)
+    if root_override is not None:
+        root = Path(root_override)
+    else:
+        root = Path.cwd()
+
+    evidence_path = root / ".soma" / "evidence" / "fitness.jsonl"
+    if not evidence_path.is_file() or evidence_path.stat().st_size == 0:
+        print("No session data yet. Run a governed session first.")
+        return 0
+
+    events: list[dict] = []
+    with open(evidence_path, "r", encoding="utf-8") as f:
+        for line in f:
+            line = line.strip()
+            if not line:
+                continue
+            try:
+                record = json.loads(line)
+                if isinstance(record, dict) and "cell_id" in record and "triggered_at" in record:
+                    _parse_timestamp(record["triggered_at"])
+                    events.append(record)
+            except (json.JSONDecodeError, ValueError, KeyError):
+                continue
+
+    if not events:
+        print("No session data yet. Run a governed session first.")
+        return 0
+
+    # Sort events chronologically
+    events.sort(key=lambda e: _parse_timestamp(e["triggered_at"]))
+
+    # Group into sessions: >30 min gap starts a new session
+    sessions: list[list[dict]] = []
+    current_session: list[dict] = []
+    prev_time: datetime | None = None
+
+    for event in events:
+        event_time = _parse_timestamp(event["triggered_at"])
+        if prev_time is not None and (event_time - prev_time) > timedelta(minutes=30):
+            sessions.append(current_session)
+            current_session = []
+        current_session.append(event)
+        prev_time = event_time
+
+    if current_session:
+        sessions.append(current_session)
+
+    if not sessions:
+        print("No session data yet. Run a governed session first.")
+        return 0
+
+    session_idx = getattr(args, "session", -1)
+    if session_idx < -len(sessions) or session_idx >= len(sessions):
+        print(f"Session index {session_idx} not found. Available sessions: 0 to {len(sessions) - 1}.")
+        return 1
+
+    selected_session = sessions[session_idx]
+
+    # Count trigger events in selected session
+    session_counts: dict[str, int] = {}
+    for event in selected_session:
+        cid = event["cell_id"]
+        session_counts[cid] = session_counts.get(cid, 0) + 1
+
+    base_set = set(BASE_RULES)
+    if set(session_counts.keys()) & base_set:
+        rule_keys = list(BASE_RULES)
+        for cid in session_counts:
+            if cid not in rule_keys:
+                rule_keys.append(cid)
+    else:
+        rule_keys = list(session_counts.keys())
+
+    rule_stats = [(r, session_counts.get(r, 0)) for r in rule_keys]
+    # Sort by fire count descending, tie-breaker alphabetical
+    rule_stats.sort(key=lambda x: (-x[1], x[0]))
+
+    max_fires = max((count for _, count in rule_stats), default=0)
+    name_width = max(20, max((len(r[0]) for r in rule_stats), default=20))
+    fires_num_width = max(2, max((len(str(r[1])) for r in rule_stats), default=2))
+    fires_col_width = 2 + fires_num_width + 1 + 5 + 2
+    inner_width = 2 + 2 + 2 + name_width + 8 + fires_col_width
+
+    lines = []
+    lines.append(f"╭{'─' * inner_width}╮")
+
+    title = "📊 Session Report"
+    if inner_width == 46:
+        lines.append("│           📊 Session Report                  │")
+    else:
+        pad_left = (inner_width - 17) // 2
+        pad_right = inner_width - 17 - pad_left
+        lines.append(f"│{' ' * pad_left}{title}{' ' * pad_right}│")
+
+    lines.append(f"├{'─' * inner_width}┤")
+
+    trig_count = sum(1 for _, c in rule_stats if c > 0)
+    total_rules = len(rule_stats)
+    trig_line = f"  Rules triggered:    {trig_count} of {total_rules}"
+    lines.append(f"│{trig_line:<{inner_width}}│")
+
+    total_events = len(selected_session)
+    ev_line = f"  Total events:       {total_events}"
+    lines.append(f"│{ev_line:<{inner_width}}│")
+
+    lines.append(f"│{' ' * inner_width}│")
+
+    for name, c in rule_stats:
+        if c == 0:
+            emoji = "😴"
+            bar = "░" * 8
+        else:
+            emoji = CONTEXTUAL_EMOJIS.get(name, "📌")
+            filled = round(c / max_fires * 8) if max_fires > 0 else 0
+            filled = max(1, min(8, filled))
+            bar = "█" * filled + "░" * (8 - filled)
+
+        unit = "fire" if c == 1 else "fires"
+        fires_str = f"  {c:>{fires_num_width}} {unit:<5}  "
+        line = f"│  {emoji}  {name:<{name_width}}{bar}{fires_str}│"
+        lines.append(line)
+
+    lines.append(f"╰{'─' * inner_width}╯")
+    print("\n".join(lines))
     return 0
