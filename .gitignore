@@ -4,6 +4,9 @@ soma.conf
 # Generated hook configs (produced by install.sh)
 hooks.json
 
+# MCP server config (machine-specific paths, produced by soma init / install.sh)
+.mcp.json
+
 # Local telemetry & immune system runtime data
 immune_system/*.lock
 immune_system/*.log

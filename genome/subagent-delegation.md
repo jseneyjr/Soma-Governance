@@ -5,6 +5,7 @@ non_standard: true
 name: Subagent Delegation Protocol
 description: Enforces aggressive delegation to subagents to keep the main context window narrow and parallelize independent tasks.
 trigger: always_on
+enforcement: gate
 ---
 # Delegation Protocol
 

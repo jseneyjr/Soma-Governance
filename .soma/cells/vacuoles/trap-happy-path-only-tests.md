@@ -14,6 +14,8 @@ target_paths:
 minimum_mode: breeze
 origin: human_insight
 created: '2026-09-30'
+expiry_sessions: 10
+expiry_days: 30
 tags:
 - testing
 - adversarial
