@@ -11,10 +11,7 @@ since the translation task is straightforward noun-stripping and abstraction.
 import os
 import sys
 import argparse
-try:
-    import yaml
-except ImportError:
-    yaml = None
+import yaml
 import re
 
 def parse_frontmatter(content):
@@ -107,16 +104,7 @@ def main():
     
     with open(output_path, 'w', encoding="utf-8") as f:
         f.write("---\n")
-        if yaml is not None:
-            yaml.dump(new_metadata, f, default_flow_style=False, sort_keys=False)
-        else:
-            for k, v in new_metadata.items():
-                if v is None:
-                    f.write(f"{k}: null\n")
-                elif isinstance(v, str):
-                    f.write(f'{k}: "{v}"\n')
-                else:
-                    f.write(f"{k}: {v}\n")
+        yaml.dump(new_metadata, f, default_flow_style=False, sort_keys=False)
         f.write("---\n\n")
         f.write(translated_body)
         

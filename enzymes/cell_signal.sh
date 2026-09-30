@@ -103,10 +103,7 @@ METRICS_FILE="$REPO_DIR/.soma/metrics/${CELL_BASENAME}.jsonl"
 PYTHON_HELPER=$(cat << 'EOF'
 import sys
 import json
-try:
-    import yaml
-except ImportError:
-    yaml = None
+import yaml
 from datetime import datetime
 from datetime import timezone
 import os

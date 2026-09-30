@@ -73,10 +73,7 @@ bash "$SCRIPTS_DIR/cell_selection.sh" --execute 2>/dev/null || true
 # 3. Probabilistic crossover: if >5 cells with fitness >0.5, attempt one crossover
 CROSSOVER_CANDIDATES=$(python3 -c "
 import os, glob
-try:
-    import yaml
-except ImportError:
-    yaml = None
+import yaml
 cells = glob.glob(os.path.join(os.getcwd(), '.soma', 'cells', '**', '*.md'), recursive=True)
 high_fitness = []
 for f in cells:
@@ -106,10 +103,7 @@ fi
 # 4. Check for metamorphosis candidates
 python3 -c "
 import os, glob
-try:
-    import yaml
-except ImportError:
-    yaml = None
+import yaml
 cells = glob.glob(os.path.join(os.getcwd(), '.soma', 'cells', '**', '*.md'), recursive=True)
 for f in cells:
     if os.path.basename(f) == 'README.md': continue
@@ -152,10 +146,7 @@ fi
 # === Session Dashboard ===
 python3 -c "
 import os, glob, json
-try:
-    import yaml
-except ImportError:
-    yaml = None
+import yaml
 
 cells_dir = os.path.join(os.getcwd(), '.soma', 'cells')
 if not os.path.isdir(cells_dir):

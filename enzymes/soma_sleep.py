@@ -21,10 +21,7 @@ import os
 import sys
 import glob
 import json
-try:
-    import yaml
-except ImportError:
-    yaml = None
+import yaml
 import re
 from datetime import datetime, timezone
 

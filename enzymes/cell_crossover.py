@@ -3,10 +3,7 @@ import os
 import sys
 import argparse
 import glob
-try:
-    import yaml
-except ImportError:
-    yaml = None
+import yaml
 import json
 from datetime import datetime
 from datetime import timezone

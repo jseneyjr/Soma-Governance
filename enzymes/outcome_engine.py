@@ -22,10 +22,7 @@ import json
 import re
 import glob
 import fnmatch
-try:
-    import yaml
-except ImportError:
-    yaml = None
+import yaml
 from datetime import datetime, timezone
 
 

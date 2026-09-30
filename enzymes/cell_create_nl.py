@@ -8,10 +8,7 @@ import os, sys, argparse, json, subprocess
 from soma_resolve import resolve_workspace
 from inference_provider import resolve_provider
 
-try:
-    import yaml as _yaml
-except ImportError:  # pragma: no cover
-    _yaml = None
+import yaml
 
 def create_cell_from_description(description, domain_hint=None, cell_type=None, provider_name=None):
     """Use AI to generate cell YAML from natural language."""
@@ -124,24 +121,7 @@ def create_cell_from_insight_cluster(cluster: dict, workspace: str) -> str:
         },
     }
 
-    # Build YAML frontmatter — works with or without pyyaml
-    if _yaml is not None:
-        fm_text = _yaml.dump(frontmatter, default_flow_style=False, sort_keys=False)
-    else:
-        # Minimal manual serialisation for the known shape
-        lines = []
-        for key, value in frontmatter.items():
-            if isinstance(value, list):
-                lines.append(f"{key}:")
-                for item in value:
-                    lines.append(f"  - {item}")
-            elif isinstance(value, dict):
-                lines.append(f"{key}:")
-                for k, v in value.items():
-                    lines.append(f"  {k}: {v}")
-            else:
-                lines.append(f"{key}: {value}")
-        fm_text = "\n".join(lines) + "\n"
+    fm_text = yaml.dump(frontmatter, default_flow_style=False, sort_keys=False)
 
     body = f"This vacuole was auto-generated from a cluster of human insights " \
            f"about **{category}** (confidence {confidence:.2f}).\n"
@@ -165,18 +145,7 @@ def create_cell_from_insight_cluster(cluster: dict, workspace: str) -> str:
                 end = existing.find('---', 3)
                 if end != -1:
                     fm_text_existing = existing[3:end].strip()
-                    if _yaml is not None:
-                        existing_fm = _yaml.safe_load(fm_text_existing) or {}
-                    else:
-                        # Lightweight line-based extraction without pyyaml
-                        existing_fm = {}
-                        for fm_line in fm_text_existing.splitlines():
-                            fm_line = fm_line.strip()
-                            if ':' in fm_line:
-                                k, _, v = fm_line.partition(':')
-                                v = v.strip()
-                                if k.strip() == 'triggers' and v.isdigit():
-                                    existing_fm.setdefault('fitness', {})['triggers'] = int(v)
+                    existing_fm = yaml.safe_load(fm_text_existing) or {}
                     existing_fitness = existing_fm.get('fitness')
                     if existing_fitness and isinstance(existing_fitness, dict):
                         if existing_fitness.get('triggers', 0) > 0:
@@ -252,18 +221,7 @@ def main():
         
         if cell_content.startswith('---'):
             yaml_block = cell_content[3:cell_content.find('---', 3)]
-            if _yaml is not None:
-                fm = _yaml.safe_load(yaml_block)
-            else:
-                # Lightweight fallback: extract type and hypothesis
-                fm = {}
-                for fm_line in yaml_block.splitlines():
-                    fm_line = fm_line.strip()
-                    if ':' in fm_line:
-                        k, _, v = fm_line.partition(':')
-                        k, v = k.strip(), v.strip().strip('"').strip("'")
-                        if k in ('type', 'hypothesis', 'id'):
-                            fm[k] = v
+            fm = yaml.safe_load(yaml_block)
         else:
             print('Warning: Could not parse generated YAML frontmatter')
             fm = {}
