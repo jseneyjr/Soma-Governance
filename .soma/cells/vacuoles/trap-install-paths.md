@@ -16,9 +16,14 @@ tags:
 - install
 - paths
 - correctness
-created: "2026-09-28"
+created: '2026-09-28'
+fitness:
+  triggers: 2
+  true_positives: 1
+  false_positives: 1
+  score: 0.5
+  last_trigger_date: '2026-10-01T04:26:19Z'
 ---
-
 # Trap: Install Paths Divergence
 
 Target: `install/install.sh` vs `Makefile`

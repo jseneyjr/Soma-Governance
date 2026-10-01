@@ -3,15 +3,14 @@ id: trap-threshold-spec-drift
 domain: correctness
 type: wall
 enforcement: gate
-hypothesis: When numeric thresholds are documented in docstrings with > but
-  implemented with >= (or vice versa), boundary behavior silently diverges from
-  the specification
+hypothesis: When numeric thresholds are documented in docstrings with > but implemented
+  with >= (or vice versa), boundary behavior silently diverges from the specification
 prediction: Will catch threshold comparisons where the operator doesn't match the
   documented behavior
 falsification: 0 findings in 20 sessions → prune
 target_paths:
-- 'immune_system/**/*.py'
-- 'soma_cli/*.py'
+- immune_system/**/*.py
+- soma_cli/*.py
 triggers:
 - threshold_modification
 - docstring_update
@@ -26,12 +25,12 @@ tags:
 - specification
 - boundary
 fitness:
-  score: null
+  score: 0.75
   impact_weight: 1.0
-  triggers: 0
-  true_positives: 0
-  false_positives: 0
-  last_trigger_date: null
+  triggers: 8
+  true_positives: 6
+  false_positives: 1
+  last_trigger_date: '2026-10-01T04:26:19Z'
 ---
 Supercell C3 incident: `lifecycle.py` docstring said `tp_rate > 0.85` and
 `age > 30 days` but code used `<` operator which permits equality (>= semantics).

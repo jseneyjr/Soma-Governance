@@ -55,6 +55,13 @@ def _build_parser() -> argparse.ArgumentParser:
     p_verify.add_argument("--repo-root", default=None,
                           help="Override repository root path")
 
+    # soma sync
+    p_sync = sub.add_parser("sync", help="Reconcile evidence JSONL with cell frontmatter")
+    p_sync.add_argument("--dry-run", action="store_true",
+                        help="Show what would change without writing")
+    p_sync.add_argument("--json", action="store_true",
+                        help="Emit machine-readable JSON output")
+
     # soma checkpoint
     p_checkpoint = sub.add_parser("checkpoint", help="Run deterministic quality checks")
     p_checkpoint.add_argument("--pre-commit", action="store_true",
@@ -146,6 +153,12 @@ def cmd_promote(args: argparse.Namespace) -> int:
     return run_promote(args)
 
 
+def cmd_sync(args: argparse.Namespace) -> int:
+    """Reconcile evidence with cell frontmatter."""
+    from soma_cli.sync import run_sync
+    return run_sync(args)
+
+
 def cmd_demote(args: argparse.Namespace) -> int:
     """Evaluate cell demotion candidates."""
     from soma_cli.demote import run_demote
@@ -159,6 +172,7 @@ COMMANDS = {
     "doctor": cmd_doctor,
     "verify": cmd_verify,
     "checkpoint": cmd_checkpoint,
+    "sync": cmd_sync,
     "oracle": cmd_oracle,
     "promote": cmd_promote,
     "demote": cmd_demote,

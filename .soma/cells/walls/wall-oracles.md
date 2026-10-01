@@ -15,9 +15,14 @@ tags:
 - oracles
 - genome
 - security
-created: "2026-09-28"
+created: '2026-09-28'
+fitness:
+  triggers: 2
+  true_positives: 2
+  false_positives: 0
+  score: 1.0
+  last_trigger_date: '2026-10-01T04:26:19Z'
 ---
-
 # Wall: Oracles
 
 Target: `genome/.oracles/`

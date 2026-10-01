@@ -337,6 +337,17 @@ def main():
     update_fitness(triggered, transcript_id, evidence_dir)
     print(f"  Fitness updated: {evidence_dir / 'fitness.jsonl'}")
 
+    # Sync JSONL evidence → cell frontmatter
+    try:
+        from soma_cli.sync import aggregate_evidence, sync_frontmatter
+        counts = aggregate_evidence(str(evidence_dir))
+        if counts:
+            changes = sync_frontmatter(str(cells_dir), counts)
+            if changes:
+                print(f"  Frontmatter synced: {len(changes)} cells updated")
+    except ImportError:
+        pass  # soma_cli not installed — skip frontmatter sync
+
 
 if __name__ == "__main__":
     main()

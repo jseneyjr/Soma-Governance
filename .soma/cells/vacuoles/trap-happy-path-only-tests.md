@@ -22,12 +22,12 @@ tags:
 - quality
 - anti-pattern
 fitness:
-  score: null
+  score: 0.6
   impact_weight: 1.0
-  triggers: 4
-  true_positives: 0
-  false_positives: 4
-  last_trigger_date: '2026-09-30T20:09:18Z'
+  triggers: 5
+  true_positives: 3
+  false_positives: 1
+  last_trigger_date: '2026-10-01T04:26:19Z'
 ---
 When reviewing test files, check that every public function under test has at
 least one **negative or adversarial test case** — a test that verifies the

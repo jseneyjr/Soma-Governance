@@ -3,11 +3,11 @@ id: trap-recurring-finding-escape
 domain: governance
 type: wall
 enforcement: gate
-hypothesis: Findings flagged in multiple consecutive review cycles without
-  resolution indicate deferred architectural debt that is actively degrading
-  the codebase — each cycle the copies diverge further and the fix gets harder
-prediction: Will fire when the same finding (by category or file) appears in
-  N and N+1 cycle arbitration results without a corresponding fix commit
+hypothesis: Findings flagged in multiple consecutive review cycles without resolution
+  indicate deferred architectural debt that is actively degrading the codebase — each
+  cycle the copies diverge further and the fix gets harder
+prediction: Will fire when the same finding (by category or file) appears in N and
+  N+1 cycle arbitration results without a corresponding fix commit
 falsification: 0 findings in 10 sessions → prune
 target_paths:
 - .soma/evidence/arbitration_cycle_*.json
@@ -27,12 +27,12 @@ tags:
 - review-escape
 - meta-antipattern
 fitness:
-  score: null
+  score: 0.75
   impact_weight: 1.0
-  triggers: 0
-  true_positives: 0
-  false_positives: 0
-  last_trigger_date: null
+  triggers: 8
+  true_positives: 6
+  false_positives: 1
+  last_trigger_date: '2026-10-01T04:26:19Z'
 ---
 Findings that appear in consecutive review cycles MUST be resolved, not deferred.
 

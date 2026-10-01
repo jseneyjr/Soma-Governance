@@ -20,18 +20,17 @@ triggers:
 - ci_fix
 - test_fix
 - build_fix
-created: "2026-09-30"
+created: '2026-09-30'
 expiry_days: 90
 expiry_sessions: 30
 fitness:
-  score: null
+  score: 0.5
   impact_weight: 1.0
-  triggers: 0
-  true_positives: 0
+  triggers: 4
+  true_positives: 2
   false_positives: 0
-  last_trigger_date: null
+  last_trigger_date: '2026-10-01T04:26:19Z'
 ---
-
 ## Trap: Local Green ≠ CI Green
 
 **Pattern**: Agent runs tests locally, sees green (or dismisses a known red), and declares the fix complete without verifying the actual CI build.

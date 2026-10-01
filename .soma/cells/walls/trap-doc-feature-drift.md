@@ -5,15 +5,15 @@ type: wall
 enforcement: gate
 hypothesis: Adding or modifying a feature without updating ALL documentation surfaces
   (README, CHANGELOG, SKILL.md) in the same commit causes doc-feature desync
-prediction: Will fire when a commit touches code files but not documentation, or
-  updates one doc surface but not others
+prediction: Will fire when a commit touches code files but not documentation, or updates
+  one doc surface but not others
 falsification: 0 findings in 20 sessions → prune
 target_paths:
 - README.md
 - docs/CHANGELOG.md
-- 'organs/*/SKILL.md'
-- 'soma_cli/*.py'
-- 'soma_mcp/*.py'
+- organs/*/SKILL.md
+- soma_cli/*.py
+- soma_mcp/*.py
 triggers:
 - feature_addition
 - feature_modification
@@ -28,12 +28,12 @@ tags:
 - drift
 - process
 fitness:
-  score: null
+  score: 0.6364
   impact_weight: 1.0
-  triggers: 0
-  true_positives: 0
-  false_positives: 0
-  last_trigger_date: null
+  triggers: 11
+  true_positives: 7
+  false_positives: 2
+  last_trigger_date: '2026-10-01T04:26:19Z'
 ---
 Supercell doc-drift incident: Supercell intensity added to README and SKILL.md but
 CHANGELOG v0.60.0 was not updated. Architecture ASCII box was edited but not

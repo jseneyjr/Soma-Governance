@@ -18,9 +18,14 @@ tags:
 - magic-numbers
 - style
 - configuration
-created: "2026-09-28"
+created: '2026-09-28'
+fitness:
+  triggers: 4
+  true_positives: 1
+  false_positives: 1
+  score: 0.25
+  last_trigger_date: '2026-10-01T04:26:19Z'
 ---
-
 # Trap: Magic Numbers
 
 Target: `enzymes/cell_fitness.py`, `enzymes/outcome_engine.py`, `enzymes/cell_promote.py`

@@ -3,11 +3,11 @@ id: trap-ghost-cli-flags
 domain: correctness
 type: wall
 enforcement: gate
-hypothesis: CLI flags registered in the argument parser but not consumed by the
-  handler function create a false contract — users believe the flag does something
-  but it is silently ignored
-prediction: Will fire when argparse registers --flag but the run_* handler never
-  reads args.flag, or reads it but takes no action
+hypothesis: CLI flags registered in the argument parser but not consumed by the handler
+  function create a false contract — users believe the flag does something but it
+  is silently ignored
+prediction: Will fire when argparse registers --flag but the run_* handler never reads
+  args.flag, or reads it but takes no action
 falsification: 0 findings in 10 sessions → prune
 target_paths:
 - soma_cli/cli.py
@@ -27,12 +27,12 @@ tags:
 - dead-code
 - contract
 fitness:
-  score: null
+  score: 0.5
   impact_weight: 0.9
-  triggers: 0
-  true_positives: 0
-  false_positives: 0
-  last_trigger_date: null
+  triggers: 4
+  true_positives: 2
+  false_positives: 1
+  last_trigger_date: '2026-10-01T04:26:19Z'
 ---
 Every CLI flag registered in argparse MUST be consumed by the handler function.
 

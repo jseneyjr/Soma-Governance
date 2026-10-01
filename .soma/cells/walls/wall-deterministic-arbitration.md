@@ -6,8 +6,8 @@ enforcement: gate
 hypothesis: When the orchestrator manually arbitrates Prosecutor/Defender findings
   instead of using the deterministic arbiter, subjective bias enters the process and
   findings can be rationalized away
-prediction: Will fire when review findings are resolved by orchestrator judgment
-  instead of structured arbitration through the arbiter
+prediction: Will fire when review findings are resolved by orchestrator judgment instead
+  of structured arbitration through the arbiter
 falsification: If the arbiter cannot handle a finding category after 3 extensions,
   revisit the architecture
 target_paths:
@@ -29,12 +29,12 @@ tags:
 - deterministic
 - process
 fitness:
-  score: null
+  score: 0.75
   impact_weight: 1.0
-  triggers: 0
-  true_positives: 0
+  triggers: 4
+  true_positives: 3
   false_positives: 0
-  last_trigger_date: null
+  last_trigger_date: '2026-10-01T04:26:19Z'
 ---
 Review finding arbitration MUST go through the deterministic arbiter, not
 the orchestrator's judgment. The arbiter uses set-algebra on RiskCategory

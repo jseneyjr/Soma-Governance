@@ -57,6 +57,14 @@ def run_checkpoint(args: argparse.Namespace) -> int:
             print(msg, file=sys.stderr)
         return 1
 
+    # Sync evidence → frontmatter so fitness data is fresh
+    from soma_cli.sync import aggregate_evidence, sync_frontmatter
+    evidence_dir = str(root / ".soma" / "evidence")
+    cells_dir = str(root / ".soma" / "cells")
+    counts = aggregate_evidence(evidence_dir)
+    if counts:
+        sync_frontmatter(cells_dir, counts)
+
     # Run all checks (from shared module)
     all_issues = run_all_checks(root)
     has_issues = len(all_issues) > 0

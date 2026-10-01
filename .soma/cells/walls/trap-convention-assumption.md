@@ -26,12 +26,12 @@ tags:
 - convention
 - dogfooding
 fitness:
-  score: null
+  score: 0.5714
   impact_weight: 1.0
-  triggers: 0
-  true_positives: 0
-  false_positives: 0
-  last_trigger_date: null
+  triggers: 7
+  true_positives: 4
+  false_positives: 1
+  last_trigger_date: '2026-10-01T04:26:19Z'
 ---
 Before creating new instances of a typed artifact (cells, config files, schema
 records), ALWAYS read at least one existing instance of the same type to ground

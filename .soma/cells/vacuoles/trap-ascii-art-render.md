@@ -3,14 +3,14 @@ id: trap-ascii-art-render
 domain: documentation
 type: vacuole
 enforcement: advisory
-hypothesis: Editing ASCII art box diagrams without verifying visual width causes
-  truncated or misaligned rendering in markdown viewers
+hypothesis: Editing ASCII art box diagrams without verifying visual width causes truncated
+  or misaligned rendering in markdown viewers
 prediction: Will fire when commits modify lines inside ASCII box-drawing character
   regions
 falsification: 0 findings in 20 sessions → prune
 target_paths:
 - README.md
-- 'docs/*.md'
+- docs/*.md
 triggers:
 - documentation_edit
 - readme_modification
@@ -24,12 +24,12 @@ tags:
 - rendering
 - ascii-art
 fitness:
-  score: null
+  score: 0.3333
   impact_weight: 1.0
-  triggers: 0
-  true_positives: 0
+  triggers: 3
+  true_positives: 1
   false_positives: 0
-  last_trigger_date: null
+  last_trigger_date: '2026-10-01T04:26:19Z'
 ---
 Supercell doc-drift incident: Adding "→ Supercell" to the architecture diagram
 made the line overflow the fixed-width box border. The text was correct but

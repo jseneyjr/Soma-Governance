@@ -8,8 +8,8 @@ hypothesis: A governance framework that doesn't use its own tools to manage itse
 prediction: Will fire when manual file operations (mv, cp, sed, manual frontmatter
   edits) are used instead of soma CLI commands (promote, demote, init, checkpoint)
   for operations that soma provides tooling for
-falsification: If soma CLI lacks a needed operation for 5 consecutive sessions,
-  the missing operation should be built rather than this cell pruned
+falsification: If soma CLI lacks a needed operation for 5 consecutive sessions, the
+  missing operation should be built rather than this cell pruned
 target_paths:
 - .soma/cells/**/*.md
 - soma_cli/*.py
@@ -30,12 +30,12 @@ tags:
 - process
 - meta
 fitness:
-  score: null
+  score: 0.6
   impact_weight: 1.0
-  triggers: 0
-  true_positives: 0
+  triggers: 5
+  true_positives: 3
   false_positives: 0
-  last_trigger_date: null
+  last_trigger_date: '2026-10-01T04:26:19Z'
 ---
 When performing lifecycle operations on Soma's own cells (create, promote,
 demote, verify), ALWAYS use the soma CLI or MCP tools first. If the tool

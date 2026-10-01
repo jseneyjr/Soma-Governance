@@ -3,13 +3,13 @@ id: trap-tautological-test
 domain: testing
 type: wall
 enforcement: gate
-hypothesis: Tests that assert only types (isinstance), test at single degenerate
-  data points where all formulas trivially agree, or call the wrong function
-  entirely provide zero verification value while inflating test counts and
-  creating false confidence in suite coverage
-prediction: Will fire when a test asserts isinstance/type checks without
-  behavioral assertions, or tests at boundary values where correct and incorrect
-  implementations are indistinguishable
+hypothesis: Tests that assert only types (isinstance), test at single degenerate data
+  points where all formulas trivially agree, or call the wrong function entirely provide
+  zero verification value while inflating test counts and creating false confidence
+  in suite coverage
+prediction: Will fire when a test asserts isinstance/type checks without behavioral
+  assertions, or tests at boundary values where correct and incorrect implementations
+  are indistinguishable
 falsification: 0 findings in 10 sessions → prune
 target_paths:
 - tests/*.py
@@ -29,14 +29,13 @@ tags:
 - false-confidence
 - verification
 fitness:
-  score: null
+  score: 0.7143
   impact_weight: 1.0
-  triggers: 1
-  true_positives: 1
-  false_positives: 0
-  last_trigger_date: '2026-10-01'
+  triggers: 7
+  true_positives: 5
+  false_positives: 1
+  last_trigger_date: '2026-10-01T04:26:19Z'
 ---
-
 Tests must exercise the function-under-test with inputs that DISTINGUISH
 correct behavior from incorrect behavior. A test that passes regardless
 of whether the implementation is right or wrong is worse than no test —
