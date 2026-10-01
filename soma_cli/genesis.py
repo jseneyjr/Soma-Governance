@@ -93,22 +93,34 @@ def run_genesis(args: argparse.Namespace) -> int:
 
         # Confirm unless --yes
         if not getattr(args, "yes", False):
-            answer = input(
-                f"  Write {len(candidates)} cells to .soma/cells/vacuoles/? [Y/n] "
-            )
-            if answer.strip().lower() in ("n", "no"):
-                print("  Aborted.")
+            try:
+                answer = input(
+                    f"  Write {len(candidates)} cells to .soma/cells/vacuoles/? [Y/n] "
+                )
+                if answer.strip().lower() in ("n", "no"):
+                    print("  Aborted.")
+                    return 0
+            except (EOFError, KeyboardInterrupt):
+                print("\n  Aborted.")
                 return 0
 
     # Phase 2: Generate
     cells_dir = project_root / ".soma" / "cells"
-    results = generate_cells(candidates, cells_dir, dry_run=False, force=force)
+    results = generate_cells(candidates, cells_dir, dry_run=dry_run, force=force)
 
     # Generate organelle report
     report = generate_report(candidates, project_type)
     report_path = project_root / "docs" / "organelles.md"
-    report_path.parent.mkdir(parents=True, exist_ok=True)
-    report_path.write_text(report, encoding="utf-8")
+    if not dry_run:
+        if report_path.is_symlink():
+            if not use_json:
+                print(f"  ⚠️  Skipping report: {report_path} is a symlink")
+        elif report_path.exists() and not force:
+            if not use_json:
+                print(f"  ℹ️  {report_path.name}: already exists (use --force to overwrite)")
+        else:
+            report_path.parent.mkdir(parents=True, exist_ok=True)
+            report_path.write_text(report, encoding="utf-8")
 
     created = sum(1 for r in results if r["action"] == "created")
     skipped = sum(1 for r in results if r["action"] == "skipped")
@@ -128,15 +140,6 @@ def run_genesis(args: argparse.Namespace) -> int:
 
 
 def _count_source_files(root: Path, project_type: str) -> int:
-    """Count source files in *root* matching *project_type* extensions."""
-    exts = {
-        "rust": [".rs"],
-        "python": [".py"],
-        "javascript": [".js", ".ts", ".jsx", ".tsx"],
-        "go": [".go"],
-        "unknown": [".py", ".js", ".rs", ".go", ".java", ".c", ".cpp"],
-    }
-    count = 0
-    for ext in exts.get(project_type, exts["unknown"]):
-        count += len(list(root.rglob(f"*{ext}")))
-    return count
+    """Count source files, skipping non-essential dirs."""
+    from soma_cli.genesis_scanner import _iter_source_files
+    return len(_iter_source_files(root, project_type, include_tests=True))

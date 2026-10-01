@@ -28,11 +28,14 @@ def generate_cells(
     """
     results: list[dict] = []
     vacuole_dir = cells_dir / "vacuoles"
-    vacuole_dir.mkdir(parents=True, exist_ok=True)
 
     for candidate in candidates:
         filename = f"{candidate.name}.md"
         target = vacuole_dir / filename
+
+        if target.is_symlink():
+            results.append({"path": str(target), "name": candidate.name, "action": "skipped", "reason": "symlink"})
+            continue
 
         if target.exists() and not force:
             results.append({
@@ -53,6 +56,7 @@ def generate_cells(
                 "content": content,
             })
         else:
+            vacuole_dir.mkdir(parents=True, exist_ok=True)
             target.write_text(content, encoding="utf-8")
             results.append({
                 "path": str(target),
@@ -63,18 +67,28 @@ def generate_cells(
     return results
 
 
+def _sanitize_frontmatter_value(val: str) -> str:
+    """Collapse newlines and defang YAML document delimiters."""
+    return " ".join(val.replace("---", "--").split())
+
+
+def _sanitize_table_cell(val: str) -> str:
+    """Escape pipes and collapse newlines for Markdown table cells."""
+    return " ".join(val.split()).replace("|", "\\|")
+
+
 def _render_cell(candidate: CellCandidate) -> str:
     """Render a CellCandidate as cell markdown with YAML frontmatter."""
     frontmatter = {
         "type": "vacuole",  # ALL cells start as vacuoles
-        "proposed_type": candidate.proposed_type,
-        "hypothesis": candidate.hypothesis,
-        "prediction": candidate.prediction,
-        "falsification": candidate.falsification,
-        "target_paths": candidate.target_paths,
+        "proposed_type": _sanitize_frontmatter_value(candidate.proposed_type),
+        "hypothesis": _sanitize_frontmatter_value(candidate.hypothesis),
+        "prediction": _sanitize_frontmatter_value(candidate.prediction),
+        "falsification": _sanitize_frontmatter_value(candidate.falsification),
+        "target_paths": [_sanitize_frontmatter_value(p) for p in candidate.target_paths],
         "enforcement": "advisory",
         "minimum_mode": "breeze",
-        "tags": candidate.tags + ["genesis-generated"],
+        "tags": [_sanitize_frontmatter_value(t) for t in candidate.tags] + ["genesis-generated"],
         "created": str(date.today()),
         "genesis_confidence": round(candidate.confidence, 2),
         "expiry_sessions": 10,
@@ -128,7 +142,7 @@ def generate_report(candidates: list[CellCandidate], project_type: str) -> str:
         lines = [f"### {emoji} {ptype.title()}s\n"]
         for c in groups[ptype]:
             lines.append(
-                f"| `{c.name}` | {c.confidence:.0%} | {c.hypothesis} |"
+                f"| `{_sanitize_table_cell(c.name)}` | {c.confidence:.0%} | {_sanitize_table_cell(c.hypothesis)} |"
             )
         sections.append("\n".join(lines))
 

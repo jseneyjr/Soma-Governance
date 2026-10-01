@@ -95,11 +95,28 @@ def _iter_source_files(
 
 
 def _read_text_safe(path: Path, limit: int = 256_000) -> str:
-    """Read file text, returning '' on decode/permission errors."""
+    """Read file text up to *limit* characters, returning '' on errors."""
     try:
-        return path.read_text(encoding="utf-8", errors="replace")[:limit]
+        if not path.is_file():
+            return ""
+        with open(path, mode="r", encoding="utf-8", errors="replace") as f:
+            return f.read(limit)
     except (OSError, PermissionError):
         return ""
+
+
+def _get_source_files_with_content(
+    root: Path,
+    project_type: str,
+    source_cache: list[tuple[Path, str]] | None = None,
+) -> list[tuple[Path, str]]:
+    """Return source files with their text content, reusing cache if provided."""
+    if source_cache is not None:
+        return source_cache
+    return [
+        (src, _read_text_safe(src))
+        for src in _iter_source_files(root, project_type, include_tests=False)
+    ]
 
 
 # ---------------------------------------------------------------------------
@@ -183,17 +200,21 @@ def detect_dependency_walls(root: Path, project_type: str) -> list[CellCandidate
     return candidates
 
 
-def detect_config_stores(root: Path, project_type: str) -> list[CellCandidate]:
+def detect_config_stores(
+    root: Path,
+    project_type: str,
+    source_cache: list[tuple[Path, str]] | None = None,
+) -> list[CellCandidate]:
     """Find files with high density of ALL_CAPS identifiers → vacuole candidates."""
     candidates: list[CellCandidate] = []
     config_pattern = re.compile(r"^(config|constants|settings|defaults)", re.IGNORECASE)
     all_caps_pattern = re.compile(r"\b[A-Z][A-Z_]{2,}\b")
 
-    for src in _iter_source_files(root, project_type, include_tests=False):
-        stem = src.stem.lower()
-        content = _read_text_safe(src)
+    sources = _get_source_files_with_content(root, project_type, source_cache)
+    for src, content in sources:
         if not content:
             continue
+        stem = src.stem.lower()
 
         raw_caps = all_caps_pattern.findall(content)
         # Filter noise: stdlib constants, HTTP methods, etc.
@@ -218,16 +239,19 @@ def detect_config_stores(root: Path, project_type: str) -> list[CellCandidate]:
     return candidates
 
 
-def detect_shared_state(root: Path, project_type: str) -> list[CellCandidate]:
+def detect_shared_state(
+    root: Path,
+    project_type: str,
+    source_cache: list[tuple[Path, str]] | None = None,
+) -> list[CellCandidate]:
     """Build simple import graph; project modules imported by 4+ others → vacuole candidates."""
     # Match 'from foo.bar import ...' or 'import foo.bar'
-    from_pattern = re.compile(r"^\s*from\s+([\w.]+)\s+import", re.MULTILINE)
-    import_pattern = re.compile(r"^\s*import\s+([\w.]+)", re.MULTILINE)
+    from_pattern = re.compile(r"^\s*from\s+([a-zA-Z_]\w*(?:\.[a-zA-Z_]\w*)*)\s+import", re.MULTILINE)
+    import_pattern = re.compile(r"^\s*import\s+([a-zA-Z_]\w*(?:\.[a-zA-Z_]\w*)*)", re.MULTILINE)
     import_count: dict[str, int] = {}
-    sources = _iter_source_files(root, project_type, include_tests=False)
+    sources = _get_source_files_with_content(root, project_type, source_cache)
 
-    for src in sources:
-        content = _read_text_safe(src)
+    for src, content in sources:
         seen_in_file: set[str] = set()
         # 'from src.models import ...' → track 'src.models'
         for match in from_pattern.findall(content):
@@ -246,22 +270,29 @@ def detect_shared_state(root: Path, project_type: str) -> list[CellCandidate]:
     for mod, count in import_count.items():
         # Skip stdlib, builtins, and short names (likely noise)
         top_level = mod.split(".")[0]
-        if top_level in _STDLIB_MODULES or len(top_level) <= 2:
+        if mod.startswith(".") or top_level in _STDLIB_MODULES or len(top_level) <= 2:
             continue
-        # Must map to an actual project file or directory
-        mod_as_path = mod.replace(".", os.sep)
-        mod_path = root / mod_as_path
-        mod_file = root / f"{mod_as_path}.py"
+        mod_parts = [p for p in mod.split(".") if p]
+        mod_path = root.joinpath(*mod_parts)
+        mod_file = root.joinpath(*mod_parts[:-1], f"{mod_parts[-1]}.py") if len(mod_parts) > 1 else root / f"{mod_parts[0]}.py"
+        try:
+            if not mod_path.resolve().is_relative_to(root.resolve()) and not mod_file.resolve().is_relative_to(root.resolve()):
+                continue
+        except (ValueError, RuntimeError):
+            continue
         search_name = mod.split(".")[-1]
         if not mod_path.is_dir() and not mod_file.exists():
-            # Search inside packages (e.g. src/models.py for 'src.models')
-            found = list(root.rglob(f"{search_name}.py"))
-            found += [d for d in root.rglob(search_name) if d.is_dir()]
-            if not found:
+            # Search in already-loaded source files instead of expensive rglob
+            has_match = any(
+                s.name == f"{search_name}.py" or search_name in [p.name for p in s.relative_to(root).parents]
+                for s, _ in sources  # sources is now list[tuple[Path, str]]
+            )
+            if not has_match:
                 continue
         # 4+ importers indicates meaningful shared state
         if count >= 4:
             safe_name = mod.replace(".", "-")
+            mod_as_path = os.sep.join(mod_parts)
             if mod_path.is_dir():
                 target = f"{mod_as_path}/**"
             elif mod_file.exists():
@@ -282,7 +313,11 @@ def detect_shared_state(root: Path, project_type: str) -> list[CellCandidate]:
     return candidates
 
 
-def detect_api_surfaces(root: Path, project_type: str) -> list[CellCandidate]:
+def detect_api_surfaces(
+    root: Path,
+    project_type: str,
+    source_cache: list[tuple[Path, str]] | None = None,
+) -> list[CellCandidate]:
     """Find files with high export density → membrane candidates."""
     export_patterns = [
         re.compile(r"\bpub\s+fn\b"),
@@ -294,8 +329,8 @@ def detect_api_surfaces(root: Path, project_type: str) -> list[CellCandidate]:
     ]
     candidates: list[CellCandidate] = []
 
-    for src in _iter_source_files(root, project_type, include_tests=False):
-        content = _read_text_safe(src)
+    sources = _get_source_files_with_content(root, project_type, source_cache)
+    for src, content in sources:
         if not content:
             continue
 
@@ -318,7 +353,11 @@ def detect_api_surfaces(root: Path, project_type: str) -> list[CellCandidate]:
     return candidates
 
 
-def detect_data_pipelines(root: Path, project_type: str) -> list[CellCandidate]:
+def detect_data_pipelines(
+    root: Path,
+    project_type: str,
+    source_cache: list[tuple[Path, str]] | None = None,
+) -> list[CellCandidate]:
     """Find files with many typed functions → chloroplast candidates."""
     transform_patterns = [
         re.compile(r"fn\s+\w+\s*\([^)]*\)\s*->\s*\w+"),     # Rust
@@ -327,8 +366,8 @@ def detect_data_pipelines(root: Path, project_type: str) -> list[CellCandidate]:
     ]
     candidates: list[CellCandidate] = []
 
-    for src in _iter_source_files(root, project_type, include_tests=False):
-        content = _read_text_safe(src)
+    sources = _get_source_files_with_content(root, project_type, source_cache)
+    for src, content in sources:
         if not content:
             continue
 
@@ -352,15 +391,19 @@ def detect_data_pipelines(root: Path, project_type: str) -> list[CellCandidate]:
     return candidates
 
 
-def detect_state_machines(root: Path, project_type: str) -> list[CellCandidate]:
+def detect_state_machines(
+    root: Path,
+    project_type: str,
+    source_cache: list[tuple[Path, str]] | None = None,
+) -> list[CellCandidate]:
     """Find state machine patterns → plasmodesmata candidates."""
     state_type_pattern = re.compile(
         r"\b(?:enum|class|type)\s+(\w*(?:State|Status|Phase|Mode)\w*)",
     )
     candidates: list[CellCandidate] = []
 
-    for src in _iter_source_files(root, project_type, include_tests=False):
-        content = _read_text_safe(src)
+    sources = _get_source_files_with_content(root, project_type, source_cache)
+    for src, content in sources:
         if not content:
             continue
 
@@ -439,9 +482,14 @@ ALL_DETECTORS = [
 def scan(root: Path, min_confidence: float = 0.5) -> list[CellCandidate]:
     """Run all detectors against the repository."""
     project_type = detect_project_type(root)
+    source_cache = _get_source_files_with_content(root, project_type)
     candidates: list[CellCandidate] = []
     for detector in ALL_DETECTORS:
-        candidates.extend(detector(root, project_type))
+        try:
+            candidates.extend(detector(root, project_type, source_cache=source_cache))
+        except TypeError:
+            # Detectors that don't accept source_cache (module_boundaries, dependency_walls, test_boundaries)
+            candidates.extend(detector(root, project_type))
     # Deduplicate by name
     seen: set[str] = set()
     unique: list[CellCandidate] = []
