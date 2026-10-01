@@ -24,7 +24,7 @@ develop ──→ release/v0.XX ──→ PR to main ──→ tag v0.XX.0 ─�
 7. **Merge PR**: Via GitHub UI or `gh pr merge`
 8. **Tag release**: `git checkout main && git pull && git tag v0.XX.0 && git push origin v0.XX.0`
 9. **Back-merge to develop**: `git checkout develop && git merge main -m "sync: merge main back to develop after v0.XX" && git push origin develop`
-10. **Create GitHub release** (optional): `gh release create v0.XX.0 --title "v0.XX.0 — <Theme>" --notes "<release notes>"`
+10. **Create GitHub Release**: `gh release create v0.XX.0 --title "v0.XX.0 — <Theme>" --notes "<release notes>"`
 
 ## Phase → Version Mapping
 
