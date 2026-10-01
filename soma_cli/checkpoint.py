@@ -185,6 +185,94 @@ def _check_cell_fitness(root: Path) -> list[dict]:
     return issues
 
 
+def _check_cell_conventions(root: Path) -> list[dict]:
+    """Check that cell files follow project conventions.
+
+    Catches dogfooding failures:
+    - Walls must have enforcement: gate
+    - Frontmatter 'type' must match the directory (vacuoles/ → vacuole)
+    - Required fields: id, domain, type, enforcement
+    - Frontmatter 'id' must match filename stem
+    """
+    issues = []
+    cells_dir = root / ".soma" / "cells"
+    if not cells_dir.is_dir():
+        return issues
+
+    try:
+        import yaml
+    except ImportError:
+        return issues
+
+    dir_to_type = {"vacuoles": "vacuole", "walls": "wall"}
+
+    for type_dir_name, expected_type in dir_to_type.items():
+        type_dir = cells_dir / type_dir_name
+        if not type_dir.is_dir():
+            continue
+        for cell_file in sorted(type_dir.glob("*.md")):
+            if cell_file.name == "README.md":
+                continue
+            try:
+                content = cell_file.read_text(encoding="utf-8")
+            except OSError:
+                continue
+            if not content.startswith("---"):
+                continue
+            end = content.find("---", 3)
+            if end < 0:
+                continue
+            try:
+                meta = yaml.safe_load(content[3:end])
+            except Exception:
+                continue
+            if not isinstance(meta, dict):
+                continue
+
+            rel = f".soma/cells/{type_dir_name}/{cell_file.name}"
+
+            # Check required fields
+            for field in ("id", "domain", "type", "enforcement"):
+                if field not in meta:
+                    issues.append({
+                        "check": "cell_conventions",
+                        "message": f"{rel}: missing required field '{field}'",
+                    })
+
+            # Check type matches directory
+            cell_type = meta.get("type", "")
+            if cell_type != expected_type:
+                issues.append({
+                    "check": "cell_conventions",
+                    "message": (
+                        f"{rel}: type '{cell_type}' doesn't match directory "
+                        f"'{type_dir_name}' (expected '{expected_type}')"
+                    ),
+                })
+
+            # Check enforcement convention for walls
+            if expected_type == "wall" and meta.get("enforcement") != "gate":
+                issues.append({
+                    "check": "cell_conventions",
+                    "message": (
+                        f"{rel}: wall enforcement is '{meta.get('enforcement')}' "
+                        f"but walls must use 'gate'"
+                    ),
+                })
+
+            # Check id matches filename
+            if meta.get("id") != cell_file.stem:
+                issues.append({
+                    "check": "cell_conventions",
+                    "message": (
+                        f"{rel}: frontmatter id '{meta.get('id')}' "
+                        f"doesn't match filename '{cell_file.stem}'"
+                    ),
+                })
+
+    return issues
+
+
 # ── Main Entry Point ──────────────────────────────────────────────────
 
 
@@ -224,6 +312,7 @@ def run_checkpoint(args: argparse.Namespace) -> int:
     all_issues.extend(_check_hardcoded_paths(root))
     all_issues.extend(_check_assertion_density(root))
     all_issues.extend(_check_cell_fitness(root))
+    all_issues.extend(_check_cell_conventions(root))
 
     has_issues = len(all_issues) > 0
 
@@ -239,7 +328,7 @@ def run_checkpoint(args: argparse.Namespace) -> int:
 
     # Output
     if use_json:
-        checks_run = ["test_coverage", "hardcoded_paths", "assertion_density", "cell_fitness"]
+        checks_run = ["test_coverage", "hardcoded_paths", "assertion_density", "cell_fitness", "cell_conventions"]
         output = {
             "status": "failed" if has_issues else "passed",
             "passed": not has_issues,
