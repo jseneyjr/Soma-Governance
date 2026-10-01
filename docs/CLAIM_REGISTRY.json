@@ -1,0 +1,162 @@
+{
+  "version": "1.0",
+  "description": "Maps README feature claims to required behavioral tests. Status: locked (not in README), unlocked (in README with passing tests), removed (unearnable, deleted from README).",
+  "claims": {
+    "claim_mechanical_precommit": {
+      "phase": 1,
+      "status": "unlocked",
+      "readme_text": "Pre-commit hooks block commits matching cell patterns",
+      "required_tests": [
+        "tests/test_enforce_hooks.py::TestWallHookGeneration::test_wall_hook_blocks_matching_commit",
+        "tests/test_enforce_hooks.py::TestWallHookGeneration::test_wall_hook_allows_unmatched_commit"
+      ]
+    },
+    "claim_multi_platform": {
+      "phase": 1,
+      "status": "unlocked",
+      "readme_text": "Cross-platform support for macOS, Linux, and Windows",
+      "required_tests": [
+        "tests/test_install_lifecycle.py"
+      ]
+    },
+    "claim_cli_commands": {
+      "phase": 1,
+      "status": "unlocked",
+      "readme_text": "CLI commands for governance management",
+      "required_tests": [
+        "tests/test_cli.py"
+      ]
+    },
+    "claim_mcp_integration": {
+      "phase": 1,
+      "status": "unlocked",
+      "readme_text": "MCP server integration for AI agent context",
+      "required_tests": [
+        "tests/test_mcp_verify.py"
+      ]
+    },
+    "claim_cell_lifecycle": {
+      "phase": 1,
+      "status": "unlocked",
+      "readme_text": "Cell lifecycle management (create, score, promote, demote)",
+      "required_tests": [
+        "tests/test_lifecycle.py"
+      ]
+    },
+    "claim_yaml_safe_load": {
+      "phase": 1,
+      "status": "unlocked",
+      "readme_text": "YAML safe_load used for all cell parsing",
+      "required_tests": [
+        "tests/test_rule_metadata.py"
+      ]
+    },
+    "claim_bayesian_fitness": {
+      "phase": 2,
+      "status": "locked",
+      "readme_text": "Wilson-bounded fitness scoring with credible intervals",
+      "required_tests": [
+        "tests/test_bayesian_correctness.py::test_wilson_interval_known_values",
+        "tests/test_bayesian_correctness.py::test_wilson_interval_edge_cases"
+      ]
+    },
+    "claim_canonical_parser": {
+      "phase": 2,
+      "status": "locked",
+      "readme_text": "Single canonical cell parser for all tools",
+      "required_tests": [
+        "tests/test_sdk_behavioral.py::test_parse_cell_file_roundtrip",
+        "tests/test_sdk_behavioral.py::test_parse_cell_file_error_handling"
+      ]
+    },
+    "claim_credit_assignment": {
+      "phase": 3,
+      "status": "locked",
+      "readme_text": "Scope-narrowed credit assignment with per-file conservation",
+      "required_tests": [
+        "tests/test_credit_assignment.py::test_credit_conservation",
+        "tests/test_credit_assignment.py::test_scope_narrowing"
+      ]
+    },
+    "claim_structured_crossover": {
+      "phase": 3,
+      "status": "locked",
+      "readme_text": "Structured field-level rule merging",
+      "required_tests": [
+        "tests/test_crossover_integration.py::test_field_merge_rules",
+        "tests/test_crossover_integration.py::test_crossover_produces_valid_cell"
+      ]
+    },
+    "claim_tournament_selection": {
+      "phase": 3,
+      "status": "locked",
+      "readme_text": "Tournament selection for rule competition",
+      "required_tests": [
+        "tests/test_tournament_integration.py::test_jsonl_output_format",
+        "tests/test_tournament_integration.py::test_prune_losers"
+      ]
+    },
+    "claim_quorum_sensing": {
+      "phase": 4,
+      "status": "locked",
+      "readme_text": "Multi-rule consensus for high-confidence decisions",
+      "required_tests": [
+        "tests/test_quorum.py::test_quorum_threshold",
+        "tests/test_quorum.py::test_quorum_disagree"
+      ]
+    },
+    "claim_gate_enforcement": {
+      "phase": 4,
+      "status": "locked",
+      "readme_text": "Invariant DSL-based gate enforcement in CI",
+      "required_tests": [
+        "tests/test_gate_invariant_dsl.py::test_import_banned_catches_violation",
+        "tests/test_gate_invariant_dsl.py::test_import_banned_allows_compliant",
+        "tests/test_enforcement_ladder.py::test_advisory_warns_no_block",
+        "tests/test_enforcement_ladder.py::test_gate_blocks_ci"
+      ]
+    },
+    "claim_structurally_unprofitable": {
+      "phase": 0,
+      "status": "removed",
+      "readme_text": "structurally unprofitable",
+      "required_tests": []
+    },
+    "claim_beta_binomial": {
+      "phase": 0,
+      "status": "removed",
+      "readme_text": "Beta-Binomial posterior",
+      "required_tests": []
+    },
+    "claim_evolutionary_computation": {
+      "phase": 0,
+      "status": "removed",
+      "readme_text": "evolutionary computation",
+      "required_tests": []
+    },
+    "claim_deterministic_verification": {
+      "phase": 0,
+      "status": "removed",
+      "readme_text": "deterministic verification",
+      "required_tests": []
+    },
+    "claim_ungameable": {
+      "phase": 0,
+      "status": "removed",
+      "readme_text": "ungameable",
+      "required_tests": []
+    },
+    "claim_set_algebra_arbiter": {
+      "phase": 0,
+      "status": "removed",
+      "readme_text": "deterministic set-algebra arbiter",
+      "required_tests": []
+    },
+    "claim_waste_rate_badge": {
+      "phase": 0,
+      "status": "removed",
+      "readme_text": "< 1.0% waste rate",
+      "required_tests": []
+    }
+  }
+}

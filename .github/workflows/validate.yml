@@ -22,13 +22,16 @@ jobs:
           python-version: ${{ matrix.python-version }}
       
       - name: Install test dependencies
-        run: pip install pytest pyyaml
+        run: pip install -e ".[dev]" pyyaml
 
       - name: Run validation
         run: make validate
       
       - name: Run test suite
         run: make test
+
+      - name: Verify README claims
+        run: python enzymes/verify_readme_claims.py
 
       - name: Check for hardcoded paths
         run: |
