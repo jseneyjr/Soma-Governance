@@ -10,7 +10,8 @@ prediction: Will fire when a commit touches code files but not documentation, or
 falsification: 0 findings in 20 sessions → prune
 target_paths:
 - README.md
-- docs/CHANGELOG.md
+- docs/**/*.md
+- docs/**/*.json
 - organs/*/SKILL.md
 - soma_cli/*.py
 - soma_mcp/*.py

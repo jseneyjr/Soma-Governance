@@ -1,6 +1,6 @@
 # Scripts Reference
 
-This document catalogs the 90 executable scripts and tools that power the Soma governance framework.
+This document catalogs the 96 executable scripts, tools, and SDK modules that power the Soma governance framework.
 
 ## Summary by Category
 
@@ -10,8 +10,9 @@ This document catalogs the 90 executable scripts and tools that power the Soma g
 | [Verification Scripts](#verification-scripts--python) | Python (`immune_system/verification/`) | 13 | Deterministic AST checkers, coverage tools, and adversarial verification |
 | [CLI Commands](#cli-commands--python-soma_cli) | Python & bash (`soma_cli/`, root) | 15 | User-facing commands and binary wrapper for the `soma` CLI |
 | [Install Scripts](#install-scripts--bash) | bash (`install/`, root) | 3 | Multi-platform installers, uninstaller, and root wrapper |
-| [Utility Scripts](#utility-scripts) | Python & bash (`enzymes/`, root) | 52 | Cell genetics, runtime engines, telemetry, and shared utilities |
-| **Total** | | **90** | |
+| [Utility Scripts](#utility-scripts) | Python & bash (`enzymes/`, root) | 53 | Cell genetics, runtime engines, telemetry, and shared utilities |
+| [SDK Modules](#sdk-modules--python-soma_sdk) | Python (`soma_sdk/`) | 5 | Canonical library for scoring, cell parsing, errors, and governance API |
+| **Total** | | **96** | |
 
 ---
 
@@ -91,7 +92,7 @@ These 3 bash scripts manage the installation and clean removal of Soma across de
 
 ## Utility Scripts
 
-These 52 scripts encompass the master pipeline orchestrator, evolutionary computation enzymes, runtime verification engines, telemetry scanners, and shared infrastructure libraries.
+These 53 scripts encompass the master pipeline orchestrator, evolutionary computation enzymes, runtime verification engines, telemetry scanners, and shared infrastructure libraries.
 
 ### 1. Master Pipeline Orchestrator (1 script)
 
@@ -99,7 +100,7 @@ These 52 scripts encompass the master pipeline orchestrator, evolutionary comput
 |:-------|:---------|:--------|
 | **`soma_run.py`** | `soma_run.py` | Master execution orchestrator connecting all Soma engines into a unified pipeline (Oracle Check -> Change Execution -> Outcome Verification -> Interoception -> Coherence). |
 
-### 2. Cell Evolutionary Lifecycle & Genetics (19 scripts)
+### 2. Cell Evolutionary Lifecycle & Genetics (20 scripts)
 
 | Script | Location | Purpose |
 |:-------|:---------|:--------|
@@ -120,8 +121,9 @@ These 52 scripts encompass the master pipeline orchestrator, evolutionary comput
 | **`cell_expiry.py`** | `enzymes/cell_expiry.py` | Audits governance cells against `expiry_days` and `expiry_sessions` limits, recommending or applying pruning. |
 | **`cell_enforce.py`** | `enzymes/cell_enforce.py` | Auto-generates mechanical pre-commit checks or runtime assertions for cells reaching enforcement tiers. |
 | **`cell_quorum.py`** | `enzymes/cell_quorum.py` | Quorum sensing detector identifying when ≥3 cells trigger simultaneously on the same diff, escalating review modes. |
-| **`bayesian_score.py`** | `enzymes/bayesian_score.py` | Centralized Laplace-smoothed Bayesian scoring utility providing a single source of truth for posterior calculations. |
+| **`bayesian_score.py`** | `enzymes/bayesian_score.py` | **Deprecated shim** — delegates to `soma_sdk.scoring`. Retained for backward compatibility; new callers should use `soma_sdk.scoring` directly. |
 | **`hgt_ribosome.py`** | `enzymes/hgt_ribosome.py` | Horizontal Gene Transfer ribosome engine translating domain-specific cells into universal engineering principles. |
+| **`verify_readme_claims.py`** | `enzymes/verify_readme_claims.py` | Pre-release claim verifier scanning documentation for quantitative assertions and cross-referencing against evidence ledgers. |
 
 ### 3. Runtime Verification, Integrity & Test-Time Compute (10 scripts)
 
@@ -169,6 +171,20 @@ These 52 scripts encompass the master pipeline orchestrator, evolutionary comput
 | **`soma_sleep.py`** | `enzymes/soma_sleep.py` | Memory consolidation engine executed at session close for offline evidence distillation and cell decay. |
 | **`escalation_sentinel.py`** | `enzymes/escalation_sentinel.py` | Python engine managing review mode configuration and steering rules for protocol escalation. |
 | **`inference_provider.py`** | `enzymes/inference_provider.py` | Inference provider abstraction layer with secure credential lookup and key management for AI-assisted enzymes. |
+
+---
+
+## SDK Modules — Python (`soma_sdk/`)
+
+These 5 modules provide the canonical Python library for programmatic governance access, replacing scattered inline implementations across enzymes.
+
+| Module | Location | Purpose |
+|:-------|:---------|:--------|
+| **`errors.py`** | `soma_sdk/errors.py` | Structured error hierarchy for governance operations (parse errors, validation failures, scoring exceptions). |
+| **`scoring.py`** | `soma_sdk/scoring.py` | Wilson interval confidence-bound scoring replacing Laplace-smoothed Bayesian posteriors for improved low-sample accuracy. |
+| **`cells.py`** | `soma_sdk/cells.py` | YAML frontmatter parser and cell file utilities — canonical `parse_cell_file()` used by all enzymes reading cell metadata. |
+| **`governance.py`** | `soma_sdk/governance.py` | Governance state API for querying active rules, cells, and configuration. |
+| **`analysis.py`** | `soma_sdk/analysis.py` | Analytical utilities for fitness landscape computation, trend analysis, and evidence aggregation. |
 
 ---
 

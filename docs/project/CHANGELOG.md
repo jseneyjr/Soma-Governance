@@ -10,6 +10,52 @@ This project uses [Semantic Versioning](https://semver.org/).
 
 ---
 
+## [0.74.0] — 2026-10-01 — "Foundation"
+
+### Added
+- `soma_sdk/errors.py`: Complete error hierarchy (SomaError → CellParseError, CellNotFoundError, CellPathTraversalError, FitnessError)
+- `soma_sdk/scoring.py`: Wilson-bounded fitness scoring (bayesian_posterior, laplace_score, _wilson_interval)
+- `soma_sdk/cells.py`: Canonical cell parser (parse_cell_file, write_cell_frontmatter, load_cell, _sanitize_cell_id)
+- `tests/test_bayesian_correctness.py`: 17 mathematical ground truth tests
+- `tests/test_sdk_behavioral.py`: 21 SDK public API tests
+- `tests/test_escaped_defects.py`: 12 antifragile behavior tests
+- `tests/test_cell_deps_behavioral.py`: 5 co-trigger detection tests
+- `tests/test_integration_lifecycle.py`: 8 end-to-end lifecycle tests
+- `tests/test_threshold_recalibration.py`: 12 boundary value tests
+
+### Changed
+- Migrated 27 enzyme/CLI files from inline YAML parsing to canonical `parse_cell_file()`
+- `CellFitness.bayesian()` upgraded from Wald approximation to Wilson score interval
+- `Cell.is_extinct` / `Cell.is_promotable` now use `laplace_score()` import
+- `enzymes/bayesian_score.py` converted to thin wrapper re-exporting from `soma_sdk.scoring`
+- `enzymes/cell_deps.py` added `--workspace` argument for testability
+
+### Metrics
+- Suite: 1359 passed, 5 skipped, 0 failed
+- Claims: 8 unlocked, 5 locked, 7 removed (20/20 verified)
+- Net code change: +1606/-353 lines across 41 files
+
+---
+
+## [0.73.0] — 2026-10-01 — "Stop the Bleeding"
+
+### Added
+- `docs/CLAIM_REGISTRY.json`: Machine-readable claim tracking (locked/unlocked/removed)
+- `enzymes/verify_readme_claims.py`: CI gate verifying README claims against tests
+- `tests/test_static_invariants.py::test_version_is_single_sourced`: Version sync invariant
+- `docs/ROADMAP.md`: Future features moved from README
+- `docs/RELEASE_WORKFLOW.md`: Codified gitflow release procedure
+
+### Changed
+- README stripped to earned claims only — removed 7 unverified claims
+- Fixed `exit 1` bug in pre-commit hook generation (cell_enforce.py)
+- Version synced across pyproject.toml and VERSION file
+
+### Removed
+- Unearned README claims: evolutionary computation, gate enforcement, < 1.0% waste rate, deterministic verification, inflated test count
+
+---
+
 ## [0.70.0] — 2026-10-01 — "Genesis"
 
 ### Added

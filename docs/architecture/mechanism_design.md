@@ -35,12 +35,13 @@
 |:---|:---|:---|
 | **Fitness scoring** | **Performance evaluation** | Measures rule effectiveness via precision × impact. The social choice function's proxy metric. |
 | **Confidence decay / telomeres** | **Sunset clause** | Rules expire unless actively reinforced. Prevents bureaucratic ossification — the accumulation of rules nobody enforces. |
-| **Selection / tournament** | **Competitive evaluation** | Diversity-preserving selection among candidate rules. Prevents monoculture in the policy landscape. |
-| **Crossover** | **Policy synthesis** | Merges high-performing rules from different contexts. Analogous to synthesizing regulations from multiple jurisdictions. |
+| **Selection / tournament** | **Competitive evaluation** | Diversity-preserving selection among candidate rules. Prevents monoculture in the policy landscape. *(Phase 3 — planned)* |
+| **Crossover** | **Policy synthesis** | Merges high-performing rules from different contexts. Analogous to synthesizing regulations from multiple jurisdictions. *(Phase 3 — planned)* |
 | **Metamorphosis** | **Regulatory promotion** | A rule earns a higher enforcement tier through demonstrated effectiveness. Advisory → mechanical → gate. |
 | **Horizontal transfer** | **Policy import** | Importing rules from external repositories with probation period. Analogous to adopting foreign regulatory frameworks with adaptation. |
 | **Pruning / extinction** | **Regulatory repeal** | Removing rules that fail to demonstrate effectiveness. The enforcement of sunset clauses. |
 | **Cytogenesis** | **Rule generation** | Scanning a codebase to generate jurisdiction-specific governance. Analogous to a regulatory agency surveying an industry and drafting targeted regulations. |
+| **Gate enforcement** | **Mechanical compliance** | Auto-generated pre-commit hooks and runtime assertions for rules reaching enforcement tiers. *(Phase 4 — planned: runtime assertion classes)* |
 
 ### Verification Architecture
 
@@ -61,6 +62,7 @@
 | **Trident** | Enhanced review | Features, refactors |
 | **Maelstrom** | Intensive review | Architecture, security |
 | **Tempest** | Maximum assurance | Catastrophic-risk changes, human gate required |
+| **Supercell** | Apex assurance | Adversarial Prosecutor/Defender pairs per prong, zero deferrals, mandatory re-validation |
 
 ### Review Prongs
 
@@ -100,7 +102,7 @@
    - Partially breaks the self-grading loop
 
 6. **Budget balance** (Token economics / ROI)
-   - Governance overhead (4,380 tokens/turn) is measurably less than prevented waste
+   - Governance overhead (~3,800 tokens/turn) is measurably less than prevented waste
    - The mechanism sustains itself without external subsidy
 
 ---

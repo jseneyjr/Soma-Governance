@@ -1,7 +1,7 @@
 # Soma: Adaptive Governance Framework
 
 **Author**: Nicholas Seney
-**Date**: September 2026
+**Date**: October 2026
 **License**: Apache 2.0
 
 ---
@@ -18,9 +18,9 @@ The framework introduces four contributions:
 
 2. **Cytogenesis**: A self-generating mechanism that scans codebases to produce repo-specific governance extensions ("cells"), including personas (Chloroplasts), persisted traps (Vacuoles), and boundaries (Cell Walls). Each cell carries a falsifiable hypothesis and automatic expiry conditions.
 
-3. **Evolutionary dynamics**: Fitness-based selection infrastructure. Generated extensions are scored on precision (`true_positives / total_triggers × impact_weight`), pruned when ineffective, and promoted to global rules when universally effective.
+3. **Evolutionary dynamics**: Fitness-based selection infrastructure. Generated extensions are scored using Wilson interval confidence bounds (`wilson_lower(true_positives, total_triggers) × impact_weight`), pruned when ineffective, and promoted to global rules when universally effective.
 
-4. **Independent validation and Tiered Enforcement**: Moves beyond self-reported fitness by incorporating independent outcome signals (CI failures, test regressions, runtime crashes) to break the agent-grades-itself loop. Cells use an enhanced fitness formula (`bayesian_mean × (1 - escaped_defect_rate) × tier_weight`) and earn promotion through three enforcement tiers (advisory → mechanical → gate) based on demonstrated defect prevention rate. Promoted cells auto-generate deterministic enforcement artifacts: pre-commit hooks for mechanical tier, runtime assertion classes for gate tier — completing the transition from prompt suggestion to code-level invariant.
+4. **Independent validation and Tiered Enforcement**: Moves beyond self-reported fitness by incorporating independent outcome signals (CI failures, test regressions, runtime crashes) to break the agent-grades-itself loop. Cells use an enhanced fitness formula (`bayesian_mean × (1 - escaped_defect_rate) × tier_weight`) and earn promotion through three enforcement tiers (advisory → mechanical → gate) based on demonstrated defect prevention rate. Promoted cells auto-generate deterministic enforcement artifacts (e.g., pre-commit hooks for mechanical tier). Gate-tier assertion classes are planned (Phase 4) but not yet shipped.
 
 The system's idle overhead is ~3,800 tokens per turn (~3.0% of a 128K context window). All telemetry enforces a strict privacy invariant: aggregate counts and scores only.
 
@@ -32,4 +32,4 @@ Preliminary analysis suggests this cell architecture transfers beyond code gover
 
 Evaluation baseline differences prevent causal claims; waste classification lacked multi-rater reliability; the full evolutionary cycle awaits end-to-end validation against human assessment. The fitness function optimizes for precision but ignores recall (false negatives). Four registered experiments address these gaps.
 
-**Keywords**: AI governance, evolutionary computation, software engineering, AI-assisted development, prompt engineering
+**Keywords**: AI governance, adaptive lifecycle management, software engineering, AI-assisted development, prompt engineering

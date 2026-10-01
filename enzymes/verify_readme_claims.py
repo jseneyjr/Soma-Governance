@@ -19,7 +19,7 @@ def main():
     script_dir = os.path.dirname(os.path.abspath(__file__))
     project_root = os.path.dirname(script_dir)
     
-    registry_path = os.path.join(project_root, 'docs', 'CLAIM_REGISTRY.json')
+    registry_path = os.path.join(project_root, 'docs', 'project', 'CLAIM_REGISTRY.json')
     readme_path = os.path.join(project_root, 'README.md')
     
     if not os.path.exists(registry_path):

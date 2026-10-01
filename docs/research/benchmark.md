@@ -18,7 +18,7 @@ Provide a reproducible benchmark so any team can measure Soma's impact and contr
    - Session duration
 
 ### Phase 2: Genesis
-4. Install Soma: `make install` or `bash install/install.sh <platform> --local` (Optionally integrate via `soma_mcp` MCP server)
+4. Install Soma: `pip install soma-governance` then `soma init` (or optionally integrate via `soma_mcp` MCP server)
 5. Run Genesis skill to generate initial cells
 6. If domain templates exist (`templates/`), verify they were seeded
 
@@ -28,7 +28,7 @@ Provide a reproducible benchmark so any team can measure Soma's impact and contr
    - Same metrics as baseline
    - Cell triggers (which cells fired)
    - Cell fitness scores
-   - New cells created (genesis, crossover, metamorphosis)
+   - New cells created (genesis, metamorphosis)
    - Cells pruned (extinction)
 
 ### Phase 4: Analysis
@@ -36,9 +36,10 @@ Provide a reproducible benchmark so any team can measure Soma's impact and contr
    - Waste rate trajectory (should decline)
    - FPSR trajectory (should improve)
    - Cell population dynamics:
-     - Total births, deaths, metamorphoses, crossovers
+     - Total births, deaths, metamorphoses
      - Survival rate (cells alive at session 30 / total created)
      - Generation depth (max lineage.generation)
+     - Crossover events *(Phase 3 — planned, not yet shipped)*
    - Fitness landscape (per-cell and aggregate)
 10. Generate fitness landscape visualization: `python3 enzymes/fitness_landscape.py`
 
@@ -54,7 +55,7 @@ Provide a reproducible benchmark so any team can measure Soma's impact and contr
 | Cells surviving | N/A | | |
 | Cells extinct | N/A | | |
 | Metamorphoses | N/A | | |
-| Crossovers | N/A | | |
+| Crossovers *(Phase 3)* | N/A | | |
 | Promotions | N/A | | |
 
 ## Domain Configurations
@@ -81,5 +82,5 @@ Provide a reproducible benchmark so any team can measure Soma's impact and contr
 For the strongest results, run the benchmark across 3+ domains and show:
 1. Cell population converges (fitness landscape stabilizes)
 2. Governance ROI is positive (waste Δ > 0)
-3. GA dynamics are observable (crossover + metamorphosis events)
+3. Lifecycle dynamics are observable (metamorphosis events; crossover is Phase 3 — planned)
 4. The mechanism transfers (same lifecycle works across domains)

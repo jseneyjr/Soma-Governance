@@ -558,3 +558,30 @@ Manually writing repo-specific governance cells created an onboarding hurdle; co
 - **Vacuole Candidate Pipeline**: All scanned patterns start as low-risk Vacuoles with a `proposed_type` frontmatter field, requiring empirical validation before promotion to higher enforcement tiers.
 - **Trident Hardening**: Hardened through a rigorous Trident review (Spores → Roots → Bedrock) against 9 critical vulnerabilities: path traversal containment, memory exhaustion guards (`open().read(limit)`), symlink checks, frontmatter injection sanitizers, and in-memory source caching (80% I/O reduction).
 - **Why it matters**: Enables instant, automated bootstrapping of repository-tailored immune systems from raw code architecture, combining zero-touch discovery with hardened, adversarial security.
+
+## Phase 71: Branch Sync & SDK Foundation (v0.71.0)
+
+Development workflows across multiple branches accumulated governance drift: cells, evidence ledgers, and rule configurations diverged silently between feature branches, causing merge-time governance conflicts and lost telemetry.
+
+- **Branch-Aware Sync**: `soma sync` now detects branch context and reconciles evidence ledgers across branches, preventing governance state from diverging during parallel development.
+- **SDK Foundation**: Introduced `soma_sdk/` as the canonical Python library for programmatic governance access — `errors.py` (structured error hierarchy), `scoring.py` (Wilson interval confidence bounds replacing Laplace smoothing), `cells.py` (YAML frontmatter parser and cell file utilities).
+- **Why it matters**: Established the stable API surface for external integrations and internal enzyme consolidation, replacing scattered inline implementations with a single tested library.
+
+## Phase 73: Stop the Bleeding (v0.73.0)
+
+Audit of documentation and METRICS.md revealed multiple unearned claims that had accumulated across phases — assertions about waste rates, operator maturity, and feature completeness that outpaced empirical validation.
+
+- **Claim Verification Enzyme**: `enzymes/verify_readme_claims.py` scans documentation for quantitative assertions and cross-references them against evidence ledgers, flagging overclaims before release.
+- **Overclaim Remediation**: Removed or flagged unvalidated claims (e.g., `< 1.0%` waste rate, GA operator maturity) across 8 documentation files.
+- **Scoring Migration**: `bayesian_score.py` deprecated as a standalone scorer; now delegates to `soma_sdk.scoring` which implements Wilson interval confidence bounds for improved low-sample accuracy.
+- **Why it matters**: Established the discipline that documentation claims require the same empirical backing as governance cells — unfalsified assertions are technical debt.
+
+## Phase 74: Foundation (v0.74.0)
+
+The cumulative cleanup of Phases 71–73 established a stable, honest baseline for the next evolutionary phase. Documentation, scoring, and SDK surfaces are now internally consistent.
+
+- **15 Genome Rules**: 4 new rules added (ci-green-before-release, core-change-protocol, no-pre-existing-excuse, hgt-resource-consolidation) bringing total from 11 to 15.
+- **Wilson Interval Scoring**: All cell fitness computations now use Wilson interval confidence bounds via `soma_sdk.scoring`, replacing the previous Laplace-smoothed Bayesian posterior.
+- **Supercell Review Mode**: Apex review intensity tier above Tempest — adversarial Prosecutor/Defender pairs per prong with zero allowed deferrals.
+- **1,359 Tests**: Test suite expanded from ~1,228 to 1,359, covering SDK, scoring, and claim verification pathways.
+- **Why it matters**: A framework that governs others must first govern itself. Foundation ensures every shipped claim is earned, every metric is measured, and every dependency is explicit.

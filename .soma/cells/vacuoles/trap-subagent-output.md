@@ -12,7 +12,7 @@ prediction: Will flag subagent deliverables that introduce machine-specific or u
 falsification: 0 findings in 10 sessions → prune
 target_paths:
 - genome/*.md
-- docs/*.md
+- docs/**/*.md
 - organs/**/*.md
 - .soma/cells/**/*.md
 triggers:
