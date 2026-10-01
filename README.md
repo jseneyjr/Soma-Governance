@@ -5,18 +5,17 @@
 [![Agent Skills](https://img.shields.io/badge/Agent_Skills-15-purple?style=flat-square)](#-agent-skills)
 [![Automation Scripts](https://img.shields.io/badge/Automation_Scripts-57-red?style=flat-square)](#%EF%B8%8F-automation-scripts)
 [![Adaptive Rules](https://img.shields.io/badge/Adaptive_Rules-5_Types-orange?style=flat-square)](#-adaptive-rules)
-[![Tests](https://img.shields.io/badge/Tests-1278-brightgreen?style=flat-square)](#testing--ci)
-[![Version](https://img.shields.io/badge/Version-0.71-informational?style=flat-square)](docs/CHANGELOG.md)
+[![Version](https://img.shields.io/badge/Version-0.73-informational?style=flat-square)](docs/CHANGELOG.md)
 [![Blog Post](https://img.shields.io/badge/Blog-dev.to-black?style=flat-square&logo=devdotto)](https://dev.to/nseney1/rules-that-cant-prove-themselves-die-adaptive-governance-for-ai-coding-agents-25bn)
 [![Blog Post 2](https://img.shields.io/badge/Blog_2-dev.to-black?style=flat-square&logo=devdotto)](https://dev.to/nseney1/your-ai-agents-rules-file-is-a-gentlemans-agreement-heres-what-happens-when-you-make-3df5)
 
 **Governance framework that makes AI coding agents trustworthy.**
 
-Soma makes AI agents trustworthy not by asking them to behave, but by making misbehavior structurally unprofitable. Built on evidence-based selection, adversarial verification, and adaptive rule evolution, it ensures AI coding agents remain grounded, efficient, and safe — then proves it.
+Soma makes AI agents trustworthy by providing observably traceable governance — evidence-based rule selection, AST analysis tools, and adaptive rule lifecycle management. Rules that stop proving themselves expire. Rules that keep proving themselves get promoted. Claims that don't match evidence are caught.
 
 > **The Problem**: Ungoverned AI coding agents waste significant portions of tokens in circular rework loops, hallucinated API calls, and broken assumptions. Static rule files (`.cursorrules`, `CLAUDE.md`) help but never adapt, and the agent can simply ignore them.
 >
-> **The Solution**: Soma reduces waste to under 1.0% in governed sessions while adding only ~4,380 tokens/turn idle overhead. Rules that stop proving themselves expire and are pruned. Rules that keep proving themselves get promoted. Claims that don't match evidence are caught.
+> **The Solution**: Soma provides JIT context injection, adaptive rule lifecycle, and pre-commit enforcement hooks to reduce waste. Rules are scored by Laplace-smoothed fitness and pruned when they stop proving value.
 
 > **Internal naming convention**: Soma uses a biological metaphor internally (genome, enzymes, organs, cells) to model rule evolution — see the codebase for details.
 
@@ -104,24 +103,6 @@ const grade = await gov.grade();
 const entropy = await gov.entropy();
 ```
 
-### Onboarding
-
-After installation, open your AI assistant in your project and prompt:
-
-> *Run the genesis organ to inspect this repository and seed governance cells.*
-
-Genesis scans your stack (languages, frameworks, dependencies) and creates tailored `.soma/cells/` in seconds. Domain templates (`templates/`) are auto-detected based on your project type.
-
-### Natural Language Rule Creation
-
-Create adaptive rules by describing your concern in plain English:
-
-```bash
-bash enzymes/cell_create.sh --from-description "PPO clip ratio must stay between 0.1 and 0.3"
-```
-
-Works with **any AI provider** — Gemini, Anthropic, OpenAI — or via MCP stdio (zero API key needed when running inside an AI agent). Set `--provider gemini|anthropic|openai|prompt-only` or configure `SOMA_INFERENCE_PROVIDER` in `soma.conf`.
-
 ---
 
 ## CLI Commands
@@ -135,8 +116,8 @@ All governance workflows are available via the `soma` CLI:
 | `soma status` | Show active rules, cell counts, and fitness stats |
 | `soma report` | Session report card with compliance metrics |
 | `soma doctor` | System health check — verifies installation integrity |
-| `soma verify` | Layer 1 deterministic verification on changed files (`--layer1-only` available) |
-| `soma checkpoint` | Deterministic quality checks (`--pre-commit` for git hooks) |
+| `soma verify` | Layer 1 AST analysis on changed files (`--layer1-only` available) |
+| `soma checkpoint` | Quality checks (`--pre-commit` for git hooks) |
 | `soma sync` | Reconcile evidence JSONL with cell frontmatter (`--dry-run`, `--json`) |
 | `soma oracle` | Cell health classification — healthy, noisy, expired, unobserved |
 | `soma promote` | Evaluate cells for promotion (vacuole → wall → genome). `--force --cell <id>` for manual |
@@ -146,7 +127,7 @@ All governance workflows are available via the `soma` CLI:
 # Quick quality check before committing
 soma checkpoint
 
-# Deterministic verification (Layer 1)
+# AST analysis (Layer 1)
 soma verify
 
 # Cell health dashboard
@@ -166,16 +147,11 @@ Soma models governance as a layered system of rules, skills, and automation. Eve
 ┌──────────────────────────────────────────────────────────────────────┐
 │  📐 CORE RULES (genome/)          15 Rules — inherited defaults      │
 │  🔧 AGENT SKILLS (organs/)       15 Skills — complex behaviors       │
-│  ⚙️  AUTOMATION (enzymes/)        58 Scripts — task automation        │
+│  ⚙️  AUTOMATION (enzymes/)        57 Scripts — task automation        │
 ├──────────────────────────────────────────────────────────────────────┤
-│  🛡️ REVIEW PROTOCOL              Two-Layer Verification              │
-│     Layer 1: Deterministic AST tools (ungameable)                    │
-│     Layer 2: Adversarial information-partitioned agents              │
+│  🛡️ VERIFICATION                  AST analysis tools                  │
+│     Layer 1: AST-based checks (import guards, complexity, coverage)  │
 ├──────────────────────────────────────────────────────────────────────┤
-│  🌲 REVIEW INTENSITY (Global) → Environmental Pressure Levels       │
-│     Breeze → Gale → Trident → Maelstrom → Tempest → Supercell       │
-│  🔍 ANALYTICAL PRONGS         → Multi-Perspective Analysis          │
-│     Spores → Mycelium → Roots → Thorns → Bedrock → Mulch            │
 │  📋 ADAPTIVE RULES (.soma/cells/) → Per-Repo Governance             │
 │     Vacuoles · Chloroplasts · Walls · Membranes · Plasmodesmata      │
 └──────────────────────────────────────────────────────────────────────┘
@@ -185,47 +161,9 @@ Soma models governance as a layered system of rules, skills, and automation. Eve
 |:------|:----------|:-----------------|
 | **Core Rules** | `genome/` | 15 rules — inherited behavioral defaults, rarely changed. |
 | **Agent Skills** | `organs/` | 15 skills — complex multi-step behaviors like adaptive-reviewer, genesis, security-audit. |
-| **Automation Scripts** | `enzymes/` | 58 scripts — task-specific automation (fitness scoring, rule creation, team sync, evidence pipeline). |
-| **Review Protocol** | `immune_system/` | Two-layer verification framework + mulch queue. The system's trust-but-verify layer. |
+| **Automation Scripts** | `enzymes/` | 57 scripts — task-specific automation (fitness scoring, rule creation, evidence pipeline). |
+| **Verification** | `immune_system/` | AST analysis tools for code checking. |
 | **Adaptive Rules** | `.soma/cells/` | Per-repo adaptive invariants. Generated, tested, evolved, or retired. |
-
----
-
-## 🛡️ Review Protocol — Two-Layer Verification
-
-Soma eliminates the "trust the agent" problem through deterministic tooling and adversarial information asymmetry. Layer 1 executes ungameable AST-based verification (persistence checks, call graph analysis, mutation testing, branch coverage, import guards), while Layer 2 deploys information-partitioned agents evaluated by a deterministic set-algebra arbiter. Execution logs are independently audited via the Transcript Verifier.
-
-For full architectural details and formal mechanism design analysis, see [MECHANISM_DESIGN.md](docs/MECHANISM_DESIGN.md).
-
----
-
-## 🛡️ Review Protocol (Review Modes)
-
-When code changes, the system mounts a review response. The intensity scales with risk:
-
-### Review Intensity Levels
-
-| Mode | Dispatches | Cost | Best For |
-|:-----|:----------:|:----:|:---------|
-| 🌱 Breeze | 2 | ~3-4k | Known bugs, renames |
-| 🌬️ Gale | 3-4 | ~4k | Quick reviews |
-| 🔱 Trident | 5-8 | ~8-12k | Features, refactors |
-| 🌊 Maelstrom | 7-12 | ~15-20k | Architecture, security |
-| ⛈️ Tempest | 8-12 | ~30-50k | Catastrophic risk |
-| 🌪️ Supercell | 8×N | iterative | Pre-release clean ship — adversarial Prosecutor/Defender pairs per prong, iterative until zero findings |
-
-### Analytical Prongs
-
-| Prong | Purpose | Budget |
-|:------|:--------|:-------|
-| 🍄 Spores | Width / heuristics survey | Lightweight |
-| 🍄 Mycelium | Blast radius impact analysis | Medium |
-| 🌿 Roots | Root-cause depth investigation | High |
-| 🌹 Thorns | Adversarial falsification | High |
-| 🪨 Bedrock | Final verification gate | Binary |
-| 🍂 Mulch | Learning extraction | Lightweight |
-
-> **Note**: An **escalation sentinel** runs dynamically in the PreInvocation lifecycle to evaluate diff sensitivity and auto-escalate the review mode.
 
 ---
 
@@ -261,7 +199,7 @@ Complex multi-step behaviors — each skill performs a specialized function.
 |:------|:--------|
 | [adaptive-reviewer](organs/adaptive-reviewer/SKILL.md) | Auto-escalating review orchestrator with subagent nesting |
 | [domain-researcher](organs/domain-researcher/SKILL.md) | Compiles verified external facts (wikis, API docs) |
-| [genesis](organs/genesis/SKILL.md) | 5-stage codebase onboarding: Canopy → Rings → Taproot → Lichen → Rule Generation |
+| [genesis](organs/genesis/SKILL.md) | Codebase onboarding: scans stack and seeds governance cells |
 | [governance-auditor](organs/governance-auditor/SKILL.md) | Mechanical per-rule PASS/FAIL compliance checks |
 | [incident-debug](organs/incident-debug/SKILL.md) | SRE: reproduce → isolate → diagnose → fix → verify |
 | [performance-audit](organs/performance-audit/SKILL.md) | Hot-path allocations, O(n²) patterns, GC pressure |
@@ -291,25 +229,27 @@ Adaptive rules are the per-repository governance layer — atomic, dynamically g
 
 ### Rule Lifecycle
 
-Adaptive rules operate on an evidence-based evolutionary lifecycle:
+Adaptive rules operate on an evidence-based lifecycle:
 
 ```text
-Generate → Score (Confidence Decay) → Adapt / Crossover → Differentiate → Prune / Retire → Promote
-   ↑                                                                                          |
-   └──────────────────────── External Fitness Signals (CI/CD, tests, metrics) ────────────────┘
+Generate → Score (Confidence Decay) → Adapt → Differentiate → Prune / Retire → Promote
+   ↑                                                                               |
+   └──────────────────────── External Fitness Signals (CI/CD, tests, metrics) ─────┘
 ```
 
-**Evolutionary operators**: Crossover (merges high-fitness rules), Tournament Selection (diversity-preserving), Differentiation (vacuoles harden into walls), Confidence Decay (confidence decays unless reinforced), Retirement (immediate eviction on excess false positives), Horizontal Transfer (cross-project sharing with probation), Version History (provenance tracking).
+**Lifecycle operators**: Differentiation (vacuoles harden into walls), Confidence Decay (confidence decays unless reinforced), Retirement (immediate eviction on excess false positives), Horizontal Transfer (cross-project sharing with probation), Version History (provenance tracking).
 
-**Research-grade analysis**: Bayesian Fitness (Beta-Binomial posterior with Laplace smoothing), Quorum Sensing (systemic multi-rule triggers), Coverage Maps, Governance Replay ("would today's rules have caught this bug?"), Counterfactual ROI, Adversarial Testing, Entropy Rate (fossilization detection), Report Card (A+ through F).
+**Fitness scoring**: Laplace-smoothed fitness scoring `(tp + 1) / (triggers + 2)` — cells are scored by true positive rate with smoothing for low-observation confidence. Higher-fitness cells earn promotion; low-fitness cells are pruned.
 
-**Tiered enforcement**: Rules earn their enforcement tier through demonstrated defect prevention — `advisory` (prompt injection) → `mechanical` (pre-commit block at 85%) → `gate` (runtime assertion at 95%). Escaped Defect Tracking from CI/tests/crashes provides ground truth that breaks the self-evaluation loop.
+**Tiered enforcement**: Rules earn their enforcement tier through demonstrated defect prevention — `advisory` (prompt injection) → `mechanical` (pre-commit block). Pre-commit hooks block commits matching cell target patterns when invariant violations are detected.
+
+> **Planned features** (not yet shipped): Crossover, tournament selection, quorum sensing, gate enforcement DSL. See [ROADMAP.md](docs/ROADMAP.md).
 
 ---
 
 ## ⚙️ Automation Scripts
 
-Soma includes 87 task-specific scripts driving rule lifecycles, verification, and evidence pipelines. See [SCRIPTS.md](docs/SCRIPTS.md) for full documentation.
+Soma includes 57 task-specific scripts driving rule lifecycles, verification, and evidence pipelines. See [SCRIPTS.md](docs/SCRIPTS.md) for full documentation.
 
 ---
 
@@ -337,42 +277,17 @@ Copy [`soma.conf.example`](install/soma.conf.example) → `soma.conf` to customi
 | **macOS** | Zsh / Bash | `make install` | `bash install/uninstall.sh` | ✅ | ✅ | ✅ |
 | **WSL** | Bash | `make install` | `bash install/uninstall.sh` | ✅ | ✅ | ✅ |
 | **Windows (Git Bash)** | Bash | `make install` | `bash install/uninstall.sh` | ✅ | ✅ | ✅ |
-| **Windows (PowerShell)** | PowerShell | `.\\install.ps1` | `.\\install\\uninstall.ps1` | ✅ | ✅ | ❌ |
-
-### Team Setup
-
-Soma supports team-level governance convergence via shared Git repositories:
-
-```bash
-bash enzymes/team_sync.sh push    # Sync local rules + metrics
-bash enzymes/team_sync.sh pull    # Pull rules from teammates
-```
-
-Configure `TEAM_REPO` and optionally `ORG_REPO` in `soma.conf` for multi-team hierarchies.
+| **Windows (PowerShell)** | PowerShell | `.\install.ps1` | `.\install\uninstall.ps1` | ✅ | ✅ | ❌ |
 
 ---
 
 ## How Soma Differs
 
-Soma replaces passive prompt files with active evolutionary governance: JIT context loading prevents bloat, adaptive cells trap repo-specific bugs, and two-layer verification eliminates self-grading.
+Soma replaces passive prompt files with active lifecycle-managed governance: JIT context loading prevents bloat, adaptive cells trap repo-specific bugs, and AST analysis catches violations deterministically.
 
-For academic research analysis and empirical findings, see [ABSTRACT.md](docs/ABSTRACT.md).
+For design analysis, see [ABSTRACT.md](docs/ABSTRACT.md).
 
 ---
-
-## Metrics
-
-- **Total System Idle Overhead**: ~4,380 tokens/turn
-- **Typical Load** (genome + 3 matched cells): ~4,013 tokens/turn
-- **Waste Rate**: < 1.0% in governed sessions (via Last Gasp & TTC Oracles)
-- **Calibrated Token Ratio**: 1.35 measured directly against Gemini API
-- **Verification Framework**: 1,278 tests across 30+ test files
-
-See [METRICS.md](docs/METRICS.md) for a complete system breakdown. See [BENCHMARK.md](docs/BENCHMARK.md) for the standardized governance effectiveness benchmark.
-
-## Design Principles
-
-Soma is built on empirical grounding, adversarial convergence, continuous validation, and hypothesis-driven governance. See [PHYLOGENY.md](docs/PHYLOGENY.md) for foundational design principles and evolutionary narrative.
 
 ## Testing & CI
 
@@ -384,39 +299,24 @@ make validate   # Shell syntax, Python compilation, JSON templates
 make doctor     # System health check
 ```
 
-The test suite contains **1,278 tests** across 30+ test files covering rule validation, Bayesian fitness scoring, AST invariants, and two-layer verification. See [CONTRIBUTING.md](docs/CONTRIBUTING.md) for test guidelines and execution instructions.
+See [CONTRIBUTING.md](docs/CONTRIBUTING.md) for test guidelines and execution instructions.
 
 ### CI/CD Pipeline
 
 GitHub Actions runs on `ubuntu-latest`, `macos-latest`, and `windows-latest`:
-- **Linux/macOS**: Shell syntax validation → Python compilation → pytest → hardcoded path audit → script count invariant (≥16) → privacy audit → dry-run install sweep (all 5 platforms)
+- **Linux/macOS**: Shell syntax validation → Python compilation → pytest → hardcoded path audit → script count invariant (≥16) → privacy audit → dry-run install sweep (all 5 platforms) → claim registry verification
 - **Windows**: PowerShell AST parsing → dry-run install with rule count assertion
 
-## Version History
+### Documentation Gating
 
-Soma has evolved across 50 measured phases, from manually written logic into a self-adapting governance framework:
+Every feature claim in this README is tracked in [`docs/CLAIM_REGISTRY.json`](docs/CLAIM_REGISTRY.json). A claim can only appear in README when:
+1. Its behavioral test suite exists and passes
+2. It has a Claim Registry entry with status `unlocked`
+3. The CI gate (`enzymes/verify_readme_claims.py`) confirms no regressions
 
-| Phases | Theme |
-|:-------|:------|
-| 1–5 | Prescriptive logic extraction and optimization |
-| 6–10 | Multi-lens scaling and autonomous orchestration |
-| 11–12 | Full dataset mapping and token census calibration |
-| 13 | **Rule Generation** — Local governance and adaptive rule creation |
-| 14 | **Natural Selection** — Evolutionary scaling, cross-repo speciation |
-| 15 | Team Topology & Clean Uninstaller |
-| 16 | Automated Workflows — CI/CD integration |
-| 17 | **Evolutionary Computation** — GA operators, confidence decay, metamorphosis, horizontal transfer |
-| 18 | **Research Integration** — Bayesian fitness, quorum sensing, coverage maps |
-| 19 | **Platform Grade** — Pre-commit hooks, report card, adversarial testing, entropy rate |
-| 20 | **SDK & AI-Assisted** — Python/npm SDKs, NL rule creation, counterfactual ROI |
-| 21 | **Tiered Enforcement** — Advisory → mechanical → gate promotion lifecycle |
-| 22 | **Soma Rebirth** — Naming unification, subagent scaling |
-| 23–25 | **TTC & JIT Context** — Last Gasp, TTC Oracles, zero-waste validation |
-| 26–29 | **Perception & Homeostasis** — Interoception, resilience engine, signal coherence |
-| 30 | **Two-Layer Verification** — Deterministic tools, adversarial pairing, transcript verification |
-| 31–50 | **Evidence-Based Governance** — Evidence pipeline, fitness ledger migration, cell expiry enforcement, oracle checkpoint, test hardening (tautological → behavioral), delegation verification, multi-platform support, 1,278 tests |
+Features that are planned but not yet shipped are listed in [ROADMAP.md](docs/ROADMAP.md).
 
-Read [PHYLOGENY.md](docs/PHYLOGENY.md) for the complete evolutionary narrative.
+---
 
 ## Documentation
 
@@ -424,25 +324,14 @@ Read [PHYLOGENY.md](docs/PHYLOGENY.md) for the complete evolutionary narrative.
 |:---------|:------------|
 | [**Blog Post**](https://dev.to/nseney1/rules-that-cant-prove-themselves-die-adaptive-governance-for-ai-coding-agents-25bn) | "Rules That Can't Prove Themselves Die" — full introduction |
 | [CHANGELOG](docs/CHANGELOG.md) | Release history |
+| [ROADMAP](docs/ROADMAP.md) | Planned features and their tracking status |
 | [PHYLOGENY](docs/PHYLOGENY.md) | Phase-by-phase evolutionary narrative |
 | [MECHANISM_DESIGN](docs/MECHANISM_DESIGN.md) | Formal mechanism design mapping |
-| [SCRIPTS](docs/SCRIPTS.md) | Full automation script catalog (87 scripts) |
-| [BENCHMARK](docs/BENCHMARK.md) | Reproducible governance effectiveness protocol |
+| [SCRIPTS](docs/SCRIPTS.md) | Full automation script catalog |
 | [METRICS](docs/METRICS.md) | Empirical measurement methodology |
 | [ABSTRACT](docs/ABSTRACT.md) | Research paper abstract |
 | [CONTRIBUTING](docs/CONTRIBUTING.md) | Contribution guidelines |
 | [Templates](templates/README.md) | Domain-specific rule template packs |
-
-## Next Steps
-
-- 🚀 **Try Soma**: `soma init --yes` and run `soma genesis` on your repository
-- 🔌 **MCP Server**: Add Soma to your agent's MCP config — zero API key needed
-- 📦 **Use the SDK**: `pip install soma-governance` or `npm install soma-governance`
-- 🔮 **NL Rule Creation**: `cell_create.sh --from-description "your concern here"`
-- 📊 **Report Card**: `soma report` for instant governance health
-- 📐 **Explore Templates**: Browse domain packs in [templates/](templates/README.md)
-- 📄 **Read the Research**: Review the [Abstract](docs/ABSTRACT.md) and [Phylogeny](docs/PHYLOGENY.md)
-- 🤝 **Contribute**: See [CONTRIBUTING.md](docs/CONTRIBUTING.md)
 
 ## Uninstalling
 

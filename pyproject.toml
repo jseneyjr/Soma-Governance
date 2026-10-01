@@ -40,7 +40,7 @@ ai = ["google-genai>=1.0"]
 gemini = ["google-genai>=1.0"]
 anthropic = ["anthropic>=0.30"]
 openai = ["openai>=1.0"]
-dev = ["pytest", "ruff"]
+dev = ["pytest", "ruff", "hypothesis", "coverage"]
 
 [project.urls]
 Homepage = "https://github.com/nseney1/Soma-Governance"

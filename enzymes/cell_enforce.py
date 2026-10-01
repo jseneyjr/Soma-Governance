@@ -76,9 +76,10 @@ if [ "$MATCHED" -eq 1 ]; then
     # Signal the cell
     SCRIPT_DIR="$(dirname "$0")/../../scripts"
     [ -f "$SCRIPT_DIR/cell_signal.sh" ] && bash "$SCRIPT_DIR/cell_signal.sh" "{name}" tp 2>/dev/null
+    exit 1  # Mechanical: block commit
 fi
 
-exit 1  # Mechanical: block commit
+exit 0  # No match: allow commit
 '''
     elif cell_type == 'membrane':
         check = f'''#!/bin/bash
@@ -107,9 +108,10 @@ if [ "$MATCHED" -eq 1 ]; then
     echo "\u26a0\ufe0f  [{name}] Membrane escalation triggered (mechanical enforcement)"
     echo "   Hypothesis: {hypothesis[:80]}"
     echo "   Recommend elevated review before merging."
+    exit 1  # Mechanical: block commit
 fi
 
-exit 1  # Mechanical: block commit
+exit 0  # No match: allow commit
 '''
     else:  # vacuole, chloroplast, etc.
         check = f'''#!/bin/bash
@@ -137,9 +139,10 @@ done <<< "$CHANGED_FILES"
 if [ "$MATCHED" -eq 1 ]; then
     echo "\U0001f50d  [{name}] Trap check triggered (mechanical enforcement)"
     echo "   Hypothesis: {hypothesis[:80]}"
+    exit 1  # Mechanical: block commit
 fi
 
-exit 1  # Mechanical: block commit
+exit 0  # No match: allow commit
 '''
     return check
 
