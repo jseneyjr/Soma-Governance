@@ -1,0 +1,51 @@
+# Soma Release Workflow (Gitflow)
+
+> Codified release procedure for phased governance releases.
+> Each phase follows this exact branch → PR → merge → tag → back-merge cycle.
+
+## Release Procedure
+
+```text
+develop ──→ release/v0.XX ──→ PR to main ──→ tag v0.XX.0 ──→ back-merge to develop
+```
+
+### Steps (execute in order)
+
+1. **Branch from develop**: `git checkout develop && git checkout -b release/v0.XX`
+2. **Commit changes**: Use conventional commits. Group logically (bug fix, docs, infrastructure).
+3. **Version bump checklist** — update ALL version sources:
+   - `pyproject.toml` → `version = "0.XX.0"`
+   - `VERSION` → `0.XX.0`
+   - `README.md` → version badge (if present)
+   - Run `pytest tests/test_static_invariants.py::test_version_is_single_sourced` to verify sync
+4. **Push branch**: `git push -u origin release/v0.XX`
+5. **Create PR**: `gh pr create --base main --head release/v0.XX --title "release(v0.XX): <summary>"`
+6. **Wait for CI**: All matrix jobs must pass before merge
+7. **Merge PR**: Via GitHub UI or `gh pr merge`
+8. **Tag release**: `git checkout main && git pull && git tag v0.XX.0 && git push origin v0.XX.0`
+9. **Back-merge to develop**: `git checkout develop && git merge main -m "sync: merge main back to develop after v0.XX" && git push origin develop`
+10. **Create GitHub release** (optional): `gh release create v0.XX.0 --title "v0.XX.0 — <Theme>" --notes "<release notes>"`
+
+## Phase → Version Mapping
+
+| Phase | Version | Theme |
+|:------|:--------|:------|
+| Phase 1 | v0.73 | Stop the Bleeding — README strip, hook fix, claim registry |
+| Phase 2 | v0.74 | Foundation — canonical parser, scoring unification, error handling |
+| Phase 3 | v0.75 | Advanced Features — credit assignment, mutation testing, crossover |
+| Phase 4 | v0.80 | Polish — gate enforcement, integrity, dogfooding activation |
+
+## Pre-Release Checklist
+
+Before creating a release PR, verify:
+- [ ] All phase verification gate items pass
+- [ ] `python3 enzymes/verify_readme_claims.py` passes
+- [ ] `pytest tests/` passes with 0 failures
+- [ ] Version synced across `pyproject.toml`, `VERSION`, and README badge
+- [ ] CHANGELOG updated (if exists)
+
+## Lessons Learned
+
+### v0.73
+- **VERSION file missed**: `pyproject.toml` was bumped but `VERSION` was not. The `test_version_is_single_sourced` invariant caught it in CI. Always use the version bump checklist above.
+- **Cherry-pick after merge**: If a fix is committed to the release branch after the PR is merged, cherry-pick to main rather than creating a new PR.
