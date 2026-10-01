@@ -677,6 +677,23 @@ def express(workspace: str, changed_files: list[str] | None = None, budget: int 
     for cell in matched:
         cell['_fitness_score'] = get_fitness_score(cell)
 
+    # Apply hot zone boost from bug registry (v0.85 antifragile loop)
+    try:
+        from soma_sdk.hot_zones import compute_cell_boost, load_report_from_workspace
+        hz_report = load_report_from_workspace(workspace)
+        if hz_report and (hz_report.active_file_zones or hz_report.active_pattern_zones):
+            for cell in matched:
+                fitness = cell.get('fitness', {})
+                tp = int(fitness.get('true_positives', 0)) if isinstance(fitness, dict) else 0
+                fp = int(fitness.get('false_positives', 0)) if isinstance(fitness, dict) else 0
+                outcome_count = tp + fp
+                boost = compute_cell_boost(cell, hz_report, outcome_count)
+                if boost > 0:
+                    cell['_fitness_score'] *= (1 + boost)
+                    cell['_hot_zone_boost'] = boost
+    except ImportError:
+        pass  # Graceful degradation
+
     # Stage 0: Mandatory invariants — walls and gate-tier cells always load
     mandatory = []
     candidates = []

@@ -3,6 +3,21 @@
 All notable changes to Soma are documented here.
 This project uses [Semantic Versioning](https://semver.org/).
 
+## [0.85.0] — 2026-10-01 — "Antifragile"
+
+### Added
+- **Hot Zone Engine** (`soma_sdk/hot_zones.py`): Pure-function module computing file heat and pattern heat from the bug registry. Cells covering historically-buggy files or recurring root cause categories receive a fitness score boost.
+- **Configurable thresholds** in `BUG_REGISTRY.json`: `file_heat_threshold` (default 2), `pattern_heat_threshold` (default 3), `max_file_boost` (0.5), `max_pattern_boost` (0.3), `min_outcomes_for_boost` (3).
+- 17 new tests in `tests/test_hot_zones.py` — threshold activation, cap enforcement, tag-to-category mapping, workspace integration.
+
+### Changed
+- `soma_mcp/jit_engine.py`: `express()` now applies hot zone boost after initial fitness scoring. Multiplicative formula ensures zero-scored cells stay at zero.
+
+### Design
+The antifragile loop: Bugs → Registry → Hot zones → Cell boost → Better governance → Fewer bugs → ♻️
+
+---
+
 ## [0.84.0] — 2026-10-01 — "Bug Ledger"
 
 ### Added

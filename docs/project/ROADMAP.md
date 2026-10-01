@@ -94,6 +94,12 @@ mtime-based in-memory cache for MCP hot path. Eliminates redundant disk I/O.
 **Status**: ✅ Shipped (v0.84)  
 Machine-parseable bug registry with verification enzyme and governance cell. Backfilled Bugs 1–5.
 
+## Phase 4.9 — v0.85 ✅ Shipped
+
+### Antifragile Hot Zones
+**Status**: ✅ Shipped (v0.85)  
+Hot zone engine feeds bug patterns into cell fitness scoring. Bugs make the system smarter.
+
 ## Research
 
 ### Antifragile Scaling
