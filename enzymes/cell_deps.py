@@ -8,9 +8,10 @@ def main():
     parser = argparse.ArgumentParser(description='Cell dependency graph: visualize co-trigger relationships')
     parser.add_argument('--format', choices=['text', 'mermaid'], default='text', help='Output format')
     parser.add_argument('--json', action='store_true', help='JSON output')
+    parser.add_argument('--workspace', type=str, default=None, help='Override workspace root')
     args = parser.parse_args()
     
-    workspace = resolve_workspace(__file__)
+    workspace = args.workspace if args.workspace else resolve_workspace(__file__)
     cells_dir = os.path.join(workspace, '.soma', 'cells')
     
     # Load all cells with target_paths
