@@ -78,3 +78,138 @@ class TestDemoteCLI:
         data = json.loads(output)
         assert "candidates" in data
         assert len(data["candidates"]) == 1
+
+    # ── --force / --cell tests ──────────────────────────────────────────
+
+    def test_force_demote_wall_to_vacuole(self, tmp_path, capsys):
+        """--force --cell should move wall to vacuoles/ and remove enforcement."""
+        from soma_cli.demote import run_demote
+
+        cells_dir = tmp_path / ".soma" / "cells"
+        walls_dir = cells_dir / "walls"
+        vacuoles_dir = cells_dir / "vacuoles"
+        walls_dir.mkdir(parents=True)
+        vacuoles_dir.mkdir(parents=True)
+
+        make_cell(str(walls_dir), "demo-wall", cell_type="wall", created_days_ago=30)
+        # Inject enforcement: gate into the cell (make_cell writes enforcement: advisory)
+        wall_file = walls_dir / "demo-wall.md"
+        content = wall_file.read_text()
+        content = content.replace("enforcement: advisory", "enforcement: gate")
+        wall_file.write_text(content)
+
+        args = argparse.Namespace(
+            force=True, cell="demo-wall", dry_run=False, json=False,
+            _project_root=tmp_path,
+        )
+        exit_code = run_demote(args)
+
+        assert exit_code == 0
+        assert not wall_file.exists(), "Old wall file should be removed"
+        target = vacuoles_dir / "demo-wall.md"
+        assert target.exists(), "Cell should be moved to vacuoles/"
+        new_content = target.read_text()
+        assert "type: vacuole" in new_content
+        assert "enforcement: gate" not in new_content
+
+    def test_force_demote_genome_to_wall(self, tmp_path, capsys):
+        """--force --cell should move genome cell to walls/ and add enforcement: gate."""
+        from soma_cli.demote import run_demote
+
+        genome_dir = tmp_path / "genome"
+        genome_dir.mkdir(parents=True)
+        cells_dir = tmp_path / ".soma" / "cells"
+        walls_dir = cells_dir / "walls"
+        walls_dir.mkdir(parents=True)
+
+        make_cell(str(genome_dir), "core-rule", cell_type="genome", created_days_ago=90)
+
+        args = argparse.Namespace(
+            force=True, cell="core-rule", dry_run=False, json=False,
+            _project_root=tmp_path,
+        )
+        exit_code = run_demote(args)
+
+        assert exit_code == 0
+        assert not (genome_dir / "core-rule.md").exists()
+        target = walls_dir / "core-rule.md"
+        assert target.exists(), "Cell should be moved to walls/"
+        new_content = target.read_text()
+        assert "type: wall" in new_content
+        assert "enforcement: gate" in new_content
+
+    def test_force_demote_vacuole_cannot_demote(self, tmp_path, capsys):
+        """Vacuole is minimum tier — should exit 1."""
+        from soma_cli.demote import run_demote
+
+        vacuoles_dir = tmp_path / ".soma" / "cells" / "vacuoles"
+        vacuoles_dir.mkdir(parents=True)
+
+        make_cell(str(vacuoles_dir), "bottom-cell", cell_type="vacuole", created_days_ago=10)
+
+        args = argparse.Namespace(
+            force=True, cell="bottom-cell", dry_run=False, json=False,
+            _project_root=tmp_path,
+        )
+        exit_code = run_demote(args)
+
+        assert exit_code == 1
+        output = capsys.readouterr().out
+        assert "minimum tier" in output
+
+    def test_force_demote_nonexistent_cell(self, tmp_path, capsys):
+        """Bad cell ID should exit 1."""
+        from soma_cli.demote import run_demote
+
+        (tmp_path / ".soma" / "cells").mkdir(parents=True)
+        (tmp_path / "genome").mkdir(parents=True)
+
+        args = argparse.Namespace(
+            force=True, cell="no-such-cell", dry_run=False, json=False,
+            _project_root=tmp_path,
+        )
+        exit_code = run_demote(args)
+
+        assert exit_code == 1
+        output = capsys.readouterr().out
+        assert "not found" in output
+
+    def test_force_demote_dry_run(self, tmp_path, capsys):
+        """--dry-run should not move files."""
+        from soma_cli.demote import run_demote
+
+        walls_dir = tmp_path / ".soma" / "cells" / "walls"
+        walls_dir.mkdir(parents=True)
+
+        make_cell(str(walls_dir), "dry-wall", cell_type="wall", created_days_ago=30)
+
+        args = argparse.Namespace(
+            force=True, cell="dry-wall", dry_run=True, json=False,
+            _project_root=tmp_path,
+        )
+        exit_code = run_demote(args)
+
+        assert exit_code == 0
+        # File should still be in its original location
+        assert (walls_dir / "dry-wall.md").exists()
+        # No file should appear in vacuoles/
+        vacuoles_dir = tmp_path / ".soma" / "cells" / "vacuoles"
+        assert not vacuoles_dir.exists() or not (vacuoles_dir / "dry-wall.md").exists()
+        output = capsys.readouterr().out
+        assert "Would demote" in output
+
+    def test_force_demote_requires_cell_flag(self, tmp_path, capsys):
+        """--force without --cell should exit 1."""
+        from soma_cli.demote import run_demote
+
+        (tmp_path / ".soma" / "cells").mkdir(parents=True)
+
+        args = argparse.Namespace(
+            force=True, cell=None, dry_run=False, json=False,
+            _project_root=tmp_path,
+        )
+        exit_code = run_demote(args)
+
+        assert exit_code == 1
+        output = capsys.readouterr().out
+        assert "--force requires --cell" in output

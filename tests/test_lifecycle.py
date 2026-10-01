@@ -311,3 +311,110 @@ class TestLifecycleBoundaries:
         assert len(candidates) == 1
         assert candidates[0]["cell_id"] == "noisy-5"
         assert candidates[0]["reason"] == "high_fp_rate"
+
+    def test_promotion_boundary_tp_rate_085_accepted(self, tmp_path):
+        """Exactly 0.85 tp_rate should promote (inclusive >=)."""
+        from immune_system.verification.lifecycle import evaluate_promotions
+
+        cells_dir = tmp_path / ".soma" / "cells" / "vacuoles"
+        cells_dir.mkdir(parents=True)
+        evidence_dir = tmp_path / ".soma" / "evidence"
+        evidence_dir.mkdir(parents=True)
+
+        make_cell(str(cells_dir), "tp-085-cell", cell_type="vacuole",
+                  created_days_ago=45)
+        # 20 triggers, 17 TP → tp_rate = 0.85
+        write_evidence(str(evidence_dir), "tp-085-cell", triggers=20, tp=17, fp=3)
+
+        candidates = evaluate_promotions(str(tmp_path))
+        assert len(candidates) == 1
+        assert candidates[0]["cell_id"] == "tp-085-cell"
+        assert candidates[0]["tp_rate"] == 0.85
+
+    def test_promotion_boundary_age_29_rejected(self, tmp_path):
+        """29 days old should NOT promote (need >=30)."""
+        from immune_system.verification.lifecycle import evaluate_promotions
+
+        cells_dir = tmp_path / ".soma" / "cells" / "vacuoles"
+        cells_dir.mkdir(parents=True)
+        evidence_dir = tmp_path / ".soma" / "evidence"
+        evidence_dir.mkdir(parents=True)
+
+        # created_days_ago=28 → actual age_days=29 (date truncation adds ~1 day)
+        make_cell(str(cells_dir), "age-29-cell", cell_type="vacuole",
+                  created_days_ago=28)
+        # Passes trigger and tp_rate checks
+        write_evidence(str(evidence_dir), "age-29-cell", triggers=25, tp=24, fp=1)
+
+        candidates = evaluate_promotions(str(tmp_path))
+        assert len(candidates) == 0
+
+    def test_promotion_boundary_age_30_accepted(self, tmp_path):
+        """Exactly 30 days old should promote."""
+        from immune_system.verification.lifecycle import evaluate_promotions
+
+        cells_dir = tmp_path / ".soma" / "cells" / "vacuoles"
+        cells_dir.mkdir(parents=True)
+        evidence_dir = tmp_path / ".soma" / "evidence"
+        evidence_dir.mkdir(parents=True)
+
+        make_cell(str(cells_dir), "age-30-cell", cell_type="vacuole",
+                  created_days_ago=30)
+        # Passes trigger and tp_rate checks
+        write_evidence(str(evidence_dir), "age-30-cell", triggers=25, tp=24, fp=1)
+
+        candidates = evaluate_promotions(str(tmp_path))
+        assert len(candidates) == 1
+        assert candidates[0]["cell_id"] == "age-30-cell"
+
+    def test_demotion_boundary_fp_rate_050_not_demoted(self, tmp_path):
+        """fp_rate exactly 0.50 should NOT demote (need >0.50)."""
+        from immune_system.verification.lifecycle import evaluate_demotions
+
+        cells_dir = tmp_path / ".soma" / "cells" / "walls"
+        cells_dir.mkdir(parents=True)
+        evidence_dir = tmp_path / ".soma" / "evidence"
+        evidence_dir.mkdir(parents=True)
+
+        make_cell(str(cells_dir), "fp-050-wall", cell_type="wall",
+                  created_days_ago=10)
+        # 10 triggers, 5 FP → fp_rate = 0.50 exactly
+        write_evidence(str(evidence_dir), "fp-050-wall", triggers=10, tp=5, fp=5)
+
+        candidates = evaluate_demotions(str(tmp_path))
+        assert len(candidates) == 0
+
+    def test_demotion_boundary_dormancy_89_not_demoted(self, tmp_path):
+        """89 days old with 0 triggers should NOT be demoted for dormancy (need >=90)."""
+        from immune_system.verification.lifecycle import evaluate_demotions
+
+        cells_dir = tmp_path / ".soma" / "cells" / "walls"
+        cells_dir.mkdir(parents=True)
+        evidence_dir = tmp_path / ".soma" / "evidence"
+        evidence_dir.mkdir(parents=True)
+
+        # created_days_ago=88 → actual age_days=89 (date truncation adds ~1 day)
+        make_cell(str(cells_dir), "dormant-89", cell_type="wall",
+                  created_days_ago=88)
+        # No evidence — dormancy proxy uses cell age (89 < 90)
+
+        candidates = evaluate_demotions(str(tmp_path))
+        assert len(candidates) == 0
+
+    def test_demotion_boundary_dormancy_90_demoted(self, tmp_path):
+        """90 days old with 0 triggers should be demoted for dormancy."""
+        from immune_system.verification.lifecycle import evaluate_demotions
+
+        cells_dir = tmp_path / ".soma" / "cells" / "walls"
+        cells_dir.mkdir(parents=True)
+        evidence_dir = tmp_path / ".soma" / "evidence"
+        evidence_dir.mkdir(parents=True)
+
+        make_cell(str(cells_dir), "dormant-90", cell_type="wall",
+                  created_days_ago=90)
+        # No evidence — dormancy proxy uses cell age (90 >= 90)
+
+        candidates = evaluate_demotions(str(tmp_path))
+        assert len(candidates) == 1
+        assert candidates[0]["cell_id"] == "dormant-90"
+        assert candidates[0]["reason"] == "dormant"

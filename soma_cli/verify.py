@@ -70,7 +70,7 @@ def resolve_target_files(args: argparse.Namespace) -> list[str]:
         repo_root = os.path.abspath(getattr(args, 'repo_root', None) or os.getcwd())
         safe_files = []
         for f in args.files:
-            resolved = os.path.normpath(os.path.join(repo_root, f))
+            resolved = os.path.realpath(os.path.join(repo_root, f))
             if not resolved.startswith(repo_root + os.sep) and resolved != repo_root:
                 print(f"Warning: skipping out-of-tree file: {f}", file=sys.stderr)
                 continue

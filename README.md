@@ -131,7 +131,7 @@ All governance workflows are available via the `soma` CLI:
 | `soma status` | Show active rules, cell counts, and fitness stats |
 | `soma report` | Session report card with compliance metrics |
 | `soma doctor` | System health check — verifies installation integrity |
-| `soma verify` | Two-layer verification on changed files (`--layer1-only` for fast mode) |
+| `soma verify` | Layer 1 deterministic verification on changed files (`--layer1-only` available) |
 | `soma checkpoint` | Deterministic quality checks (`--pre-commit` for git hooks) |
 | `soma oracle` | Cell health classification — healthy, noisy, expired, unobserved |
 | `soma promote` | Evaluate cells for promotion (vacuole → wall → genome). `--force --cell <id>` for manual |
@@ -141,7 +141,7 @@ All governance workflows are available via the `soma` CLI:
 # Quick quality check before committing
 soma checkpoint
 
-# Full verification (Layer 1 + Layer 2)
+# Deterministic verification (Layer 1)
 soma verify
 
 # Cell health dashboard
@@ -413,7 +413,7 @@ Recent academic studies ([arXiv:2602.11988](https://arxiv.org/abs/2602.11988), [
 
 ### 1. The Context Bloat Trap
 **The Research**: Injecting massive repository overviews into the context window does not improve task success, increases inference costs by over 20%, and leads to "brevity bias" or "context collapse" as the agent loses track of details over time.
-**Soma's Solution**: **JIT (Just-In-Time) Context Loading**. Soma does not load a monolithic rulebook. It only loads the specific adaptive rules related to the exact files the agent is currently touching. This keeps the token overhead at a flat ~4,380 idle tokens (3.4%), preventing context collapse.
+**Soma's Solution**: **JIT (Just-In-Time) Context Loading**. Soma does not load a monolithic rulebook. It only loads the specific adaptive rules related to the exact files the agent is currently touching. This keeps the token overhead at a flat ~3,800 idle tokens (measured at v0.50 baseline), preventing context collapse.
 
 ### 2. The Generic Advice Trap
 **The Research**: Context files are largely ignored by LLMs when they contain standard coding practices (which the models already know), and are only useful for "non-standard coding practices" or exact wiring/architectural quirks.
