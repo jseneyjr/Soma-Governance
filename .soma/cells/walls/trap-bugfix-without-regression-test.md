@@ -2,7 +2,7 @@
 id: trap-bugfix-without-regression-test
 domain: testing
 type: wall
-enforcement: mechanical
+enforcement: gate
 hypothesis: Bug fixes applied without corresponding regression tests will allow
   the same defect to recur, compounding fix-refix cycles
 prediction: Will fire when a commit fixes a bug (changes implementation code) but
