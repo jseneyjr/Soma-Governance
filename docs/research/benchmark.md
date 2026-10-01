@@ -39,7 +39,7 @@ Provide a reproducible benchmark so any team can measure Soma's impact and contr
      - Total births, deaths, metamorphoses
      - Survival rate (cells alive at session 30 / total created)
      - Generation depth (max lineage.generation)
-     - Crossover events *(Phase 3 — planned, not yet shipped)*
+     - Crossover events *(Phase 3 — shipped v0.75)*
    - Fitness landscape (per-cell and aggregate)
 10. Generate fitness landscape visualization: `python3 enzymes/fitness_landscape.py`
 
@@ -82,5 +82,5 @@ Provide a reproducible benchmark so any team can measure Soma's impact and contr
 For the strongest results, run the benchmark across 3+ domains and show:
 1. Cell population converges (fitness landscape stabilizes)
 2. Governance ROI is positive (waste Δ > 0)
-3. Lifecycle dynamics are observable (metamorphosis events; crossover is Phase 3 — planned)
+3. Lifecycle dynamics are observable (metamorphosis events; crossover is Phase 3 — shipped v0.75)
 4. The mechanism transfers (same lifecycle works across domains)

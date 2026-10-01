@@ -404,11 +404,11 @@ Heavy multi-prong reviews and full test executions created inner-loop friction, 
 
 - **Deterministic AST Gate**: `soma checkpoint` analyzes AST structure in milliseconds with zero LLM overhead, verifying assertion density, import integrity, and placeholder absence.
 - **Pre-Commit Integration**: Placed directly at the git boundary (`soma checkpoint --pre-commit`) to block malformed commits before code enters version control.
-- **Why it matters**: Shifted baseline hygiene from slow, probabilistic model review to ungameable deterministic linting, ensuring code satisfies structural invariants before higher-tier reviews trigger.
+- **Why it matters**: Shifted baseline hygiene from slow, probabilistic model review to observable deterministic linting, ensuring code satisfies structural invariants before higher-tier reviews trigger.
 
 ## Phase 17: Evolutionary Computation (v0.17.0)
 
-Formalized Soma's implicit genetic algorithm with explicit operators from evolutionary computation, immunology, and confidence theory:
+Formalized Soma's implicit genetic algorithm with explicit operators from adaptive governance, immunology, and confidence theory:
 
 - **GA Operators**: Crossover merges complementary cell hypotheses; tournament selection preserves population diversity during pruning.
 - **Confidence Telomere Shortening**: Cell fitness decays exponentially unless reinforced by new evidence. A cell with fitness 0.85 that hasn't triggered in 60 days decays to 0.21 — automatic extinction without hard expiry dates.
@@ -476,7 +476,7 @@ Agents faced with compounding errors experienced "computational anxiety"—patch
 
 Single-model verification suffered from confirmation bias and sycophancy: when an agent reviews its own code or shares context with the reviewer, it consistently overlooks its own blind spots.
 
-- **Layer 1 (Deterministic AST Tools)**: Objective analyzers (`persistence_checker`, `branch_coverage`, `import_guard`) gather ungameable boolean `ToolEvidence`.
+- **Layer 1 (Deterministic AST Tools)**: Objective analyzers (`persistence_checker`, `branch_coverage`, `import_guard`) gather observable boolean `ToolEvidence`.
 - **Layer 2 (Adversarial Information Partitioning)**: Isolates a Spec Agent (sees requirements) from a Code Agent (sees implementation), preventing collusion and shared context pollution.
 - **Deterministic Arbiter**: Verification adjudicator evaluating evidence across a 14-category risk taxonomy, issuing `SHIP`, `BLOCK`, or `REVISE` verdicts with zero LLM in the loop.
 - **Why it matters**: Implemented formal mechanism design: agreement between information-partitioned agents constitutes genuine proof rather than conversational momentum.
@@ -588,10 +588,10 @@ The cumulative cleanup of Phases 71–73 established a stable, honest baseline f
 
 ## Phase 75: Credit Where Due (v0.75.0)
 
-Phase 75 delivers the core evolutionary machinery promised in Phase 3, unlocking credit assignment, structured crossover, and tournament selection with comprehensive behavioral test coverage.
+**Credit Assignment** — `prob_round()` probabilistic rounding and `compute_credit_weights()` per-file scope narrowing with credit conservation. Signal provenance tracked in JSONL.
 
-- **Credit Assignment**: Scope-narrowed credit assignment with per-file credit conservation and probabilistic rounding (`prob_round()`), logging signal provenance in JSONL.
-- **Crossover Fix**: Fixed `target_paths` and tag inheritance in `cell_crossover.py` as deduplicated union of parent cells.
-- **Mutation Operators**: Added comparison swap, boolean swap, statement deletion, and return value mutation operators.
-- **1,465 Tests**: Expanded test suite to 1,465 tests with 8 new behavioral test suites covering credit assignment, crossover, mutation, and tournament selection.
-- **Why it matters**: Resolves evolutionary operator maturity debts, ensuring multi-parent rule synthesis, competitive selection, and credit attribution operate with rigorous behavioral guarantees.
+**Mutation Operators** — 4 new operators: comparison swap, boolean swap, statement deletion, return value mutation.
+
+**Crossover Fix** — `target_paths` and `tags` now merged as deduplicated union of both parents.
+
+**Test Suite** — 1,465 passed, 7 skipped, 0 failed. 3 Phase 3 claims unlocked.
