@@ -14,13 +14,17 @@ Usage:
     python cell_escaped_defects.py --report
 """
 import os, sys, argparse, glob, json, subprocess, math
-import yaml
+from pathlib import Path
 from datetime import datetime
 from datetime import timezone
 try:
     from soma_resolve import resolve_workspace
 except ImportError:
     resolve_workspace = None
+_project_root = str(Path(__file__).resolve().parent.parent)
+if _project_root not in sys.path:
+    sys.path.insert(0, _project_root)
+from soma_sdk.cells import parse_cell_file
 
 def match_glob(filepath, pattern):
     """Match a filepath against a glob pattern, supporting ** globstar."""
@@ -40,16 +44,12 @@ def load_cells(cells_dir):
         if os.path.basename(cell_file) == 'README.md':
             continue
         try:
-            with open(cell_file, encoding="utf-8") as f:
-                content = f.read()
-            if not content.startswith('---'):
-                continue
-            end_idx = content.find('---', 3)
-            fm = yaml.safe_load(content[3:end_idx])
+            fm, body = parse_cell_file(cell_file)
             fm['_path'] = cell_file
             fm['_name'] = os.path.splitext(os.path.basename(cell_file))[0]
-            fm['_body'] = content[end_idx + 3:].strip()
-            fm['_raw'] = content
+            fm['_body'] = body.strip()
+            with open(cell_file, encoding="utf-8") as f:
+                fm['_raw'] = f.read()
             cells.append(fm)
         except Exception:
             pass

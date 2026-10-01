@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Adversarial cell testing: probe cells for bypass vulnerabilities."""
 import os, sys, argparse, glob, json, subprocess
-import yaml
+from soma_sdk.cells import parse_cell_file
 from fnmatch import fnmatch
 from soma_resolve import resolve_workspace
 
@@ -11,13 +11,14 @@ def load_cell(cells_dir, cell_name):
     for cell_file in glob.glob(os.path.join(cells_dir, '**', '*.md'), recursive=True):
         if os.path.basename(cell_file) == 'README.md': continue
         if os.path.splitext(os.path.basename(cell_file))[0] == cell_name:
-            with open(cell_file, encoding="utf-8") as f: content = f.read()
-            if content.startswith('---'):
-                fm = yaml.safe_load(content[3:content.find('---', 3)])
-                fm['_name'] = cell_name
-                fm['_path'] = cell_file
-                fm['_body'] = content[content.find('---', 3)+3:].strip()
-                return fm
+            try:
+                fm, body = parse_cell_file(cell_file)
+            except Exception:
+                continue
+            fm['_name'] = cell_name
+            fm['_path'] = cell_file
+            fm['_body'] = body.strip()
+            return fm
     return None
 
 
@@ -165,9 +166,7 @@ def main():
         for cell_file in glob.glob(os.path.join(cells_dir, '**', '*.md'), recursive=True):
             if os.path.basename(cell_file) == 'README.md': continue
             try:
-                with open(cell_file, encoding="utf-8") as f: content = f.read()
-                if not content.startswith('---'): continue
-                fm = yaml.safe_load(content[3:content.find('---', 3)])
+                fm, _body = parse_cell_file(cell_file)
                 fm['_name'] = os.path.splitext(os.path.basename(cell_file))[0]
                 cells_to_test.append(fm)
             except Exception: pass

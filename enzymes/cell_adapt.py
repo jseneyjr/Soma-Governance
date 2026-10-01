@@ -12,6 +12,7 @@ import shutil
 from datetime import datetime
 from datetime import timezone
 from soma_resolve import resolve_workspace
+from soma_sdk.cells import parse_cell_file
 
 def main():
     parser = argparse.ArgumentParser(description="Adapt immune cells based on fitness.")
@@ -49,19 +50,8 @@ def main():
         if os.path.basename(file_path) == 'README.md':
             continue
         
-        with open(file_path, 'r', encoding="utf-8") as f:
-            content = f.read()
-        
-        if not content.startswith('---'):
-            continue
-        
-        end_idx = content.find('---', 3)
-        if end_idx == -1:
-            continue
-        
-        frontmatter = content[3:end_idx].strip()
         try:
-            metadata = yaml.safe_load(frontmatter)
+            metadata, body = parse_cell_file(file_path)
         except Exception:
             continue
             

@@ -24,7 +24,13 @@ import glob
 import fnmatch
 import yaml
 from datetime import datetime, timezone
+from pathlib import Path
 from soma_resolve import resolve_workspace
+
+_project_root = str(Path(__file__).resolve().parent.parent)
+if _project_root not in sys.path:
+    sys.path.insert(0, _project_root)
+from soma_sdk.cells import parse_cell_file
 
 
 
@@ -394,8 +400,19 @@ def capture_human_insight_signals(workspace):
 
 # ── Frontmatter Parser ────────────────────────────────────────────────
 
-def _parse_frontmatter(content):
-    """Parse YAML frontmatter robustly using pyyaml."""
+def _parse_frontmatter(content, filepath=None):
+    """Parse YAML frontmatter robustly using parse_cell_file.
+
+    When *filepath* is provided, delegates to the canonical parser.
+    Falls back to inline parsing when only raw *content* is available.
+    """
+    if filepath is not None:
+        try:
+            fm, _body = parse_cell_file(filepath)
+            return fm
+        except Exception:
+            return {}
+    # Fallback: parse from raw content string
     if not content.startswith('---'):
         return {}
     end = content.find('---', 3)
@@ -446,9 +463,7 @@ def match_cells_to_changes(workspace, changed_files):
         if os.path.basename(cell_file) == 'README.md':
             continue
         try:
-            with open(cell_file, 'r', encoding='utf-8') as f:
-                content = f.read()
-            fm = _parse_frontmatter(content)
+            fm = _parse_frontmatter(None, filepath=cell_file)
             target_paths = fm.get('target_paths', [])
             if isinstance(target_paths, str):
                 target_paths = [target_paths]
@@ -579,15 +594,16 @@ def update_cell_fitness(workspace, fitness_signals):
         fpath = sig['_path']
         signal = sig['signal']
         try:
+            try:
+                fm, _body = parse_cell_file(fpath)
+            except Exception:
+                continue
+
+            # Re-read raw content for the write path below
             with open(fpath, 'r', encoding='utf-8') as f:
                 content = f.read()
-
-            if not content.startswith('---'): continue
             end = content.find('---', 3)
             if end == -1: continue
-            
-            fm_text = content[3:end].strip()
-            fm = yaml.safe_load(fm_text) or {}
 
             # Normalize fitness to a dict.
             #

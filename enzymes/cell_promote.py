@@ -8,8 +8,14 @@ import time
 import yaml
 from datetime import datetime
 from datetime import timezone
+from pathlib import Path
 from bayesian_score import bayesian_score
 from soma_resolve import resolve_workspace
+
+_project_root = str(Path(__file__).resolve().parent.parent)
+if _project_root not in sys.path:
+    sys.path.insert(0, _project_root)
+from soma_sdk.cells import parse_cell_file
 
 DECAY_FACTOR = 0.95  # Multiply counts by this each application; ~20-session memory window
 
@@ -128,20 +134,15 @@ def main():
         
         for file_path in cell_files:
             if os.path.basename(file_path) == 'README.md': continue
+            try:
+                metadata, _body = parse_cell_file(file_path)
+            except Exception: continue
+            
+            # Re-read raw content for the write path below (tier changes, decay persistence)
             with open(file_path, 'r', encoding='utf-8') as f: content = f.read()
-            if not content.startswith('---'): continue
             end_idx = content.find('---', 3)
             if end_idx == -1: continue
-            
-            # Strip the delimiter newlines: content[3:end_idx] is "\n<yaml>\n",
-            # so split('\n') would yield a leading and a trailing empty element.
-            # Appending a key after the trailing empty element produced
-            # "enforcement: mechanical---" with no newline, which makes
-            # common.sh:strip_frontmatter (matching /^---$/) swallow the body.
             frontmatter_str = content[3:end_idx].strip('\n')
-            try:
-                metadata = yaml.safe_load(frontmatter_str.strip())
-            except Exception: continue
             
             cell_name = os.path.basename(file_path)
             cell_base = os.path.splitext(cell_name)[0]
@@ -251,13 +252,8 @@ def main():
         cell_files = glob.glob(os.path.join(cells_dir, '**', '*.md'), recursive=True)
         for file_path in cell_files:
             if os.path.basename(file_path) == 'README.md': continue
-            with open(file_path, 'r', encoding='utf-8') as f: content = f.read()
-            if not content.startswith('---'): continue
-            end_idx = content.find('---', 3)
-            if end_idx == -1: continue
-            
             try:
-                metadata = yaml.safe_load(content[3:end_idx].strip())
+                metadata, _body = parse_cell_file(file_path)
             except Exception: continue
             
             fitness = normalize_fitness(metadata)

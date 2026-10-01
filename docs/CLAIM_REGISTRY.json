@@ -53,20 +53,21 @@
     },
     "claim_bayesian_fitness": {
       "phase": 2,
-      "status": "locked",
+      "status": "unlocked",
       "readme_text": "Wilson-bounded fitness scoring with credible intervals",
       "required_tests": [
-        "tests/test_bayesian_correctness.py::test_wilson_interval_known_values",
-        "tests/test_bayesian_correctness.py::test_wilson_interval_edge_cases"
+        "tests/test_bayesian_correctness.py::TestWilsonInterval",
+        "tests/test_bayesian_correctness.py::TestBayesianPosterior",
+        "tests/test_threshold_recalibration.py::TestWilsonBoundaries"
       ]
     },
     "claim_canonical_parser": {
       "phase": 2,
-      "status": "locked",
+      "status": "unlocked",
       "readme_text": "Single canonical cell parser for all tools",
       "required_tests": [
-        "tests/test_sdk_behavioral.py::test_parse_cell_file_roundtrip",
-        "tests/test_sdk_behavioral.py::test_parse_cell_file_error_handling"
+        "tests/test_sdk_behavioral.py::TestParseCellFile",
+        "tests/test_integration_lifecycle.py::TestCellLifecycle"
       ]
     },
     "claim_credit_assignment": {

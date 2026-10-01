@@ -2,6 +2,7 @@
 import os, sys, argparse, glob, json
 from datetime import datetime, timedelta
 from soma_resolve import resolve_workspace
+from soma_sdk.cells import parse_cell_file
 
 def main():
     parser = argparse.ArgumentParser(description='Cross-session governance trends dashboard')
@@ -43,16 +44,13 @@ def main():
     total_cells = 0
     cell_types = {}
     if os.path.isdir(cells_dir):
-        import yaml
         for cell_file in glob.glob(os.path.join(cells_dir, '**', '*.md'), recursive=True):
             if os.path.basename(cell_file) == 'README.md': continue
             total_cells += 1
             try:
-                with open(cell_file, encoding="utf-8") as f: content = f.read()
-                if content.startswith('---'):
-                    fm = yaml.safe_load(content[3:content.find('---', 3)])
-                    ct = fm.get('type', 'unknown')
-                    cell_types[ct] = cell_types.get(ct, 0) + 1
+                fm, _body = parse_cell_file(cell_file)
+                ct = fm.get('type', 'unknown')
+                cell_types[ct] = cell_types.get(ct, 0) + 1
             except Exception: pass
     
     if args.json:

@@ -3,31 +3,26 @@ import argparse
 import glob
 import json
 import os
+import sys
 from datetime import datetime
 from datetime import timezone
+from pathlib import Path
 
-import yaml
-from bayesian_score import bayesian_score
+from soma_sdk.scoring import bayesian_score, bayesian_posterior
 from soma_resolve import resolve_workspace
+
+_project_root = str(Path(__file__).resolve().parent.parent)
+if _project_root not in sys.path:
+    sys.path.insert(0, _project_root)
+from soma_sdk.cells import parse_cell_file
 
 
 def bayesian_fitness(tp, fp, confidence=0.90):
-    """Beta-Binomial posterior with Jeffrey's prior."""
-    a = tp + 0.5
-    b = fp + 0.5
-    mean = a / (a + b)
-    import math
-    std = math.sqrt((a * b) / ((a + b) ** 2 * (a + b + 1)))
-    z = 1.645
-    lower = max(0, mean - z * std)
-    upper = min(1, mean + z * std)
-    certainty = 'low' if (tp + fp) < 5 else 'medium' if (tp + fp) < 20 else 'high'
-    return {
-        'mean': round(mean, 4),
-        'lower_90': round(lower, 4),
-        'upper_90': round(upper, 4),
-        'certainty': certainty
-    }
+    """Wilson-bounded posterior with Jeffrey's prior.
+
+    Delegates to soma_sdk.scoring.bayesian_posterior.
+    """
+    return bayesian_posterior(tp=tp, fp=fp, confidence=confidence)
 
 def antifragile_bonus(metadata):
     """Cells gain +5% fitness per survived high-intensity review."""
@@ -87,19 +82,8 @@ def main():
         if os.path.basename(file_path) == 'README.md':
             continue
         
-        with open(file_path, 'r', encoding='utf-8') as f:
-            content = f.read()
-        
-        if not content.startswith('---'):
-            continue
-        
-        end_idx = content.find('---', 3)
-        if end_idx == -1:
-            continue
-        
-        frontmatter = content[3:end_idx].strip()
         try:
-            metadata = yaml.safe_load(frontmatter)
+            metadata, _body = parse_cell_file(file_path)
         except Exception:
             continue
         

@@ -15,6 +15,7 @@ from datetime import datetime, timezone
 import yaml
 
 from soma_cli import resolve_root
+from soma_sdk.cells import parse_cell_file
 
 
 def aggregate_evidence(evidence_dir: str) -> dict[str, dict]:
@@ -101,16 +102,7 @@ def sync_frontmatter(
             continue
 
         try:
-            with open(cell_file, "r", encoding="utf-8") as f:
-                content = f.read()
-
-            if not content.startswith("---"):
-                continue
-            end = content.find("---", 3)
-            if end == -1:
-                continue
-
-            fm = yaml.safe_load(content[3:end]) or {}
+            fm, body = parse_cell_file(cell_file)
             cid = fm.get(
                 "id", os.path.splitext(os.path.basename(cell_file))[0]
             )
@@ -161,7 +153,6 @@ def sync_frontmatter(
                     fm, sort_keys=False, default_flow_style=False,
                     allow_unicode=True,
                 )
-                body = content[end + 3:].lstrip()
                 new_content = f"---\n{new_fm}---\n{body}"
 
                 with open(cell_file, "w", encoding="utf-8") as f:

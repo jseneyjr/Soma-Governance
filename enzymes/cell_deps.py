@@ -1,16 +1,17 @@
 #!/usr/bin/env python3
 import os, sys, argparse, glob
-import yaml
 from fnmatch import fnmatch
 from soma_resolve import resolve_workspace
+from soma_sdk.cells import parse_cell_file
 
 def main():
     parser = argparse.ArgumentParser(description='Cell dependency graph: visualize co-trigger relationships')
     parser.add_argument('--format', choices=['text', 'mermaid'], default='text', help='Output format')
     parser.add_argument('--json', action='store_true', help='JSON output')
+    parser.add_argument('--workspace', type=str, default=None, help='Override workspace root')
     args = parser.parse_args()
     
-    workspace = resolve_workspace(__file__)
+    workspace = args.workspace if args.workspace else resolve_workspace(__file__)
     cells_dir = os.path.join(workspace, '.soma', 'cells')
     
     # Load all cells with target_paths
@@ -18,9 +19,7 @@ def main():
     for cell_file in glob.glob(os.path.join(cells_dir, '**', '*.md'), recursive=True):
         if os.path.basename(cell_file) == 'README.md': continue
         try:
-            with open(cell_file, encoding="utf-8") as f: content = f.read()
-            if not content.startswith('---'): continue
-            fm = yaml.safe_load(content[3:content.find('---', 3)])
+            fm, _body = parse_cell_file(cell_file)
             cells.append({
                 'name': os.path.splitext(os.path.basename(cell_file))[0],
                 'type': fm.get('type', ''),

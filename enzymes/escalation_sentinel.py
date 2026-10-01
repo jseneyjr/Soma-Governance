@@ -6,6 +6,12 @@ import json
 import yaml
 import shutil
 from datetime import datetime
+from pathlib import Path
+
+_project_root = str(Path(__file__).resolve().parent.parent)
+if _project_root not in sys.path:
+    sys.path.insert(0, _project_root)
+from soma_sdk.cells import parse_cell_file
 
 def set_review_mode(workspace, mode):
     conf_path = os.path.join(workspace, "steering.conf")
@@ -23,18 +29,12 @@ def set_review_mode(workspace, mode):
                 f.write(line)
     print(f"[Sentinel] Escalated REVIEW_MODE to {mode}")
 
-def get_frontmatter(content):
-    if not content.startswith('---'):
-        return None, content
-    end_idx = content.find('---', 3)
-    if end_idx == -1:
-        return None, content
-    frontmatter = content[3:end_idx].strip()
+def get_frontmatter(filepath):
     try:
-        metadata = yaml.safe_load(frontmatter)
-        return metadata, content[end_idx+3:]
+        metadata, body = parse_cell_file(filepath)
+        return metadata, body
     except Exception:
-        return None, content
+        return None, None
 
 def write_frontmatter(filepath, metadata, body):
     with open(filepath, 'w', encoding="utf-8") as f:
@@ -64,10 +64,7 @@ def main():
 
     for fpath in queued_files:
         filename = os.path.basename(fpath)
-        with open(fpath, 'r', encoding="utf-8") as f:
-            content = f.read()
-            
-        metadata, body = get_frontmatter(content)
+        metadata, body = get_frontmatter(fpath)
         if not metadata:
             continue
             

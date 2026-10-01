@@ -9,7 +9,7 @@ from pathlib import Path
 
 from soma_cli import resolve_root, sanitize_display
 
-import yaml
+from soma_sdk.cells import parse_cell_file
 
 
 def _repo_root(args: argparse.Namespace) -> Path:
@@ -22,29 +22,16 @@ def _project_root(args: argparse.Namespace) -> Path:
     return resolve_root(args)
 
 
-def _parse_frontmatter(content: str) -> dict:
-    """Extract YAML frontmatter if present.
+def _parse_frontmatter(filepath: str) -> dict:
+    """Extract YAML frontmatter from a cell file using the canonical parser.
 
-    Caps input at 16KB and rejects YAML alias patterns to prevent
-    Billion Laughs (anchor bomb) attacks.
+    Falls back to empty dict on any error.
     """
-    MAX_FRONTMATTER = 16_384
-    stripped = content.lstrip()
-    if stripped.startswith("---"):
-        end = stripped.find("---", 3)
-        if end != -1 and end <= MAX_FRONTMATTER:
-            fm_text = stripped[3:end]
-            # Reject YAML alias/anchor patterns that could cause
-            # exponential expansion (Billion Laughs attack)
-            if '&' in fm_text and '*' in fm_text:
-                return {}
-            try:
-                fm = yaml.safe_load(fm_text)
-                if isinstance(fm, dict):
-                    return fm
-            except Exception:
-                pass
-    return {}
+    try:
+        fm, _body = parse_cell_file(filepath)
+        return fm
+    except Exception:
+        return {}
 
 
 def _parse_created_date(created_val) -> date | None:
@@ -180,7 +167,7 @@ def run_status(args: argparse.Namespace) -> int:
         except Exception:
             content = ""
         total_chars += len(content)
-        fm = _parse_frontmatter(content)
+        fm = _parse_frontmatter(str(f))
         rule_name = sanitize_display(str(fm.get("id") or f.stem))
         triggers = trigger_counts.get(rule_name, trigger_counts.get(f.stem, 0))
         all_rules.append({
@@ -196,7 +183,7 @@ def run_status(args: argparse.Namespace) -> int:
         except Exception:
             content = ""
         total_chars += len(content)
-        fm = _parse_frontmatter(content)
+        fm = _parse_frontmatter(str(f))
         rule_name = sanitize_display(str(fm.get("id") or f.stem))
         triggers = trigger_counts.get(rule_name, trigger_counts.get(f.stem, 0))
         expiry_str = _format_adaptive_expiry(fm.get("created"), fm.get("expiry_days"))

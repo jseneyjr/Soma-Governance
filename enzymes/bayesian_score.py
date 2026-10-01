@@ -1,20 +1,18 @@
-"""Shared Bayesian scoring utility for Soma v0.30.
+"""Shared Bayesian scoring utility for Soma.
 
-Single source of truth for the Laplace-smoothed posterior mean.
-All enzymes and the JIT engine should import from here instead of
-re-implementing the formula inline.
+DEPRECATED: This module now delegates to soma_sdk.scoring.
+All new code should import directly from soma_sdk.scoring.
+
+Kept as a thin wrapper for backward compatibility with enzymes
+that import `from bayesian_score import bayesian_score`.
 """
 from __future__ import annotations
 
+import sys
+from pathlib import Path
 
-def bayesian_score(tp: int, triggers: int, impact_weight: float = 1.0) -> float:
-    """Laplace-smoothed Bayesian posterior mean: Beta(tp+1, fp+1).
+_project_root = str(Path(__file__).resolve().parent.parent)
+if _project_root not in sys.path:
+    sys.path.insert(0, _project_root)
 
-    Returns (tp + 1) / (triggers + 2) * impact_weight.
-
-    Properties:
-    - Zero triggers → 0.5 * impact_weight (maximally uncertain)
-    - Converges to raw tp/triggers as sample size grows
-    - Always in [0, impact_weight] when tp <= triggers
-    """
-    return ((int(tp) + 1) / (int(triggers) + 2)) * float(impact_weight)
+from soma_sdk.scoring import bayesian_score, bayesian_posterior, laplace_score  # noqa: F401, E402
