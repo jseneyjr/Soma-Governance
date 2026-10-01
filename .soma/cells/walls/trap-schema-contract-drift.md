@@ -1,8 +1,8 @@
 ---
 id: trap-schema-contract-drift
 domain: correctness
-type: vacuole
-enforcement: advisory
+type: wall
+enforcement: blocking
 promotion_threshold: 0.85
 demotion_threshold: 0.3
 hypothesis: JSONL producer/consumer pairs in separate enzyme files use mismatched
@@ -13,6 +13,8 @@ falsification: 0 findings in 10 sessions → prune
 target_paths:
 - enzymes/*.py
 - soma_mcp/*.py
+- immune_system/**/*.py
+- soma_cli/*.py
 triggers:
 - enzyme_modification
 - pipeline_change
@@ -39,3 +41,7 @@ file and verify field names match.
 Known incident: `fitness_updater.py` emitted `{triggered_at}` but
 `oracle_checkpoint.py` consumed `{triggered}` — 100% of records silently
 dropped, rendering the entire fitness loop inoperative.
+
+Supercell C1 incident: `soma_mcp/tools.py` wrote outcomes to `.soma/outcomes.jsonl`
+with `{cells_used: [...]}` while `lifecycle.py` read from `.soma/evidence/outcomes.jsonl`
+with `{cell_id: str}` — 100% of MCP-reported outcomes silently ignored.

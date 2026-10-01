@@ -94,16 +94,44 @@ def _check_assertion_density(root: Path) -> list[dict]:
         # Only check actual test files, not conftest.py or helper modules
         if not tf.name.startswith("test_"):
             continue
+
+        # Prefer AST-based checker from quality_gate (handles self.assert*,
+        # pytest.raises, and ignores comments/strings)
+        try:
+            from immune_system.verification.quality_gate import check_assertion_density
+            evidence = check_assertion_density(str(tf))
+            if not evidence.verdict:
+                issues.append({
+                    "check": "assertion_density",
+                    "file": str(tf.relative_to(root)),
+                    "message": f"Low assertion density in {tf.name}: {evidence.detail}",
+                })
+            continue
+        except Exception:
+            pass
+
+        # Fallback: line-based substring matching (skip comment lines)
         try:
             content = tf.read_text(encoding="utf-8", errors="replace")
         except OSError:
             continue
-        # Count assert statements (assert keyword or pytest.raises)
-        has_assertion = (
-            "assert " in content
-            or "assert(" in content
-            or "pytest.raises" in content
-        )
+        has_assertion = False
+        for line in content.splitlines():
+            stripped = line.lstrip()
+            if stripped.startswith("#"):
+                continue
+            if (
+                "assert " in stripped
+                or "assert(" in stripped
+                or "pytest.raises" in stripped
+                or ".assertEqual" in stripped
+                or ".assertTrue" in stripped
+                or ".assertFalse" in stripped
+                or ".assertRaises" in stripped
+                or ".assertIn" in stripped
+            ):
+                has_assertion = True
+                break
         if not has_assertion:
             issues.append({
                 "check": "assertion_density",

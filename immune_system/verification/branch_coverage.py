@@ -120,10 +120,10 @@ def _run_trace_fallback(test_file, target_file, target_dir, tmpdir):
     with open(trace_script, "w") as f:
         f.write(
             _TRACE_SCRIPT_TEMPLATE.format(
-                test_file=test_file,
-                target_file=target_file,
-                target_dir=target_dir,
-                results_file=results_file,
+                test_file_repr=repr(test_file),
+                target_file_repr=repr(target_file),
+                target_dir_repr=repr(target_dir),
+                results_file_repr=repr(results_file),
             )
         )
 
@@ -150,14 +150,14 @@ import trace
 
 # Run pytest with tracing
 tracer = trace.Trace(count=True, trace=False, countfuncs=False, countcallers=False)
-sys.argv = ["pytest", "{test_file}", "-x", "-q", "--no-header", "--tb=no"]
+sys.argv = ["pytest", {test_file_repr}, "-x", "-q", "--no-header", "--tb=no"]
 tracer.runfunc(
     __import__("pytest").main,
-    ["{test_file}", "-x", "-q", "--no-header", "--tb=no"],
+    [{test_file_repr}, "-x", "-q", "--no-header", "--tb=no"],
 )
 
-target_file = "{target_file}"
-results_file = "{results_file}"
+target_file = {target_file_repr}
+results_file = {results_file_repr}
 
 # Get counts: dict of (filename, lineno) -> count
 counts = tracer.results().counts

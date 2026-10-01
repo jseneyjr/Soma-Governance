@@ -23,16 +23,25 @@ This project uses [Semantic Versioning](https://semver.org/).
   - Promotion: triggers ≥ 20, tp_rate > 0.85, age > 30 days.
   - Demotion: fp_rate > 0.5 or dormancy ≥ 90 days.
 - **MCP Tools**: Added `soma_verify_changes` and `soma_checkpoint` for zero-API-key in-agent verification.
+- **Supercell Review Intensity**: New highest review tier (above Tempest) — adversarial Prosecutor/Defender pairs per prong, iterative fix-revalidate with no deferrals until clean ship.
 - **Quality Gate Checks**: Assertion density, bare `pass` detection, import verification, test sanity.
-- **Test Suite**: 925+ tests with shared fixtures (`tests/helpers_cell.py`).
+- **Doc Consistency Tests**: 6 tests verifying README ↔ SKILL.md intensity level consistency.
+- **Test Suite**: 931+ tests with shared fixtures (`tests/helpers_cell.py`).
 
 ### Changed
 - Package discovery updated to include `immune_system*`.
 - Pre-commit hook auto-installed by `soma init`.
+- Architecture diagram widened for Supercell intensity level.
 
 ### Fixed
 - **Evidence Pipeline**: 4 critical bugs fixed (schema mismatch, dead detectors, missing FPSR extraction).
 - 2 new evidence detectors: `test-before-implementation`, `no-hardcoded-paths`.
+- **Security (Supercell S1)**: Code injection via `.format()` in `branch_coverage.py` — paths now escaped with `repr()`.
+- **Security (Supercell S2)**: Path traversal via `--files` — containment check added to `verify.py`.
+- **Correctness (Supercell C1)**: Outcomes path/schema desync between MCP and lifecycle engine.
+- **Correctness (Supercell C2)**: JSONL crash on non-dict lines in lifecycle evidence loading.
+- **Correctness (Supercell C3)**: Lifecycle threshold bugs (boundary values, min sample size, dormancy).
+- **Bug**: 5 pre-existing `test_status.py` failures from real filesystem leak through platform auto-detection.
 
 ---
 

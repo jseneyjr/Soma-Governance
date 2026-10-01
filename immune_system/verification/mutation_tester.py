@@ -116,27 +116,6 @@ def _apply_mutation_by_index(
     # Deep-copy the tree and find the corresponding node by matching lineno + col_offset + kind
     tree2 = ast.parse(source)
 
-    # We need a stable way to find the same node in the fresh parse.
-    # Walk in the same order and pick the mutation_index-th matching node.
-    count = 0
-    for node in ast.walk(tree2):
-        matched = False
-        if kind == "binop" and isinstance(node, ast.BinOp) and type(node.op) in _BINOP_SWAPS:
-            matched = True
-        elif kind == "unaryop" and isinstance(node, ast.UnaryOp) and type(node.op) in _UNARYOP_SWAPS:
-            matched = True
-        elif kind == "const" and isinstance(node, ast.Constant) and isinstance(node.value, (int, float)) and node.value != 0:
-            matched = True
-
-        if not matched:
-            continue
-
-        # Count all matching nodes across all kinds in walk order
-        # But we need to replicate _collect_mutations order exactly.
-        # Since we iterate identically, just use a single counter won't work
-        # because _collect_mutations checks each kind per node.
-        # Let's just replicate the exact loop.
-        pass
 
     # Simpler approach: replicate _collect_mutations exactly on tree2.
     targets2: list[ast.AST] = []

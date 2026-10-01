@@ -158,22 +158,22 @@ soma promote --dry-run
 Soma models governance as a layered system of rules, skills, and automation. Every component maps to a specific role:
 
 ```text
-┌─────────────────────────────────────────────────────────────────┐
-│  📐 CORE RULES (genome/)          15 Rules — inherited defaults │
-│  🔧 AGENT SKILLS (organs/)       15 Skills — complex behaviors  │
-│  ⚙️  AUTOMATION (enzymes/)        58 Scripts — task automation   │
-├─────────────────────────────────────────────────────────────────┤
-│  🛡️ REVIEW PROTOCOL              Two-Layer Verification         │
-│     Layer 1: Deterministic AST tools (ungameable)               │
-│     Layer 2: Adversarial information-partitioned agents         │
-├─────────────────────────────────────────────────────────────────┤
-│  🌲 REVIEW INTENSITY (Global) → Environmental Pressure Levels  │
-│     Breeze → Gale → Trident → Maelstrom → Tempest → Supercell  │
-│  🔍 ANALYTICAL PRONGS         → Multi-Perspective Analysis     │
-│     Spores → Mycelium → Roots → Thorns → Bedrock → Mulch       │
-│  📋 ADAPTIVE RULES (.soma/cells/) → Per-Repo Governance        │
-│     Vacuoles · Chloroplasts · Walls · Membranes · Plasmodesmata │
-└─────────────────────────────────────────────────────────────────┘
+┌──────────────────────────────────────────────────────────────────────┐
+│  📐 CORE RULES (genome/)          15 Rules — inherited defaults      │
+│  🔧 AGENT SKILLS (organs/)       15 Skills — complex behaviors       │
+│  ⚙️  AUTOMATION (enzymes/)        58 Scripts — task automation        │
+├──────────────────────────────────────────────────────────────────────┤
+│  🛡️ REVIEW PROTOCOL              Two-Layer Verification              │
+│     Layer 1: Deterministic AST tools (ungameable)                    │
+│     Layer 2: Adversarial information-partitioned agents              │
+├──────────────────────────────────────────────────────────────────────┤
+│  🌲 REVIEW INTENSITY (Global) → Environmental Pressure Levels       │
+│     Breeze → Gale → Trident → Maelstrom → Tempest → Supercell       │
+│  🔍 ANALYTICAL PRONGS         → Multi-Perspective Analysis          │
+│     Spores → Mycelium → Roots → Thorns → Bedrock → Mulch            │
+│  📋 ADAPTIVE RULES (.soma/cells/) → Per-Repo Governance             │
+│     Vacuoles · Chloroplasts · Walls · Membranes · Plasmodesmata      │
+└──────────────────────────────────────────────────────────────────────┘
 ```
 
 | Layer | Directory | What It Contains |
@@ -257,7 +257,7 @@ When code changes, the system mounts a review response. The intensity scales wit
 | 🔱 Trident | 5-8 | ~8-12k | Features, refactors |
 | 🌊 Maelstrom | 7-12 | ~15-20k | Architecture, security |
 | ⛈️ Tempest | 8-12 | ~30-50k | Catastrophic risk |
-| 🌪️ Supercell | 8×N | iterative | Pre-release clean ship — 8-prong review-fix loop until zero findings |
+| 🌪️ Supercell | 8×N | iterative | Pre-release clean ship — adversarial Prosecutor/Defender pairs per prong, iterative until zero findings |
 
 ### Analytical Prongs
 

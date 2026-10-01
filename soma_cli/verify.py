@@ -67,7 +67,15 @@ def verdict_to_exit_code(verdict) -> int:
 def resolve_target_files(args: argparse.Namespace) -> list[str]:
     """Resolve target files from --files flag or git staged/changed files."""
     if args.files:
-        return args.files
+        repo_root = os.path.abspath(getattr(args, 'repo_root', None) or os.getcwd())
+        safe_files = []
+        for f in args.files:
+            resolved = os.path.normpath(os.path.join(repo_root, f))
+            if not resolved.startswith(repo_root + os.sep) and resolved != repo_root:
+                print(f"Warning: skipping out-of-tree file: {f}", file=sys.stderr)
+                continue
+            safe_files.append(f)
+        return safe_files
 
     # Default: query git for staged/changed files
     git_cwd = getattr(args, 'repo_root', None) or os.getcwd()

@@ -3,7 +3,96 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
+import re
+import shutil
 from pathlib import Path
+
+
+PROMOTION_PATH = {"vacuole": "wall", "wall": "genome"}
+TYPE_TO_DIR = {"vacuole": "vacuoles", "wall": "walls"}
+
+
+def _find_cell(cells_dir: Path, cell_id: str) -> tuple[Path | None, str | None]:
+    """Find a cell file by ID across all type directories."""
+    for type_dir in ("vacuoles", "walls"):
+        candidate = cells_dir / type_dir / f"{cell_id}.md"
+        if candidate.is_file():
+            return candidate, type_dir
+    return None, None
+
+
+def _force_promote(project_root: Path, cell_id: str, dry_run: bool, use_json: bool) -> int:
+    """Force-promote a specific cell, bypassing evidence thresholds."""
+    cells_dir = project_root / ".soma" / "cells"
+    cell_path, current_dir = _find_cell(cells_dir, cell_id)
+
+    if cell_path is None:
+        msg = f"Cell '{cell_id}' not found in {cells_dir}"
+        if use_json:
+            print(json.dumps({"error": msg}))
+        else:
+            print(f"  ❌ {msg}")
+        return 1
+
+    # Determine current type from directory
+    current_type = current_dir.rstrip("s")  # vacuoles -> vacuole
+    next_type = PROMOTION_PATH.get(current_type)
+
+    if next_type is None:
+        msg = f"Cell '{cell_id}' is already at '{current_type}' (max promotion level)"
+        if use_json:
+            print(json.dumps({"error": msg}))
+        else:
+            print(f"  ⚠️  {msg}")
+        return 1
+
+    next_dir = TYPE_TO_DIR.get(next_type)
+    if next_type == "genome":
+        # Genome promotion goes to genome/ (core rules)
+        target_path = project_root / "genome" / f"{cell_id}.md"
+    else:
+        target_path = cells_dir / next_dir / f"{cell_id}.md"
+
+    if dry_run:
+        if use_json:
+            print(json.dumps({"action": "promote", "cell_id": cell_id,
+                             "from": current_type, "to": next_type, "dry_run": True}))
+        else:
+            print(f"  🧬 Would promote: {cell_id}: {current_type} → {next_type}")
+            print(f"     {cell_path} → {target_path}")
+        return 0
+
+    # Read content and update frontmatter type
+    content = cell_path.read_text(encoding="utf-8")
+    content = re.sub(
+        r"^type:\s*\S+",
+        f"type: {next_type}",
+        content,
+        count=1,
+        flags=re.MULTILINE,
+    )
+    # Update enforcement for walls
+    if next_type == "wall":
+        content = re.sub(
+            r"^enforcement:\s*\S+",
+            "enforcement: blocking",
+            content,
+            count=1,
+            flags=re.MULTILINE,
+        )
+
+    # Write to new location and remove old
+    target_path.parent.mkdir(parents=True, exist_ok=True)
+    target_path.write_text(content, encoding="utf-8")
+    cell_path.unlink()
+
+    if use_json:
+        print(json.dumps({"action": "promote", "cell_id": cell_id,
+                         "from": current_type, "to": next_type}))
+    else:
+        print(f"  ✅ Promoted: {cell_id}: {current_type} → {next_type}")
+    return 0
 
 
 def run_promote(args: argparse.Namespace) -> int:
@@ -11,12 +100,24 @@ def run_promote(args: argparse.Namespace) -> int:
     
     Returns 0 always (dry-run is advisory).
     """
+    project_root = Path(getattr(args, "_project_root", Path.cwd()))
+    use_json = getattr(args, "json", False)
+    dry_run = getattr(args, "dry_run", False)
+    force = getattr(args, "force", False)
+    cell_id = getattr(args, "cell", None)
+
+    if force:
+        if not cell_id:
+            msg = "--force requires --cell <cell-id>"
+            if use_json:
+                print(json.dumps({"error": msg}))
+            else:
+                print(f"  ❌ {msg}")
+            return 1
+        return _force_promote(project_root, cell_id, dry_run, use_json)
+
     from immune_system.verification.lifecycle import evaluate_promotions
 
-    project_root = getattr(args, "_project_root", Path.cwd())
-    project_root = Path(project_root)
-    use_json = getattr(args, "json", False)
-    
     candidates = evaluate_promotions(str(project_root))
     
     if use_json:
@@ -33,3 +134,4 @@ def run_promote(args: argparse.Namespace) -> int:
             print()
     
     return 0
+

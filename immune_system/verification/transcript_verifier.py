@@ -8,7 +8,6 @@ This is the "trust but verify" layer: subagents report completion,
 the orchestrator checks the tape.
 """
 import json
-import os
 import re
 from dataclasses import dataclass
 

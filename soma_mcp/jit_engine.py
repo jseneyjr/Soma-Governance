@@ -20,7 +20,6 @@ falls back to a stdlib parser covering the YAML subset the cells actually use.
 import os
 import sys
 import glob
-import json
 import re
 import subprocess
 import fnmatch
@@ -392,11 +391,12 @@ def _get_body(content):
 def get_git_diff_files(workspace):
     """Get files changed in the current working tree + staged."""
     files = set()
-    for cmd in ['git diff --name-only HEAD', 'git diff --name-only --cached',
-                'git diff --name-only HEAD~1..HEAD']:
+    for cmd in [['git', 'diff', '--name-only', 'HEAD'],
+                ['git', 'diff', '--name-only', '--cached'],
+                ['git', 'diff', '--name-only', 'HEAD~1..HEAD']]:
         try:
             output = subprocess.check_output(
-                cmd, shell=True, cwd=workspace, text=True, stderr=subprocess.DEVNULL
+                cmd, cwd=workspace, text=True, stderr=subprocess.DEVNULL
             ).strip()
             if output:
                 files.update(f for f in output.split('\n') if f)

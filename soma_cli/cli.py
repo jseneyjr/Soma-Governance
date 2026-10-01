@@ -79,6 +79,10 @@ def _build_parser() -> argparse.ArgumentParser:
                            help="Show candidates without performing promotions")
     p_promote.add_argument("--json", action="store_true",
                            help="Emit machine-readable JSON output")
+    p_promote.add_argument("--force", action="store_true",
+                           help="Force promotion of --cell, bypassing evidence thresholds")
+    p_promote.add_argument("--cell", type=str, default=None,
+                           help="Target cell ID for --force promotion")
 
     # soma demote
     p_demote = sub.add_parser("demote", help="Evaluate cell demotion candidates")
@@ -86,6 +90,10 @@ def _build_parser() -> argparse.ArgumentParser:
                           help="Show candidates without performing demotions")
     p_demote.add_argument("--json", action="store_true",
                           help="Emit machine-readable JSON output")
+    p_demote.add_argument("--force", action="store_true",
+                          help="Force demotion of --cell, bypassing evidence thresholds")
+    p_demote.add_argument("--cell", type=str, default=None,
+                          help="Target cell ID for --force demotion")
 
     return parser
 

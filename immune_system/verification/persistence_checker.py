@@ -12,7 +12,7 @@ import re
 import sys
 import os
 
-from . import RiskCategory, ToolEvidence
+from . import ToolEvidence
 
 
 def find_dict_mutations(source: str, dict_name: str) -> dict[str, list[int]]:

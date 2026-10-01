@@ -8,10 +8,10 @@ to compute lifecycle transitions:
          └──────────── demote (false positives) ───────┘
 
 Promotion criteria (deterministic):
-    triggers ≥ 20 AND tp_rate > 0.85 AND age > 30 days
+    triggers ≥ 20 AND tp_rate ≥ 0.85 AND age ≥ 30 days
 
 Demotion criteria (deterministic):
-    fp_rate > 0.5 OR triggers == 0 for 90+ days
+    fp_rate > 0.5 (min 5 triggers) OR last trigger ≥ 90 days ago
 """
 from __future__ import annotations
 
@@ -48,14 +48,14 @@ DEMOTION_PATH = {
 
 # ── Evidence Loading ────────────────────────────────────────────────────────
 
-def _load_evidence(workspace: str) -> dict[str, dict[str, int]]:
+def _load_evidence(workspace: str) -> dict[str, dict[str, Any]]:
     """Load trigger counts and outcomes from JSONL evidence files.
 
     Returns:
-        Dict mapping cell_id → {triggers: int, tp: int, fp: int}
+        Dict mapping cell_id → {triggers: int, tp: int, fp: int, last_trigger_ts: datetime | None}
     """
-    evidence: dict[str, dict[str, int]] = collections.defaultdict(
-        lambda: {"triggers": 0, "tp": 0, "fp": 0}
+    evidence: dict[str, dict[str, Any]] = collections.defaultdict(
+        lambda: {"triggers": 0, "tp": 0, "fp": 0, "last_trigger_ts": None}
     )
 
     fitness_path = os.path.join(workspace, ".soma", "evidence", "fitness.jsonl")
@@ -67,9 +67,20 @@ def _load_evidence(workspace: str) -> dict[str, dict[str, int]]:
                     continue
                 try:
                     record = json.loads(line)
+                    if not isinstance(record, dict):
+                        continue
                     cell_id = record.get("cell_id", "")
                     if cell_id:
                         evidence[cell_id]["triggers"] += 1
+                        triggered_at = record.get("triggered_at")
+                        if triggered_at:
+                            try:
+                                ts = datetime.fromisoformat(triggered_at)
+                                prev = evidence[cell_id].get("last_trigger_ts")
+                                if prev is None or ts > prev:
+                                    evidence[cell_id]["last_trigger_ts"] = ts
+                            except (ValueError, TypeError):
+                                pass
                 except (json.JSONDecodeError, KeyError):
                     continue
 
@@ -82,6 +93,8 @@ def _load_evidence(workspace: str) -> dict[str, dict[str, int]]:
                     continue
                 try:
                     record = json.loads(line)
+                    if not isinstance(record, dict):
+                        continue
                     cell_id = record.get("cell_id", "")
                     outcome = record.get("outcome", "")
                     if cell_id and outcome in ("tp", "fp"):
@@ -174,7 +187,7 @@ def evaluate_promotions(workspace: str) -> list[dict]:
         if cell_type not in PROMOTION_PATH:
             continue
 
-        ev = evidence.get(cell_id, {"triggers": 0, "tp": 0, "fp": 0})
+        ev = evidence.get(cell_id, {"triggers": 0, "tp": 0, "fp": 0, "last_trigger_ts": None})
         triggers = ev["triggers"]
         tp = ev["tp"]
         age_days = _cell_age_days(cell)
@@ -221,7 +234,7 @@ def evaluate_demotions(workspace: str) -> list[dict]:
         if cell_type not in DEMOTION_PATH:
             continue
 
-        ev = evidence.get(cell_id, {"triggers": 0, "tp": 0, "fp": 0})
+        ev = evidence.get(cell_id, {"triggers": 0, "tp": 0, "fp": 0, "last_trigger_ts": None})
         triggers = ev["triggers"]
         tp = ev["tp"]
         fp = ev["fp"]
@@ -229,16 +242,23 @@ def evaluate_demotions(workspace: str) -> list[dict]:
 
         reason = None
 
-        # Check high false positive rate
-        if triggers > 0:
+        # Check high false positive rate (minimum 5 triggers required)
+        if triggers >= 5:
             fp_rate = fp / triggers
             if fp_rate > MAX_FP_RATE_FOR_DEMOTION:
                 reason = "high_fp_rate"
         else:
             fp_rate = 0.0
 
-        # Check dormancy (zero triggers for 90+ days)
-        if triggers == 0 and age_days >= DORMANT_DAYS_THRESHOLD:
+        # Check dormancy based on time since last trigger
+        last_trigger_ts = ev.get("last_trigger_ts")
+        if last_trigger_ts is not None:
+            last_trigger_age = (datetime.now() - last_trigger_ts).days
+        else:
+            # No triggers recorded — use cell age as proxy
+            last_trigger_age = age_days if triggers == 0 else 0
+
+        if last_trigger_age >= DORMANT_DAYS_THRESHOLD:
             reason = "dormant"
 
         if reason is None:

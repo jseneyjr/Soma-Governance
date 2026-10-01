@@ -56,6 +56,134 @@ def resolve_workspace():
     return cwd
 
 
+# ── Inlined checkpoint helpers (stdlib only) ──────────────────────────
+# These replicate the checks from soma_cli.checkpoint without importing
+# private _check_* symbols — avoiding an MCP→CLI layer violation.
+
+_HARDCODED_PATH_RE = re.compile(r'''(?:"|')(/home/|/Users/|/tmp/)''')
+
+_SKIP_DIRS = {
+    "__pycache__", ".git", ".soma", "node_modules", ".venv", "venv",
+    ".tox", ".mypy_cache", ".pytest_cache", "dist", "build", "egg-info",
+}
+
+
+def _find_python_files(root, subdir):
+    """Walk *root/subdir* and return all .py paths (excluding __*.py)."""
+    from pathlib import Path
+    target = root / subdir
+    if not target.is_dir():
+        return []
+    result = []
+    for dirpath, dirnames, filenames in os.walk(target):
+        dirnames[:] = [d for d in dirnames if d not in _SKIP_DIRS]
+        for f in filenames:
+            if f.endswith(".py") and not f.startswith("__"):
+                result.append(Path(dirpath) / f)
+    return result
+
+
+def _checkpoint_test_coverage(root):
+    """Check that every src/*.py has a corresponding tests/test_*.py."""
+    issues = []
+    src_files = _find_python_files(root, "src")
+    test_dir = root / "tests"
+    for src_file in src_files:
+        stem = src_file.stem
+        expected_test = test_dir / f"test_{stem}.py"
+        if not expected_test.exists():
+            issues.append({
+                "check": "test_coverage",
+                "file": str(src_file.relative_to(root)),
+                "message": f"Missing test file for {src_file.name}: expected tests/test_{stem}.py",
+            })
+    return issues
+
+
+def _checkpoint_hardcoded_paths(root):
+    """Scan all .py files for hardcoded absolute paths."""
+    issues = []
+    for subdir in ("src", "tests"):
+        for py_file in _find_python_files(root, subdir):
+            try:
+                content = py_file.read_text(encoding="utf-8", errors="replace")
+            except OSError:
+                continue
+            for line_no, line in enumerate(content.splitlines(), 1):
+                if _HARDCODED_PATH_RE.search(line):
+                    issues.append({
+                        "check": "hardcoded_paths",
+                        "file": str(py_file.relative_to(root)),
+                        "line": line_no,
+                        "message": f"Hardcoded absolute path found in {py_file.name}:{line_no}",
+                    })
+    return issues
+
+
+def _checkpoint_assertion_density(root):
+    """Flag test files that contain zero assert statements."""
+    issues = []
+    test_files = _find_python_files(root, "tests")
+    for tf in test_files:
+        if not tf.name.startswith("test_"):
+            continue
+        try:
+            content = tf.read_text(encoding="utf-8", errors="replace")
+        except OSError:
+            continue
+        has_assertion = (
+            "assert " in content
+            or "assert(" in content
+            or "pytest.raises" in content
+        )
+        if not has_assertion:
+            issues.append({
+                "check": "assertion_density",
+                "file": str(tf.relative_to(root)),
+                "message": f"Low assertion density in {tf.name}: no assert statements found",
+            })
+    return issues
+
+
+def _checkpoint_cell_fitness(root):
+    """Check .soma/evidence for cells with high false-positive rates."""
+    issues = []
+    evidence_dir = root / ".soma" / "evidence"
+    outcomes_file = evidence_dir / "outcomes.jsonl"
+    if not outcomes_file.exists():
+        return issues
+    cell_outcomes = {}
+    try:
+        for line in outcomes_file.read_text(encoding="utf-8").strip().splitlines():
+            if not line.strip():
+                continue
+            record = json.loads(line)
+            cid = record.get("cell_id", "unknown")
+            outcome = record.get("outcome", "")
+            if cid not in cell_outcomes:
+                cell_outcomes[cid] = {"tp": 0, "fp": 0, "total": 0}
+            cell_outcomes[cid]["total"] += 1
+            if outcome == "fp":
+                cell_outcomes[cid]["fp"] += 1
+            elif outcome == "tp":
+                cell_outcomes[cid]["tp"] += 1
+    except (OSError, json.JSONDecodeError):
+        return issues
+    for cid, counts in cell_outcomes.items():
+        if counts["total"] >= 2 and counts["fp"] / counts["total"] > 0.5:
+            fp_rate = counts["fp"] / counts["total"]
+            issues.append({
+                "check": "cell_fitness",
+                "cell_id": cid,
+                "message": (
+                    f"Cell '{cid}' has unhealthy fitness: "
+                    f"{counts['fp']}/{counts['total']} false positives "
+                    f"({fp_rate:.0%} FP rate)"
+                ),
+            })
+    return issues
+
+
 def _parse_frontmatter(content):
     """Parse YAML frontmatter.
 
@@ -443,22 +571,15 @@ def execute_tool(name: str, args: dict):
 
     elif name == "soma_checkpoint":
         workspace = args.get('workspace') or resolve_workspace()
-        try:
-            from soma_cli.checkpoint import (
-                _check_test_coverage, _check_hardcoded_paths,
-                _check_assertion_density, _check_cell_fitness,
-            )
-            from pathlib import Path
-        except ImportError:
-            return {"error": "soma_cli.checkpoint is not importable."}
+        from pathlib import Path
         root = Path(workspace)
         if not root.is_dir():
             return {"error": f"Workspace not found: {workspace}"}
         issues = []
-        issues.extend(_check_test_coverage(root))
-        issues.extend(_check_hardcoded_paths(root))
-        issues.extend(_check_assertion_density(root))
-        issues.extend(_check_cell_fitness(root))
+        issues.extend(_checkpoint_test_coverage(root))
+        issues.extend(_checkpoint_hardcoded_paths(root))
+        issues.extend(_checkpoint_assertion_density(root))
+        issues.extend(_checkpoint_cell_fitness(root))
         return {
             "status": "PASS" if not issues else "FAIL",
             "issue_count": len(issues),
@@ -486,19 +607,28 @@ def execute_tool(name: str, args: dict):
                 ),
                 "status": _STATUS_FAIL,
             }
-        outcome = {
-            'timestamp': datetime.now(timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ'),
-            'cells_used': args.get('cells_used', []),
-            'outcome': outcome_value,
-            'tests_passed': args.get('tests_passed'),
-            'rework_count': args.get('rework_count', 0),
-            'notes': args.get('notes', '')
-        }
-        outcomes_file = os.path.join(workspace, '.soma', 'outcomes.jsonl')
+        timestamp = datetime.now(timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ')
+        cells_used = args.get('cells_used', [])
+        tests_passed = args.get('tests_passed')
+        rework_count = args.get('rework_count', 0)
+        notes = args.get('notes', '')
+        outcomes_file = os.path.join(workspace, '.soma', 'evidence', 'outcomes.jsonl')
         os.makedirs(os.path.dirname(outcomes_file), exist_ok=True)
+        records = []
+        for cell_id in cells_used:
+            record = {
+                'cell_id': cell_id,
+                'outcome': outcome_value,
+                'timestamp': timestamp,
+                'tests_passed': tests_passed,
+                'rework_count': rework_count,
+                'notes': notes,
+            }
+            records.append(record)
         with open(outcomes_file, 'a', encoding="utf-8") as f:
-            f.write(json.dumps(outcome) + '\n')
-        return {'status': 'recorded', 'outcome': outcome}
+            for record in records:
+                f.write(json.dumps(record) + '\n')
+        return {'status': 'recorded', 'records': records}
 
     elif name == "soma_capture_insight":
         workspace = resolve_workspace()
