@@ -3,6 +3,17 @@
 All notable changes to Soma are documented here.
 This project uses [Semantic Versioning](https://semver.org/).
 
+## [0.61.0] — 2026-10-01 — "Python 3.9 Compatibility"
+
+### Fixed
+- **Python 3.9 runtime crash**: 6 files in `immune_system/verification/` used PEP 604 union syntax (`X | None`) in function signatures without `from __future__ import annotations`, causing `TypeError: unsupported operand type(s) for |` on Python 3.9. Added the future import to all affected files.
+
+### Changed
+- **CI matrix**: Added Python 3.9 to test matrix (Ubuntu, macOS, Windows).
+- **CI publish**: Auto-publish to PyPI on GitHub release creation via `PYPI_API_TOKEN` secret.
+
+---
+
 ## [0.60.0] — 2026-09-30 — "Two-Layer Verification & Cell Lifecycle"
 
 ### Added

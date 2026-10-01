@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 """Persistence Completeness Checker — Layer 1 Verification Tool.
 
 Answers: "Does every in-memory dict mutation have a serialization path?"
@@ -5,7 +7,6 @@ Answers: "Does every in-memory dict mutation have a serialization path?"
 Uses AST analysis to find dict bracket assignments and regex to find
 serialization handlers. Pure deterministic — no LLM judgment.
 """
-from __future__ import annotations
 
 import ast
 import re
