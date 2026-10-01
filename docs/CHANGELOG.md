@@ -3,6 +3,13 @@
 All notable changes to Soma are documented here.
 This project uses [Semantic Versioning](https://semver.org/).
 
+## [0.71.0] — 2026-10-01 — "Branch Sync"
+
+### Fixed
+- **Gitflow step 7**: Release checklist now merges **main** back to develop (not the release branch). Previous workflow skipped main's PR merge commit, causing main and develop to diverge over 5 releases.
+
+---
+
 ## [0.70.0] — 2026-10-01 — "Genesis"
 
 ### Added
