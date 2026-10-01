@@ -428,6 +428,38 @@ class TestVerifyFilesFlag:
         ])
         assert exit_code == 1
 
+    def test_resolve_rejects_out_of_tree_paths(self, tmp_path):
+        """Files outside repo_root should be skipped with warning."""
+        from soma_cli.verify import resolve_target_files
+
+        # Create a repo structure
+        repo = tmp_path / "myrepo"
+        repo.mkdir()
+
+        parser = _build_parser()
+        args = parser.parse_args([
+            "verify",
+            "--repo-root", str(repo),
+            "--files", "../../etc/passwd", "good.py",
+        ])
+        resolved = resolve_target_files(args)
+        # The traversal path should be filtered out
+        assert "../../etc/passwd" not in resolved
+        # The in-tree file should remain
+        assert "good.py" in resolved
+
+    def test_all_out_of_tree_files_exits_one(self, tmp_path):
+        """When ALL --files are out-of-tree, should exit 1."""
+        repo = tmp_path / "myrepo"
+        repo.mkdir()
+
+        exit_code = main([
+            "verify",
+            "--repo-root", str(repo),
+            "--files", "../../etc/passwd", "../../../tmp/evil.py",
+        ])
+        assert exit_code == 1
+
 
 class TestVerifyRepoRoot:
     """Test --repo-root parameter resolution and override behavior."""

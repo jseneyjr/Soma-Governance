@@ -78,3 +78,82 @@ class TestPromoteCLI:
         data = json.loads(output)
         assert "candidates" in data
         assert len(data["candidates"]) == 1
+
+    # ── --force tests ─────────────────────────────────────────────────
+
+    def test_force_promote_requires_cell_flag(self, tmp_path):
+        """--force without --cell should exit 1 with error."""
+        from soma_cli.promote import run_promote
+
+        (tmp_path / ".soma" / "cells").mkdir(parents=True)
+        (tmp_path / ".soma" / "evidence").mkdir(parents=True)
+
+        args = argparse.Namespace(
+            force=True, cell=None, dry_run=False, json=False,
+            _project_root=tmp_path,
+        )
+        exit_code = run_promote(args)
+        assert exit_code == 1
+
+    def test_force_promote_vacuole_to_wall(self, tmp_path, capsys):
+        """--force --cell should move vacuole to walls/ and set enforcement: gate."""
+        from soma_cli.promote import run_promote
+
+        cells_dir = tmp_path / ".soma" / "cells" / "vacuoles"
+        cells_dir.mkdir(parents=True)
+        walls_dir = tmp_path / ".soma" / "cells" / "walls"
+        walls_dir.mkdir(parents=True)
+
+        make_cell(str(cells_dir), "force-cell", cell_type="vacuole",
+                  created_days_ago=10)
+
+        args = argparse.Namespace(
+            force=True, cell="force-cell", dry_run=False, json=False,
+            _project_root=tmp_path,
+        )
+        exit_code = run_promote(args)
+
+        assert exit_code == 0
+        # Original file should be gone
+        assert not (cells_dir / "force-cell.md").exists()
+        # New file should exist in walls/
+        promoted = walls_dir / "force-cell.md"
+        assert promoted.exists()
+        # Frontmatter should have enforcement: gate
+        content = promoted.read_text()
+        assert "enforcement: gate" in content
+
+    def test_force_promote_nonexistent_cell(self, tmp_path):
+        """--force --cell with bad ID should exit 1."""
+        from soma_cli.promote import run_promote
+
+        (tmp_path / ".soma" / "cells" / "vacuoles").mkdir(parents=True)
+
+        args = argparse.Namespace(
+            force=True, cell="does-not-exist", dry_run=False, json=False,
+            _project_root=tmp_path,
+        )
+        exit_code = run_promote(args)
+        assert exit_code == 1
+
+    def test_force_promote_dry_run(self, tmp_path, capsys):
+        """--force --cell --dry-run should not move files."""
+        from soma_cli.promote import run_promote
+
+        cells_dir = tmp_path / ".soma" / "cells" / "vacuoles"
+        cells_dir.mkdir(parents=True)
+
+        make_cell(str(cells_dir), "dry-cell", cell_type="vacuole",
+                  created_days_ago=10)
+
+        args = argparse.Namespace(
+            force=True, cell="dry-cell", dry_run=True, json=False,
+            _project_root=tmp_path,
+        )
+        exit_code = run_promote(args)
+
+        assert exit_code == 0
+        # File should still be in vacuoles/ (not moved)
+        assert (cells_dir / "dry-cell.md").exists()
+        output = capsys.readouterr().out
+        assert "dry-cell" in output

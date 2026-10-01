@@ -3,9 +3,7 @@ from __future__ import annotations
 
 import argparse
 import json
-import os
 import re
-import shutil
 from pathlib import Path
 
 
@@ -81,6 +79,14 @@ def _force_promote(project_root: Path, cell_id: str, dry_run: bool, use_json: bo
             count=1,
             flags=re.MULTILINE,
         )
+        if "enforcement:" not in content:
+            content = re.sub(
+                r"^(type:\s*\S+)",
+                r"\1\nenforcement: gate",
+                content,
+                count=1,
+                flags=re.MULTILINE,
+            )
 
     # Write to new location and remove old
     target_path.parent.mkdir(parents=True, exist_ok=True)

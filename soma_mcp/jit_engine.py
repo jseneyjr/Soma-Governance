@@ -391,15 +391,15 @@ def _get_body(content):
 def get_git_diff_files(workspace):
     """Get files changed in the current working tree + staged."""
     files = set()
-    for cmd in [['git', 'diff', '--name-only', 'HEAD'],
-                ['git', 'diff', '--name-only', '--cached'],
-                ['git', 'diff', '--name-only', 'HEAD~1..HEAD']]:
+    for cmd in [['git', 'diff', '--name-only'],
+                ['git', 'diff', '--name-only', '--cached']]:
         try:
             output = subprocess.check_output(
-                cmd, cwd=workspace, text=True, stderr=subprocess.DEVNULL
+                cmd, cwd=workspace, text=True, stderr=subprocess.DEVNULL,
+                timeout=10,
             ).strip()
             if output:
-                files.update(f for f in output.split('\n') if f)
+                files.update(f for f in output.splitlines() if f)
         except Exception:
             pass
     return list(files)

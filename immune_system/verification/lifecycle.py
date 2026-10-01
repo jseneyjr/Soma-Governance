@@ -19,7 +19,7 @@ import collections
 import glob
 import json
 import os
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Any
 
 import yaml
@@ -75,7 +75,12 @@ def _load_evidence(workspace: str) -> dict[str, dict[str, Any]]:
                         triggered_at = record.get("triggered_at")
                         if triggered_at:
                             try:
+                                # Python 3.10 doesn't handle 'Z' suffix
+                                if isinstance(triggered_at, str) and triggered_at.endswith("Z"):
+                                    triggered_at = triggered_at[:-1] + "+00:00"
                                 ts = datetime.fromisoformat(triggered_at)
+                                # Strip tzinfo so comparisons with naive datetimes don't crash
+                                ts = ts.replace(tzinfo=None)
                                 prev = evidence[cell_id].get("last_trigger_ts")
                                 if prev is None or ts > prev:
                                     evidence[cell_id]["last_trigger_ts"] = ts
@@ -97,8 +102,12 @@ def _load_evidence(workspace: str) -> dict[str, dict[str, Any]]:
                         continue
                     cell_id = record.get("cell_id", "")
                     outcome = record.get("outcome", "")
-                    if cell_id and outcome in ("tp", "fp"):
-                        evidence[cell_id][outcome] += 1
+                    if cell_id:
+                        if outcome in ("tp", "success"):
+                            evidence[cell_id]["tp"] += 1
+                        elif outcome in ("fp", "failure"):
+                            evidence[cell_id]["fp"] += 1
+                        # "partial" is intentionally skipped
                 except (json.JSONDecodeError, KeyError):
                     continue
 
@@ -161,7 +170,7 @@ def _cell_age_days(cell: dict) -> int:
             created_dt = datetime.strptime(created, "%Y-%m-%d")
         else:
             created_dt = datetime.combine(created, datetime.min.time())
-        return (datetime.now() - created_dt).days
+        return (datetime.now(timezone.utc).replace(tzinfo=None) - created_dt).days
     except (ValueError, TypeError):
         return 0
 
@@ -253,7 +262,7 @@ def evaluate_demotions(workspace: str) -> list[dict]:
         # Check dormancy based on time since last trigger
         last_trigger_ts = ev.get("last_trigger_ts")
         if last_trigger_ts is not None:
-            last_trigger_age = (datetime.now() - last_trigger_ts).days
+            last_trigger_age = (datetime.now(timezone.utc).replace(tzinfo=None) - last_trigger_ts).days
         else:
             # No triggers recorded — use cell age as proxy
             last_trigger_age = age_days if triggers == 0 else 0

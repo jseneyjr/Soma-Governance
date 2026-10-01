@@ -50,6 +50,10 @@ def check(target_file: str, test_file: str) -> ToolEvidence:
                 json_report, target_file, target_basename
             )
 
+    # None means the trace script crashed — fail closed
+    if missing_lines is None:
+        missing_lines = [-1]
+
     verdict = len(missing_lines) == 0
     detail = (
         "All branches covered"
@@ -135,7 +139,7 @@ def _run_trace_fallback(test_file, target_file, target_dir, tmpdir):
     )
 
     if not os.path.exists(results_file):
-        return []
+        return None
 
     with open(results_file) as f:
         return json.load(f)
@@ -208,6 +212,6 @@ def _parse_coverage(json_report, target_file, target_basename):
                 break
 
     if file_data is None:
-        return []
+        return [-1]
 
     return file_data.get("missing_lines", [])

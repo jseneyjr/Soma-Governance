@@ -204,7 +204,13 @@ def _check_cell_conventions(root: Path) -> list[dict]:
     except ImportError:
         return issues
 
-    dir_to_type = {"vacuoles": "vacuole", "walls": "wall"}
+    dir_to_type = {
+        "vacuoles": "vacuole",
+        "walls": "wall",
+        "chloroplasts": "chloroplast",
+        "membranes": "membrane",
+        "plasmodesmata": "plasmodesma",
+    }
 
     for type_dir_name, expected_type in dir_to_type.items():
         type_dir = cells_dir / type_dir_name

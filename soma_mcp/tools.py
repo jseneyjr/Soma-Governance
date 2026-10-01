@@ -227,7 +227,7 @@ _STATUS_PASS = "PASS"
 _STATUS_FAIL = "FAIL"
 
 # Mirrors the "outcome" enum advertised in TOOL_DEFINITIONS for soma_report_outcome.
-_VALID_OUTCOMES = ("success", "partial", "failure")
+_VALID_OUTCOMES = ("success", "partial", "failure", "tp", "fp")
 
 
 _VERDICT_RE = re.compile(r'^\s*VERDICT:\s*([A-Z_]+)')

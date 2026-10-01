@@ -217,3 +217,97 @@ class TestDemotionCriteria:
 
         candidates = evaluate_demotions(str(tmp_path))
         assert candidates == []
+
+
+class TestLifecycleBoundaries:
+    """Boundary condition tests for promotion/demotion thresholds."""
+
+    def test_promotion_boundary_triggers_19_rejected(self, tmp_path):
+        """19 triggers should NOT promote (need >=20)."""
+        from immune_system.verification.lifecycle import evaluate_promotions
+
+        cells_dir = tmp_path / ".soma" / "cells" / "vacuoles"
+        cells_dir.mkdir(parents=True)
+        evidence_dir = tmp_path / ".soma" / "evidence"
+        evidence_dir.mkdir(parents=True)
+
+        make_cell(str(cells_dir), "edge-cell-19", cell_type="vacuole",
+                  created_days_ago=45)
+        # 19 triggers, all TP → tp_rate = 1.0 (passes rate check)
+        write_evidence(str(evidence_dir), "edge-cell-19", triggers=19, tp=19, fp=0)
+
+        candidates = evaluate_promotions(str(tmp_path))
+        assert len(candidates) == 0
+
+    def test_promotion_boundary_triggers_20_accepted(self, tmp_path):
+        """Exactly 20 triggers should promote."""
+        from immune_system.verification.lifecycle import evaluate_promotions
+
+        cells_dir = tmp_path / ".soma" / "cells" / "vacuoles"
+        cells_dir.mkdir(parents=True)
+        evidence_dir = tmp_path / ".soma" / "evidence"
+        evidence_dir.mkdir(parents=True)
+
+        make_cell(str(cells_dir), "edge-cell-20", cell_type="vacuole",
+                  created_days_ago=45)
+        # 20 triggers, 18 TP → tp_rate = 0.90 (passes >=0.85)
+        write_evidence(str(evidence_dir), "edge-cell-20", triggers=20, tp=18, fp=2)
+
+        candidates = evaluate_promotions(str(tmp_path))
+        assert len(candidates) == 1
+        assert candidates[0]["cell_id"] == "edge-cell-20"
+
+    def test_promotion_boundary_tp_rate_084_rejected(self, tmp_path):
+        """0.84 tp_rate should NOT promote (need >=0.85)."""
+        from immune_system.verification.lifecycle import evaluate_promotions
+
+        cells_dir = tmp_path / ".soma" / "cells" / "vacuoles"
+        cells_dir.mkdir(parents=True)
+        evidence_dir = tmp_path / ".soma" / "evidence"
+        evidence_dir.mkdir(parents=True)
+
+        make_cell(str(cells_dir), "low-tp-cell", cell_type="vacuole",
+                  created_days_ago=45)
+        # 25 triggers, 21 TP → tp_rate = 0.84
+        write_evidence(str(evidence_dir), "low-tp-cell", triggers=25, tp=21, fp=4)
+
+        candidates = evaluate_promotions(str(tmp_path))
+        assert len(candidates) == 0
+
+    def test_demotion_boundary_triggers_4_not_enough(self, tmp_path):
+        """4 triggers too few for fp_rate demotion (need >=5)."""
+        from immune_system.verification.lifecycle import evaluate_demotions
+
+        cells_dir = tmp_path / ".soma" / "cells" / "walls"
+        cells_dir.mkdir(parents=True)
+        evidence_dir = tmp_path / ".soma" / "evidence"
+        evidence_dir.mkdir(parents=True)
+
+        make_cell(str(cells_dir), "few-triggers", cell_type="wall",
+                  created_days_ago=10)
+        # 4 triggers, 3 FP → fp_rate would be 0.75, but <5 triggers skips check
+        write_evidence(str(evidence_dir), "few-triggers", triggers=4, tp=1, fp=3)
+
+        candidates = evaluate_demotions(str(tmp_path))
+        # Should NOT be demoted — not enough triggers for fp_rate check
+        # and not dormant (recent triggers, age < 90)
+        assert len(candidates) == 0
+
+    def test_demotion_boundary_triggers_5_fp_demotes(self, tmp_path):
+        """5 triggers with >50% FP should demote."""
+        from immune_system.verification.lifecycle import evaluate_demotions
+
+        cells_dir = tmp_path / ".soma" / "cells" / "walls"
+        cells_dir.mkdir(parents=True)
+        evidence_dir = tmp_path / ".soma" / "evidence"
+        evidence_dir.mkdir(parents=True)
+
+        make_cell(str(cells_dir), "noisy-5", cell_type="wall",
+                  created_days_ago=10)
+        # 5 triggers, 3 FP → fp_rate = 0.60 (>0.5 threshold)
+        write_evidence(str(evidence_dir), "noisy-5", triggers=5, tp=2, fp=3)
+
+        candidates = evaluate_demotions(str(tmp_path))
+        assert len(candidates) == 1
+        assert candidates[0]["cell_id"] == "noisy-5"
+        assert candidates[0]["reason"] == "high_fp_rate"

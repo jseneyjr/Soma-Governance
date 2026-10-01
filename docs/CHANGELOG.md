@@ -12,7 +12,7 @@ This project uses [Semantic Versioning](https://semver.org/).
   - **Deterministic Arbiter**: Set-algebra adjudication over a fixed 14-category risk taxonomy, issuing `SHIP`, `BLOCK`, or `REVISE` verdicts with zero LLM in the loop.
   - **Transcript Verifier**: Post-hoc validation of self-reported agent claims against JSONL session logs.
 - **Unified CLI Suite** (`soma`): 9 subcommands — `init`, `status`, `report`, `doctor`, `verify`, `checkpoint`, `oracle`, `promote`, `demote`.
-  - `soma verify`: Full two-layer verification with `--layer1-only` and `--json` support.
+  - `soma verify`: Full two-layer verification with `--layer1-only` support.
   - `soma checkpoint`: Fast deterministic quality gate with `--pre-commit` hook integration.
   - `soma oracle`: Cell health classification (healthy, noisy, expired, unobserved).
   - `soma promote` / `soma demote`: Automated lifecycle evaluation with `--dry-run` and `--json`.

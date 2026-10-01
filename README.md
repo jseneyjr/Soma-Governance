@@ -134,8 +134,8 @@ All governance workflows are available via the `soma` CLI:
 | `soma verify` | Two-layer verification on changed files (`--layer1-only` for fast mode) |
 | `soma checkpoint` | Deterministic quality checks (`--pre-commit` for git hooks) |
 | `soma oracle` | Cell health classification — healthy, noisy, expired, unobserved |
-| `soma promote` | Evaluate cells for promotion (vacuole → wall → genome) |
-| `soma demote` | Evaluate cells for demotion (high FP rate or dormant) |
+| `soma promote` | Evaluate cells for promotion (vacuole → wall → genome). `--force --cell <id>` for manual |
+| `soma demote` | Evaluate cells for demotion (high FP rate or dormant). `--force --cell <id>` for manual |
 
 ```bash
 # Quick quality check before committing
@@ -238,7 +238,7 @@ Independently verifies subagent self-reported claims against JSONL transcript ev
 from immune_system.verification.transcript_verifier import extract_metrics, verify_claim
 
 metrics = extract_metrics("path/to/transcript.jsonl")
-result = verify_claim(metrics, claimed_first_pass=True, claimed_test_count=45)
+result = verify_claim(metrics, claimed_first_pass=True, claimed_tests_passed=45, agent_role="coder")
 # → ToolEvidence(verdict=False, detail="Agent claimed first-pass but transcript shows 3 fix cycles")
 ```
 

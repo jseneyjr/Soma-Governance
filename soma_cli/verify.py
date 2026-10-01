@@ -75,6 +75,8 @@ def resolve_target_files(args: argparse.Namespace) -> list[str]:
                 print(f"Warning: skipping out-of-tree file: {f}", file=sys.stderr)
                 continue
             safe_files.append(f)
+        if not safe_files:
+            print("Error: all specified files are outside the repository", file=sys.stderr)
         return safe_files
 
     # Default: query git for staged/changed files
@@ -123,6 +125,10 @@ def run_verify(args: argparse.Namespace) -> int:
 
     # Resolve target files
     target_files = resolve_target_files(args)
+
+    # Fail if all explicit --files were filtered out (out-of-tree)
+    if getattr(args, 'files', None) and not target_files:
+        return 1
 
     # Validate file existence when explicit files are provided
     if getattr(args, 'files', None) and not getattr(args, 'dry_run', False):
