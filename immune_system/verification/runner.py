@@ -261,10 +261,16 @@ def run_layer2(
     code_response = llm_backend(code_prompt)
 
     # ── 4. Parse structured responses ─────────────────────────────────
+    spec_agent_failed = False
     try:
         raw_predictions = _json.loads(_strip_code_fence(spec_response))
     except (_json.JSONDecodeError, TypeError):
+        import logging as _logging
+        _logging.getLogger(__name__).warning(
+            "Spec Agent returned unparseable JSON; defaulting to empty predictions"
+        )
         raw_predictions = []
+        spec_agent_failed = True
 
     try:
         raw_claims = _json.loads(_strip_code_fence(code_response))
@@ -275,7 +281,10 @@ def run_layer2(
     claims = immune_verify.parse_claims(raw_claims)
 
     # ── 5. Arbitrate ──────────────────────────────────────────────────
-    return arbiter.arbitrate(predictions, claims, layer1_evidence)
+    return arbiter.arbitrate(
+        predictions, claims, layer1_evidence,
+        spec_agent_failed=spec_agent_failed,
+    )
 
 
 def gate_verdict(results: list[ToolEvidence]) -> bool:

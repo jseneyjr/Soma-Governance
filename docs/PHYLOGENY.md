@@ -370,44 +370,6 @@ This separation ensures: governance rules are **public** (Apache 2.0 licensed), 
 
 **Impact on rules:** Automated cross-repo governance evolution. Self-discovering rules. Configurable data separation. Promotion path from repo-local cells to global forest-floor rules. 2 experiments in TESTING (E25–E26). 26 experiments total.
 
----
-
-## The Compound Effect
-
-```
-Prescriptive Rules → caught obvious gaps but missed real failure modes
-    ↓
-Evidence-Based → extracted rules from 1,339 steps of real waste
-    ↓
-Cross-Conversation → proved patterns are systemic, not one-off
-    ↓
-Continuous Monitor → catches new patterns as they emerge
-    ↓
-Divide & Conquer → parallel lanes, preflight probe, review sentinels
-    ↓
-Trident, Maelstrom & Mechanized Guardrails → Gale/Trident/Maelstrom, 10 lenses, 14 skills, auto-hooks
-    ↓
-Empirical Falsification & Research Grounding → Refutation Gate, Boundary Verification, Orthogonal Personas, FPSR, Structured Diagnosis
-    ↓
-Spectrum Completion & Lifecycle Extraction → Breeze/Tempest, Mycelium/Mulch, 5 modes, 6 prongs, 7 escalation paths
-    ↓
-Tempest Hardening → Unified installer, shared library, dynamic hooks, safety gate hardening, docs consolidation
-    ↓
-Autonomous Orchestration → Subagent nesting, adaptive auto-escalation, escalation sentinel, 15 skills, 17 experiments
-    ↓
-Expanded Dataset Analysis → Soma, 66-session validation, Genesis onboarding, installer parity, 16 skills, 22 experiments
-    ↓
-Measurement Integrity → Ground-truth calibration, rule compression, ROI reframed as step-based, 83 contaminated values corrected, 15 skills
-    ↓
-Genesis Cytogenesis → Repo-specific cell generation: Chloroplast personas, Vacuole traps, Cell Wall boundaries, Membrane escalation, Plasmodesmata cross-repo
-    ↓
-Natural Selection → Fitness scoring, selection pressure, adaptation, speciation (cell → global rule promotion), extinction of unfit governance
-    ↓
-Team Topology → Shared repo convergence, org-wide promotion path, backup/restore lifecycle
-```
-
-Compliance went from **7.8/10 to 9.8/10** and waste dropped from **~56% to 1.1%** in best-governed sessions (with Phase 15 expanding this to multi-developer teams and clean uninstalls, reaching 32 scripts with zero added idle token overhead) — see [METRICS.md](METRICS.md) for the full breakdown. The rules now cover failure modes that no amount of upfront design would have predicted. Phase 11 validated the system against 66 real production sessions, proving that the governance gap between "rules present" and "skills present" is the highest-risk silent failure mode.
-
 ## Design Principles (Emerged, Not Prescribed)
 
 1. **Evidence over intuition** — Every rule traces back to observed steps wasted. No rule exists "just in case."
@@ -436,6 +398,8 @@ Compliance went from **7.8/10 to 9.8/10** and waste dropped from **~56% to 1.1%*
 - **Enhanced Lichen Magic Number Detection**: Added explicit detection for high-density hardcoded numeric literals (coordinates, ports, timeouts) to identify structural brittleness for Vacuole generation.
 - **Enhanced Plasmodesmata Detection**: Added explicit patterns for multi-service connections, including `pip install -e` sibling references, shared DBs, and protobuf/gRPC imports.
 
+### Phase 16: [TBD]
+
 ### Phase 17: Evolutionary Computation (v0.17.0)
 
 Formalized Soma's implicit genetic algorithm with explicit operators from evolutionary computation, immunology, and confidence theory:
@@ -448,6 +412,14 @@ Formalized Soma's implicit genetic algorithm with explicit operators from evolut
 - **Fitness Landscape Visualization**: ASCII dashboard showing decayed fitness across all active cells — making governance ROI measurable and visual.
 
 This phase brought the script count to 25 and established Soma as a formal evolutionary computation system operating on natural language hypotheses.
+
+### Phase 18: [TBD]
+
+### Phase 19: [TBD]
+
+### Phase 20: [TBD]
+
+### Phase 21: [TBD]
 
 ## Phase 22: Soma Rebirth & MCP
 

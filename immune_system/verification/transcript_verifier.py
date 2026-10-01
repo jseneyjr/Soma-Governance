@@ -8,6 +8,7 @@ This is the "trust but verify" layer: subagents report completion,
 the orchestrator checks the tape.
 """
 import json
+import os
 import re
 from dataclasses import dataclass
 
@@ -51,12 +52,24 @@ def _is_write_step(step: dict) -> bool:
     step_type = step.get('type', '')
     if step_type in _WRITE_TYPES:
         return True
-    content = step.get('content', '')
-    return any(pat in content for pat in _WRITE_PATTERNS)
+    # Check tool_calls metadata instead of content strings
+    tool_calls = step.get('tool_calls', [])
+    if isinstance(tool_calls, list):
+        for tc in tool_calls:
+            tool_name = tc.get('name', '') if isinstance(tc, dict) else ''
+            if tool_name in _WRITE_PATTERNS:
+                return True
+    return False
 
 
 def _parse_test_counts(content: str) -> tuple[int, int]:
-    """Extract (passed, failed) counts from pytest output."""
+    """Extract (passed, failed) counts from pytest output.
+
+    Returns (-1, -1) when pytest collection errors are detected.
+    """
+    # Detect collection errors
+    if any(marker in content for marker in ('collection error', 'ERRORS', 'CollectionError')):
+        return (-1, -1)
     passed_match = _PASSED_RE.search(content)
     failed_match = _FAILED_RE.search(content)
     passed = int(passed_match.group(1)) if passed_match else 0
@@ -76,6 +89,9 @@ def extract_metrics(transcript_path: str) -> SubagentMetrics:
     Returns:
         SubagentMetrics with all fields populated from the transcript
     """
+    if not os.path.exists(transcript_path):
+        return SubagentMetrics()  # Return empty metrics for missing transcripts
+
     metrics = SubagentMetrics()
     pytest_results: list[tuple[int, int]] = []  # (passed, failed) per run
     first_failure_seen = False
@@ -147,7 +163,7 @@ def verify_claim(
             f"{metrics.first_run_failed} failed)"
         )
 
-    if claimed_first_pass and metrics.pytest_runs > 1:
+    if claimed_first_pass and metrics.pytest_runs > 1 and metrics.fix_cycles > 0:
         divergences.append(
             f"Claimed first-pass but transcript shows {metrics.pytest_runs} "
             f"pytest runs with {metrics.fix_cycles} fix cycles"

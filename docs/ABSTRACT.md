@@ -10,9 +10,9 @@
 
 We present Soma, an adaptive governance framework for AI coding assistants that generates, measures, and prunes its own rules via fitness-based selection. While developed for AI-assisted coding, its core mechanism—hypothesis-driven fitness with selection pressure—is domain-agnostic. It addresses a fundamental challenge: ungoverned AI agents exhibit waste rates exceeding 50% due to cross-session, systemic failure modes.
 
-Rather than prescribing static best practices, Soma extracts rules from empirical failure patterns. Analysis of 83 sessions (12,000+ execution steps) showed fully-governed sessions reduce waste from ~56% to 18.8% (best-case 1.1%), eliminating rework loops and hallucinations. 
+Rather than prescribing static best practices, Soma extracts rules from empirical failure patterns. Analysis of 83 sessions (11,900+ execution steps) showed fully-governed sessions reduce waste from ~56% to 18.8% (best-case 1.1%), eliminating rework loops and hallucinations. 
 
-The framework introduces three contributions:
+The framework introduces four contributions:
 
 1. **Structured review architecture**: Five severity modes and six review prongs providing graduated, risk-proportional governance with adversarial falsification to eliminate false-positives.
 

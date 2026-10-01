@@ -72,46 +72,58 @@ def check(target_file: str, test_file: str) -> ToolEvidence:
 
 def _try_pytest_cov(test_file, target_dir, json_report):
     """Attempt pytest-cov. Returns True if JSON report was generated."""
-    subprocess.run(
-        [
-            sys.executable, "-m", "pytest", test_file,
-            f"--cov={target_dir}",
-            "--cov-branch",
-            f"--cov-report=json:{json_report}",
-            "--no-header", "-q",
-        ],
-        capture_output=True,
-        text=True,
-        check=False,
-    )
+    try:
+        subprocess.run(
+            [
+                sys.executable, "-m", "pytest", test_file,
+                f"--cov={target_dir}",
+                "--cov-branch",
+                f"--cov-report=json:{json_report}",
+                "--no-header", "-q",
+            ],
+            capture_output=True,
+            text=True,
+            check=False,
+            timeout=120,
+        )
+    except subprocess.TimeoutExpired:
+        return False
     return os.path.exists(json_report)
 
 
 def _try_coverage_module(test_file, target_dir, json_report, tmpdir):
     """Attempt coverage module. Returns True if JSON report was generated."""
     data_file = os.path.join(tmpdir, "coverage.data")
-    subprocess.run(
-        [
-            sys.executable, "-m", "coverage", "run",
-            "--branch",
-            f"--source={target_dir}",
-            f"--data-file={data_file}",
-            "-m", "pytest", test_file, "-q",
-        ],
-        capture_output=True,
-        text=True,
-        check=False,
-    )
-    subprocess.run(
-        [
-            sys.executable, "-m", "coverage", "json",
-            f"--data-file={data_file}",
-            "-o", json_report,
-        ],
-        capture_output=True,
-        text=True,
-        check=False,
-    )
+    try:
+        subprocess.run(
+            [
+                sys.executable, "-m", "coverage", "run",
+                "--branch",
+                f"--source={target_dir}",
+                f"--data-file={data_file}",
+                "-m", "pytest", test_file, "-q",
+            ],
+            capture_output=True,
+            text=True,
+            check=False,
+            timeout=120,
+        )
+    except subprocess.TimeoutExpired:
+        return False
+    try:
+        subprocess.run(
+            [
+                sys.executable, "-m", "coverage", "json",
+                f"--data-file={data_file}",
+                "-o", json_report,
+            ],
+            capture_output=True,
+            text=True,
+            check=False,
+            timeout=120,
+        )
+    except subprocess.TimeoutExpired:
+        return False
     return os.path.exists(json_report)
 
 
@@ -131,17 +143,21 @@ def _run_trace_fallback(test_file, target_file, target_dir, tmpdir):
             )
         )
 
-    subprocess.run(
-        [sys.executable, trace_script],
-        capture_output=True,
-        text=True,
-        check=False,
-    )
+    try:
+        subprocess.run(
+            [sys.executable, trace_script],
+            capture_output=True,
+            text=True,
+            check=False,
+            timeout=120,
+        )
+    except subprocess.TimeoutExpired:
+        return None
 
     if not os.path.exists(results_file):
         return None
 
-    with open(results_file) as f:
+    with open(results_file, encoding='utf-8', errors='replace') as f:
         return json.load(f)
 
 
@@ -176,7 +192,7 @@ for (fname, lineno), count in counts.items():
 # The trace module does not fire events for bare structural keywords
 # (else:, try:, finally:) — only their body lines are counted.
 all_lines = set()
-with open(target_file) as f:
+with open(target_file, encoding='utf-8', errors='replace') as f:
     for i, line in enumerate(f, 1):
         stripped = line.strip()
         if not stripped:
@@ -214,4 +230,9 @@ def _parse_coverage(json_report, target_file, target_basename):
     if file_data is None:
         return [-1]
 
-    return file_data.get("missing_lines", [])
+    missing = list(file_data.get("missing_lines", []))
+    # Also include branch-specific uncovered lines
+    for from_line, to_line in file_data.get("missing_branches", []):
+        if to_line not in missing:
+            missing.append(to_line)
+    return missing

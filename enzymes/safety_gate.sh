@@ -139,7 +139,7 @@ fi
 
 # --- Logging ---
 
-GATE_LOG="$RESOLVED_HOME/.gemini/antigravity/scratch/ai-conversation-logs/governance/gate_events.jsonl"
+GATE_LOG="${SOMA_LOGS_DIR:-$RESOLVED_HOME/.gemini/antigravity/scratch/ai-conversation-logs}/governance/gate_events.jsonl"
 GATE_LOG_DIR="$(dirname "$GATE_LOG")"
 
 # Create log directory if missing (graceful)

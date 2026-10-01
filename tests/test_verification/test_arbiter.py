@@ -266,3 +266,43 @@ class TestReportFormatting:
         report = format_report(result)
         assert "unmatched_prediction" in report
         assert "persistence_gap" in report
+
+
+# ── Arbiter: Fail-Closed on Spec Agent Failure ────────────────────────────
+
+class TestArbiterFailClosed:
+    """Verify the Arbiter blocks when the Spec Agent fails to produce output."""
+
+    def test_spec_agent_failed_empty_predictions_blocks(self):
+        """When spec_agent_failed=True and predictions are empty → BLOCK."""
+        result = arbitrate(
+            predictions=[],
+            claims=[],
+            layer1_evidence=[
+                ToolEvidence("persistence_checker", "test", True, "OK"),
+            ],
+            spec_agent_failed=True,
+        )
+        assert result.verdict == Verdict.BLOCK
+
+    def test_spec_agent_not_failed_empty_predictions_ships(self):
+        """Default spec_agent_failed=False with no predictions → SHIP (existing behavior)."""
+        result = arbitrate(
+            predictions=[],
+            claims=[],
+            layer1_evidence=[
+                ToolEvidence("persistence_checker", "test", True, "OK"),
+            ],
+        )
+        assert result.verdict == Verdict.SHIP
+
+    def test_spec_agent_failed_false_explicit_ships(self):
+        """Explicit spec_agent_failed=False with no predictions → SHIP."""
+        result = arbitrate(
+            predictions=[],
+            claims=[],
+            layer1_evidence=[],
+            spec_agent_failed=False,
+        )
+        assert result.verdict == Verdict.SHIP
+

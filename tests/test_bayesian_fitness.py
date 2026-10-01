@@ -17,6 +17,10 @@ import shutil
 
 import pytest
 
+from tests.helpers_cell import (
+    soma_workspace, write_cell_with_fitness, make_cell_dict,
+)
+
 REPO_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, REPO_ROOT)
 sys.path.insert(0, os.path.join(REPO_ROOT, 'soma_mcp'))
@@ -85,17 +89,11 @@ class TestBayesianFitnessScoring:
 class TestJITFitnessScore:
     """Verify jit_engine.get_fitness_score uses Bayesian scoring."""
 
-    def _make_cell(self, tp=0, triggers=0, fp=0, impact_weight=1.0, score=None):
-        """Build a minimal cell dict matching the frontmatter structure."""
-        fitness = {'true_positives': tp, 'triggers': triggers, 'false_positives': fp}
-        if score is not None:
-            fitness['score'] = score
-        return {'fitness': fitness, 'impact_weight': impact_weight}
 
     def test_basic_bayesian_scoring(self):
         """get_fitness_score should return Bayesian posterior, not raw ratio."""
         from jit_engine import get_fitness_score
-        cell = self._make_cell(tp=5, triggers=10)
+        cell = make_cell_dict(tp=5, triggers=10)
         result = get_fitness_score(cell)
         expected = (5 + 1) / (10 + 2)  # 0.5
         assert result == pytest.approx(expected, rel=1e-3)
@@ -103,14 +101,14 @@ class TestJITFitnessScore:
     def test_zero_triggers_returns_default(self):
         """Zero triggers should return the default 0.5 * impact_weight."""
         from jit_engine import get_fitness_score
-        cell = self._make_cell(tp=0, triggers=0)
+        cell = make_cell_dict(tp=0, triggers=0)
         result = get_fitness_score(cell)
         assert result == pytest.approx(0.5)
 
     def test_impact_weight_applied(self):
         """Impact weight should multiply the Bayesian score."""
         from jit_engine import get_fitness_score
-        cell = self._make_cell(tp=5, triggers=10, impact_weight=0.8)
+        cell = make_cell_dict(tp=5, triggers=10, impact_weight=0.8)
         result = get_fitness_score(cell)
         expected = ((5 + 1) / (10 + 2)) * 0.8
         assert result == pytest.approx(expected, rel=1e-3)
@@ -118,7 +116,7 @@ class TestJITFitnessScore:
     def test_perfect_record_not_1(self):
         """A cell with 10/10 TP should not score 1.0."""
         from jit_engine import get_fitness_score
-        cell = self._make_cell(tp=10, triggers=10)
+        cell = make_cell_dict(tp=10, triggers=10)
         result = get_fitness_score(cell)
         assert result < 1.0, f"10/10 should score below 1.0, got {result}"
 
@@ -137,81 +135,54 @@ class TestMandatoryInvariantSlots:
     """Verify that wall cells and gate-tier cells always load regardless of budget."""
 
     @pytest.fixture
-    def soma_workspace(self, tmp_path):
-        """Create a minimal Soma workspace with cells of various types."""
-        workspace = tmp_path / "project"
-        cells_dir = workspace / ".soma" / "cells"
-        cells_dir.mkdir(parents=True)
-
-        # Wall cell (mandatory)
-        (cells_dir / "wall-no-secrets.md").write_text(
-            "---\n"
-            "type: wall\n"
-            "hypothesis: Never expose API keys\n"
-            "enforcement: advisory\n"
-            "target_paths:\n  - \"*.py\"\n"
-            "fitness:\n  triggers: 10\n  true_positives: 9\n  false_positives: 0\n"
-            "---\n# Wall content\n"
+    def populated_workspace(self, soma_workspace):
+        """Workspace with wall, gate, and advisory cells for slot tests."""
+        cells_dir = soma_workspace / ".soma" / "cells"
+        write_cell_with_fitness(
+            cells_dir, "wall-no-secrets", cell_type="wall",
+            triggers=10, tp=9, fp=0,
+            hypothesis="Never expose API keys",
         )
-
-        # Gate-tier cell (mandatory)
-        (cells_dir / "gate-auth.md").write_text(
-            "---\n"
-            "type: vacuole\n"
-            "hypothesis: Validate auth tokens\n"
-            "enforcement: gate\n"
-            "target_paths:\n  - \"*.py\"\n"
-            "fitness:\n  triggers: 50\n  true_positives: 48\n  false_positives: 1\n"
-            "---\n# Gate content\n"
+        write_cell_with_fitness(
+            cells_dir, "gate-auth", enforcement="gate",
+            triggers=50, tp=48, fp=1,
+            hypothesis="Validate auth tokens",
         )
-
-        # Advisory cell (competes for budget)
-        (cells_dir / "advisory-formatting.md").write_text(
-            "---\n"
-            "type: chloroplast\n"
-            "hypothesis: Use consistent formatting\n"
-            "enforcement: advisory\n"
-            "target_paths:\n  - \"*.py\"\n"
-            "fitness:\n  triggers: 30\n  true_positives: 25\n  false_positives: 2\n"
-            "---\n# Advisory content\n"
+        write_cell_with_fitness(
+            cells_dir, "advisory-formatting", cell_type="chloroplast",
+            triggers=30, tp=25, fp=2,
+            hypothesis="Use consistent formatting",
         )
-
-        # Another advisory cell (competes)
-        (cells_dir / "advisory-imports.md").write_text(
-            "---\n"
-            "type: vacuole\n"
-            "hypothesis: Sort imports\n"
-            "enforcement: advisory\n"
-            "target_paths:\n  - \"*.py\"\n"
-            "fitness:\n  triggers: 15\n  true_positives: 10\n  false_positives: 3\n"
-            "---\n# Imports content\n"
+        write_cell_with_fitness(
+            cells_dir, "advisory-imports",
+            triggers=15, tp=10, fp=3,
+            hypothesis="Sort imports",
         )
+        return str(soma_workspace)
 
-        return str(workspace)
-
-    def test_walls_always_load_even_at_budget_1(self, soma_workspace):
+    def test_walls_always_load_even_at_budget_1(self, populated_workspace):
         """With budget=1, wall cells must still load (they're mandatory)."""
         from jit_engine import express
-        result = express(soma_workspace, changed_files=["app.py"], budget=1)
+        result = express(populated_workspace, changed_files=["app.py"], budget=1)
 
         cell_names = [c['name'] for c in result['relevant_cells']]
         assert 'wall-no-secrets' in cell_names, \
             f"Wall cell must always load. Got: {cell_names}"
 
-    def test_gate_tier_always_loads(self, soma_workspace):
+    def test_gate_tier_always_loads(self, populated_workspace):
         """Gate-tier cells must always load regardless of budget."""
         from jit_engine import express
-        result = express(soma_workspace, changed_files=["app.py"], budget=1)
+        result = express(populated_workspace, changed_files=["app.py"], budget=1)
 
         cell_names = [c['name'] for c in result['relevant_cells']]
         assert 'gate-auth' in cell_names, \
             f"Gate-tier cell must always load. Got: {cell_names}"
 
-    def test_mandatory_cells_dont_consume_advisory_budget(self, soma_workspace):
+    def test_mandatory_cells_dont_consume_advisory_budget(self, populated_workspace):
         """With budget=3, mandatory cells (wall+gate) take 2 slots,
         leaving 1 slot for the best advisory cell."""
         from jit_engine import express
-        result = express(soma_workspace, changed_files=["app.py"], budget=3)
+        result = express(populated_workspace, changed_files=["app.py"], budget=3)
 
         cell_names = [c['name'] for c in result['relevant_cells']]
         # 2 mandatory + 1 advisory = 3
@@ -219,20 +190,20 @@ class TestMandatoryInvariantSlots:
         assert 'gate-auth' in cell_names
         assert len(cell_names) == 3, f"Expected 3 cells, got {len(cell_names)}: {cell_names}"
 
-    def test_large_budget_includes_all(self, soma_workspace):
+    def test_large_budget_includes_all(self, populated_workspace):
         """With budget=10 and 4 cells, all should load."""
         from jit_engine import express
-        result = express(soma_workspace, changed_files=["app.py"], budget=10)
+        result = express(populated_workspace, changed_files=["app.py"], budget=10)
 
         cell_names = [c['name'] for c in result['relevant_cells']]
         assert len(cell_names) == 4, f"Expected all 4 cells, got {len(cell_names)}: {cell_names}"
 
-    def test_mandatory_can_exceed_budget(self, soma_workspace):
+    def test_mandatory_can_exceed_budget(self, populated_workspace):
         """If there are 3 mandatory cells and budget=2, all 3 mandatory still load.
         The budget constrains advisory cells, not mandatory ones."""
         from jit_engine import express
         # Budget=2 but we have 2 mandatory cells. Advisory gets 0 slots.
-        result = express(soma_workspace, changed_files=["app.py"], budget=2)
+        result = express(populated_workspace, changed_files=["app.py"], budget=2)
 
         cell_names = [c['name'] for c in result['relevant_cells']]
         assert 'wall-no-secrets' in cell_names
@@ -242,17 +213,18 @@ class TestMandatoryInvariantSlots:
         assert advisory_count == 0, \
             f"Advisory cells should not load when budget is consumed by mandatory. Got: {cell_names}"
 
-    def test_no_changed_files_returns_empty(self, soma_workspace):
+    def test_no_changed_files_returns_empty(self, populated_workspace):
         """When no files are changed, no cells load (including mandatory)."""
         from jit_engine import express
-        result = express(soma_workspace, changed_files=[], budget=10)
+        result = express(populated_workspace, changed_files=[], budget=10)
         assert len(result['relevant_cells']) == 0
 
-    def test_stats_report_correct_counts(self, soma_workspace):
+    def test_stats_report_correct_counts(self, populated_workspace):
         """Stats should report total, matched, and expressed counts."""
         from jit_engine import express
-        result = express(soma_workspace, changed_files=["app.py"], budget=3)
+        result = express(populated_workspace, changed_files=["app.py"], budget=3)
 
         assert result['stats']['total_cells'] == 4
         assert result['stats']['matched'] == 4  # all match *.py
         assert result['stats']['expressed'] == 3  # budget=3
+

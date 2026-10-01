@@ -35,6 +35,8 @@ except ImportError:
     _HAS_SDK = False
 
 
+# INTENTIONAL DUPLICATION: wall-mcp-zero-deps prohibits importing from enzymes/
+# Canonical source: enzymes/soma_resolve.py — keep in sync manually
 def resolve_workspace():
     """Find the project root containing .soma/cells/."""
     soma_root = os.environ.get("SOMA_ROOT")
