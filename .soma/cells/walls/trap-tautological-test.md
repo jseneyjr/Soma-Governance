@@ -1,6 +1,6 @@
 ---
 id: trap-tautological-test
-domain: quality
+domain: testing
 type: wall
 enforcement: gate
 hypothesis: Tests that assert only types (isinstance), test at single degenerate
