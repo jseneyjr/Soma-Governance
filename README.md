@@ -5,7 +5,7 @@
 [![Agent Skills](https://img.shields.io/badge/Agent_Skills-15-purple?style=flat-square)](#-agent-skills)
 [![Automation Scripts](https://img.shields.io/badge/Automation_Scripts-57-red?style=flat-square)](#%EF%B8%8F-automation-scripts)
 [![Adaptive Rules](https://img.shields.io/badge/Adaptive_Rules-5_Types-orange?style=flat-square)](#-adaptive-rules)
-[![Version](https://img.shields.io/badge/Version-0.74-informational?style=flat-square)](docs/project/CHANGELOG.md)
+[![Version](https://img.shields.io/badge/Version-0.75-informational?style=flat-square)](docs/project/CHANGELOG.md)
 [![Blog Post](https://img.shields.io/badge/Blog-dev.to-black?style=flat-square&logo=devdotto)](https://dev.to/nseney1/rules-that-cant-prove-themselves-die-adaptive-governance-for-ai-coding-agents-25bn)
 [![Blog Post 2](https://img.shields.io/badge/Blog_2-dev.to-black?style=flat-square&logo=devdotto)](https://dev.to/nseney1/your-ai-agents-rules-file-is-a-gentlemans-agreement-heres-what-happens-when-you-make-3df5)
 
@@ -241,9 +241,15 @@ Generate → Score (Confidence Decay) → Adapt → Differentiate → Prune / Re
 
 **Fitness scoring**: Wilson-bounded fitness scoring with credible intervals — cells are scored by true positive rate using Wilson score intervals for statistically rigorous confidence bounds. Laplace smoothing `(tp + 1) / (triggers + 2)` provides the point estimate; Wilson bounds determine promotion and pruning thresholds. All tools use a single canonical cell parser (`parse_cell_file`) for consistent frontmatter extraction.
 
+**Credit assignment**: Scope-narrowed credit assignment with per-file conservation — when multiple cells match the same changed file, each cell's fitness signal is weighted by `1/N` (where N = matching cells for that file). Probabilistic rounding (`prob_round`) converts fractional credit to integer tp/fp counters while preserving expected value over many observations. Signal provenance is tracked in JSONL with `credit_weight` and `signal_method` fields.
+
+**Structured crossover**: Structured field-level rule merging — two high-fitness cells can be crossed to produce offspring with combined hypotheses, max impact weight, merged target paths (union), and reset fitness counters. Lineage tracking records parent IDs, generation number, and creation method.
+
+**Tournament selection**: Tournament selection for rule competition — random k-sample selection identifies the highest-fitness cell per round. Read-only operation preserves cell state. Handles null fitness, oversized k, and empty cell directories gracefully.
+
 **Tiered enforcement**: Rules earn their enforcement tier through demonstrated defect prevention — `advisory` (prompt injection) → `mechanical` (pre-commit block). Pre-commit hooks block commits matching cell target patterns when invariant violations are detected.
 
-> **Planned features** (not yet shipped): Crossover, tournament selection, quorum sensing, gate enforcement DSL. See [ROADMAP.md](docs/project/ROADMAP.md).
+> **Planned features** (not yet shipped): Quorum sensing, gate enforcement DSL. See [ROADMAP.md](docs/project/ROADMAP.md).
 
 ---
 

@@ -3,6 +3,28 @@
 All notable changes to Soma are documented here.
 This project uses [Semantic Versioning](https://semver.org/).
 
+## [0.75.0] — 2026-10-01 — "Credit Where Due"
+
+### Added
+- **Credit assignment** (Phase 3.1): `prob_round()` probabilistic rounding, `compute_credit_weights()` per-file scope narrowing with credit conservation. Signal provenance tracked in JSONL via `credit_weight` and `signal_method` fields.
+- **Mutation operators** (Phase 3.2): Comparison swap (`<`↔`>`, `<=`↔`>=`, `==`↔`!=`), boolean swap (`and`↔`or`), statement deletion (stmt→pass), return value mutation (`return X`→`return None`).
+- **TDD test suite**: 8 new behavioral test files — `test_credit_assignment.py` (14), `test_outcome_engine.py` (18), `test_jit_engine_behavioral.py` (22), `test_error_handling.py` (13), `test_mcp_tools_contract.py` (12), `test_tournament_integration.py` (8), `test_crossover_structured.py` (12), `test_mutation_tester_upgraded.py` (10).
+
+### Fixed
+- **Crossover target_paths** (Phase 3.6): `cell_crossover.py` now merges `target_paths` as deduplicated union of both parents. Previously omitted entirely, making child cells unable to match any files.
+- **Crossover tags**: Tags now merged as union instead of reset to empty list.
+
+### Changed
+- `compute_fitness_signals()` accepts optional `changed_files` kwarg for credit weighting.
+- `update_cell_fitness()` uses `prob_round(credit_weight)` for tp/fp counter updates.
+- `append_fitness_log()` includes `credit_weight` and `signal_method` provenance.
+- Claim registry: `claim_credit_assignment`, `claim_structured_crossover`, `claim_tournament_selection` unlocked.
+
+### Metrics
+- Test suite: **1465 passed**, 7 skipped, 0 failed (up from 1359 in v0.74)
+
+---
+
 ## [0.71.0] — 2026-10-01 — "Branch Sync"
 
 ### Fixed
