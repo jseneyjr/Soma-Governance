@@ -3,6 +3,30 @@
 All notable changes to Soma are documented here.
 This project uses [Semantic Versioning](https://semver.org/).
 
+## [0.70.0] — 2026-10-01 — "Genesis"
+
+### Added
+- **`soma genesis` command**: Scans codebase architecture with 8 language-agnostic detectors and generates governance cell candidates.
+  - Detectors: module boundaries, config stores, shared state, API surfaces, data pipelines, state machines, test boundaries, dependency walls
+  - All generated cells start as vacuoles with `proposed_type` frontmatter
+  - Generates `docs/organelles.md` architecture map
+  - Flags: `--dry-run`, `--json`, `--force`, `--yes`
+
+### Security
+- Path traversal fix: import regex rejects relative imports; `is_relative_to()` containment check
+- Memory exhaustion fix: streaming `read(limit)` replaces `read_text()[:limit]`
+- Symlink guard: `is_symlink()` check before all file writes
+
+### Fixed
+- Dry-run no longer creates `.soma/cells/vacuoles/` directory
+- `docs/organelles.md` respects `--dry-run`, `--force`, and symlink guards
+- `input()` wrapped in `try/except` for headless environments
+- `rglob` replaced with filtered `_iter_source_files` (no `.git`/`.venv` traversal)
+- Frontmatter/markdown sanitization prevents injection via crafted identifiers
+- 80% I/O reduction via single-pass source cache across 5 detectors
+
+---
+
 ## [0.62.2] — 2026-10-01 — "Documentation Sweep"
 
 ### Fixed
