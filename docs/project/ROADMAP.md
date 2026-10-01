@@ -32,24 +32,24 @@ README stripped to earned claims, hook fix, claim registry, roadmap/release work
 **Status**: ✅ SHIPPED (v0.74)  
 Canonical cell parser, Wilson-bounded scoring, error hierarchy, 27-file parser migration.
 
-## Phase 3 — v0.75 (NEXT)
+## Phase 3 — v0.75 ✅ Shipped
 
 ### Credit Assignment
-**Status**: Implementation planned (Phase 3)  
+**Status**: ✅ Shipped (v0.75)  
 **Tracking**: `claim_credit_assignment` in `docs/project/CLAIM_REGISTRY.json`  
 Attribute session outcomes to the specific cells that fired, enabling causal fitness updates.
 
 ### Crossover (Structured Rule Merging)
-**Status**: Implementation planned (Phase 3)  
+**Status**: ✅ Shipped (v0.75)  
 **Tracking**: `claim_structured_crossover` in `docs/project/CLAIM_REGISTRY.json`  
 Field-level merge of parent cell attributes to create hybrid rules.
 
 ### Tournament Selection
-**Status**: Implementation planned (Phase 3)  
+**Status**: ✅ Shipped (v0.75)  
 **Tracking**: `claim_tournament_selection` in `docs/project/CLAIM_REGISTRY.json`  
 Competitive evaluation between rules to select higher-fitness survivors.
 
-## Phase 4 — v0.80
+## Phase 4 — v0.80 (NEXT)
 
 ### Quorum Sensing (Multi-Rule Consensus)
 **Status**: Implementation planned (Phase 4)  

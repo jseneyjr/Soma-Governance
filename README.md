@@ -5,7 +5,7 @@
 [![Agent Skills](https://img.shields.io/badge/Agent_Skills-15-purple?style=flat-square)](#-agent-skills)
 [![Automation Scripts](https://img.shields.io/badge/Automation_Scripts-57-red?style=flat-square)](#%EF%B8%8F-automation-scripts)
 [![Adaptive Rules](https://img.shields.io/badge/Adaptive_Rules-5_Types-orange?style=flat-square)](#-adaptive-rules)
-[![Version](https://img.shields.io/badge/Version-0.75-informational?style=flat-square)](docs/project/CHANGELOG.md)
+[![Version](https://img.shields.io/badge/Version-0.80-informational?style=flat-square)](docs/project/CHANGELOG.md)
 [![Blog Post](https://img.shields.io/badge/Blog-dev.to-black?style=flat-square&logo=devdotto)](https://dev.to/nseney1/rules-that-cant-prove-themselves-die-adaptive-governance-for-ai-coding-agents-25bn)
 [![Blog Post 2](https://img.shields.io/badge/Blog_2-dev.to-black?style=flat-square&logo=devdotto)](https://dev.to/nseney1/your-ai-agents-rules-file-is-a-gentlemans-agreement-heres-what-happens-when-you-make-3df5)
 
@@ -247,9 +247,13 @@ Generate → Score (Confidence Decay) → Adapt → Differentiate → Prune / Re
 
 **Tournament selection**: Tournament selection for rule competition — random k-sample selection identifies the highest-fitness cell per round. Read-only operation preserves cell state. Handles null fitness, oversized k, and empty cell directories gracefully.
 
-**Tiered enforcement**: Rules earn their enforcement tier through demonstrated defect prevention — `advisory` (prompt injection) → `mechanical` (pre-commit block). Pre-commit hooks block commits matching cell target patterns when invariant violations are detected.
+**Tiered enforcement**: Rules earn their enforcement tier through demonstrated defect prevention — `advisory` (prompt injection) → `mechanical` (pre-commit block) → `gate` (CI block). Enforcement ladder evaluates cell invariants and applies tier-appropriate blocking.
 
-> **Planned features** (not yet shipped): Quorum sensing, gate enforcement DSL. See [ROADMAP.md](docs/project/ROADMAP.md).
+**Quorum sensing**: Multi-rule consensus for high-confidence decisions — when ≥N cells trigger simultaneously on the same changed files, Soma detects a systemic issue and escalates the review mode to the highest `minimum_mode` among triggered cells. Quorum events are logged to JSONL for trend analysis.
+
+**Gate enforcement DSL**: Cells can declare invariants in frontmatter (e.g., `import_banned`, `file_must_exist`) that are evaluated against changed files. Violations are enforced according to the cell's enforcement tier: advisory warns without blocking, gate exits non-zero in CI.
+
+> **Planned features** (not yet shipped): CI outcome reporter (fitness telemetry loop). See [ROADMAP.md](docs/project/ROADMAP.md).
 
 ---
 

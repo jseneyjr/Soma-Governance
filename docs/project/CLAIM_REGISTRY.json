@@ -99,22 +99,22 @@
     },
     "claim_quorum_sensing": {
       "phase": 4,
-      "status": "locked",
+      "status": "unlocked",
       "readme_text": "Multi-rule consensus for high-confidence decisions",
       "required_tests": [
-        "tests/test_quorum.py::test_quorum_threshold",
-        "tests/test_quorum.py::test_quorum_disagree"
+        "tests/test_quorum.py::TestQuorumThreshold::test_quorum_fires_when_at_threshold",
+        "tests/test_quorum.py::TestQuorumDisagree::test_cells_different_targets_no_quorum"
       ]
     },
     "claim_gate_enforcement": {
       "phase": 4,
-      "status": "locked",
+      "status": "unlocked",
       "readme_text": "Invariant DSL-based gate enforcement in CI",
       "required_tests": [
-        "tests/test_gate_invariant_dsl.py::test_import_banned_catches_violation",
-        "tests/test_gate_invariant_dsl.py::test_import_banned_allows_compliant",
-        "tests/test_enforcement_ladder.py::test_advisory_warns_no_block",
-        "tests/test_enforcement_ladder.py::test_gate_blocks_ci"
+        "tests/test_gate_invariant_dsl.py::TestImportBanned::test_catches_violation",
+        "tests/test_gate_invariant_dsl.py::TestImportBanned::test_allows_compliant",
+        "tests/test_enforcement_ladder.py::TestAdvisory::test_advisory_warns_no_block",
+        "tests/test_enforcement_ladder.py::TestGate::test_gate_blocks_ci"
       ]
     },
     "claim_structurally_unprofitable": {

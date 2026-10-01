@@ -21,7 +21,7 @@ Thank you for your interest in contributing!
 - **Python 3.9+** — all code must be compatible with Python 3.9 through 3.12
 - **`from __future__ import annotations`** — required as the first import in any file using `X | None` union syntax
 - **CI matrix** — tests run on Python 3.9 + 3.11 across Linux, macOS, and Windows
-- **Test command**: `python3 -m pytest tests/ -q` (~1,359 tests)
+- **Test command**: `python3 -m pytest tests/ -q` (~1,465 tests)
 
 ### Contributing Cells
 If your Genesis scan produced useful cells, you can contribute them:
@@ -52,4 +52,4 @@ All contributions must respect the Privacy Invariant:
 - ✅ Aggregate counts, booleans, sanitized strings
 - ❌ Never: file paths, usernames, hostnames, project names, code content
 
-See the [NOTICE](../NOTICE) file for the full privacy statement.
+See the [NOTICE](../../NOTICE) file for the full privacy statement.

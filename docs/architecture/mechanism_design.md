@@ -35,8 +35,8 @@
 |:---|:---|:---|
 | **Fitness scoring** | **Performance evaluation** | Measures rule effectiveness via precision × impact. The social choice function's proxy metric. |
 | **Confidence decay / telomeres** | **Sunset clause** | Rules expire unless actively reinforced. Prevents bureaucratic ossification — the accumulation of rules nobody enforces. |
-| **Selection / tournament** | **Competitive evaluation** | Diversity-preserving selection among candidate rules. Prevents monoculture in the policy landscape. *(Phase 3 — planned)* |
-| **Crossover** | **Policy synthesis** | Merges high-performing rules from different contexts. Analogous to synthesizing regulations from multiple jurisdictions. *(Phase 3 — planned)* |
+| **Selection / tournament** | **Competitive evaluation** | Diversity-preserving selection among candidate rules. Prevents monoculture in the policy landscape. *(Phase 3 — shipped v0.75)* |
+| **Crossover** | **Policy synthesis** | Merges high-performing rules from different contexts. Analogous to synthesizing regulations from multiple jurisdictions. *(Phase 3 — shipped v0.75)* |
 | **Metamorphosis** | **Regulatory promotion** | A rule earns a higher enforcement tier through demonstrated effectiveness. Advisory → mechanical → gate. |
 | **Horizontal transfer** | **Policy import** | Importing rules from external repositories with probation period. Analogous to adopting foreign regulatory frameworks with adaptation. |
 | **Pruning / extinction** | **Regulatory repeal** | Removing rules that fail to demonstrate effectiveness. The enforcement of sunset clauses. |
@@ -47,9 +47,9 @@
 
 | Codebase (Biology) | Formal Concept | Mechanism Design Property |
 |:---|:---|:---|
-| **Layer 1: Deterministic tools** | **Objective audit** | Produces ungameable evidence. Analogous to financial audit with fixed accounting rules — the auditor cannot exercise judgment on what counts. |
+| **Layer 1: Deterministic tools** | **Objective audit** | Produces observable evidence. Analogous to financial audit with fixed accounting rules — the auditor cannot exercise judgment on what counts. |
 | **Layer 2: Adversarial agents** | **Adversarial proceeding** | Information-partitioned reviewers who cannot collude. Directly implements **information asymmetry exploitation** — each reviewer sees different inputs, so agreement is meaningful. |
-| **Arbiter (set algebra)** | **Mechanical adjudication** | Deterministic verdict from reviewer outputs. Removes judicial discretion — the "judge" applies fixed rules to structured inputs. |
+| **Arbiter (verification)** | **Mechanical adjudication** | Deterministic verdict from reviewer outputs. Removes judicial discretion — the "judge" applies fixed rules to structured inputs. |
 | **Transcript verifier** | **Post-hoc audit** | Independently verifies self-reported claims against execution logs. Implements a **revelation mechanism** — agents cannot benefit from misreporting because reports are checked against the tape. |
 | **Escaped defect tracking** | **External ground truth** | CI/CD exit codes provide signals outside the governance system's control. Breaks the **self-evaluation loop** — the system cannot grade itself on criteria it defines. |
 

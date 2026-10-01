@@ -83,14 +83,14 @@ With low baseline waste established, Phase 6 addressed review depth, context eff
 - **Trident Protocol**: Progressive 3-prong deep review (Spores → Roots → Bedrock) separating reconnaissance from root-cause analysis and structural verification. Prevents confirmation bias and scope creep.
 - **Maelstrom Protocol & Thorns**: Full 4-stage adversarial workflow incorporating NASA IV&V tripartite falsification with a 2-cycle revision cap.
 - **Nature-Themed Naming**: Unified protocols (Gale, Trident, Maelstrom) and prongs (Spores, Roots, Thorns, Bedrock) under natural phenomena metaphors.
-- **Risk-Based Protocol Selection**: Automated risk-tiered routing — see [METRICS.md](METRICS.md#review-protocol-costs-5-modes--6-prongs) for cost details.
+- **Risk-Based Protocol Selection**: Automated risk-tiered routing — see [METRICS.md](../project/METRICS.md#review-protocol-costs-5-modes--6-prongs) for cost details.
 - **First Successful Maelstrom Dogfood**: Thorns adversarial prong caught 5 critical bugs that would have shipped broken under traditional review.
-- **Schema Bifurcation Fix**: Reconciled disparate transcript field structures in `immune_sweep.sh` — see [METRICS.md](METRICS.md#aggregate-stats-17-sessions-7015-steps) for aggregate numbers.
+- **Schema Bifurcation Fix**: Reconciled disparate transcript field structures in `immune_sweep.sh` — see [METRICS.md](../project/METRICS.md#aggregate-stats-17-sessions-7015-steps) for aggregate numbers.
 - **14 Skills**: Added 5 specialist skills (domain-researcher, spec-synthesizer, session-monitor, governance-auditor, visual-analyst) alongside the 8 original and session-preflight.
 - **10-Lens Staff Protocol**: Architecture, Performance, Security, Compliance, Behavioral, Domain Research, Spec Synthesis, Visual, Governance Audit, Live Monitor.
 - **Auto-Preflight & Domain Detection**: Zero-token project scanning in `immune_init.sh` hooks.
 - **Context Pre-Seeding**: ~200-token compact headers eliminating 2–3 cold-start steps per subagent.
-- **Experiment Framework (E1–E15)**: Active/backlog registry in [EXPERIMENTS.md](EXPERIMENTS.md).
+- **Experiment Framework (E1–E15)**: Active/backlog registry in [EXPERIMENTS.md](../research/experiments.md).
 - **Concurrency Expansion**: 4 readers / 3 writers under Disjoint Lane Protocol; delegation floor lowered from 100 to 75 steps.
 - **Governance Sweep**: Local periodic scanning at ~500 tokens / run, zero LLM cost.
 
@@ -102,11 +102,11 @@ While Phase 6 established multi-stage reviews and baseline automation, real-worl
 
 In **Maelstrom #2**, state-of-the-art 2026 academic research was incorporated:
 
-1. **Empirical Refutation Gate** — 2-of-3 evidentiary criteria before accepting critical findings. Eliminates ~80% false positives (empirically observed). See [METRICS.md](METRICS.md#review-protocol-costs-5-modes--6-prongs).
+1. **Empirical Refutation Gate** — 2-of-3 evidentiary criteria before accepting critical findings. Eliminates ~80% false positives (empirically observed). See [METRICS.md](../project/METRICS.md#review-protocol-costs-5-modes--6-prongs).
 2. **Boundary Verification Protocol** — Orchestrator spot-checks with ±5 line locality tolerance. Demote-not-discard policy (IEEE GLOBECOM 2026).
 3. **Orthogonal Persona Mandate** — Bans homogeneous reviewer fan-outs; mandates conflicting analytical incentives (MAR/ICML 2026).
 4. **Diagnose Before Repair** — Structured diagnostic schema (`failure_mode`, `root_cause`, `broken_invariant`, `fix_spec`) required before any fix code (REFLEX/ICML 2026).
-5. **First-Pass Success Rate (FPSR)** — Target >80%, halt at <50% (N≥5). Calibrated against Tencent SiriusDeliver 2026 (87.2%). See [METRICS.md](METRICS.md#first-pass-success-rate-fpsr).
+5. **First-Pass Success Rate (FPSR)** — Target >80%, halt at <50% (N≥5). Calibrated against Tencent SiriusDeliver 2026 (87.2%). See [METRICS.md](../project/METRICS.md#first-pass-success-rate-fpsr).
 6. **Incremental Escalation** — 4 upgrade paths preserving completed prongs with dirty-tree caveat. Extracted from live post-mortem `f8b82d61`.
 7. **Mechanical Diff Downgrade** — Flash-tier for syntactic diff application (~85% reduction).
 8. **Validated Concurrency Ceilings** — 4 readers / 3 writers empirically validated against MIT, Tencent, Coasty, Devin, Cursor, Copilot benchmarks.
@@ -121,7 +121,7 @@ Maelstrom #3 expanded the review system in two dimensions: **breadth** (Breeze a
 2. **Tempest Protocol** — Highest-assurance 6-prong pipeline with human gate via `ask_question` before Bedrock verdict.
 3. **🍄 Mycelium Prong** — Blast-radius and dependency mapping (2-hop import chains) inserted between Spores and Roots.
 4. **🍂 Mulch Prong** — Post-review learning extraction with circuit breaker preventing recursive reviews.
-5. **7 Escalation Paths** (up from 4) and **5 Modes / 6 Prongs** — see [staff-review SKILL.md](../organs/staff-review/SKILL.md) for full details and [METRICS.md](METRICS.md#review-protocol-costs-5-modes--6-prongs) for costs.
+5. **7 Escalation Paths** (up from 4) and **5 Modes / 6 Prongs** — see [staff-review SKILL.md](../../organs/staff-review/SKILL.md) for full details and [METRICS.md](../project/METRICS.md#review-protocol-costs-5-modes--6-prongs) for costs.
 
 **Impact on rules:** Upgraded `staff-review` with Breeze, Tempest, Mycelium, and Mulch. Updated documentation across README.md and METRICS.md.
 
@@ -317,7 +317,7 @@ For each cell in .soma/cells/:
     └── 0 triggers in N cycles  → DORMANT → EXTINCTION after 1 more cycle
 ```
 
-**Validation**: E23 (Chloroplast Effectiveness), E24 (Vacuole Trap Persistence), E25 (Fitness Function Accuracy). See [EXPERIMENTS.md](EXPERIMENTS.md).
+**Validation**: E23 (Chloroplast Effectiveness), E24 (Vacuole Trap Persistence), E25 (Fitness Function Accuracy). See [EXPERIMENTS.md](../research/experiments.md).
 
 **Impact on rules:** Genesis expanded from 4 to 5 stages (Canopy, Rings, Taproot, Lichen, Cytogenesis). Additive repo-local governance layer with integrated self-pruning. 2 experiments in TESTING (E23–E24). Components 1-5 are now fully implemented and wired into `immune_init.sh` and `escalation_sentinel.sh`.
 
@@ -366,7 +366,7 @@ Cross-repo Natural Selection requires a shared metrics store. Phase 14 includes 
 
 This separation ensures: governance rules are **public** (Apache 2.0 licensed), telemetry data is **private** (user-configurable repo, gitignored by default). Fitness data can be aggregated across repos via the shared `METRICS_REPO` path without exposing project-specific content.
 
-**Validation**: E26 (Promotion Path Validation). See [EXPERIMENTS.md](EXPERIMENTS.md).
+**Validation**: E26 (Promotion Path Validation). See [EXPERIMENTS.md](../research/experiments.md).
 
 **Impact on rules:** Automated cross-repo governance evolution. Self-discovering rules. Configurable data separation. Promotion path from repo-local cells to global forest-floor rules. 2 experiments in TESTING (E25–E26). 26 experiments total.
 
@@ -404,11 +404,11 @@ Heavy multi-prong reviews and full test executions created inner-loop friction, 
 
 - **Deterministic AST Gate**: `soma checkpoint` analyzes AST structure in milliseconds with zero LLM overhead, verifying assertion density, import integrity, and placeholder absence.
 - **Pre-Commit Integration**: Placed directly at the git boundary (`soma checkpoint --pre-commit`) to block malformed commits before code enters version control.
-- **Why it matters**: Shifted baseline hygiene from slow, probabilistic model review to ungameable deterministic linting, ensuring code satisfies structural invariants before higher-tier reviews trigger.
+- **Why it matters**: Shifted baseline hygiene from slow, probabilistic model review to observable deterministic linting, ensuring code satisfies structural invariants before higher-tier reviews trigger.
 
 ## Phase 17: Evolutionary Computation (v0.17.0)
 
-Formalized Soma's implicit genetic algorithm with explicit operators from evolutionary computation, immunology, and confidence theory:
+Formalized Soma's implicit genetic algorithm with explicit operators from adaptive governance, immunology, and confidence theory:
 
 - **GA Operators**: Crossover merges complementary cell hypotheses; tournament selection preserves population diversity during pruning.
 - **Confidence Telomere Shortening**: Cell fitness decays exponentially unless reinforced by new evidence. A cell with fitness 0.85 that hasn't triggered in 60 days decays to 0.21 — automatic extinction without hard expiry dates.
@@ -417,7 +417,7 @@ Formalized Soma's implicit genetic algorithm with explicit operators from evolut
 - **Immune System Pattern**: Effector cells provide acute, aggressive protection during incidents (3 sessions, 3x weight, Tempest review). Memory cells provide permanent dormant protection that activates on re-exposure.
 - **Fitness Landscape Visualization**: ASCII dashboard showing decayed fitness across all active cells — making governance ROI measurable and visual.
 
-This phase brought the script count to 25 and established Soma as a formal evolutionary computation system operating on natural language hypotheses.
+This phase brought the script count to 25 and established Soma as a formal adaptive governance system operating on natural language hypotheses.
 
 ## Phase 18: Oracle Maturation (`soma oracle`)
 
@@ -460,7 +460,7 @@ Agents frequently hallucinate compliance in completion summaries—claiming test
 ## Phase 23-25: Test-Time Compute (TTC) Oracles & JIT Context
 
 - **TTC Oracles**: Pre-execution verification of tool calls to completely eradicate hallucinated commands and rework loops.
-- **Last Gasp**: Auto-escalation mechanisms that evaluate failures before they consume token budget, reducing overall waste to `< 1.0%` while stabilizing overhead at `~3,800 tokens/turn`.
+- **Last Gasp**: Auto-escalation mechanisms that evaluate failures before they consume token budget while stabilizing overhead at `~3,800 tokens/turn` (with `< 1.0%` waste rate noted as aspirational).
 - **Why it matters**: Proved that spending modest compute *before* tool execution eliminates catastrophic downstream correction cascades.
 
 ## Phase 26-30: Perception & Homeostasis (Interoception & Coherence)
@@ -476,9 +476,9 @@ Agents faced with compounding errors experienced "computational anxiety"—patch
 
 Single-model verification suffered from confirmation bias and sycophancy: when an agent reviews its own code or shares context with the reviewer, it consistently overlooks its own blind spots.
 
-- **Layer 1 (Deterministic AST Tools)**: Objective analyzers (`persistence_checker`, `branch_coverage`, `import_guard`) gather ungameable boolean `ToolEvidence`.
+- **Layer 1 (Deterministic AST Tools)**: Objective analyzers (`persistence_checker`, `branch_coverage`, `import_guard`) gather observable boolean `ToolEvidence`.
 - **Layer 2 (Adversarial Information Partitioning)**: Isolates a Spec Agent (sees requirements) from a Code Agent (sees implementation), preventing collusion and shared context pollution.
-- **Deterministic Arbiter**: Set-algebra adjudicator evaluating evidence across a 14-category risk taxonomy, issuing `SHIP`, `BLOCK`, or `REVISE` verdicts with zero LLM in the loop.
+- **Deterministic Arbiter**: Verification adjudicator evaluating evidence across a 14-category risk taxonomy, issuing `SHIP`, `BLOCK`, or `REVISE` verdicts with zero LLM in the loop.
 - **Why it matters**: Implemented formal mechanism design: agreement between information-partitioned agents constitutes genuine proof rather than conversational momentum.
 
 ## Phase 36-40: Evidence Pipeline & Cell Expiry
@@ -501,9 +501,9 @@ Testing governance rules via source-code string matching (`assert "def foo" in f
 
 Production audits revealed recurring multi-agent failure patterns: agents fixed single instances of bugs while ignoring identical siblings, delegated tasks blindly without verifying outputs, and assumed local green tests guaranteed CI passage.
 
-- **Mechanism Design Framework**: Codified `docs/MECHANISM_DESIGN.md`, mapping biological terms (vacuoles, membranes, telomeres) to economic mechanism design principles (revelation mechanisms, sunset clauses, asymmetric audit).
+- **Mechanism Design Framework**: Codified `mechanism_design.md`, mapping biological terms (vacuoles, membranes, telomeres) to economic mechanism design principles (revelation mechanisms, sunset clauses, asymmetric audit).
 - **Empirical Trap Vacuoles**: Captured systemic failure modes into concrete cells: `trap-fix-one-not-all`, `trap-unverified-delegation`, and `trap-local-green-ci-red`.
-- **Overhead Stabilization**: Stabilized baseline idle overhead at ~3,800 tokens/turn while maintaining overall waste below 1.0%.
+- **Overhead Stabilization**: Stabilized baseline idle overhead at ~3,800 tokens/turn (with `< 1.0%` waste rate noted as aspirational).
 - **Why it matters**: Demonstrated that AI agent reliability is an institutional mechanism design challenge, solved by incentive compatibility rather than longer system prompts.
 
 ## Phase 51: CLI Maturation & Distribution (v0.51.0)
@@ -518,7 +518,7 @@ A fragmented sprawl of over 30 independent scripts made installation brittle, hi
 
 Unstructured git workflows permitted autonomous agents to push directly to mainline branches, mix hotfixes with feature work, and bypass review protocols under time pressure.
 
-- **Standardized Gitflow**: Codified strict branch lifecycles in `docs/GITFLOW.md` (`feature/`, `release/`, `fix/`).
+- **Standardized Gitflow**: Codified strict branch lifecycles in `../project/RELEASE_WORKFLOW.md` (`feature/`, `release/`, `fix/`).
 - **Gitflow Review Gate**: Enforced branch naming conventions, PR-based merging, and path canonicalization via the `gitflow-review-gate` genome rule.
 - **Audit Hardening**: Resolved 19 audit findings across path handling, error propagation, and argument validation.
 - **Why it matters**: Expanded governance from single-session inner loops to team-level repository collaboration, ensuring autonomous agents adhere to disciplined software delivery workflows.
@@ -583,5 +583,15 @@ The cumulative cleanup of Phases 71–73 established a stable, honest baseline f
 - **15 Genome Rules**: 4 new rules added (ci-green-before-release, core-change-protocol, no-pre-existing-excuse, hgt-resource-consolidation) bringing total from 11 to 15.
 - **Wilson Interval Scoring**: All cell fitness computations now use Wilson interval confidence bounds via `soma_sdk.scoring`, replacing the previous Laplace-smoothed Bayesian posterior.
 - **Supercell Review Mode**: Apex review intensity tier above Tempest — adversarial Prosecutor/Defender pairs per prong with zero allowed deferrals.
-- **1,359 Tests**: Test suite expanded from ~1,228 to 1,359, covering SDK, scoring, and claim verification pathways.
+- **1,465 Tests**: Test suite expanded from ~1,228 to 1,465, covering SDK, scoring, and claim verification pathways.
 - **Why it matters**: A framework that governs others must first govern itself. Foundation ensures every shipped claim is earned, every metric is measured, and every dependency is explicit.
+
+## Phase 75: Credit Where Due (v0.75.0)
+
+**Credit Assignment** — `prob_round()` probabilistic rounding and `compute_credit_weights()` per-file scope narrowing with credit conservation. Signal provenance tracked in JSONL.
+
+**Mutation Operators** — 4 new operators: comparison swap, boolean swap, statement deletion, return value mutation.
+
+**Crossover Fix** — `target_paths` and `tags` now merged as deduplicated union of both parents.
+
+**Test Suite** — 1,465 passed, 7 skipped, 0 failed. 3 Phase 3 claims unlocked.

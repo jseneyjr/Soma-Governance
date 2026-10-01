@@ -32,7 +32,7 @@ develop ──→ release/v0.XX ──→ PR to main ──→ tag v0.XX.0 ─�
 |:------|:--------|:------|
 | Phase 1 | v0.73 ✅ | Stop the Bleeding — README strip, hook fix, claim registry |
 | Phase 2 | v0.74 ✅ | Foundation — canonical parser, scoring unification, error handling |
-| Phase 3 | v0.75 | Advanced Features — credit assignment, mutation testing, crossover |
+| Phase 3 | v0.75 ✅ | Advanced Features — credit assignment, mutation testing, crossover |
 | Phase 4 | v0.80 | Polish — gate enforcement, integrity, dogfooding activation |
 
 ## Pre-Release Checklist
@@ -48,16 +48,16 @@ Before creating a release PR, verify:
 Audit every doc file for staleness. For each file, determine: **UPDATE**, **DELETE**, or **OK**.
 
 - [ ] `README.md` — version references, feature claims match unlocked claims only
-- [ ] `docs/ABSTRACT.md` — figures and architecture match current implementation
+- [ ] `docs/research/abstract.md` — figures and architecture match current implementation
 - [ ] `docs/project/CHANGELOG.md` — has entry for this release with summary of changes
 - [ ] `docs/project/ROADMAP.md` — reflects current phase status (completed phases marked, next phase current)
-- [ ] `docs/project/SCRIPTS.md` — script descriptions match current enzyme signatures and behavior
-- [ ] `docs/METRICS.md` — metrics are honest, no unverified quantitative claims
-- [ ] `docs/MECHANISM_DESIGN.md` — architecture matches current code (e.g., scoring method, parser)
+- [ ] `docs/architecture/scripts.md` — script descriptions match current enzyme signatures and behavior
+- [ ] `docs/project/METRICS.md` — metrics are honest, no unverified quantitative claims
+- [ ] `docs/architecture/mechanism_design.md` — architecture matches current code (e.g., scoring method, parser)
 - [ ] `docs/project/CLAIM_REGISTRY.json` — all unlocked claims have passing tests, no stale locks
-- [ ] `docs/CONTRIBUTING.md` — setup instructions work, dependencies current
+- [ ] `docs/project/CONTRIBUTING.md` — setup instructions work, dependencies current
 - [ ] `docs/project/RELEASE_WORKFLOW.md` — lessons learned section updated
-- [ ] `docs/GITFLOW.md` — consistent with RELEASE_WORKFLOW.md (no contradictions)
+- [ ] `docs/project/RELEASE_WORKFLOW.md` — consistent with release procedures
 - [ ] `docs/archive/` — stale archives reviewed; delete if no longer referenced
 
 **Rule**: If a doc references a version older than `current - 2` (e.g., v0.30 when shipping v0.74), it must be updated or archived.

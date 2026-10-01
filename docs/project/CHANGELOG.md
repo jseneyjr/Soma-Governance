@@ -3,6 +3,24 @@
 All notable changes to Soma are documented here.
 This project uses [Semantic Versioning](https://semver.org/).
 
+## [0.80.0] — 2026-10-01 — "Consensus"
+
+### Added
+- **Quorum sensing** (Phase 4.1): `evaluate_quorum()` detects when ≥N cells trigger simultaneously on the same changed files, escalates to the highest `minimum_mode`, and logs events to JSONL. Extracted from CLI `main()` for testability.
+- **Gate enforcement DSL** (Phase 4.2): `soma_sdk/invariants.py` with `check_import_banned()` (AST-based), `check_file_must_exist()`, `check_invariants()` aggregate, and `evaluate_enforcement()` three-tier ladder.
+- **Enforcement ladder**: `advisory` (warn, exit 0) → `mechanical` (block, exit 1) → `gate` (block, exit 1). Unknown tiers default to advisory.
+- **TDD test suite**: 3 new test files — `test_quorum.py` (11), `test_gate_invariant_dsl.py` (9), `test_enforcement_ladder.py` (7). Total: 1,492 passed, 7 skipped.
+
+### Fixed
+- **Documentation cleanup**: 9 doc files updated — stale version refs, broken post-restructure links, removed claim terminology, outdated phase statuses.
+- **Stale release branches**: Deleted 10 local release branches (`release/v0.60` through `release/v0.75`).
+
+### Claims Unlocked
+- `claim_quorum_sensing` — Multi-rule consensus for high-confidence decisions
+- `claim_gate_enforcement` — Invariant DSL-based gate enforcement in CI
+
+---
+
 ## [0.75.0] — 2026-10-01 — "Credit Where Due"
 
 ### Added
