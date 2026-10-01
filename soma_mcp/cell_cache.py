@@ -97,7 +97,9 @@ class CellCache:
         # Integrity verification: check cells against manifest if present.
         # Graceful degradation — warnings only, never blocks cell loading.
         try:
-            from soma_mcp.integrity import load_manifest, verify_manifest
+            from soma_mcp.integrity import (
+                load_manifest, verify_manifest, load_key, verify_signature,
+            )
             manifest = load_manifest(workspace)
             if manifest is not None:
                 issues = verify_manifest(cells_dir, manifest)
@@ -105,6 +107,16 @@ class CellCache:
                     warn(
                         f"integrity: {issue['type']} — {issue['detail']}"
                     )
+                # HMAC signature verification
+                key = load_key(workspace)
+                if key is not None and "signature" in manifest:
+                    if verify_signature(manifest, key):
+                        warn("integrity: HMAC signature verified ✓")
+                    else:
+                        warn(
+                            "integrity: HMAC signature verification FAILED "
+                            "— manifest may be tampered"
+                        )
         except Exception as exc:
             warn(f"integrity check failed (non-fatal): {exc}")
 
