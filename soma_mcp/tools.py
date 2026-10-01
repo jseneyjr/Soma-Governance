@@ -570,6 +570,22 @@ def execute_tool(name: str, args: dict):
                     f.write(json.dumps(record) + '\n')
             finally:
                 fcntl.flock(f, fcntl.LOCK_UN)
+        # Also write to unified telemetry log
+        try:
+            from soma_sdk.telemetry import append_signal
+            signal_map = {'success': 'tp', 'tp': 'tp', 'failure': 'fp',
+                          'fp': 'fp', 'partial': 'trigger'}
+            for cell_id in cells_used:
+                append_signal(
+                    workspace=workspace,
+                    cell_name=cell_id,
+                    signal_type=signal_map.get(outcome_value, 'trigger'),
+                    source='mcp',
+                    metadata={'notes': notes, 'tests_passed': tests_passed,
+                              'rework_count': rework_count},
+                )
+        except ImportError:
+            pass  # Graceful degradation
         return {'status': 'recorded', 'records': records}
 
     elif name == "soma_capture_insight":

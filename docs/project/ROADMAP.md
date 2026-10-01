@@ -49,17 +49,38 @@ Field-level merge of parent cell attributes to create hybrid rules.
 **Tracking**: `claim_tournament_selection` in `docs/project/CLAIM_REGISTRY.json`  
 Competitive evaluation between rules to select higher-fitness survivors.
 
-## Phase 4 — v0.80 (NEXT)
+## Phase 4 — v0.80 ✅ Shipped
 
 ### Quorum Sensing (Multi-Rule Consensus)
-**Status**: Implementation planned (Phase 4)  
+**Status**: ✅ Shipped (v0.80)  
 **Tracking**: `claim_quorum_sensing` in `docs/project/CLAIM_REGISTRY.json`  
 Require agreement from multiple rules before taking high-stakes actions.
 
 ### Gate Enforcement (Invariant DSL)
-**Status**: Implementation planned (Phase 4)  
+**Status**: ✅ Shipped (v0.80)  
 **Tracking**: `claim_gate_enforcement` in `docs/project/CLAIM_REGISTRY.json`  
 CI-required invariant checks defined in cell YAML frontmatter.
+
+## Phase 4.5 — v0.81 ✅ Shipped
+
+### CI Outcome Reporter
+**Status**: ✅ Shipped (v0.81)  
+**Tracking**: CI step summary integration  
+Report-only advisory showing which cells match changed files in PRs.
+
+### Telemetry Consolidation
+**Status**: ✅ Shipped (v0.81)  
+Unified signal evidence writer and 3 telemetry bug fixes.
+
+## Phase 4.6 — v0.82 (Current)
+
+### Writer Migration
+**Status**: In Progress  
+Migrate all fitness signal writers to unified telemetry path.
+
+### Documentation Reconciliation  
+**Status**: In Progress  
+Update ROADMAP and README to match shipped state.
 
 ## Research
 

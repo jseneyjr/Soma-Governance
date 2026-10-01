@@ -130,13 +130,14 @@ class TestSignalProvenance:
         outcomes = {'tests': {'verified': True, 'passed': True, 'exit_code': 0}}
         signals = compute_fitness_signals(cells, outcomes, changed_files=['src/foo.py'])
         ws = str(tmp_path)
-        os.makedirs(os.path.join(ws, '.soma', 'cells'), exist_ok=True)
+        os.makedirs(os.path.join(ws, '.soma', 'evidence'), exist_ok=True)
         append_fitness_log(ws, signals, outcomes)
-        log_path = os.path.join(ws, '.soma', 'cells', 'fitness.jsonl')
+        log_path = os.path.join(ws, '.soma', 'evidence', 'signals.jsonl')
         with open(log_path, 'r', encoding='utf-8') as f:
             entry = json.loads(f.readline())
-        assert 'credit_weight' in entry
-        assert isinstance(entry['credit_weight'], (int, float))
+        assert 'metadata' in entry
+        assert 'credit_weight' in entry['metadata']
+        assert isinstance(entry['metadata']['credit_weight'], (int, float))
 
     def test_jsonl_entry_has_signal_method(self, tmp_path):
         from enzymes.outcome_engine import compute_fitness_signals, append_fitness_log
@@ -144,13 +145,14 @@ class TestSignalProvenance:
         outcomes = {'tests': {'verified': True, 'passed': True, 'exit_code': 0}}
         signals = compute_fitness_signals(cells, outcomes)
         ws = str(tmp_path)
-        os.makedirs(os.path.join(ws, '.soma', 'cells'), exist_ok=True)
+        os.makedirs(os.path.join(ws, '.soma', 'evidence'), exist_ok=True)
         append_fitness_log(ws, signals, outcomes)
-        log_path = os.path.join(ws, '.soma', 'cells', 'fitness.jsonl')
+        log_path = os.path.join(ws, '.soma', 'evidence', 'signals.jsonl')
         with open(log_path, 'r', encoding='utf-8') as f:
             entry = json.loads(f.readline())
-        assert 'signal_method' in entry
-        assert entry['signal_method'] == 'credit_weighted'
+        assert 'metadata' in entry
+        assert 'signal_method' in entry['metadata']
+        assert entry['metadata']['signal_method'] == 'credit_weighted'
 
 
 class TestStatisticalConvergence:

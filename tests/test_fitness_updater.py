@@ -221,22 +221,23 @@ class TestMatchCells:
 
 
 class TestUpdateFitness:
-    """Tests for writing fitness records to fitness.jsonl."""
+    """Tests for writing fitness records via unified telemetry."""
 
-    def test_appends_to_fitness_jsonl(self, tmp_path):
-        """Triggered cells are written as JSONL entries."""
+    def test_appends_to_signals_jsonl(self, tmp_path):
+        """Triggered cells are written as JSONL entries to signals.jsonl."""
         evidence = _make_evidence_dir(tmp_path)
         triggered = [
             {"cell_id": "trap-a", "cell_path": "cells/trap-a.md", "matched_files": ["enzymes/foo.py"]},
         ]
         update_fitness(triggered, "session-001", evidence)
-        fitness_file = evidence / "fitness.jsonl"
-        assert fitness_file.exists()
-        records = [json.loads(l) for l in fitness_file.read_text().splitlines()]
+        signals_file = evidence / "signals.jsonl"
+        assert signals_file.exists()
+        records = [json.loads(l) for l in signals_file.read_text().splitlines()]
         assert len(records) == 1
-        assert records[0]["cell_id"] == "trap-a"
-        assert records[0]["transcript_id"] == "session-001"
-        assert "triggered_at" in records[0]
+        assert records[0]["cell"] == "trap-a"
+        assert records[0]["signal"] == "trigger"
+        assert records[0]["source"] == "session"
+        assert "timestamp" in records[0]
 
     def test_idempotent_on_same_session(self, tmp_path):
         """Running twice with the same transcript_id does not duplicate entries."""
@@ -246,8 +247,8 @@ class TestUpdateFitness:
         ]
         update_fitness(triggered, "session-001", evidence)
         update_fitness(triggered, "session-001", evidence)
-        fitness_file = evidence / "fitness.jsonl"
-        records = [json.loads(l) for l in fitness_file.read_text().splitlines()]
+        signals_file = evidence / "signals.jsonl"
+        records = [json.loads(l) for l in signals_file.read_text().splitlines()]
         assert len(records) == 1  # Not 2
 
     def test_different_sessions_append(self, tmp_path):
@@ -258,8 +259,8 @@ class TestUpdateFitness:
         ]
         update_fitness(triggered, "session-001", evidence)
         update_fitness(triggered, "session-002", evidence)
-        fitness_file = evidence / "fitness.jsonl"
-        records = [json.loads(l) for l in fitness_file.read_text().splitlines()]
+        signals_file = evidence / "signals.jsonl"
+        records = [json.loads(l) for l in signals_file.read_text().splitlines()]
         assert len(records) == 2
 
     def test_sessions_processed_updated(self, tmp_path):
@@ -283,10 +284,10 @@ class TestUpdateFitness:
         assert ledger.exists()
         records = [json.loads(l) for l in ledger.read_text().splitlines()]
         assert records[0]["cells_triggered"] == 0
-        # No fitness.jsonl entries
-        fitness_file = evidence / "fitness.jsonl"
-        if fitness_file.exists():
-            assert fitness_file.read_text().strip() == ""
+        # No signals.jsonl entries
+        signals_file = evidence / "signals.jsonl"
+        if signals_file.exists():
+            assert signals_file.read_text().strip() == ""
 
     def test_first_run_creates_files(self, tmp_path):
         """First run on empty evidence dir creates both JSONL files."""
@@ -295,7 +296,7 @@ class TestUpdateFitness:
             {"cell_id": "trap-a", "cell_path": "cells/trap-a.md", "matched_files": ["a.py"]},
         ]
         update_fitness(triggered, "session-001", evidence)
-        assert (evidence / "fitness.jsonl").exists()
+        assert (evidence / "signals.jsonl").exists()
         assert (evidence / "sessions_processed.jsonl").exists()
 
 

@@ -132,7 +132,13 @@ def sync_frontmatter(
             fitness["triggers"] = t
             fitness["true_positives"] = tp
             fitness["false_positives"] = fp
-            fitness["score"] = round(tp / t, 4) if t > 0 else None
+            # Only update score if there's actual outcome data.
+            # Cells with triggers but no tp/fp should keep existing score,
+            # not be clobbered to 0.0 (Bug 4 fix).
+            if tp + fp > 0:
+                fitness["score"] = round(tp / t, 4) if t > 0 else None
+            elif t == 0:
+                fitness["score"] = None
             if evidence["last_trigger"]:
                 fitness["last_trigger_date"] = (
                     datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")

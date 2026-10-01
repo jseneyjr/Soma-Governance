@@ -3,6 +3,24 @@
 All notable changes to Soma are documented here.
 This project uses [Semantic Versioning](https://semver.org/).
 
+## [0.82.0] — 2026-10-01 — "Consolidation"
+
+### Fixed
+- **Bug 4**: `sync.py` no longer clobbers cell scores to 0.0 when a cell has triggers but no tp/fp outcomes. Score is preserved until actual outcome data arrives.
+- **Bug 5**: `outcome_engine.py::append_fitness_log()` no longer writes to dead-end `.soma/cells/fitness.jsonl`. Now routes through unified `soma_sdk.telemetry.append_signal()` to `.soma/evidence/signals.jsonl`.
+- **Bug 5b**: `cell_selection.sh` lifecycle actions redirected from `.soma/cells/fitness.jsonl` to `.soma/evidence/lifecycle.jsonl`.
+
+### Changed
+- **Writer migration**: `fitness_updater.py`, `soma_mcp/tools.py` (soma_report_outcome), and `outcome_engine.py` now write through `soma_sdk.telemetry.append_signal()`.
+- **CLI wrapper**: `python3 -m soma_sdk.telemetry` enables bash scripts to write signals through the unified path.
+- **ROADMAP.md**: Phase 4 → ✅ Shipped, Phase 4.5 → ✅ Shipped, Phase 4.6 added.
+- **README.md**: CI outcome reporter moved from "Planned" to shipped.
+
+### Added
+- **Governance cell**: `trap-roadmap-status-drift` — gate enforcement requiring ROADMAP.md updates alongside releases.
+
+---
+
 ## [0.81.0] — 2026-10-01 — "Smoke Detector"
 
 ### Added

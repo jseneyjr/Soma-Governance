@@ -61,3 +61,33 @@ def append_signal(workspace, cell_name, signal_type, source, metadata=None):
             f.flush()
         finally:
             fcntl.flock(f.fileno(), fcntl.LOCK_UN)
+
+
+if __name__ == '__main__':
+    import argparse
+
+    parser = argparse.ArgumentParser(description='Append a signal to the Soma evidence log')
+    parser.add_argument('--workspace', default='.', help='Workspace root')
+    parser.add_argument('--cell', required=True, help='Cell name')
+    parser.add_argument('--signal', required=True, choices=sorted(VALID_SIGNAL_TYPES),
+                        help='Signal type')
+    parser.add_argument('--source', required=True, choices=sorted(VALID_SOURCES),
+                        help='Signal source')
+    parser.add_argument('--meta', nargs='*', help='Metadata key=value pairs')
+
+    args = parser.parse_args()
+
+    metadata = {}
+    if args.meta:
+        for item in args.meta:
+            k, _, v = item.partition('=')
+            metadata[k] = v
+
+    append_signal(
+        workspace=args.workspace,
+        cell_name=args.cell,
+        signal_type=args.signal,
+        source=args.source,
+        metadata=metadata or None,
+    )
+    print(f'Signal recorded: {args.cell} / {args.signal} / {args.source}')
