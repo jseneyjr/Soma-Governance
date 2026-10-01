@@ -273,6 +273,61 @@ def _check_cell_conventions(root: Path) -> list[dict]:
     return issues
 
 
+def _check_arbitration_evidence(root: Path) -> list[dict]:
+    """Check that review arbitration evidence exists and verdict is SHIP.
+
+    Un-bypassable gate: if any arbitration_cycle_*.json exists with a
+    non-SHIP verdict, checkpoint fails. If no arbitration evidence exists
+    at all, this check passes silently (review may not have been triggered).
+    """
+    issues = []
+    evidence_dir = root / ".soma" / "evidence"
+    if not evidence_dir.is_dir():
+        return issues
+
+    import glob
+    arb_files = sorted(glob.glob(
+        str(evidence_dir / "arbitration_cycle_*.json")
+    ))
+    if not arb_files:
+        return issues  # No review cycles recorded — not a gate failure
+
+    # Check the latest cycle
+    latest = arb_files[-1]
+    try:
+        with open(latest, encoding="utf-8") as f:
+            record = json.loads(f.read())
+    except (OSError, json.JSONDecodeError):
+        issues.append({
+            "check": "arbitration_evidence",
+            "message": f"Arbitration evidence file is corrupt: {latest}",
+        })
+        return issues
+
+    verdict = record.get("verdict", "unknown")
+    cycle = record.get("cycle", "?")
+    divergences = record.get("divergence_count", 0)
+
+    if verdict == "block":
+        issues.append({
+            "check": "arbitration_evidence",
+            "message": (
+                f"Arbiter verdict is BLOCK for cycle {cycle} "
+                f"({divergences} divergence(s)). Fix all findings before ship."
+            ),
+        })
+    elif verdict == "revise":
+        issues.append({
+            "check": "arbitration_evidence",
+            "message": (
+                f"Arbiter verdict is REVISE for cycle {cycle} "
+                f"({divergences} divergence(s)). Address high-severity findings."
+            ),
+        })
+
+    return issues
+
+
 # ── Main Entry Point ──────────────────────────────────────────────────
 
 
@@ -313,6 +368,7 @@ def run_checkpoint(args: argparse.Namespace) -> int:
     all_issues.extend(_check_assertion_density(root))
     all_issues.extend(_check_cell_fitness(root))
     all_issues.extend(_check_cell_conventions(root))
+    all_issues.extend(_check_arbitration_evidence(root))
 
     has_issues = len(all_issues) > 0
 
