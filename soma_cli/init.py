@@ -129,6 +129,56 @@ def get_rules_dir(platform: str, home: Path | None = None,
         )
     return dirs[platform]
 
+# ── Pre-commit Hook ─────────────────────────────────────────────────────────
+
+_SOMA_HOOK_START = "# >>> soma pre-commit >>>"
+_SOMA_HOOK_END = "# <<< soma pre-commit <<<"
+_SOMA_HOOK_BLOCK = f"""{_SOMA_HOOK_START}
+# Installed by soma init — runs deterministic quality checks before commit.
+soma checkpoint --pre-commit
+{_SOMA_HOOK_END}
+"""
+
+
+def install_hook(project_root: Path, dry_run: bool = False) -> bool:
+    """Install a git pre-commit hook that runs soma checkpoint.
+
+    Args:
+        project_root: Root of the git repository.
+        dry_run: If True, preview without creating files.
+
+    Returns:
+        True if hook was installed (or would be in dry-run), False if
+        no .git directory exists.
+    """
+    project_root = Path(project_root)
+    git_hooks_dir = project_root / ".git" / "hooks"
+
+    if not git_hooks_dir.is_dir():
+        return False
+
+    if dry_run:
+        return True
+
+    hook_file = git_hooks_dir / "pre-commit"
+
+    if hook_file.exists():
+        content = hook_file.read_text(encoding="utf-8")
+        # Idempotent: don't add if already present
+        if _SOMA_HOOK_START in content:
+            return True
+        # Append to existing hook
+        if not content.endswith("\n"):
+            content += "\n"
+        content += "\n" + _SOMA_HOOK_BLOCK
+        hook_file.write_text(content, encoding="utf-8")
+    else:
+        hook_file.write_text("#!/bin/sh\n\n" + _SOMA_HOOK_BLOCK, encoding="utf-8")
+
+    # Ensure executable
+    hook_file.chmod(hook_file.stat().st_mode | 0o755)
+    return True
+
 
 # ── Installation ────────────────────────────────────────────────────────────
 
@@ -410,6 +460,13 @@ def run_init(args: argparse.Namespace) -> int:
     # 7. MCP config (if requested)
     if getattr(args, "mcp", False):
         generate_mcp_config(project_root, dry_run=dry_run)
+
+    # 7.5. Install pre-commit hook
+    hook_result = install_hook(project_root, dry_run=dry_run)
+    if hook_result and not dry_run:
+        print("    🪝 Pre-commit hook installed (.git/hooks/pre-commit)")
+    elif hook_result and dry_run:
+        print("    🪝 Would install pre-commit hook")
 
     # 8. Claude-specific: concatenate rules into CLAUDE.md
     if platform == "claude" and installed and not dry_run:
