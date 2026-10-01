@@ -1,5 +1,6 @@
 import fcntl
 import glob
+import importlib
 import json
 import os
 import re
@@ -21,9 +22,45 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from soma_mcp.jit_engine import express as jit_express
 from soma_mcp.jit_engine import parse_frontmatter, warn
 
-# Import TTC Verifier
+# Import security utilities
+from soma_mcp.security import confine_workspace, confine_path, validate_cell_names
+from soma_mcp.integrity import load_manifest, verify_manifest
+
+# ── Enzyme import hardening ───────────────────────────────────────────
+# Only allowlisted enzyme modules may be imported. This prevents a dropped
+# .py file in enzymes/ from being auto-loaded by the MCP server.
+_ENZYME_ALLOWLIST = frozenset({
+    "ttc_verifier",
+    "insight_capture",
+})
+
+_ENZYMES_DIR = os.path.realpath(
+    os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "enzymes")
+)
+
+
+def _safe_import_enzyme(module_name: str, attr: str):
+    """Import an attribute from an allowlisted enzyme module.
+
+    Validates that the module is in the allowlist and that the resolved
+    module file is inside the enzymes/ directory.
+    """
+    if module_name not in _ENZYME_ALLOWLIST:
+        raise ImportError(f"Enzyme '{module_name}' is not in the import allowlist")
+    mod = importlib.import_module(f"enzymes.{module_name}")
+    mod_file = getattr(mod, "__file__", None)
+    if mod_file:
+        resolved = os.path.realpath(mod_file)
+        if not resolved.startswith(_ENZYMES_DIR + os.sep):
+            raise ImportError(
+                f"Enzyme '{module_name}' resolved outside enzymes/: {resolved}"
+            )
+    return getattr(mod, attr)
+
+
+# Import TTC Verifier via safe import
 try:
-    from enzymes.ttc_verifier import soma_propose_change
+    soma_propose_change = _safe_import_enzyme("ttc_verifier", "soma_propose_change")
 except ImportError:
     soma_propose_change = None
 
@@ -487,10 +524,16 @@ def execute_tool(name: str, args: dict):
         return {"status": "PASS", "feedback": f"Performance Audit passed for {file_path or 'input'}. No obvious bottlenecks detected.", "file_path": file_path}
 
     if name == "soma_verify_changes":
-        workspace = os.path.realpath(args.get('workspace') or resolve_workspace())
-        if not os.path.isdir(workspace):
-            return {"error": f"Workspace not found: {workspace}"}
+        try:
+            workspace = confine_workspace(args.get('workspace') or resolve_workspace())
+        except ValueError as exc:
+            return {"error": str(exc), "status": _STATUS_FAIL}
         files = args.get('files', [])
+        # Confine each file path within the workspace
+        try:
+            files = [confine_path(f, workspace)[1] for f in files]
+        except ValueError as exc:
+            return {"error": str(exc), "status": _STATUS_FAIL}
         layer1_only = args.get('layer1_only', True)
         try:
             from immune_system.verification import runner
@@ -511,9 +554,10 @@ def execute_tool(name: str, args: dict):
         }
 
     elif name == "soma_checkpoint":
-        workspace = os.path.realpath(args.get('workspace') or resolve_workspace())
-        if not os.path.isdir(workspace):
-            return {"error": f"Workspace not found: {workspace}"}
+        try:
+            workspace = confine_workspace(args.get('workspace') or resolve_workspace())
+        except ValueError as exc:
+            return {"error": str(exc), "status": _STATUS_FAIL}
         from pathlib import Path
         root = Path(workspace)
         issues = _run_checkpoint_checks(root)
@@ -547,6 +591,14 @@ def execute_tool(name: str, args: dict):
             }
         timestamp = datetime.now(timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ')
         cells_used = args.get('cells_used', [])
+        # Validate cell names against actual inventory
+        if cells_used:
+            invalid = validate_cell_names(cells_used, workspace)
+            if invalid:
+                return {
+                    "error": f"Unknown cell(s): {invalid}. Only existing cells can be reported.",
+                    "status": _STATUS_FAIL,
+                }
         tests_passed = args.get('tests_passed')
         rework_count = args.get('rework_count', 0)
         notes = args.get('notes', '')
@@ -591,7 +643,7 @@ def execute_tool(name: str, args: dict):
     elif name == "soma_capture_insight":
         workspace = resolve_workspace()
         try:
-            from enzymes.insight_capture import capture_insight
+            capture_insight = _safe_import_enzyme("insight_capture", "capture_insight")
         except ImportError:
             return {"error": "enzymes.insight_capture is not importable."}
         try:
