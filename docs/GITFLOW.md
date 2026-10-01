@@ -56,7 +56,7 @@ gitGraph
 2. **Feature & bugfix lineage**: `feature/*` and `fix/*` branches branch from `develop` and PR back to `develop`.
 3. **Release preparation**: `release/*` branches cut from `develop` — bump version strings, perform final testing and verification, then PR to `main`.
 4. **Production tagging**: Tag releases on `main` immediately following merge: `v0.53.0`, `v0.53.1`, etc.
-5. **Sync release back to develop**: After tagging `main`, merge the `release/*` branch back to `develop` to ensure integration parity.
+5. **Sync main back to develop**: After tagging `main`, merge `main` back to `develop` to ensure the PR merge commit is shared. Do NOT merge the release branch directly — that skips main's merge commit.
 6. **Hotfix lifecycle**: Hotfixes branch directly from `main`, PR to `main`, get tagged, and are then merged (or cherry-picked) back into `develop`.
 7. **Review delegation**: PRs to `develop` are reviewed by AI audit subagents and merged autonomously. PRs to `main` (release/hotfix) require human review and approval. This keeps the human focused on ship decisions, not incremental review.
 
@@ -83,12 +83,15 @@ gitGraph
    git tag -a vX.Y.Z -m "Release vX.Y.Z"
    git push origin vX.Y.Z
    ```
-7. Merge release branch back to `develop`:
+7. **Sync main back to develop** (critical — prevents branch divergence):
    ```bash
    git checkout develop && git pull origin develop
-   git merge --no-ff release/vX.Y.Z
+   git merge --no-ff origin/main -m "sync: merge main back to develop after vX.Y.Z"
    git push origin develop
    ```
+   > ⚠️ This must merge **main**, not the release branch. The PR merge commit
+   > lives on main — merging only the release branch back skips it, causing
+   > main and develop to diverge over time.
 8. Delete release branch:
    ```bash
    git branch -d release/vX.Y.Z
