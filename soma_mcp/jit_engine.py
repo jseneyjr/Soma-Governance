@@ -25,6 +25,11 @@ import re
 import subprocess
 import fnmatch
 
+from soma_mcp.cell_cache import CellCache
+
+# Module-level singleton — persists across MCP tool invocations
+_cell_cache = CellCache()
+
 # pyyaml is an OPTIONAL dependency. When it is missing we parse the frontmatter
 # subset used by cells with the stdlib parser below instead of failing to import.
 try:
@@ -665,7 +670,7 @@ def express(workspace: str, changed_files: list[str] | None = None, budget: int 
         }
 
     # Load and match cells
-    all_cells = load_all_cells(workspace)
+    all_cells = _cell_cache.get_cells(workspace)
     matched = match_cells_to_files(all_cells, changed_files)
 
     # Score ALL matched cells first (fixes C3: mandatory cells displaying Fitness: 0.00)

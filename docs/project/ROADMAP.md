@@ -72,15 +72,27 @@ Report-only advisory showing which cells match changed files in PRs.
 **Status**: ✅ Shipped (v0.81)  
 Unified signal evidence writer and 3 telemetry bug fixes.
 
-## Phase 4.6 — v0.82 (Current)
+## Phase 4.6 — v0.82 ✅ Shipped
 
 ### Writer Migration
-**Status**: In Progress  
+**Status**: ✅ Shipped (v0.82)  
 Migrate all fitness signal writers to unified telemetry path.
 
 ### Documentation Reconciliation  
-**Status**: In Progress  
+**Status**: ✅ Shipped (v0.82)  
 Update ROADMAP and README to match shipped state.
+
+## Phase 4.7 — v0.83 ✅ Shipped
+
+### JIT Cell Cache
+**Status**: ✅ Shipped (v0.83)  
+mtime-based in-memory cache for MCP hot path. Eliminates redundant disk I/O.
+
+## Phase 4.8 — v0.84 (Next)
+
+### Bug Registry
+**Status**: In Progress  
+Machine-parseable bug registry with verification enzyme and governance cell.
 
 ## Research
 

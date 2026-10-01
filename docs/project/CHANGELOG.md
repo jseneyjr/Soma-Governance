@@ -3,6 +3,17 @@
 All notable changes to Soma are documented here.
 This project uses [Semantic Versioning](https://semver.org/).
 
+## [0.83.0] — 2026-10-01 — "Fast Path"
+
+### Added
+- **JIT Cell Cache** (`soma_mcp/cell_cache.py`): mtime-based in-memory cache eliminates redundant disk I/O when the MCP server calls `express()`. Cells are re-parsed only when files in `.soma/cells/` change.
+- 9 new tests in `tests/test_cell_cache.py` — cache hits, invalidation on add/modify/delete, expired cell skipping, schema compatibility.
+
+### Changed
+- `soma_mcp/jit_engine.py`: `express()` now uses module-level `CellCache` singleton instead of `load_all_cells()` per invocation.
+
+---
+
 ## [0.82.0] — 2026-10-01 — "Consolidation"
 
 ### Fixed
