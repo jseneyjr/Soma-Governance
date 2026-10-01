@@ -1,18 +1,21 @@
-"""Cell integrity verification via SHA-256 manifest.
+"""Cell integrity verification and HMAC-SHA256 signing.
 
 Provides hash-based integrity checking for governance cells. A manifest file
 (``.soma/cells/manifest.json``) stores SHA-256 hashes of all known cells.
 During cell loading, hashes are verified to detect tampering or unauthorized
 additions.
 
-This is integrity checking (not cryptographic signing). It detects accidental
-or unsophisticated changes. Key management and signatures are a follow-up.
+Key management uses HMAC-SHA256 with a locally stored secret key
+(``.soma/keys/manifest.key``). The key is generated once and used to sign
+manifests, providing tamper-evident verification without external dependencies.
 """
 from __future__ import annotations
 
 import hashlib
+import hmac
 import json
 import os
+import secrets
 import sys
 from datetime import datetime, timezone
 
@@ -121,6 +124,102 @@ def verify_manifest(cells_dir: str, manifest: dict) -> list:
     return issues
 
 
+# ── Key Management ────────────────────────────────────────────────────
+
+_KEY_DIR = "keys"
+_KEY_FILENAME = "manifest.key"
+
+
+def _key_path(workspace: str) -> str:
+    """Return the path to .soma/keys/manifest.key."""
+    return os.path.join(workspace, ".soma", _KEY_DIR, _KEY_FILENAME)
+
+
+def generate_key(workspace: str) -> str:
+    """Generate a 256-bit HMAC key and store it in .soma/keys/manifest.key.
+
+    Returns the key file path. Raises FileExistsError if a key already exists
+    (prevents accidental key rotation — use ``rotate_key`` instead).
+    """
+    path = _key_path(workspace)
+    if os.path.isfile(path):
+        raise FileExistsError(f"HMAC key already exists: {path}")
+    os.makedirs(os.path.dirname(path), exist_ok=True)
+    key_hex = secrets.token_hex(32)  # 256-bit key
+    with open(path, "w", encoding="utf-8") as f:
+        f.write(key_hex + "\n")
+    # Restrict permissions (owner read/write only)
+    try:
+        os.chmod(path, 0o600)
+    except OSError:
+        pass  # Windows or restrictive filesystem
+    return path
+
+
+def load_key(workspace: str) -> bytes | None:
+    """Load the HMAC key from .soma/keys/manifest.key.
+
+    Returns the key as bytes, or None if no key file exists
+    (graceful degradation for unsigned workflows).
+    """
+    path = _key_path(workspace)
+    if not os.path.isfile(path):
+        return None
+    try:
+        with open(path, "r", encoding="utf-8") as f:
+            key_hex = f.read().strip()
+        return bytes.fromhex(key_hex)
+    except (OSError, ValueError) as exc:
+        _warn(f"failed to load HMAC key: {exc}")
+        return None
+
+
+def rotate_key(workspace: str) -> str:
+    """Force-rotate the HMAC key. Backs up the old key as manifest.key.bak.
+
+    Returns the new key file path. After rotation, existing manifests
+    will fail signature verification until re-signed.
+    """
+    path = _key_path(workspace)
+    if os.path.isfile(path):
+        bak = path + ".bak"
+        os.replace(path, bak)
+    return generate_key(workspace)
+
+
+# ── Manifest Signing ─────────────────────────────────────────────────
+
+
+def _canonical_cells_json(manifest: dict) -> bytes:
+    """Produce a deterministic JSON encoding of the cells dict for signing."""
+    return json.dumps(manifest.get("cells", {}), sort_keys=True).encode("utf-8")
+
+
+def sign_manifest(manifest: dict, key: bytes) -> str:
+    """Compute HMAC-SHA256 of the canonical manifest cells JSON.
+
+    Only the ``cells`` dict is signed (not metadata like ``generated_at``).
+    Returns the hex digest string.
+    """
+    return hmac.new(key, _canonical_cells_json(manifest), hashlib.sha256).hexdigest()
+
+
+def verify_signature(manifest: dict, key: bytes) -> bool:
+    """Verify the manifest signature against the stored HMAC.
+
+    Returns True if the signature matches, False if mismatch or missing.
+    Uses ``hmac.compare_digest`` for constant-time comparison.
+    """
+    stored_sig = manifest.get("signature")
+    if not stored_sig:
+        return False
+    expected = sign_manifest(manifest, key)
+    return hmac.compare_digest(stored_sig, expected)
+
+
+# ── Manifest I/O ─────────────────────────────────────────────────────
+
+
 def load_manifest(workspace: str) -> dict | None:
     """Load the cell manifest from ``.soma/cells/manifest.json``.
 
@@ -138,7 +237,13 @@ def load_manifest(workspace: str) -> dict | None:
 
 
 def save_manifest(workspace: str, manifest: dict) -> None:
-    """Save a manifest to ``.soma/cells/manifest.json``."""
+    """Save a manifest to ``.soma/cells/manifest.json``.
+
+    If an HMAC key exists, the manifest is automatically signed before saving.
+    """
+    key = load_key(workspace)
+    if key is not None:
+        manifest["signature"] = sign_manifest(manifest, key)
     manifest_path = os.path.join(workspace, ".soma", "cells", _MANIFEST_FILENAME)
     os.makedirs(os.path.dirname(manifest_path), exist_ok=True)
     with open(manifest_path, "w", encoding="utf-8") as f:

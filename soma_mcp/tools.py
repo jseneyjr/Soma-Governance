@@ -24,7 +24,10 @@ from soma_mcp.jit_engine import parse_frontmatter, warn
 
 # Import security utilities
 from soma_mcp.security import confine_workspace, confine_path, validate_cell_names
-from soma_mcp.integrity import load_manifest, verify_manifest
+from soma_mcp.integrity import (
+    load_manifest, verify_manifest, generate_manifest, save_manifest,
+    generate_key, load_key,
+)
 
 # ── Enzyme import hardening ───────────────────────────────────────────
 # Only allowlisted enzyme modules may be imported. This prevents a dropped
@@ -409,6 +412,24 @@ TOOL_DEFINITIONS = [
         }
     },
     {
+        "name": "soma_generate_manifest",
+        "description": (
+            "Generate and sign a cell integrity manifest for the workspace. "
+            "Creates an HMAC-SHA256 key if none exists and generate_key is true."
+        ),
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "workspace": {"type": "string", "description": "Path to the project workspace."},
+                "generate_key": {
+                    "type": "boolean",
+                    "description": "Generate HMAC key if none exists (default false)."
+                },
+            },
+            "required": ["workspace"]
+        }
+    },
+    {
         "name": "soma_capture_insight",
         "description": (
             "Capture a human insight about the codebase. Records the insight, "
@@ -659,6 +680,28 @@ def execute_tool(name: str, args: dict):
         return {
             'status': 'recorded',
             'insight': record,
+        }
+
+    elif name == "soma_generate_manifest":
+        workspace = args.get("workspace", "")
+        confine_workspace(workspace)
+        cells_dir = os.path.join(workspace, ".soma", "cells")
+
+        # Optionally generate HMAC key
+        key_created = False
+        if args.get("generate_key") and load_key(workspace) is None:
+            generate_key(workspace)
+            key_created = True
+
+        manifest = generate_manifest(cells_dir)
+        save_manifest(workspace, manifest)  # auto-signs if key exists
+
+        return {
+            "status": "OK",
+            "cell_count": manifest["cell_count"],
+            "signed": "signature" in manifest,
+            "key_generated": key_created,
+            "generated_at": manifest["generated_at"],
         }
 
     # All other tools require the full SDK (pyyaml)
