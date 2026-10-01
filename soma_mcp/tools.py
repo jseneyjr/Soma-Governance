@@ -419,7 +419,53 @@ def execute_tool(name: str, args: dict):
             return {"status": "FAIL", "feedback": "\n".join(flags), "instruction": "Optimize the code and resubmit."}
         return {"status": "PASS", "feedback": "Performance Audit passed. No obvious bottlenecks detected."}
 
-    if name == "soma_scan":
+    if name == "soma_verify_changes":
+        workspace = args.get('workspace') or resolve_workspace()
+        files = args.get('files', [])
+        layer1_only = args.get('layer1_only', True)
+        try:
+            from immune_system.verification import runner
+        except ImportError:
+            return {"error": "immune_system.verification is not importable. Install soma with immune_system package."}
+        results = runner.run_layer1(changed_files=files, repo_root=workspace)
+        verdict = runner.gate_verdict(results)
+        summary = runner.format_summary(results)
+        evidence = [
+            {"tool": r.tool, "target": r.target, "verdict": r.verdict, "detail": r.detail}
+            for r in results
+        ]
+        return {
+            "status": "PASS" if verdict else "FAIL",
+            "summary": summary,
+            "layer1_only": layer1_only,
+            "evidence": evidence,
+        }
+
+    elif name == "soma_checkpoint":
+        workspace = args.get('workspace') or resolve_workspace()
+        try:
+            from soma_cli.checkpoint import (
+                _check_test_coverage, _check_hardcoded_paths,
+                _check_assertion_density, _check_cell_fitness,
+            )
+            from pathlib import Path
+        except ImportError:
+            return {"error": "soma_cli.checkpoint is not importable."}
+        root = Path(workspace)
+        if not root.is_dir():
+            return {"error": f"Workspace not found: {workspace}"}
+        issues = []
+        issues.extend(_check_test_coverage(root))
+        issues.extend(_check_hardcoded_paths(root))
+        issues.extend(_check_assertion_density(root))
+        issues.extend(_check_cell_fitness(root))
+        return {
+            "status": "PASS" if not issues else "FAIL",
+            "issue_count": len(issues),
+            "issues": issues,
+        }
+
+    elif name == "soma_scan":
         # v0.23: JIT expression — returns only relevant cells, not everything
         workspace = resolve_workspace()
         files = args.get('files', None)
