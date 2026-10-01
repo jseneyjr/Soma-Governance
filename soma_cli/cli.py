@@ -44,6 +44,28 @@ def _build_parser() -> argparse.ArgumentParser:
     # soma doctor
     sub.add_parser("doctor", help="System health check")
 
+    # soma verify
+    p_verify = sub.add_parser("verify", help="Run verification on changed files")
+    p_verify.add_argument("--files", nargs="*", default=None,
+                          help="Explicit list of files to verify")
+    p_verify.add_argument("--layer1-only", action="store_true",
+                          help="Skip Layer 2 (fast deterministic checks only)")
+    p_verify.add_argument("--dry-run", action="store_true",
+                          help="Show what would be checked without running")
+    p_verify.add_argument("--repo-root", default=None,
+                          help="Override repository root path")
+
+    # soma checkpoint
+    p_checkpoint = sub.add_parser("checkpoint", help="Run deterministic quality checks")
+    p_checkpoint.add_argument("--pre-commit", action="store_true",
+                              help="Warn mode: exit 0 even if issues found (unless --strict)")
+    p_checkpoint.add_argument("--strict", action="store_true",
+                              help="In pre-commit mode, exit 1 on issues")
+    p_checkpoint.add_argument("--json", action="store_true",
+                              help="Emit machine-readable JSON output")
+    p_checkpoint.add_argument("--workspace", default=None,
+                              help="Override target workspace directory")
+
     return parser
 
 
@@ -71,11 +93,25 @@ def cmd_doctor(args: argparse.Namespace) -> int:
     return run_doctor(args)
 
 
+def cmd_verify(args: argparse.Namespace) -> int:
+    """Run verification on changed files."""
+    from soma_cli.verify import run_verify
+    return run_verify(args)
+
+
+def cmd_checkpoint(args: argparse.Namespace) -> int:
+    """Run deterministic quality checks."""
+    from soma_cli.checkpoint import run_checkpoint
+    return run_checkpoint(args)
+
+
 COMMANDS = {
     "init": cmd_init,
     "status": cmd_status,
     "report": cmd_report,
     "doctor": cmd_doctor,
+    "verify": cmd_verify,
+    "checkpoint": cmd_checkpoint,
 }
 
 

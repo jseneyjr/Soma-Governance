@@ -1,0 +1,479 @@
+"""TDD Gate 1 tests for soma checkpoint CLI command.
+
+The `soma checkpoint` command runs deterministic quality checks on
+the current changeset (no LLM required):
+- Checks test files exist for changed implementation files
+- Checks for hardcoded paths (e.g., /home, /Users, /tmp)
+- Checks assertion density in test files
+- Checks cell fitness scores from evidence ledger
+- Supports --pre-commit (warn mode: exit 0 unless strict, exit 1 in strict mode)
+- Supports --json (machine-readable output)
+- Supports --workspace (override target directory)
+
+Implementation will be in `soma_cli/checkpoint.py` with `run_checkpoint(args) -> int`.
+"""
+import argparse
+import json
+import os
+import sys
+import pytest
+
+REPO_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+sys.path.insert(0, REPO_ROOT)
+
+
+def _setup_clean_workspace(root):
+    """Helper to populate a clean workspace with compliant code and tests."""
+    src = root / "src"
+    src.mkdir(parents=True, exist_ok=True)
+    tests = root / "tests"
+    tests.mkdir(parents=True, exist_ok=True)
+
+    # Compliant implementation file
+    (src / "math_utils.py").write_text(
+        "def multiply(a: int, b: int) -> int:\n"
+        "    return a * b\n\n"
+        "def divide(a: int, b: int) -> float:\n"
+        "    if b == 0:\n"
+        "        raise ValueError('Cannot divide by zero')\n"
+        "    return a / b\n",
+        encoding="utf-8",
+    )
+
+    # Compliant test file with good assertion density
+    (tests / "test_math_utils.py").write_text(
+        "import pytest\n"
+        "from src.math_utils import multiply, divide\n\n"
+        "def test_multiply():\n"
+        "    assert multiply(2, 3) == 6\n"
+        "    assert multiply(-1, 5) == -5\n"
+        "    assert multiply(0, 10) == 0\n\n"
+        "def test_divide():\n"
+        "    assert divide(10, 2) == 5.0\n"
+        "    with pytest.raises(ValueError):\n"
+        "        divide(1, 0)\n",
+        encoding="utf-8",
+    )
+
+    # Healthy evidence directory
+    evidence = root / ".soma" / "evidence"
+    evidence.mkdir(parents=True, exist_ok=True)
+    fitness_record = {
+        "cell_id": "math-rule",
+        "triggered_at": "2026-09-30T12:00:00Z",
+        "matched_files": ["src/math_utils.py"],
+    }
+    outcome_record = {
+        "cell_id": "math-rule",
+        "outcome": "tp",
+    }
+    (evidence / "fitness.jsonl").write_text(
+        json.dumps(fitness_record) + "\n", encoding="utf-8"
+    )
+    (evidence / "outcomes.jsonl").write_text(
+        json.dumps(outcome_record) + "\n", encoding="utf-8"
+    )
+    return root
+
+
+# ── 1. CLI Parsing Tests ─────────────────────────────────────────────────────
+
+class TestCheckpointCLIParsing:
+    """Verify soma checkpoint CLI subparser and argument definitions."""
+
+    def test_checkpoint_subparser_registered(self):
+        """'checkpoint' must be registered as a recognized subcommand."""
+        from soma_cli.cli import _build_parser
+
+        parser = _build_parser()
+        args = parser.parse_args(["checkpoint"])
+        assert args.command == "checkpoint"
+
+    def test_checkpoint_defaults(self):
+        """Default arguments must match expected behavior (not pre-commit, not json)."""
+        from soma_cli.cli import _build_parser
+
+        parser = _build_parser()
+        args = parser.parse_args(["checkpoint"])
+        assert args.pre_commit is False
+        assert args.json is False
+        assert getattr(args, "workspace", None) is None
+        assert getattr(args, "strict", False) is False
+
+    def test_checkpoint_pre_commit_flag(self):
+        """--pre-commit flag should be accepted and set to True."""
+        from soma_cli.cli import _build_parser
+
+        parser = _build_parser()
+        args = parser.parse_args(["checkpoint", "--pre-commit"])
+        assert args.pre_commit is True
+
+    def test_checkpoint_json_flag(self):
+        """--json flag should be accepted and set to True."""
+        from soma_cli.cli import _build_parser
+
+        parser = _build_parser()
+        args = parser.parse_args(["checkpoint", "--json"])
+        assert args.json is True
+
+    def test_checkpoint_workspace_option(self):
+        """--workspace option should accept a path string."""
+        from soma_cli.cli import _build_parser
+
+        parser = _build_parser()
+        args = parser.parse_args(["checkpoint", "--workspace", "/custom/path"])
+        assert args.workspace == "/custom/path"
+
+    def test_checkpoint_strict_flag(self):
+        """--strict flag should be accepted when specified."""
+        from soma_cli.cli import _build_parser
+
+        parser = _build_parser()
+        args = parser.parse_args(["checkpoint", "--strict"])
+        assert args.strict is True
+
+    def test_checkpoint_all_flags_combined(self):
+        """All checkpoint flags can be used together."""
+        from soma_cli.cli import _build_parser
+
+        parser = _build_parser()
+        args = parser.parse_args([
+            "checkpoint",
+            "--workspace", "/project/root",
+            "--pre-commit",
+            "--strict",
+            "--json",
+        ])
+        assert args.command == "checkpoint"
+        assert args.workspace == "/project/root"
+        assert args.pre_commit is True
+        assert args.strict is True
+        assert args.json is True
+
+    def test_checkpoint_help_exits_zero(self):
+        """'soma checkpoint --help' prints help and exits with status 0."""
+        from soma_cli.cli import main
+
+        with pytest.raises(SystemExit) as exc_info:
+            main(["checkpoint", "--help"])
+        assert exc_info.value.code == 0
+
+    def test_checkpoint_unknown_flag_exits_code_two(self):
+        """Argparse rejects unrecognized flags with exit code 2."""
+        from soma_cli.cli import main
+
+        with pytest.raises(SystemExit) as exc_info:
+            main(["checkpoint", "--invalid-flag-12345"])
+        assert exc_info.value.code == 2
+
+
+# ── 2. Module Import & Dispatch Tests ────────────────────────────────────────
+
+class TestCheckpointImportAndDispatch:
+    """Verify run_checkpoint exists and is wired to CLI dispatch."""
+
+    def test_run_checkpoint_importable(self):
+        """run_checkpoint must be importable from soma_cli.checkpoint."""
+        from soma_cli.checkpoint import run_checkpoint
+
+        assert callable(run_checkpoint)
+
+    def test_checkpoint_in_cli_commands(self):
+        """COMMANDS dictionary in soma_cli.cli must include 'checkpoint'."""
+        from soma_cli.cli import COMMANDS
+
+        assert "checkpoint" in COMMANDS
+        assert callable(COMMANDS["checkpoint"])
+
+
+# ── 3. Clean Project Checks (Happy Path) ─────────────────────────────────────
+
+class TestCheckpointCleanProject:
+    """Verify checkpoint behavior on clean, conforming projects."""
+
+    def test_clean_project_run_checkpoint_returns_zero(self, tmp_path, capsys):
+        """run_checkpoint on a compliant workspace returns exit 0."""
+        from soma_cli.checkpoint import run_checkpoint
+
+        _setup_clean_workspace(tmp_path)
+        args = argparse.Namespace(
+            workspace=str(tmp_path),
+            pre_commit=False,
+            strict=False,
+            json=False,
+        )
+        exit_code = run_checkpoint(args)
+        assert exit_code == 0
+        captured = capsys.readouterr()
+        assert "FAIL" not in captured.out
+        assert "Traceback" not in captured.err
+
+    def test_clean_project_main_invocation_returns_zero(self, tmp_path):
+        """Calling main(['checkpoint', '--workspace', ...]) returns 0 for a clean project."""
+        from soma_cli.cli import main
+
+        _setup_clean_workspace(tmp_path)
+        exit_code = main(["checkpoint", "--workspace", str(tmp_path)])
+        assert exit_code == 0
+
+
+# ── 4. Test Coverage Verification & Exit Behavior ────────────────────────────
+
+class TestCheckpointTestCoverage:
+    """Verify missing test files trigger appropriate exit codes based on flags."""
+
+    def test_missing_test_coverage_returns_nonzero_by_default(self, tmp_path, capsys):
+        """Implementation file with no corresponding test must fail in default/strict mode."""
+        from soma_cli.checkpoint import run_checkpoint
+
+        src = tmp_path / "src"
+        src.mkdir(parents=True)
+        # Orphaned implementation file without test_service.py
+        (src / "service.py").write_text(
+            "def handle_request():\n    return 'ok'\n",
+            encoding="utf-8",
+        )
+        args = argparse.Namespace(
+            workspace=str(tmp_path),
+            pre_commit=False,
+            strict=False,
+            json=False,
+        )
+        exit_code = run_checkpoint(args)
+        assert exit_code != 0
+        captured = capsys.readouterr()
+        assert "service.py" in captured.out or "service.py" in captured.err
+
+    def test_missing_test_coverage_warn_mode_exits_zero(self, tmp_path, capsys):
+        """In --pre-commit mode (without --strict), issues warn but exit code is 0."""
+        from soma_cli.checkpoint import run_checkpoint
+
+        src = tmp_path / "src"
+        src.mkdir(parents=True)
+        (src / "orphaned.py").write_text(
+            "def worker():\n    pass\n",
+            encoding="utf-8",
+        )
+        args = argparse.Namespace(
+            workspace=str(tmp_path),
+            pre_commit=True,
+            strict=False,
+            json=False,
+        )
+        exit_code = run_checkpoint(args)
+        assert exit_code == 0
+        captured = capsys.readouterr()
+        # Should warn the user despite exiting 0
+        out_and_err = captured.out + captured.err
+        assert "warn" in out_and_err.lower() or "orphaned.py" in out_and_err
+
+    def test_missing_test_coverage_pre_commit_strict_exits_nonzero(self, tmp_path):
+        """In --pre-commit with --strict, issues cause exit code 1."""
+        from soma_cli.checkpoint import run_checkpoint
+
+        src = tmp_path / "src"
+        src.mkdir(parents=True)
+        (src / "untested.py").write_text(
+            "def process():\n    return 42\n",
+            encoding="utf-8",
+        )
+        args = argparse.Namespace(
+            workspace=str(tmp_path),
+            pre_commit=True,
+            strict=True,
+            json=False,
+        )
+        exit_code = run_checkpoint(args)
+        assert exit_code == 1
+
+
+# ── 5. Hardcoded Paths, Assertion Density & Fitness Checks ───────────────────
+
+class TestCheckpointDeterministicQualityChecks:
+    """Verify specific deterministic checks: hardcoded paths, assertion density, cell fitness."""
+
+    def test_hardcoded_paths_detected(self, tmp_path, capsys):
+        """Hardcoded absolute paths (/home, /Users, /tmp) must be flagged."""
+        from soma_cli.checkpoint import run_checkpoint
+
+        _setup_clean_workspace(tmp_path)
+        # Introduce a hardcoded path in implementation
+        bad_file = tmp_path / "src" / "hardcoded.py"
+        bad_file.write_text(
+            'CACHE_PATH = "/home/alice/data/cache.bin"\n',
+            encoding="utf-8",
+        )
+        test_file = tmp_path / "tests" / "test_hardcoded.py"
+        test_file.write_text(
+            "from src.hardcoded import CACHE_PATH\n"
+            "def test_cache():\n"
+            "    assert CACHE_PATH.endswith('.bin')\n",
+            encoding="utf-8",
+        )
+
+        args = argparse.Namespace(
+            workspace=str(tmp_path),
+            pre_commit=False,
+            strict=False,
+            json=False,
+        )
+        exit_code = run_checkpoint(args)
+        assert exit_code != 0
+        captured = capsys.readouterr()
+        assert "hardcoded" in (captured.out + captured.err).lower()
+
+    def test_low_assertion_density_flagged(self, tmp_path, capsys):
+        """Test files with zero assertions should be flagged."""
+        from soma_cli.checkpoint import run_checkpoint
+
+        _setup_clean_workspace(tmp_path)
+        # Create a test file without any assert statements
+        empty_test = tmp_path / "tests" / "test_vacuous.py"
+        empty_test.write_text(
+            "def test_does_nothing():\n"
+            "    x = 1 + 2\n"
+            "    y = x * 3\n",
+            encoding="utf-8",
+        )
+
+        args = argparse.Namespace(
+            workspace=str(tmp_path),
+            pre_commit=False,
+            strict=False,
+            json=False,
+        )
+        exit_code = run_checkpoint(args)
+        assert exit_code != 0
+        captured = capsys.readouterr()
+        assert "assertion" in (captured.out + captured.err).lower() or "density" in (captured.out + captured.err).lower()
+
+    def test_unhealthy_cell_fitness_flagged(self, tmp_path, capsys):
+        """Cell with high false positive rate in fitness evidence should be flagged."""
+        from soma_cli.checkpoint import run_checkpoint
+
+        _setup_clean_workspace(tmp_path)
+        evidence = tmp_path / ".soma" / "evidence"
+        evidence.mkdir(parents=True, exist_ok=True)
+        # Record with heavy false positive outcomes
+        fitness_records = [
+            {"cell_id": "noisy-rule", "triggered_at": "2026-09-30T10:00:00Z", "matched_files": ["src/math_utils.py"]},
+            {"cell_id": "noisy-rule", "triggered_at": "2026-09-30T10:05:00Z", "matched_files": ["src/math_utils.py"]},
+            {"cell_id": "noisy-rule", "triggered_at": "2026-09-30T10:10:00Z", "matched_files": ["src/math_utils.py"]},
+        ]
+        outcome_records = [
+            {"cell_id": "noisy-rule", "outcome": "fp"},
+            {"cell_id": "noisy-rule", "outcome": "fp"},
+            {"cell_id": "noisy-rule", "outcome": "fp"},
+        ]
+        (evidence / "fitness.jsonl").write_text(
+            "\n".join(json.dumps(r) for r in fitness_records) + "\n",
+            encoding="utf-8",
+        )
+        (evidence / "outcomes.jsonl").write_text(
+            "\n".join(json.dumps(r) for r in outcome_records) + "\n",
+            encoding="utf-8",
+        )
+
+        args = argparse.Namespace(
+            workspace=str(tmp_path),
+            pre_commit=False,
+            strict=True,
+            json=False,
+        )
+        exit_code = run_checkpoint(args)
+        assert exit_code != 0
+
+
+# ── 6. JSON Output Tests ─────────────────────────────────────────────────────
+
+class TestCheckpointJsonOutput:
+    """Verify --json emits valid, structured JSON output."""
+
+    def test_json_output_clean_workspace(self, tmp_path, capsys):
+        """Clean project with --json emits valid JSON reporting success."""
+        from soma_cli.checkpoint import run_checkpoint
+
+        _setup_clean_workspace(tmp_path)
+        args = argparse.Namespace(
+            workspace=str(tmp_path),
+            pre_commit=False,
+            strict=False,
+            json=True,
+        )
+        exit_code = run_checkpoint(args)
+        assert exit_code == 0
+
+        captured = capsys.readouterr()
+        data = json.loads(captured.out)
+        assert isinstance(data, dict)
+        assert data.get("status") == "passed" or data.get("passed") is True
+        assert "checks" in data or "results" in data
+
+    def test_json_output_with_violations(self, tmp_path, capsys):
+        """Project with issues and --json emits structured JSON detailing failures."""
+        from soma_cli.checkpoint import run_checkpoint
+
+        src = tmp_path / "src"
+        src.mkdir(parents=True)
+        (src / "untested.py").write_text(
+            'SECRET_KEY = "/home/admin/.keys"\n',
+            encoding="utf-8",
+        )
+
+        args = argparse.Namespace(
+            workspace=str(tmp_path),
+            pre_commit=False,
+            strict=False,
+            json=True,
+        )
+        exit_code = run_checkpoint(args)
+        assert exit_code != 0
+
+        captured = capsys.readouterr()
+        data = json.loads(captured.out)
+        assert isinstance(data, dict)
+        assert data.get("status") in ("failed", "error", "rejected") or data.get("passed") is False
+        assert "issues" in data or "failures" in data or "checks" in data
+
+    def test_json_output_via_cli_main(self, tmp_path, capsys):
+        """CLI main with ['checkpoint', '--json'] outputs parseable JSON."""
+        from soma_cli.cli import main
+
+        _setup_clean_workspace(tmp_path)
+        main(["checkpoint", "--workspace", str(tmp_path), "--json"])
+        captured = capsys.readouterr()
+        data = json.loads(captured.out)
+        assert isinstance(data, dict)
+
+
+# ── 7. Edge Cases ────────────────────────────────────────────────────────────
+
+class TestCheckpointEdgeCases:
+    """Verify edge conditions such as empty workspace, missing directory, etc."""
+
+    def test_empty_workspace_returns_zero(self, tmp_path, capsys):
+        """An empty workspace with no python files passes checkpoint cleanly."""
+        from soma_cli.checkpoint import run_checkpoint
+
+        args = argparse.Namespace(
+            workspace=str(tmp_path),
+            pre_commit=False,
+            strict=False,
+            json=False,
+        )
+        exit_code = run_checkpoint(args)
+        assert exit_code == 0
+
+    def test_nonexistent_workspace_returns_nonzero(self, tmp_path, capsys):
+        """Specifying a non-existent workspace path returns non-zero error."""
+        from soma_cli.checkpoint import run_checkpoint
+
+        bad_path = tmp_path / "does_not_exist"
+        args = argparse.Namespace(
+            workspace=str(bad_path),
+            pre_commit=False,
+            strict=False,
+            json=False,
+        )
+        exit_code = run_checkpoint(args)
+        assert exit_code != 0

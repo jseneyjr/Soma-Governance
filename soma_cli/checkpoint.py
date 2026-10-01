@@ -1,0 +1,230 @@
+"""soma checkpoint — deterministic quality checks (no LLM required).
+
+Checks:
+- Test file coverage for implementation files
+- Hardcoded absolute paths (/home, /Users, /tmp)
+- Assertion density in test files
+- Cell fitness scores from .soma/evidence ledger
+
+Supports --pre-commit (warn mode), --strict, --json, --workspace flags.
+"""
+from __future__ import annotations
+
+import argparse
+import json
+import os
+import re
+import sys
+from pathlib import Path
+
+
+# Patterns considered hardcoded absolute paths
+_HARDCODED_PATH_RE = re.compile(
+    r'''(?:"|')(/home/|/Users/|/tmp/)'''
+)
+
+# Directories to skip when scanning for implementation files
+_SKIP_DIRS = {
+    "__pycache__", ".git", ".soma", "node_modules", ".venv", "venv",
+    ".tox", ".mypy_cache", ".pytest_cache", "dist", "build", "egg-info",
+}
+
+
+# ── Individual Checks ─────────────────────────────────────────────────
+
+
+def _find_python_files(root: Path, subdir: str) -> list[Path]:
+    """Find all .py files under root/subdir, skipping hidden/build dirs."""
+    target = root / subdir
+    if not target.is_dir():
+        return []
+    result = []
+    for dirpath, dirnames, filenames in os.walk(target):
+        dirnames[:] = [d for d in dirnames if d not in _SKIP_DIRS]
+        for f in filenames:
+            if f.endswith(".py") and not f.startswith("__"):
+                result.append(Path(dirpath) / f)
+    return result
+
+
+def _check_test_coverage(root: Path) -> list[dict]:
+    """Check that every src/*.py has a corresponding tests/test_*.py."""
+    issues = []
+    src_files = _find_python_files(root, "src")
+    test_dir = root / "tests"
+
+    for src_file in src_files:
+        stem = src_file.stem
+        expected_test = test_dir / f"test_{stem}.py"
+        if not expected_test.exists():
+            issues.append({
+                "check": "test_coverage",
+                "file": str(src_file.relative_to(root)),
+                "message": f"Missing test file for {src_file.name}: expected tests/test_{stem}.py",
+            })
+    return issues
+
+
+def _check_hardcoded_paths(root: Path) -> list[dict]:
+    """Scan all .py files for hardcoded absolute paths."""
+    issues = []
+    for subdir in ("src", "tests"):
+        for py_file in _find_python_files(root, subdir):
+            try:
+                content = py_file.read_text(encoding="utf-8", errors="replace")
+            except OSError:
+                continue
+            for line_no, line in enumerate(content.splitlines(), 1):
+                if _HARDCODED_PATH_RE.search(line):
+                    issues.append({
+                        "check": "hardcoded_paths",
+                        "file": str(py_file.relative_to(root)),
+                        "line": line_no,
+                        "message": f"Hardcoded absolute path found in {py_file.name}:{line_no}",
+                    })
+    return issues
+
+
+def _check_assertion_density(root: Path) -> list[dict]:
+    """Flag test files that contain zero assert statements."""
+    issues = []
+    test_files = _find_python_files(root, "tests")
+
+    for tf in test_files:
+        # Only check actual test files, not conftest.py or helper modules
+        if not tf.name.startswith("test_"):
+            continue
+        try:
+            content = tf.read_text(encoding="utf-8", errors="replace")
+        except OSError:
+            continue
+        # Count assert statements (assert keyword or pytest.raises)
+        has_assertion = (
+            "assert " in content
+            or "assert(" in content
+            or "pytest.raises" in content
+        )
+        if not has_assertion:
+            issues.append({
+                "check": "assertion_density",
+                "file": str(tf.relative_to(root)),
+                "message": f"Low assertion density in {tf.name}: no assert statements found",
+            })
+    return issues
+
+
+def _check_cell_fitness(root: Path) -> list[dict]:
+    """Check .soma/evidence for cells with high false-positive rates."""
+    issues = []
+    evidence_dir = root / ".soma" / "evidence"
+    outcomes_file = evidence_dir / "outcomes.jsonl"
+
+    if not outcomes_file.exists():
+        return issues
+
+    # Tally outcomes per cell_id
+    cell_outcomes: dict[str, dict[str, int]] = {}
+    try:
+        for line in outcomes_file.read_text(encoding="utf-8").strip().splitlines():
+            if not line.strip():
+                continue
+            record = json.loads(line)
+            cid = record.get("cell_id", "unknown")
+            outcome = record.get("outcome", "")
+            if cid not in cell_outcomes:
+                cell_outcomes[cid] = {"tp": 0, "fp": 0, "total": 0}
+            cell_outcomes[cid]["total"] += 1
+            if outcome == "fp":
+                cell_outcomes[cid]["fp"] += 1
+            elif outcome == "tp":
+                cell_outcomes[cid]["tp"] += 1
+    except (OSError, json.JSONDecodeError):
+        return issues
+
+    # Flag cells with fp rate > 50%
+    for cid, counts in cell_outcomes.items():
+        if counts["total"] >= 2 and counts["fp"] / counts["total"] > 0.5:
+            fp_rate = counts["fp"] / counts["total"]
+            issues.append({
+                "check": "cell_fitness",
+                "cell_id": cid,
+                "message": (
+                    f"Cell '{cid}' has unhealthy fitness: "
+                    f"{counts['fp']}/{counts['total']} false positives "
+                    f"({fp_rate:.0%} FP rate)"
+                ),
+            })
+    return issues
+
+
+# ── Main Entry Point ──────────────────────────────────────────────────
+
+
+def run_checkpoint(args: argparse.Namespace) -> int:
+    """Run deterministic quality checkpoint on a workspace.
+
+    Args:
+        args: Parsed CLI arguments with workspace, pre_commit, strict, json.
+
+    Returns:
+        Exit code: 0 for pass, 1 for failures.
+    """
+    workspace = getattr(args, "workspace", None) or os.getcwd()
+    root = Path(workspace)
+
+    pre_commit = getattr(args, "pre_commit", False)
+    strict = getattr(args, "strict", False)
+    use_json = getattr(args, "json", False)
+
+    # Validate workspace exists
+    if not root.is_dir():
+        msg = f"Error: workspace does not exist: {workspace}"
+        if use_json:
+            print(json.dumps({
+                "status": "error",
+                "passed": False,
+                "checks": [],
+                "issues": [{"check": "workspace", "message": msg}],
+            }))
+        else:
+            print(msg, file=sys.stderr)
+        return 1
+
+    # Run all checks
+    all_issues: list[dict] = []
+    all_issues.extend(_check_test_coverage(root))
+    all_issues.extend(_check_hardcoded_paths(root))
+    all_issues.extend(_check_assertion_density(root))
+    all_issues.extend(_check_cell_fitness(root))
+
+    has_issues = len(all_issues) > 0
+
+    # Determine exit code
+    if has_issues:
+        if pre_commit and not strict:
+            # Warn mode: report issues but exit 0
+            exit_code = 0
+        else:
+            exit_code = 1
+    else:
+        exit_code = 0
+
+    # Output
+    if use_json:
+        checks_run = ["test_coverage", "hardcoded_paths", "assertion_density", "cell_fitness"]
+        output = {
+            "status": "failed" if has_issues else "passed",
+            "passed": not has_issues,
+            "checks": checks_run,
+            "issues": all_issues,
+        }
+        print(json.dumps(output, indent=2))
+    else:
+        if has_issues:
+            warn_label = "[WARN]" if (pre_commit and not strict) else "[FAIL]"
+            for issue in all_issues:
+                print(f"{warn_label} {issue['message']}")
+        else:
+            print("checkpoint: all checks passed")
+
+    return exit_code
