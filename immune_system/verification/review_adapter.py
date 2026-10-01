@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 """Review adapter: converts Prosecutor/Defender findings to arbiter inputs.
 
 Maps Supercell review findings (JSON) into Prediction/Claim objects that the
@@ -9,7 +11,6 @@ Usage:
         findings_to_predictions, findings_to_claims, run_review_arbitration,
     )
 """
-from __future__ import annotations
 
 import json
 import os

@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 """Arbiter: Deterministic divergence detector.
 
 Compares Spec Agent predictions against Code Agent claims, with Layer 1

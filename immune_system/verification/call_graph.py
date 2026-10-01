@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 """Call Graph Completeness Checker — Layer 1 Verification Tool.
 
 Answers: "Is every defined function reachable from at least one call site?"
@@ -5,7 +7,6 @@ Answers: "Is every defined function reachable from at least one call site?"
 Uses AST to extract function definitions and grep to find call sites.
 Pure deterministic — no LLM judgment.
 """
-from __future__ import annotations
 
 import ast
 import os
