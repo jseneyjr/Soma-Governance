@@ -13,8 +13,15 @@ Thank you for your interest in contributing!
 1. Fork the repository
 2. Create a feature branch: `git checkout -b feature/your-change`
 3. Make your changes
-4. Run `make validate` to verify
-5. Submit a pull request
+4. Run tests: `python3 -m pytest tests/ -q`
+5. Run `make validate` to verify
+6. Submit a pull request
+
+### Development Requirements
+- **Python 3.9+** — all code must be compatible with Python 3.9 through 3.12
+- **`from __future__ import annotations`** — required as the first import in any file using `X | None` union syntax
+- **CI matrix** — tests run on Python 3.9 + 3.11 across Linux, macOS, and Windows
+- **Test command**: `python3 -m pytest tests/ -q` (1228+ tests)
 
 ### Contributing Cells
 If your Genesis scan produced useful cells, you can contribute them:

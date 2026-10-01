@@ -3,10 +3,10 @@
 [![License: Apache 2.0](https://img.shields.io/badge/License-Apache_2.0-blue?style=flat-square)](LICENSE)
 [![Core Rules](https://img.shields.io/badge/Core_Rules-15-green?style=flat-square)](#-core-rules)
 [![Agent Skills](https://img.shields.io/badge/Agent_Skills-15-purple?style=flat-square)](#-agent-skills)
-[![Automation Scripts](https://img.shields.io/badge/Automation_Scripts-58-red?style=flat-square)](#%EF%B8%8F-automation-scripts)
+[![Automation Scripts](https://img.shields.io/badge/Automation_Scripts-57-red?style=flat-square)](#%EF%B8%8F-automation-scripts)
 [![Adaptive Rules](https://img.shields.io/badge/Adaptive_Rules-5_Types-orange?style=flat-square)](#-adaptive-rules)
-[![Tests](https://img.shields.io/badge/Tests-1162%2B-brightgreen?style=flat-square)](#testing--ci)
-[![Version](https://img.shields.io/badge/Version-0.60.0-informational?style=flat-square)](docs/CHANGELOG.md)
+[![Tests](https://img.shields.io/badge/Tests-1228%2B-brightgreen?style=flat-square)](#testing--ci)
+[![Version](https://img.shields.io/badge/Version-0.62.1-informational?style=flat-square)](docs/CHANGELOG.md)
 [![Blog Post](https://img.shields.io/badge/Blog-dev.to-black?style=flat-square&logo=devdotto)](https://dev.to/nseney1/rules-that-cant-prove-themselves-die-adaptive-governance-for-ai-coding-agents-25bn)
 [![Blog Post 2](https://img.shields.io/badge/Blog_2-dev.to-black?style=flat-square&logo=devdotto)](https://dev.to/nseney1/your-ai-agents-rules-file-is-a-gentlemans-agreement-heres-what-happens-when-you-make-3df5)
 
@@ -32,8 +32,11 @@ See the [NOTICE](NOTICE) file for our full local-only Data Privacy Statement.
 # Clone
 git clone https://github.com/nseney1/Soma-Governance.git && cd Soma-Governance
 
-# Install the CLI
+# Install the CLI (Python 3.9+)
 pip install -e .
+
+# Or install from PyPI
+pip install soma-governance
 
 # Set up governance (auto-detects your platform)
 soma init --yes
@@ -133,6 +136,7 @@ All governance workflows are available via the `soma` CLI:
 | `soma doctor` | System health check — verifies installation integrity |
 | `soma verify` | Layer 1 deterministic verification on changed files (`--layer1-only` available) |
 | `soma checkpoint` | Deterministic quality checks (`--pre-commit` for git hooks) |
+| `soma sync` | Reconcile evidence JSONL with cell frontmatter (`--dry-run`, `--json`) |
 | `soma oracle` | Cell health classification — healthy, noisy, expired, unobserved |
 | `soma promote` | Evaluate cells for promotion (vacuole → wall → genome). `--force --cell <id>` for manual |
 | `soma demote` | Evaluate cells for demotion (high FP rate or dormant). `--force --cell <id>` for manual |

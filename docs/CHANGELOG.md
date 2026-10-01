@@ -3,6 +3,17 @@
 All notable changes to Soma are documented here.
 This project uses [Semantic Versioning](https://semver.org/).
 
+## [0.62.2] — 2026-10-01 — "Documentation Sweep"
+
+### Fixed
+- **README.md**: Version badge 0.60.0 → 0.62.2, test badge 1162 → 1228, script count 58 → 57. Added `soma sync` to CLI table. Added PyPI install to Quick Start. Added Python 3.9+ label.
+- **QUICKSTART.md**: Added all CLI commands (sync, checkpoint, oracle, promote, demote, doctor, verify). Fixed repo URL. Updated PyPI status from "coming soon" to available. Added PEP 668 hint. Added Kiro platform.
+- **SCRIPTS.md**: Full recount and rewrite — 39 → 57 scripts cataloged.
+- **CONTRIBUTING.md**: Added Python 3.9 compat requirement, CI matrix info, test command, `from __future__ import annotations` requirement.
+- **pyproject.toml**: Added Python 3.9/3.10/3.11/3.12 classifiers.
+
+---
+
 ## [0.62.1] — 2026-10-01 — Patch
 
 ### Fixed
