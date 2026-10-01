@@ -3,6 +3,13 @@
 All notable changes to Soma are documented here.
 This project uses [Semantic Versioning](https://semver.org/).
 
+## [0.85.1] — 2026-10-01
+
+### Fixed
+- **Python 3.9 compatibility** (`enzymes/diagnose_hot_zones.py`): Added `from __future__ import annotations` — `dict | None` union syntax (PEP 604) requires 3.10+ at runtime. (BUG-006)
+
+---
+
 ## [0.85.0] — 2026-10-01 — "Antifragile"
 
 ### Added

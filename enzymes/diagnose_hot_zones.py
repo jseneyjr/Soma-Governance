@@ -7,6 +7,8 @@ Usage:
 Reports threshold proximity, distribution health, and tuning recommendations.
 Read-only: never modifies BUG_REGISTRY.json. Exit code always 0 (diagnostic).
 """
+from __future__ import annotations
+
 import json
 import os
 import sys

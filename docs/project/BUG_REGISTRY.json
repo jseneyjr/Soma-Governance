@@ -82,6 +82,19 @@
       "regression_test": "tests/test_credit_assignment.py::TestSignalProvenance::test_jsonl_entry_has_credit_weight",
       "pattern": "Writer and reader disagree on canonical file location",
       "changelog_ref": "v0.82.0"
+    },
+    {
+      "id": "BUG-006",
+      "title": "diagnose_hot_zones.py uses Python 3.10+ type syntax",
+      "discovered_in": "v0.85.0",
+      "fixed_in": "v0.85.1",
+      "root_cause": "schema_drift",
+      "severity": "moderate",
+      "description": "diagnose_hot_zones.py used dict | None union type syntax (PEP 604) which requires Python 3.10+. CI matrix includes Python 3.9, causing TypeError during test collection.",
+      "affected_files": ["enzymes/diagnose_hot_zones.py"],
+      "regression_test": "tests/test_diagnose_hot_zones.py::TestRunDiagnostic::test_real_workspace_runs",
+      "pattern": "Type annotation syntax incompatible with minimum supported Python version",
+      "changelog_ref": "v0.85.1"
     }
   ]
 }
