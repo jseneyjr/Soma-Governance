@@ -211,6 +211,125 @@ class TestIntegrityManifest:
         assert loaded["cell_count"] == original["cell_count"]
 
 
+# ── HMAC Key Management & Signing ─────────────────────────────────────
+
+
+class TestKeyManagement:
+    def test_generate_key_creates_file(self, soma_workspace):
+        """Key generation creates .soma/keys/manifest.key."""
+        from soma_mcp.integrity import generate_key
+
+        key_path = generate_key(str(soma_workspace))
+        assert os.path.isfile(key_path)
+        # Key should be 32 bytes (256-bit) stored as hex
+        with open(key_path, "r") as f:
+            key_hex = f.read().strip()
+        assert len(key_hex) == 64  # 32 bytes * 2 hex chars
+
+    def test_generate_key_rejects_overwrite(self, soma_workspace):
+        """Second key generation raises FileExistsError."""
+        from soma_mcp.integrity import generate_key
+
+        generate_key(str(soma_workspace))
+        with pytest.raises(FileExistsError):
+            generate_key(str(soma_workspace))
+
+    def test_rotate_key_backs_up_old(self, soma_workspace):
+        """Key rotation creates .bak and new key differs."""
+        from soma_mcp.integrity import generate_key, rotate_key, load_key
+
+        generate_key(str(soma_workspace))
+        old_key = load_key(str(soma_workspace))
+        rotate_key(str(soma_workspace))
+        new_key = load_key(str(soma_workspace))
+        assert old_key != new_key
+        # Backup should exist
+        bak_path = os.path.join(
+            str(soma_workspace), ".soma", "keys", "manifest.key.bak"
+        )
+        assert os.path.isfile(bak_path)
+
+    def test_load_key_returns_none_when_missing(self, soma_workspace):
+        """No key file returns None, not an error."""
+        from soma_mcp.integrity import load_key
+
+        assert load_key(str(soma_workspace)) is None
+
+
+class TestManifestSigning:
+    def test_sign_manifest_deterministic(self, soma_workspace):
+        """Same manifest + same key = same signature."""
+        from soma_mcp.integrity import generate_key, load_key, sign_manifest
+
+        generate_key(str(soma_workspace))
+        key = load_key(str(soma_workspace))
+        cells_dir = str(soma_workspace / ".soma" / "cells")
+        manifest = generate_manifest(cells_dir)
+        sig1 = sign_manifest(manifest, key)
+        sig2 = sign_manifest(manifest, key)
+        assert sig1 == sig2
+
+    def test_sign_manifest_different_key(self, soma_workspace):
+        """Different key = different signature."""
+        from soma_mcp.integrity import sign_manifest
+
+        cells_dir = str(soma_workspace / ".soma" / "cells")
+        manifest = generate_manifest(cells_dir)
+        key_a = b"key_a_secret_value_for_testing_1"
+        key_b = b"key_b_secret_value_for_testing_2"
+        sig_a = sign_manifest(manifest, key_a)
+        sig_b = sign_manifest(manifest, key_b)
+        assert sig_a != sig_b
+
+    def test_verify_signature_valid(self, soma_workspace):
+        """Valid signature verifies True."""
+        from soma_mcp.integrity import (
+            generate_key, load_key, sign_manifest, verify_signature,
+        )
+
+        generate_key(str(soma_workspace))
+        key = load_key(str(soma_workspace))
+        cells_dir = str(soma_workspace / ".soma" / "cells")
+        manifest = generate_manifest(cells_dir)
+        manifest["signature"] = sign_manifest(manifest, key)
+        assert verify_signature(manifest, key) is True
+
+    def test_verify_signature_tampered(self, soma_workspace):
+        """Tampered manifest fails verification."""
+        from soma_mcp.integrity import (
+            generate_key, load_key, sign_manifest, verify_signature,
+        )
+
+        generate_key(str(soma_workspace))
+        key = load_key(str(soma_workspace))
+        cells_dir = str(soma_workspace / ".soma" / "cells")
+        manifest = generate_manifest(cells_dir)
+        manifest["signature"] = sign_manifest(manifest, key)
+        # Tamper with cells
+        manifest["cells"]["walls/rogue.md"] = "sha256:badhash"
+        assert verify_signature(manifest, key) is False
+
+    def test_save_manifest_auto_signs(self, soma_workspace):
+        """save_manifest includes signature when key exists."""
+        from soma_mcp.integrity import generate_key
+
+        generate_key(str(soma_workspace))
+        cells_dir = str(soma_workspace / ".soma" / "cells")
+        manifest = generate_manifest(cells_dir)
+        save_manifest(str(soma_workspace), manifest)
+        loaded = load_manifest(str(soma_workspace))
+        assert "signature" in loaded
+
+    def test_unsigned_manifest_graceful(self, soma_workspace):
+        """Manifest without signature works when no key exists."""
+        cells_dir = str(soma_workspace / ".soma" / "cells")
+        manifest = generate_manifest(cells_dir)
+        save_manifest(str(soma_workspace), manifest)
+        loaded = load_manifest(str(soma_workspace))
+        assert loaded is not None
+        assert "signature" not in loaded
+
+
 # ── Enzyme Import Allowlist ───────────────────────────────────────────
 
 

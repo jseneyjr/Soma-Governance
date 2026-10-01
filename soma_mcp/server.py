@@ -20,7 +20,7 @@ _WRITE_TOOLS = frozenset({
 })
 _EXECUTE_TOOLS = frozenset({
     "soma_propose_change", "soma_verify_changes", "soma_checkpoint",
-    "soma_audit_security", "soma_audit_performance",
+    "soma_audit_security", "soma_audit_performance", "soma_generate_manifest",
 })
 
 _tool_call_times = defaultdict(list)
