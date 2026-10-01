@@ -55,6 +55,8 @@ soma sync              # Reconcile JSONL evidence with cell frontmatter
 soma sync --dry-run    # Preview without writing
 
 # Cell lifecycle
+soma genesis           # Scan architecture and generate cell candidates
+soma genesis --dry-run # Preview candidates without writing
 soma oracle --json     # Cell health classification
 soma promote --dry-run # See promotion candidates
 soma demote --dry-run  # See demotion candidates

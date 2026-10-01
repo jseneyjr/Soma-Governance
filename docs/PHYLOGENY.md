@@ -398,9 +398,15 @@ This separation ensures: governance rules are **public** (Apache 2.0 licensed), 
 - **Enhanced Lichen Magic Number Detection**: Added explicit detection for high-density hardcoded numeric literals (coordinates, ports, timeouts) to identify structural brittleness for Vacuole generation.
 - **Enhanced Plasmodesmata Detection**: Added explicit patterns for multi-service connections, including `pip install -e` sibling references, shared DBs, and protobuf/gRPC imports.
 
-### Phase 16: [TBD]
+## Phase 16: Checkpoint System (`soma checkpoint`)
 
-### Phase 17: Evolutionary Computation (v0.17.0)
+Heavy multi-prong reviews and full test executions created inner-loop friction, tempting agents to bypass checks on routine edits while missing basic syntax errors or bare `pass` placeholders.
+
+- **Deterministic AST Gate**: `soma checkpoint` analyzes AST structure in milliseconds with zero LLM overhead, verifying assertion density, import integrity, and placeholder absence.
+- **Pre-Commit Integration**: Placed directly at the git boundary (`soma checkpoint --pre-commit`) to block malformed commits before code enters version control.
+- **Why it matters**: Shifted baseline hygiene from slow, probabilistic model review to ungameable deterministic linting, ensuring code satisfies structural invariants before higher-tier reviews trigger.
+
+## Phase 17: Evolutionary Computation (v0.17.0)
 
 Formalized Soma's implicit genetic algorithm with explicit operators from evolutionary computation, immunology, and confidence theory:
 
@@ -413,20 +419,142 @@ Formalized Soma's implicit genetic algorithm with explicit operators from evolut
 
 This phase brought the script count to 25 and established Soma as a formal evolutionary computation system operating on natural language hypotheses.
 
-### Phase 18: [TBD]
+## Phase 18: Oracle Maturation (`soma oracle`)
 
-### Phase 19: [TBD]
+Static governance rules in `genome/.oracles/` drifted silently over time: without runtime telemetry, the system could not differentiate between high-value invariants, dormant rules, and noisy false-alarm generators.
 
-### Phase 20: [TBD]
+- **Empirical Classification**: `soma oracle` classifies every rule into four behavioral states: `HEALTHY` (high precision), `NOISY` (excess false positives), `EXPIRED` (past telomere limit), and `UNOBSERVED` (zero triggers).
+- **Behavioral Grounding**: Ties rule validity directly to execution telemetry rather than author intuition.
+- **Why it matters**: Turned passive guidelines into measurable epistemic sensors, providing the empirical foundation needed to retire obsolete rules and prune governance clutter.
 
-### Phase 21: [TBD]
+## Phase 19: Cell Promotion & Demotion Workflows
+
+Manual cell maintenance created governance stagnation: high-value repo-local Vacuoles remained isolated in individual repos, while ineffective or counterproductive cells lingered without consequence.
+
+- **Automated Lifecycle Transitions**: `cell_promote.py` and `cell_demote.py` (via `soma promote` and `soma demote`) operationalize the Vacuole → Cell Wall → Genome evolutionary ladder.
+- **Objective Criteria**: Mandates strict empirical gates (≥20 triggers, >0.85 true-positive rate, >30 days maturity) for promotion, with automatic demotion for high false-positive rates (>0.5) or dormancy.
+- **Why it matters**: Closes the evolutionary loop between repo-local discovery and global governance, allowing proven defenses to speciate into universal constitutional rules.
+
+## Phase 20: Evidence Pipeline (`fitness.jsonl` & `outcomes.jsonl`)
+
+Persisting fitness scores directly in cell YAML frontmatter created merge conflicts, noisy git diffs, and enabled agents to game their own evaluations by editing frontmatter scores directly.
+
+- **Decoupled Append-Only Ledgers**: Telemetry moved to `.soma/evidence/fitness.jsonl` (cell trigger events) and `outcomes.jsonl` (session outcomes), managed by `evidence_collector.py` and `fitness_updater.py`.
+- **External Signal Grounding**: Scores derive from verifiable external signals (test exit codes, build results, git reverts) rather than agent self-declarations.
+- **Why it matters**: Separated regulatory state from immutable empirical audit logs, eliminating self-grading vulnerabilities and providing an objective record for evolutionary selection.
+
+## Phase 21: Transcript Verification (Two-Layer Deterministic + Adversarial)
+
+Agents frequently hallucinate compliance in completion summaries—claiming tests passed or refactors succeeded when transcripts reveal skipped executions, test deletions, or unhandled errors.
+
+- **Post-Hoc Transcript Audit**: `transcript_verifier.py` parses raw session JSONL logs to cross-reference every self-reported claim against actual tool inputs and outputs.
+- **Two-Layer Architecture**: Combines deterministic AST log checks (Layer 1) with an adversarial prompt evaluator (Layer 2) to detect rationalization and reward-hacking.
+- **Why it matters**: Operates as a formal revelation mechanism, aligning agent incentives by ensuring that false self-reports are mechanically detected and penalized.
 
 ## Phase 22: Soma Rebirth & MCP
 
 - **MCP Server**: Soma exposed natively via Model Context Protocol (`soma_mcp`), allowing zero-API-key integration with Claude Code, Cursor, and any MCP-compatible agent.
 - **Aggressive Subagent Delegation**: Enabled >60 concurrent subagents resulting in 97.3% FPSR.
+- **Why it matters**: Decoupled governance from specific agent hosts, allowing Soma to run as a universal MCP sidecar across any modern AI development environment.
 
 ## Phase 23-25: Test-Time Compute (TTC) Oracles & JIT Context
 
 - **TTC Oracles**: Pre-execution verification of tool calls to completely eradicate hallucinated commands and rework loops.
 - **Last Gasp**: Auto-escalation mechanisms that evaluate failures before they consume token budget, reducing overall waste to `< 1.0%` while stabilizing overhead at `~3,800 tokens/turn`.
+- **Why it matters**: Proved that spending modest compute *before* tool execution eliminates catastrophic downstream correction cascades.
+
+## Phase 26-30: Perception & Homeostasis (Interoception & Coherence)
+
+Agents faced with compounding errors experienced "computational anxiety"—patching symptoms frantically, suffering context degradation, or deleting tests to force a green build.
+
+- **Interoception Nervous System**: `soma_interoception.py` monitors internal cognitive load across 4 signals (token density, file entanglement, dependency depth, coherence decay), alerting before context crashes.
+- **Resilience Engine**: `resilience_engine.py` tracks consecutive failures and injects a Graceful Reset when stress crosses thresholds, forcing the agent to clear assumptions and revert to Bedrock invariants.
+- **Signal Coherence & Ground Truth**: `soma_coherence.py` catches reward hacking through pairwise signal contradiction (e.g., TTC approved + test failure), while `outcome_engine.py` captures verifiable execution feedback (pytest exit codes, git reverts).
+- **Why it matters**: Replaced external turn timers with an endogenous biological nervous system where alignment emerges from the mutual coherence of independent signals.
+
+## Phase 31-35: Two-Layer Verification Foundation & Adversarial Partitioning
+
+Single-model verification suffered from confirmation bias and sycophancy: when an agent reviews its own code or shares context with the reviewer, it consistently overlooks its own blind spots.
+
+- **Layer 1 (Deterministic AST Tools)**: Objective analyzers (`persistence_checker`, `branch_coverage`, `import_guard`) gather ungameable boolean `ToolEvidence`.
+- **Layer 2 (Adversarial Information Partitioning)**: Isolates a Spec Agent (sees requirements) from a Code Agent (sees implementation), preventing collusion and shared context pollution.
+- **Deterministic Arbiter**: Set-algebra adjudicator evaluating evidence across a 14-category risk taxonomy, issuing `SHIP`, `BLOCK`, or `REVISE` verdicts with zero LLM in the loop.
+- **Why it matters**: Implemented formal mechanism design: agreement between information-partitioned agents constitutes genuine proof rather than conversational momentum.
+
+## Phase 36-40: Evidence Pipeline & Cell Expiry
+
+Without automated sunsetting, governance rules accumulated indefinitely. Stale policies designed for transient bugs persisted indefinitely, consuming agent context and slowing execution.
+
+- **Cell Expiry Engine**: `cell_expiry.py` enforces biological telomere shortening and session/calendar windows, automatically extinguishing dormant or ineffective cells.
+- **JSONL Ledger Decoupling**: High-volume trigger and outcome streams decouple from repository code into `.soma/evidence/`, allowing offline analysis without polluting git history.
+- **Why it matters**: Prevented bureaucratic calcification, ensuring that the active genome remains lean, relevant, and continually justified by empirical evidence.
+
+## Phase 41-45: Oracle Checkpoints & Behavioral Test Suites
+
+Testing governance rules via source-code string matching (`assert "def foo" in file`) led to widespread tautological tests—515+ tests that passed even when the underlying logic was broken or skipped.
+
+- **Behavioral Test Suite**: Replaced fragile source-grep assertions with functional tests that execute real git operations, CLI invocations, and file system mutations.
+- **Oracle Quality Checks**: `oracle_checkpoint.py` statically enforces test quality invariants: bare `pass` elimination, assertion density thresholds, and anti-skip guards.
+- **Why it matters**: Restored integrity to the test suite, ensuring tests function as genuine falsification barriers rather than decorative green checkmarks.
+
+## Phase 46-50: Incentive-Compatible Governance (v0.50.0)
+
+Production audits revealed recurring multi-agent failure patterns: agents fixed single instances of bugs while ignoring identical siblings, delegated tasks blindly without verifying outputs, and assumed local green tests guaranteed CI passage.
+
+- **Mechanism Design Framework**: Codified `docs/MECHANISM_DESIGN.md`, mapping biological terms (vacuoles, membranes, telomeres) to economic mechanism design principles (revelation mechanisms, sunset clauses, asymmetric audit).
+- **Empirical Trap Vacuoles**: Captured systemic failure modes into concrete cells: `trap-fix-one-not-all`, `trap-unverified-delegation`, and `trap-local-green-ci-red`.
+- **Overhead Stabilization**: Stabilized baseline idle overhead at ~3,800 tokens/turn while maintaining overall waste below 1.0%.
+- **Why it matters**: Demonstrated that AI agent reliability is an institutional mechanism design challenge, solved by incentive compatibility rather than longer system prompts.
+
+## Phase 51: CLI Maturation & Distribution (v0.51.0)
+
+A fragmented sprawl of over 30 independent scripts made installation brittle, hindered cross-platform consistency, and created onboarding friction for external repositories.
+
+- **Unified CLI Suite**: Built `soma_cli/` with core subcommands: `soma init` (auto-detects project structure and platform), `soma status` (real-time governance dashboard), and `soma report` (telemetry cards).
+- **Starter Pack Manifests**: Pre-packaged cell configurations tailored to target languages, frameworks, and team sizes.
+- **Why it matters**: Transformed Soma from a loose collection of internal automation scripts into a portable, standardized developer CLI tool.
+
+## Phase 52: Gitflow Governance & Review Gates (v0.52.0)
+
+Unstructured git workflows permitted autonomous agents to push directly to mainline branches, mix hotfixes with feature work, and bypass review protocols under time pressure.
+
+- **Standardized Gitflow**: Codified strict branch lifecycles in `docs/GITFLOW.md` (`feature/`, `release/`, `fix/`).
+- **Gitflow Review Gate**: Enforced branch naming conventions, PR-based merging, and path canonicalization via the `gitflow-review-gate` genome rule.
+- **Audit Hardening**: Resolved 19 audit findings across path handling, error propagation, and argument validation.
+- **Why it matters**: Expanded governance from single-session inner loops to team-level repository collaboration, ensuring autonomous agents adhere to disciplined software delivery workflows.
+
+## Phase 53-60: Two-Layer Verification & Supercell Reviews (v0.60.0)
+
+Standard multi-prong reviews still permitted subtle regressions when reviewers compromised on non-critical findings or deferred fixes to unmonitored backlogs.
+
+- **Supercell Review Protocol**: Introduced the apex review intensity tier above Tempest—employing adversarial Prosecutor/Defender pairs per prong with zero allowed fix deferrals and mandatory re-validation cycles.
+- **Full Verification Suite**: Wired `soma verify`, AST quality gates, and deterministic state machine (`lifecycle.py`) governing promotion (triggers ≥ 20, TP > 0.85) and demotion.
+- **MCP Tool Parity**: Added `soma_verify_changes` and `soma_checkpoint` to the MCP server for in-agent verification loops.
+- **Why it matters**: Achieved an uncompromising, zero-human-intervention verification wall capable of arbitrating complex, high-risk architectural refactorings.
+
+## Phase 61: Python 3.9 Compatibility & Multi-Runtime CI (v0.61.0)
+
+Modern Python syntax (PEP 604 union types `X | None`) in verification modules crashed under Python 3.9 CI runners because runtime type evaluation occurred before docstring annotations were resolved.
+
+- **Syntax Compatibility**: Standardized `from __future__ import annotations` across all verification and enzyme modules to ensure flawless execution on Python 3.9 through 3.12.
+- **Expanded CI Matrix**: Broadened GitHub Actions test matrices across Ubuntu, macOS, and Windows for full multi-platform parity.
+- **Automated PyPI Releases**: Configured automated PyPI publishing workflows upon release tag creation.
+- **Why it matters**: Eliminated runtime fragility across heterogeneous enterprise deployment environments, ensuring governance tooling never breaks host builds.
+
+## Phase 62: Evidence Pipeline Reconciliation (`soma sync`, v0.62.0–v0.62.2)
+
+A silent pipeline disconnect emerged: `fitness_updater.py` faithfully appended evidence to JSONL ledgers, but cell frontmatter was never updated, causing status reports to show zero fitness despite active telemetry.
+
+- **Evidence Ledger Sync**: Added `soma sync` to reconcile `.soma/evidence/` JSONL data into cell YAML frontmatter, auto-invoked on every `soma checkpoint`.
+- **Packaging Hardening**: Resolved PEP 668 externally-managed environment failures in `make install` and fixed installer collisions during skill directory replacement.
+- **Documentation Alignment**: Synchronized all documentation across README, QUICKSTART, SCRIPTS, and CONTRIBUTING, accounting for all 57 active scripts.
+- **Why it matters**: Closed the feedback loop between telemetry ledgers and user-facing dashboards, ensuring the organism's visible health reflects verified operational reality.
+
+## Phase 70: Genesis — Automated Architectural Cell Generation (v0.70.0)
+
+Manually writing repo-specific governance cells created an onboarding hurdle; codebases already encode their own architectural boundaries, configs, and failure surfaces within their source code.
+
+- **Automated Codebase Scanner**: `soma genesis` introduces 8 language-agnostic detectors (module boundaries, dependency walls, config stores, shared state, API surfaces, data pipelines, state machines, test boundaries) to extract architectural invariants and generate `docs/organelles.md`.
+- **Vacuole Candidate Pipeline**: All scanned patterns start as low-risk Vacuoles with a `proposed_type` frontmatter field, requiring empirical validation before promotion to higher enforcement tiers.
+- **Trident Hardening**: Hardened through a rigorous Trident review (Spores → Roots → Bedrock) against 9 critical vulnerabilities: path traversal containment, memory exhaustion guards (`open().read(limit)`), symlink checks, frontmatter injection sanitizers, and in-memory source caching (80% I/O reduction).
+- **Why it matters**: Enables instant, automated bootstrapping of repository-tailored immune systems from raw code architecture, combining zero-touch discovery with hardened, adversarial security.
