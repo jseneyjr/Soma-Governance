@@ -3,6 +3,21 @@
 All notable changes to Soma are documented here.
 This project uses [Semantic Versioning](https://semver.org/).
 
+## [0.81.0] — 2026-10-01 — "Smoke Detector"
+
+### Added
+- **CI Outcome Reporter** (Phase 4.5b): `enzymes/ci_outcome_reporter.py` — report-only advisory that matches cells to changed files via `target_paths` globs, computes per-file credit weights (conserved 1/N), and proposes signals (pass→`trigger`, fail→`fp`). Integrated into CI as a GitHub Actions step summary.
+- **Unified telemetry writer** (Phase 4.5a): `soma_sdk/telemetry.py` — `append_signal()` with file-locked concurrent writes, schema validation, and canonical evidence log at `.soma/evidence/signals.jsonl`.
+- **Governance cell**: `trap-bugfix-without-regression-test` — mechanical enforcement requiring regression tests for every bug fix.
+- **TDD test suite**: 4 new test files — `test_telemetry.py` (8), `test_ci_outcome_reporter.py` (10), `test_telemetry_bugfixes.py` (8). Total: 1,518 passed.
+
+### Fixed
+- **Bug 1**: `outcome_engine.py` read from wrong path (`.soma/outcomes.jsonl` → `.soma/evidence/outcomes.jsonl`).
+- **Bug 2**: `outcome_engine.py` expected wrong schema key (`cells_used` list → also accepts `cell_id` string).
+- **Bug 3**: `sync.py` silently ignored agent outcomes (`success`/`failure` now mapped to tp/fp).
+
+---
+
 ## [0.80.0] — 2026-10-01 — "Consensus"
 
 ### Added
