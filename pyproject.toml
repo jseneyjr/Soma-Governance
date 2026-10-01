@@ -39,9 +39,9 @@ openai = ["openai>=1.0"]
 dev = ["pytest", "ruff"]
 
 [project.urls]
-Homepage = "https://github.com/nseney1/soma"
-Documentation = "https://github.com/nseney1/soma/tree/main/docs"
-Changelog = "https://github.com/nseney1/soma/blob/main/docs/CHANGELOG.md"
+Homepage = "https://github.com/nseney1/Soma-Governance"
+Documentation = "https://github.com/nseney1/Soma-Governance/tree/main/docs"
+Changelog = "https://github.com/nseney1/Soma-Governance/blob/main/docs/CHANGELOG.md"
 
 [tool.setuptools.packages.find]
 include = ["soma_cli*", "soma_sdk*", "enzymes*", "soma_mcp*", "immune_system*"]
