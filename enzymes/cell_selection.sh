@@ -34,7 +34,9 @@ repo_root = resolve_workspace()
 
 cells_dir = os.path.join(repo_root, ".soma", "cells")
 archive_dir = os.path.join(cells_dir, ".archive")
-fitness_log = os.path.join(cells_dir, "fitness.jsonl")
+evidence_dir = os.path.join(repo_root, ".soma", "evidence")
+os.makedirs(evidence_dir, exist_ok=True)
+fitness_log = os.path.join(evidence_dir, "lifecycle.jsonl")
 
 if not os.path.exists(cells_dir):
     print("No cells directory found.")

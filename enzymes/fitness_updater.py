@@ -269,17 +269,34 @@ def update_fitness(triggered_cells, transcript_id, evidence_dir):
 
         now = datetime.now(timezone.utc).isoformat()
 
-        # Append fitness records
+        # Append trigger signals via unified telemetry
         if triggered_cells:
-            with open(fitness_path, "a", encoding="utf-8") as f:
+            try:
+                from soma_sdk.telemetry import append_signal
+                workspace = str(evidence_dir.parent.parent)  # .soma/evidence → repo root
                 for cell in triggered_cells:
-                    record = {
-                        "cell_id": cell["cell_id"],
-                        "transcript_id": transcript_id,
-                        "triggered_at": now,
-                        "matched_files": cell.get("matched_files", []),
-                    }
-                    f.write(json.dumps(record) + "\n")
+                    append_signal(
+                        workspace=workspace,
+                        cell_name=cell["cell_id"],
+                        signal_type='trigger',
+                        source='session',
+                        metadata={
+                            'transcript_id': transcript_id,
+                            'matched_files': cell.get("matched_files", []),
+                        },
+                    )
+            except ImportError:
+                # Fallback: write directly if telemetry module unavailable
+                fitness_path = evidence_dir / "fitness.jsonl"
+                with open(fitness_path, "a", encoding="utf-8") as f:
+                    for cell in triggered_cells:
+                        record = {
+                            "cell_id": cell["cell_id"],
+                            "transcript_id": transcript_id,
+                            "triggered_at": now,
+                            "matched_files": cell.get("matched_files", []),
+                        }
+                        f.write(json.dumps(record) + "\n")
 
         # Record session as processed (same lock scope as fitness write)
         with open(ledger_path, "a", encoding="utf-8") as f:

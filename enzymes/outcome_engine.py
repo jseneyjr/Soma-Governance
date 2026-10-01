@@ -731,39 +731,58 @@ def update_cell_fitness(workspace, fitness_signals):
 
 
 def append_fitness_log(workspace, fitness_signals, outcomes):
-    """Append to .soma/cells/fitness.jsonl with full provenance."""
-    log_path = os.path.join(workspace, '.soma', 'cells', 'fitness.jsonl')
-    timestamp = datetime.now(tz=timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ')
+    """Append fitness signals to the unified evidence log via append_signal().
+
+    Migrated from .soma/cells/fitness.jsonl (dead-end) to
+    .soma/evidence/signals.jsonl via soma_sdk.telemetry (Bug 5 fix).
+    """
     try:
-        with open(log_path, 'a', encoding='utf-8') as f:
-            for sig in fitness_signals:
-                entry = {
-                    'timestamp': timestamp,
-                    'cell': sig['cell'],
-                    'signal': sig['signal'],
-                    'verified': sig.get('verified', False),
-                    'credit_weight': sig.get('credit_weight', 1.0),
-                    'signal_method': sig.get('signal_method', 'legacy'),
-                    'reasons': sig.get('reasons', []),
-                    'outcomes': {
-                        'tests': {
-                            'verified': outcomes.get('tests', {}).get('verified', False),
-                            'passed': outcomes.get('tests', {}).get('passed'),
-                            'framework': outcomes.get('tests', {}).get('framework'),
-                        },
-                        'build': {
-                            'verified': outcomes.get('build', {}).get('verified', False),
-                            'passed': outcomes.get('build', {}).get('passed'),
-                        },
-                        'git': {
-                            'reverts': outcomes.get('git', {}).get('reverts', 0),
-                            'rework_count': len(outcomes.get('git', {}).get('rework_files', []))
-                        }
-                    }
+        from soma_sdk.telemetry import append_signal
+    except ImportError:
+        return  # Graceful degradation if telemetry module unavailable
+
+    for sig in fitness_signals:
+        signal_val = sig.get('signal', 0)
+        if signal_val > 0:
+            signal_type = 'tp'
+        elif signal_val < 0:
+            signal_type = 'fp'
+        else:
+            signal_type = 'trigger'
+
+        metadata = {
+            'raw_signal': sig.get('signal'),
+            'verified': sig.get('verified', False),
+            'credit_weight': sig.get('credit_weight', 1.0),
+            'signal_method': sig.get('signal_method', 'legacy'),
+            'reasons': sig.get('reasons', []),
+            'outcomes': {
+                'tests': {
+                    'verified': outcomes.get('tests', {}).get('verified', False),
+                    'passed': outcomes.get('tests', {}).get('passed'),
+                    'framework': outcomes.get('tests', {}).get('framework'),
+                },
+                'build': {
+                    'verified': outcomes.get('build', {}).get('verified', False),
+                    'passed': outcomes.get('build', {}).get('passed'),
+                },
+                'git': {
+                    'reverts': outcomes.get('git', {}).get('reverts', 0),
+                    'rework_count': len(outcomes.get('git', {}).get('rework_files', []))
                 }
-                f.write(json.dumps(entry) + '\n')
-    except Exception:
-        pass
+            }
+        }
+
+        try:
+            append_signal(
+                workspace=workspace,
+                cell_name=sig['cell'],
+                signal_type=signal_type,
+                source='session',
+                metadata=metadata,
+            )
+        except Exception:
+            pass
 
 
 # ── Main ─────────────────────────────────────────────────────────────
