@@ -5,8 +5,8 @@
 [![Agent Skills](https://img.shields.io/badge/Agent_Skills-15-purple?style=flat-square)](#-agent-skills)
 [![Automation Scripts](https://img.shields.io/badge/Automation_Scripts-58-red?style=flat-square)](#%EF%B8%8F-automation-scripts)
 [![Adaptive Rules](https://img.shields.io/badge/Adaptive_Rules-5_Types-orange?style=flat-square)](#-adaptive-rules)
-[![Tests](https://img.shields.io/badge/Tests-601%2B-brightgreen?style=flat-square)](#testing--ci)
-[![Version](https://img.shields.io/badge/Version-0.52.0-informational?style=flat-square)](docs/CHANGELOG.md)
+[![Tests](https://img.shields.io/badge/Tests-925%2B-brightgreen?style=flat-square)](#testing--ci)
+[![Version](https://img.shields.io/badge/Version-0.60.0-informational?style=flat-square)](docs/CHANGELOG.md)
 [![Blog Post](https://img.shields.io/badge/Blog-dev.to-black?style=flat-square&logo=devdotto)](https://dev.to/nseney1/rules-that-cant-prove-themselves-die-adaptive-governance-for-ai-coding-agents-25bn)
 [![Blog Post 2](https://img.shields.io/badge/Blog_2-dev.to-black?style=flat-square&logo=devdotto)](https://dev.to/nseney1/your-ai-agents-rules-file-is-a-gentlemans-agreement-heres-what-happens-when-you-make-3df5)
 
@@ -30,7 +30,7 @@ See the [NOTICE](NOTICE) file for our full local-only Data Privacy Statement.
 
 ```bash
 # Clone
-git clone https://github.com/nseney1/soma.git && cd soma
+git clone https://github.com/nseney1/Soma-Governance.git && cd Soma-Governance
 
 # Install the CLI
 pip install -e .
@@ -75,13 +75,13 @@ Add Soma as an MCP server in your AI agent's config — **zero API key needed**.
 }
 ```
 
-Works with Gemini Antigravity, Claude Code, Cursor, and any MCP-compatible agent. Tools exposed: `soma_create_cell`, `soma_scan`, `soma_grade`, `soma_coverage`, `soma_fitness`, `soma_list_cells`, `soma_report_outcome`, `soma_propose_change`, `soma_audit_security`, `soma_audit_performance`.
+Works with Gemini Antigravity, Claude Code, Cursor, and any MCP-compatible agent. Tools exposed: `soma_create_cell`, `soma_scan`, `soma_grade`, `soma_coverage`, `soma_fitness`, `soma_list_cells`, `soma_report_outcome`, `soma_propose_change`, `soma_audit_security`, `soma_audit_performance`, `soma_verify_changes`, `soma_checkpoint`.
 
 ### SDK
 
 ```bash
-pip install soma-steering          # Python
-npm install soma-steering          # JavaScript / TypeScript
+pip install soma-governance        # Python
+npm install soma-governance        # JavaScript / TypeScript
 ```
 
 ```python
@@ -118,6 +118,38 @@ bash enzymes/cell_create.sh --from-description "PPO clip ratio must stay between
 ```
 
 Works with **any AI provider** — Gemini, Anthropic, OpenAI — or via MCP stdio (zero API key needed when running inside an AI agent). Set `--provider gemini|anthropic|openai|prompt-only` or configure `SOMA_INFERENCE_PROVIDER` in `soma.conf`.
+
+---
+
+## CLI Commands
+
+All governance workflows are available via the `soma` CLI:
+
+| Command | Description |
+|:--------|:------------|
+| `soma init` | Set up governance — auto-detects platform, installs rules + pre-commit hook |
+| `soma status` | Show active rules, cell counts, and fitness stats |
+| `soma report` | Session report card with compliance metrics |
+| `soma doctor` | System health check — verifies installation integrity |
+| `soma verify` | Two-layer verification on changed files (`--layer1-only` for fast mode) |
+| `soma checkpoint` | Deterministic quality checks (`--pre-commit` for git hooks) |
+| `soma oracle` | Cell health classification — healthy, noisy, expired, unobserved |
+| `soma promote` | Evaluate cells for promotion (vacuole → wall → genome) |
+| `soma demote` | Evaluate cells for demotion (high FP rate or dormant) |
+
+```bash
+# Quick quality check before committing
+soma checkpoint
+
+# Full verification (Layer 1 + Layer 2)
+soma verify
+
+# Cell health dashboard
+soma oracle --json
+
+# See what cells earned promotion
+soma promote --dry-run
+```
 
 ---
 
@@ -390,7 +422,7 @@ Recent academic studies ([arXiv:2602.11988](https://arxiv.org/abs/2602.11988), [
 **The Critique**: If an AI agent generates rules and then grades its own rules, isn't that just memory with extra steps? How do we know the rules are working, and it's not just the underlying foundation models getting better?
 **Soma's Solution**: **Two-Layer Verification**. Layer 1 uses deterministic AST tools (mutation testing, call graph analysis, branch coverage, import guards) that produce objective evidence no LLM can game. Layer 2 uses adversarial information-partitioned agents — a Spec Agent and Code Agent that can't collude because they see different inputs — with a deterministic set-algebra Arbiter. The Transcript Verifier independently checks subagent claims against actual execution logs. Additionally, Escaped Defect Tracking hooks into CI/CD exit codes to establish ground truth.
 
-| Feature | Standard AI Agents | Prompt Files (`.cursorrules`) | **Soma (v0.52)** |
+| Feature | Standard AI Agents | Prompt Files (`.cursorrules`) | **Soma (v0.60)** |
 |:--|:---:|:---:|:---:|
 | **Rule Enforcement** | Relies on LLM obedience | Relies on LLM obedience | **Mechanistic rejection via TTC Oracles** |
 | **Verification** | Self-grading | None | **Two-layer: deterministic tools + adversarial agents** |
@@ -411,7 +443,7 @@ Instead of pleading with the AI in a system prompt to "think step-by-step," Soma
 - **Typical Load** (genome + 3 matched cells): ~4,013 tokens/turn
 - **Waste Rate**: < 1.0% in governed sessions (via Last Gasp & TTC Oracles)
 - **Calibrated Token Ratio**: 1.35 measured directly against Gemini API
-- **Verification Framework**: 601+ tests across 21 test files
+- **Verification Framework**: 925+ tests across 30+ test files
 
 See [METRICS.md](docs/METRICS.md) for a complete system breakdown. See [BENCHMARK.md](docs/BENCHMARK.md) for the standardized governance effectiveness benchmark.
 
