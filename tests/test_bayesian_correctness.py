@@ -34,14 +34,14 @@ class TestWilsonInterval:
     def test_wilson_all_success(self):
         """tp=10, total=10 → lower bound near 0.72 at 95% CI."""
         lower, upper = _wilson_interval(tp=10, total=10, z=1.96)
-        assert abs(lower - 0.7169) < 0.001, f"Expected ~0.7169, got {lower}"
+        assert abs(lower - 0.7225) < 0.001, f"Expected ~0.7225, got {lower}"
         assert abs(upper - 1.0) < 0.001, f"Expected ~1.0, got {upper}"
 
     def test_wilson_all_failure(self):
         """tp=0, total=10 → upper bound near 0.28 at 95% CI."""
         lower, upper = _wilson_interval(tp=0, total=10, z=1.96)
         assert abs(lower - 0.0) < 0.001, f"Expected ~0.0, got {lower}"
-        assert abs(upper - 0.2831) < 0.001, f"Expected ~0.2831, got {upper}"
+        assert abs(upper - 0.2775) < 0.001, f"Expected ~0.2775, got {upper}"
 
     def test_wilson_half_success(self):
         """tp=5, total=10 → centered around 0.5."""
