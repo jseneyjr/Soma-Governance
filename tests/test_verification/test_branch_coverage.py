@@ -6,6 +6,7 @@ Audit findings applied:
 - test_reports_uncovered_lines: asserts exact line 3, not just >= 2
 - test_full_coverage_passes: asserts empty lines list
 """
+import json
 import os
 import sys
 import textwrap
@@ -156,3 +157,85 @@ class TestBranchCoverageContract:
         # Line 4 (return "small") was executed
         assert 4 not in result.lines, \
             f"Line 4 was executed and must not be in uncovered lines: {result.lines}"
+
+
+class TestParseCoverageMissingBranches:
+    """Fix 2.1a: _parse_coverage must merge missing_branches into results."""
+
+    def test_parse_coverage_includes_missing_branches(self, tmp_path):
+        """missing_branches entries should appear in the returned line list."""
+        from immune_system.verification.branch_coverage import _parse_coverage
+
+        # Build a mock coverage JSON with both missing_lines and missing_branches
+        report = tmp_path / "coverage.json"
+        report.write_text(json.dumps({
+            "files": {
+                "/src/target.py": {
+                    "missing_lines": [10, 15],
+                    "missing_branches": [
+                        [8, 12],   # branch from line 8 to 12
+                        [14, 20],  # branch from line 14 to 20
+                        [3, 15],   # to_line 15 already in missing_lines — no dup
+                    ],
+                }
+            }
+        }))
+
+        result = _parse_coverage(str(report), "/src/target.py", "target.py")
+
+        # Original missing_lines must be present
+        assert 10 in result
+        assert 15 in result
+        # Branch targets must be merged in
+        assert 12 in result, f"Branch target 12 missing from {result}"
+        assert 20 in result, f"Branch target 20 missing from {result}"
+        # No duplicates for line 15
+        assert result.count(15) == 1, f"Duplicate line 15 in {result}"
+
+    def test_parse_coverage_branches_only(self, tmp_path):
+        """When missing_lines is empty, branches alone should populate result."""
+        from immune_system.verification.branch_coverage import _parse_coverage
+
+        report = tmp_path / "coverage.json"
+        report.write_text(json.dumps({
+            "files": {
+                "/src/foo.py": {
+                    "missing_lines": [],
+                    "missing_branches": [[5, 7]],
+                }
+            }
+        }))
+
+        result = _parse_coverage(str(report), "/src/foo.py", "foo.py")
+        assert 7 in result
+        assert len(result) == 1
+
+
+class TestSubprocessTimeout:
+    """Fix 2.1b: TimeoutExpired must be caught, not crash."""
+
+    def test_subprocess_timeout_returns_false(self, monkeypatch):
+        """_try_pytest_cov must return False on TimeoutExpired, not raise."""
+        import subprocess as sp
+        from immune_system.verification.branch_coverage import _try_pytest_cov
+
+        def mock_run(*args, **kwargs):
+            raise sp.TimeoutExpired(cmd="pytest", timeout=120)
+
+        monkeypatch.setattr(sp, "run", mock_run)
+
+        result = _try_pytest_cov("test.py", "/src", "/tmp/report.json")
+        assert result is False
+
+    def test_coverage_module_timeout_returns_false(self, monkeypatch):
+        """_try_coverage_module must return False on TimeoutExpired."""
+        import subprocess as sp
+        from immune_system.verification.branch_coverage import _try_coverage_module
+
+        def mock_run(*args, **kwargs):
+            raise sp.TimeoutExpired(cmd="coverage", timeout=120)
+
+        monkeypatch.setattr(sp, "run", mock_run)
+
+        result = _try_coverage_module("test.py", "/src", "/tmp/report.json", "/tmp")
+        assert result is False

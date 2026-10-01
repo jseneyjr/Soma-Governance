@@ -24,14 +24,15 @@ DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "$DIR/common.sh"
 RESOLVED_HOME=$(resolve_home)
 
-if [ -f "$RESOLVED_HOME/.gemini/antigravity/scratch/soma/soma.conf" ]; then
-    source "$RESOLVED_HOME/.gemini/antigravity/scratch/soma/soma.conf"
+SOMA_CONF="${SOMA_CONF:-$RESOLVED_HOME/.gemini/antigravity/scratch/soma/soma.conf}"
+if [ -f "$SOMA_CONF" ]; then
+    source "$SOMA_CONF"
 fi
 
 DEFAULT_REVIEW_MODE=${DEFAULT_REVIEW_MODE:-gale}
 MINIMUM_REVIEW_MODE=${MINIMUM_REVIEW_MODE:-breeze}
 
-LOGS_REPO="$RESOLVED_HOME/.gemini/antigravity/scratch/ai-conversation-logs"
+LOGS_REPO="${SOMA_LOGS_DIR:-$RESOLVED_HOME/.gemini/antigravity/scratch/ai-conversation-logs}"
 CRITICAL="$LOGS_REPO/governance/pending_critical.md"
 LAST_CRITICAL="$LOGS_REPO/governance/last_critical.md"
 AUTO_LOG="$LOGS_REPO/governance/auto_applied_log.jsonl"
@@ -243,13 +244,13 @@ else:
 
   case "$RECENT_WASTE" in
     low)
-      echo "  📊 Homeostasis: Recent waste rate <5%. Consider Breeze/Gale for routine changes."
+      echo "  📊 Homeostasis: Recent waste rate <5%. Consider Breeze/Gale for routine changes." >&2
       ;;
     high)
-      echo "  ⚠️ Homeostasis: Recent waste rate >15%. Recommend Trident+ for all changes."
+      echo "  ⚠️ Homeostasis: Recent waste rate >15%. Recommend Trident+ for all changes." >&2
       ;;
     normal)
-      echo "  📊 Homeostasis: Waste rate nominal (5-15%). Standard review protocol."
+      echo "  📊 Homeostasis: Waste rate nominal (5-15%). Standard review protocol." >&2
       ;;
   esac
 fi
@@ -267,5 +268,5 @@ for line in sys.stdin:
         result[key.strip()] = val.strip()
 print(result.get('PROTOCOL', result.get('recommended_mode', 'gale')))
 " 2>/dev/null || echo 'gale')
-  echo "  Escalation sentinel recommends: $RECOMMENDED_MODE"
+  echo "  Escalation sentinel recommends: $RECOMMENDED_MODE" >&2
 fi

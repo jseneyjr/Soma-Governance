@@ -2,12 +2,21 @@
 id: persona-mcp-specialist
 domain: style
 type: chloroplast
+enforcement: advisory
 hypothesis: A persona specialized in MCP (Model Context Protocol) enhances server
   integration.
 prediction: This persona will optimize `soma_mcp/server.py` and `soma_mcp/tools.py`.
 falsification: The MCP server is trivial and requires no specialization.
+target_paths:
+- soma_mcp/**
 expiry_sessions: 60
 impact_weight: 0.9
+minimum_mode: breeze
+tags:
+- mcp
+- persona
+- api-surface
+created: "2026-09-28"
 ---
 
 # Persona: MCP Specialist

@@ -95,7 +95,7 @@ All token values in this document are empirical, step-based measurements, genera
 | Approach | Tokens/Turn |
 |:---------|:------------|
 | **Naive** — all 11 rules + 15 skills always loaded | 25,163 |
-| **Optimized** — conditional rules + skills idle | 4,380 |
+| **Optimized** — conditional rules + skills idle | ~3,800 |
 | **Savings** | **20,783 tokens/turn (82.6%)** |
 
 > [!NOTE]
@@ -122,8 +122,8 @@ All token values in this document are empirical, step-based measurements, genera
 | 2. Skill Deprecation | legacy-review removed | -1,850 active tokens |
 | 3. Cost-Opt Dedup | 750 → 525 | -225 tokens from `cost-optimization.md` |
 | 4. Frontmatter Purge | 60–100 per file | -1,500+ active tokens across all files |
-| 5. Conditional Loading | 25,163 → 4,380 | -20,783 tokens per turn (82.6% reduction) |
-| **Total System Overhead** | | **4,380 tokens/turn (idle)** |
+| 5. Conditional Loading | 25,163 → ~3,800 | -21,363 tokens per turn (84.9% reduction) |
+| **Total System Overhead** | | **~3,800 tokens/turn (idle)** |
 
 ---
 
@@ -296,4 +296,4 @@ Comparison dataset from a new set of 66 masked and sanitized production sessions
 > [!NOTE]
 > **Delegation evolves in 3 phases**: zero delegation → context-saving delegation → adversarial second-opinion delegation. The transition from phase 2 to phase 3 requires governance skills, not just rules.
 
-See [postmortem-work-sessions.md](postmortem-work-sessions.md) for the full analysis.
+See [postmortem-work-sessions.md](postmortem_session_log_2026-09-29.md) for the full analysis.

@@ -11,42 +11,14 @@ import pytest
 
 import yaml
 
+from tests.helpers_cell import soma_workspace, write_cell_with_fitness
+
 REPO_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, REPO_ROOT)
 
 
 class TestDecayIntegration:
     """Verify decay is called during tier-check evaluation."""
-
-    @pytest.fixture
-    def soma_workspace(self, tmp_path):
-        """Create a minimal workspace with a cell that has high historical counts."""
-        workspace = tmp_path / "project"
-        cells_dir = workspace / ".soma" / "cells"
-        cells_dir.mkdir(parents=True)
-        metrics_dir = workspace / ".soma" / "metrics"
-        metrics_dir.mkdir(parents=True)
-
-        # soma.conf with session count
-        (workspace / "soma.conf").write_text("TOTAL_SESSIONS=100\n")
-
-        return workspace, cells_dir
-
-    def _write_cell(self, cells_dir, name, enforcement, triggers, tp, fp):
-        """Write a cell markdown file with given fitness data."""
-        (cells_dir / f"{name}.md").write_text(
-            f"---\n"
-            f"type: vacuole\n"
-            f"hypothesis: Test cell\n"
-            f"enforcement: {enforcement}\n"
-            f"target_paths:\n  - \"*.py\"\n"
-            f"fitness:\n"
-            f"  triggers: {triggers}\n"
-            f"  true_positives: {tp}\n"
-            f"  false_positives: {fp}\n"
-            f"  score: {tp / max(triggers, 1):.4f}\n"
-            f"---\n# Content\n"
-        )
 
     def _read_cell_fitness(self, cell_path):
         """Read fitness data back from a cell file."""
@@ -57,13 +29,13 @@ class TestDecayIntegration:
 
     def test_tier_check_decays_counts_on_disk(self, soma_workspace):
         """After --tier-check --execute, the cell file should have decayed counts."""
-        workspace, cells_dir = soma_workspace
-        self._write_cell(cells_dir, "high-count", "advisory", 100, 90, 10)
+        cells_dir = soma_workspace / ".soma" / "cells"
+        write_cell_with_fitness(cells_dir, "high-count", "advisory", 100, 90, 10)
 
         result = subprocess.run(
             [sys.executable, os.path.join(REPO_ROOT, "enzymes", "cell_promote.py"),
              "--tier-check", "--execute"],
-            cwd=str(workspace),
+            cwd=str(soma_workspace),
             capture_output=True, text=True, timeout=30,
             env={**os.environ, "PYTHONPATH": REPO_ROOT}
         )
@@ -78,14 +50,13 @@ class TestDecayIntegration:
     def test_frozen_champion_eventually_demotes(self, soma_workspace):
         """A gate-tier cell that stops being useful should eventually demote
         after enough tier-check cycles apply decay + see no new TPs."""
-        workspace, cells_dir = soma_workspace
+        cells_dir = soma_workspace / ".soma" / "cells"
 
         # Start with a cell that has a massive history but is now getting FPs
         # After decay, the FP rate will dominate
-        self._write_cell(cells_dir, "stale-gate", "gate", 100, 95, 5)
+        write_cell_with_fitness(cells_dir, "stale-gate", "gate", 100, 95, 5)
 
-        # Also write some escaped defects to trigger demotion
-        escaped_log = workspace / ".soma" / "metrics" / "escaped_defects.jsonl"
+        escaped_log = soma_workspace / ".soma" / "metrics" / "escaped_defects.jsonl"
         import json
         escaped_log.write_text(
             json.dumps({"cell": "stale-gate", "defect": "test"}) + "\n"
@@ -94,7 +65,7 @@ class TestDecayIntegration:
         result = subprocess.run(
             [sys.executable, os.path.join(REPO_ROOT, "enzymes", "cell_promote.py"),
              "--tier-check", "--execute"],
-            cwd=str(workspace),
+            cwd=str(soma_workspace),
             capture_output=True, text=True, timeout=30,
             env={**os.environ, "PYTHONPATH": REPO_ROOT}
         )
@@ -108,13 +79,13 @@ class TestDecayIntegration:
 
     def test_tier_check_dry_run_does_not_decay(self, soma_workspace):
         """Dry run (no --execute) should NOT write decayed values to disk."""
-        workspace, cells_dir = soma_workspace
-        self._write_cell(cells_dir, "dry-run-cell", "advisory", 100, 90, 10)
+        cells_dir = soma_workspace / ".soma" / "cells"
+        write_cell_with_fitness(cells_dir, "dry-run-cell", "advisory", 100, 90, 10)
 
         result = subprocess.run(
             [sys.executable, os.path.join(REPO_ROOT, "enzymes", "cell_promote.py"),
              "--tier-check"],  # No --execute
-            cwd=str(workspace),
+            cwd=str(soma_workspace),
             capture_output=True, text=True, timeout=30,
             env={**os.environ, "PYTHONPATH": REPO_ROOT}
         )
@@ -126,22 +97,22 @@ class TestDecayIntegration:
     def test_tier_check_execute_idempotent_consecutive_runs(self, soma_workspace):
         """Running --tier-check --execute twice in a row should only decay once.
         The second run must read last_decay_epoch from disk and skip decay."""
-        workspace, cells_dir = soma_workspace
-        self._write_cell(cells_dir, "idempotent-cell", "advisory", 100, 90, 10)
+        cells_dir = soma_workspace / ".soma" / "cells"
+        write_cell_with_fitness(cells_dir, "idempotent-cell", "advisory", 100, 90, 10)
 
         cmd = [sys.executable, os.path.join(REPO_ROOT, "enzymes", "cell_promote.py"),
                "--tier-check", "--execute"]
         env = {**os.environ, "PYTHONPATH": REPO_ROOT}
 
         # First run: should decay
-        subprocess.run(cmd, cwd=str(workspace), capture_output=True, text=True,
+        subprocess.run(cmd, cwd=str(soma_workspace), capture_output=True, text=True,
                        timeout=30, env=env)
         fitness_after_first = self._read_cell_fitness(cells_dir / "idempotent-cell.md")
         assert fitness_after_first['triggers'] < 100, \
             f"First run should decay, got triggers={fitness_after_first['triggers']}"
 
         # Second run immediately: should NOT decay again
-        subprocess.run(cmd, cwd=str(workspace), capture_output=True, text=True,
+        subprocess.run(cmd, cwd=str(soma_workspace), capture_output=True, text=True,
                        timeout=30, env=env)
         fitness_after_second = self._read_cell_fitness(cells_dir / "idempotent-cell.md")
         assert fitness_after_second['triggers'] == fitness_after_first['triggers'], \

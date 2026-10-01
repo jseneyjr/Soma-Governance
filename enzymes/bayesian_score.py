@@ -4,9 +4,10 @@ Single source of truth for the Laplace-smoothed posterior mean.
 All enzymes and the JIT engine should import from here instead of
 re-implementing the formula inline.
 """
+from __future__ import annotations
 
 
-def bayesian_score(tp, triggers, impact_weight=1.0):
+def bayesian_score(tp: int, triggers: int, impact_weight: float = 1.0) -> float:
     """Laplace-smoothed Bayesian posterior mean: Beta(tp+1, fp+1).
 
     Returns (tp + 1) / (triggers + 2) * impact_weight.

@@ -1,3 +1,4 @@
+import fcntl
 import glob
 import json
 import os
@@ -34,6 +35,8 @@ except ImportError:
     _HAS_SDK = False
 
 
+# INTENTIONAL DUPLICATION: wall-mcp-zero-deps prohibits importing from enzymes/
+# Canonical source: enzymes/soma_resolve.py — keep in sync manually
 def resolve_workspace():
     """Find the project root containing .soma/cells/."""
     soma_root = os.environ.get("SOMA_ROOT")
@@ -54,6 +57,23 @@ def resolve_workspace():
         d = os.path.dirname(d)
         
     return cwd
+
+
+# ── Checkpoint helpers (shared with soma_cli.checkpoint) ──────────────
+# Imported from immune_system.verification.checkpoint_checks to avoid
+# copy-paste divergence. See trap-recurring-finding-escape.md.
+
+from immune_system.verification.checkpoint_checks import (
+    run_all_checks as _run_checkpoint_checks,
+    check_test_coverage as _checkpoint_test_coverage,
+    check_hardcoded_paths as _checkpoint_hardcoded_paths,
+    check_assertion_density as _checkpoint_assertion_density,
+    check_cell_fitness as _checkpoint_cell_fitness,
+    check_cell_conventions as _checkpoint_cell_conventions,
+    check_arbitration_evidence as _checkpoint_arbitration_evidence,
+    CHECK_NAMES as _CHECKPOINT_NAMES,
+)
+
 
 
 def _parse_frontmatter(content):
@@ -99,7 +119,7 @@ _STATUS_PASS = "PASS"
 _STATUS_FAIL = "FAIL"
 
 # Mirrors the "outcome" enum advertised in TOOL_DEFINITIONS for soma_report_outcome.
-_VALID_OUTCOMES = ("success", "partial", "failure")
+_VALID_OUTCOMES = ("success", "partial", "failure", "tp", "fp")
 
 
 _VERDICT_RE = re.compile(r'^\s*VERDICT:\s*([A-Z_]+)')
@@ -324,6 +344,34 @@ TOOL_DEFINITIONS = [
         }
     },
     {
+        "name": "soma_verify_changes",
+        "description": "Verify proposed changes against Layer-1 governance checks.",
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "workspace": {"type": "string", "description": "Path to the project workspace."},
+                "files": {
+                    "type": "array",
+                    "items": {"type": "string"},
+                    "description": "List of changed files to verify."
+                },
+                "layer1_only": {"type": "boolean", "description": "Only run Layer-1 checks (default true)."}
+            },
+            "required": ["workspace"]
+        }
+    },
+    {
+        "name": "soma_checkpoint",
+        "description": "Run all checkpoint checks against the workspace.",
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "workspace": {"type": "string", "description": "Path to the project workspace."}
+            },
+            "required": ["workspace"]
+        }
+    },
+    {
         "name": "soma_capture_insight",
         "description": (
             "Capture a human insight about the codebase. Records the insight, "
@@ -365,6 +413,8 @@ def execute_tool(name: str, args: dict):
             domain_hint=args.get("domain"),
             cell_type=args.get("cell_type")
         )
+        if args.get("dry_run"):
+            return {"prompt": prompt, "dry_run": True, "instruction": "Dry run: showing prompt that would be used. No cell will be created."}
         return {"prompt": prompt, "instruction": "Process this prompt and return the cell YAML. Then use a file-writing tool to save it to the appropriate .soma/cells/ directory."}
     
     elif name == "soma_list_cells":
@@ -394,32 +444,87 @@ def execute_tool(name: str, args: dict):
         
     elif name == "soma_audit_security":
         content = args.get("proposed_content", "")
+        file_path = args.get("file_path", "")
         # Prototype: Basic keyword scanning for secrets and OWASP basics
         flags = []
         if "password=" in content.lower() or "secret=" in content.lower():
-            flags.append("- Hardcoded secret or password detected.")
+            flags.append(f"- Hardcoded secret or password detected in {file_path}.")
         if "eval(" in content:
-            flags.append("- eval() detected. Potential injection vector.")
-            
+            flags.append(f"- eval() detected in {file_path}. Potential injection vector.")
+        # Scope checks by file extension when file_path is provided
+        if file_path:
+            ext = os.path.splitext(file_path)[1].lower()
+            if ext in ('.html', '.htm', '.js', '.jsx', '.ts', '.tsx'):
+                if 'innerHTML' in content or 'document.write' in content:
+                    flags.append(f"- Potential XSS vector in {file_path}: innerHTML/document.write usage.")
+            if ext == '.sql' or ('execute(' in content and '%s' not in content and '?' not in content):
+                if 'f"' in content or "f'" in content or '% ' in content:
+                    flags.append(f"- Potential SQL injection in {file_path}: string formatting in query.")
+
         if flags:
-            return {"status": "FAIL", "feedback": "\n".join(flags), "instruction": "Fix these issues and resubmit."}
-        return {"status": "PASS", "feedback": "Security Audit passed. No OWASP flaws or exposed secrets detected."}
-        
+            return {"status": "FAIL", "feedback": "\n".join(flags), "file_path": file_path, "instruction": "Fix these issues and resubmit."}
+        return {"status": "PASS", "feedback": f"Security Audit passed for {file_path or 'input'}. No OWASP flaws or exposed secrets detected.", "file_path": file_path}
+
     elif name == "soma_audit_performance":
         content = args.get("proposed_content", "")
+        file_path = args.get("file_path", "")
         # Prototype: Basic keyword scanning for hot-paths and inefficiencies
         flags = []
         if content.count("for ") > 2 and "in " in content:
             # Very naive nested loop check
-            flags.append("- Potential O(N^2) or deeply nested loop detected in hot path.")
+            flags.append(f"- Potential O(N^2) or deeply nested loop detected in {file_path}.")
         if ".query(" in content and "SELECT *" in content:
-            flags.append("- Inefficient DB query (SELECT *) detected. Select only needed columns.")
-            
-        if flags:
-            return {"status": "FAIL", "feedback": "\n".join(flags), "instruction": "Optimize the code and resubmit."}
-        return {"status": "PASS", "feedback": "Performance Audit passed. No obvious bottlenecks detected."}
+            flags.append(f"- Inefficient DB query (SELECT *) detected in {file_path}. Select only needed columns.")
+        # Scope checks by file extension when file_path is provided
+        if file_path:
+            ext = os.path.splitext(file_path)[1].lower()
+            if ext == '.py':
+                if 'import *' in content:
+                    flags.append(f"- Wildcard import in {file_path} may slow startup and increase memory.")
 
-    if name == "soma_scan":
+        if flags:
+            return {"status": "FAIL", "feedback": "\n".join(flags), "file_path": file_path, "instruction": "Optimize the code and resubmit."}
+        return {"status": "PASS", "feedback": f"Performance Audit passed for {file_path or 'input'}. No obvious bottlenecks detected.", "file_path": file_path}
+
+    if name == "soma_verify_changes":
+        workspace = os.path.realpath(args.get('workspace') or resolve_workspace())
+        if not os.path.isdir(workspace):
+            return {"error": f"Workspace not found: {workspace}"}
+        files = args.get('files', [])
+        layer1_only = args.get('layer1_only', True)
+        try:
+            from immune_system.verification import runner
+        except ImportError:
+            return {"error": "immune_system.verification is not importable. Install soma with immune_system package."}
+        results = runner.run_layer1(changed_files=files, repo_root=workspace)
+        verdict = runner.gate_verdict(results)
+        summary = runner.format_summary(results)
+        evidence = [
+            {"tool": r.tool, "target": r.target, "verdict": r.verdict, "detail": r.detail}
+            for r in results
+        ]
+        return {
+            "status": "PASS" if verdict else "FAIL",
+            "summary": summary,
+            "layer1_only": layer1_only,
+            "evidence": evidence,
+        }
+
+    elif name == "soma_checkpoint":
+        workspace = os.path.realpath(args.get('workspace') or resolve_workspace())
+        if not os.path.isdir(workspace):
+            return {"error": f"Workspace not found: {workspace}"}
+        from pathlib import Path
+        root = Path(workspace)
+        issues = _run_checkpoint_checks(root)
+        return {
+            "status": "PASS" if not issues else "FAIL",
+            "checks": _CHECKPOINT_NAMES,
+            "issue_count": len(issues),
+            "issues": issues,
+        }
+
+    elif name == "soma_scan":
         # v0.23: JIT expression — returns only relevant cells, not everything
         workspace = resolve_workspace()
         files = args.get('files', None)
@@ -440,19 +545,32 @@ def execute_tool(name: str, args: dict):
                 ),
                 "status": _STATUS_FAIL,
             }
-        outcome = {
-            'timestamp': datetime.now(timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ'),
-            'cells_used': args.get('cells_used', []),
-            'outcome': outcome_value,
-            'tests_passed': args.get('tests_passed'),
-            'rework_count': args.get('rework_count', 0),
-            'notes': args.get('notes', '')
-        }
-        outcomes_file = os.path.join(workspace, '.soma', 'outcomes.jsonl')
+        timestamp = datetime.now(timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ')
+        cells_used = args.get('cells_used', [])
+        tests_passed = args.get('tests_passed')
+        rework_count = args.get('rework_count', 0)
+        notes = args.get('notes', '')
+        outcomes_file = os.path.join(workspace, '.soma', 'evidence', 'outcomes.jsonl')
         os.makedirs(os.path.dirname(outcomes_file), exist_ok=True)
+        records = []
+        for cell_id in cells_used:
+            record = {
+                'cell_id': cell_id,
+                'outcome': outcome_value,
+                'timestamp': timestamp,
+                'tests_passed': tests_passed,
+                'rework_count': rework_count,
+                'notes': notes,
+            }
+            records.append(record)
         with open(outcomes_file, 'a', encoding="utf-8") as f:
-            f.write(json.dumps(outcome) + '\n')
-        return {'status': 'recorded', 'outcome': outcome}
+            fcntl.flock(f, fcntl.LOCK_EX)
+            try:
+                for record in records:
+                    f.write(json.dumps(record) + '\n')
+            finally:
+                fcntl.flock(f, fcntl.LOCK_UN)
+        return {'status': 'recorded', 'records': records}
 
     elif name == "soma_capture_insight":
         workspace = resolve_workspace()

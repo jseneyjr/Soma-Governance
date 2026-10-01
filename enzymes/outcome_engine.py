@@ -24,27 +24,9 @@ import glob
 import fnmatch
 import yaml
 from datetime import datetime, timezone
+from soma_resolve import resolve_workspace
 
 
-# ── Workspace Resolution ─────────────────────────────────────────────
-
-def resolve_workspace():
-    """Find the project root containing .soma/cells/."""
-    soma_root = os.environ.get("SOMA_ROOT")
-    if soma_root and os.path.isdir(os.path.join(soma_root, ".soma", "cells")):
-        return os.path.abspath(soma_root)
-
-    cwd = os.getcwd()
-    if os.path.isdir(os.path.join(cwd, ".soma", "cells")):
-        return cwd
-
-    d = cwd
-    while d != os.path.dirname(d):
-        if os.path.isdir(os.path.join(d, ".soma", "cells")):
-            return d
-        d = os.path.dirname(d)
-
-    return cwd
 
 
 # ── Signal Capture: Verifiable Outcomes ──────────────────────────────

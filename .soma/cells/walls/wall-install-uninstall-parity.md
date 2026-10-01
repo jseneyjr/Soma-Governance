@@ -2,7 +2,7 @@
 id: wall-install-uninstall-parity
 domain: correctness
 type: wall
-enforcement: advisory
+enforcement: gate
 hypothesis: Every platform in the installer must have a matching uninstall path
 prediction: Adding a new platform to install.sh without updating uninstall.sh creates
   orphaned files

@@ -2,7 +2,7 @@
 id: wall-mcp-zero-deps
 domain: correctness
 type: wall
-enforcement: advisory
+enforcement: gate
 hypothesis: The MCP server must work with zero external dependencies for maximum portability
 prediction: Any import of non-stdlib packages in soma_mcp/ will break users who haven't
   pip-installed

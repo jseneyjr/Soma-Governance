@@ -16,11 +16,11 @@ Dependency policy: pyyaml is OPTIONAL here. soma_mcp/ must import and run on a
 bare interpreter (see .soma/cells/walls/wall-mcp-zero-deps.md), so frontmatter
 falls back to a stdlib parser covering the YAML subset the cells actually use.
 """
+from __future__ import annotations
 
 import os
 import sys
 import glob
-import json
 import re
 import subprocess
 import fnmatch
@@ -37,7 +37,7 @@ except ImportError:
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 
-def warn(message):
+def warn(message: str) -> None:
     """Emit a diagnostic on STDERR.
 
     stdout is the JSON-RPC transport — never write diagnostics there.
@@ -327,7 +327,7 @@ def _parse_block_seq(lines, start, indent):
     return items, i
 
 
-def parse_yaml_subset(text):
+def parse_yaml_subset(text: str) -> dict[str, object]:
     """Parse the YAML subset used by cells. Raises FrontmatterError otherwise."""
     lines = _prepare_lines(text)
     if not lines:
@@ -338,7 +338,7 @@ def parse_yaml_subset(text):
     return value
 
 
-def parse_frontmatter(content):
+def parse_frontmatter(content: str) -> dict[str, object] | None:
     """Parse YAML frontmatter from a cell/genome markdown file.
 
     Returns a dict on success, {} when there is no frontmatter (or it is
@@ -389,23 +389,24 @@ def _get_body(content):
     return content[end + 3:].strip()
 
 
-def get_git_diff_files(workspace):
+def get_git_diff_files(workspace: str) -> list[str]:
     """Get files changed in the current working tree + staged."""
     files = set()
-    for cmd in ['git diff --name-only HEAD', 'git diff --name-only --cached',
-                'git diff --name-only HEAD~1..HEAD']:
+    for cmd in [['git', 'diff', '--name-only'],
+                ['git', 'diff', '--name-only', '--cached']]:
         try:
             output = subprocess.check_output(
-                cmd, shell=True, cwd=workspace, text=True, stderr=subprocess.DEVNULL
+                cmd, cwd=workspace, text=True, stderr=subprocess.DEVNULL,
+                timeout=10,
             ).strip()
             if output:
-                files.update(f for f in output.split('\n') if f)
+                files.update(f for f in output.splitlines() if f)
         except Exception:
             pass
     return list(files)
 
 
-def load_all_cells(workspace):
+def load_all_cells(workspace: str) -> list[dict[str, object]]:
     """Load all cells from .soma/cells/ using stdlib parser."""
     cells = []
     cells_dir = os.path.join(workspace, '.soma', 'cells')
@@ -439,7 +440,7 @@ def load_all_cells(workspace):
     return cells
 
 
-def match_cells_to_files(cells, changed_files):
+def match_cells_to_files(cells: list[dict[str, object]], changed_files: list[str]) -> list[dict[str, object]]:
     """Match cells to changed files by target_paths (fnmatch)."""
     matched = []
     for cell in cells:
@@ -465,11 +466,11 @@ def match_cells_to_files(cells, changed_files):
     return matched
 
 
-def get_fitness_score(cell):
+def get_fitness_score(cell: dict[str, object]) -> float:
     """Extract fitness score from cell.
 
-    NOTE: This mirrors enzymes/bayesian_score.py — Laplace-smoothed posterior mean.
-    Cannot import from enzymes/ due to zero-dep policy for soma_mcp/.
+    INTENTIONAL DUPLICATION: wall-mcp-zero-deps prohibits importing from enzymes/
+    Canonical source: enzymes/bayesian_score.py — keep in sync manually
     """
     fitness = cell.get('fitness', '')
     impact_weight = cell.get('impact_weight', 1.0)
@@ -507,7 +508,7 @@ def get_fitness_score(cell):
     return 0.5 * impact_weight
 
 
-def rank_cells(matched_cells):
+def rank_cells(matched_cells: list[dict[str, object]]) -> list[dict[str, object]]:
     """Rank matched cells by fitness score (highest first), with diversity bonus."""
     for cell in matched_cells:
         cell['_fitness_score'] = get_fitness_score(cell)
@@ -520,7 +521,7 @@ def rank_cells(matched_cells):
     )
 
 
-def ensure_type_diversity(ranked_cells, budget):
+def ensure_type_diversity(ranked_cells: list[dict[str, object]], budget: int) -> list[dict[str, object]]:
     """Ensure we don't load N cells of the same type. Prefer diversity."""
     selected = []
     seen_types = set()
@@ -540,7 +541,7 @@ def ensure_type_diversity(ranked_cells, budget):
     return selected
 
 
-def format_cell_guidance(cell):
+def format_cell_guidance(cell: dict[str, object]) -> dict[str, object]:
     """Format a cell into actionable, concise guidance text."""
     ctype = cell.get('type', 'unknown')
     hypothesis = cell.get('hypothesis', '')
@@ -592,7 +593,7 @@ def format_cell_guidance(cell):
     }
 
 
-def load_genome_rules(workspace, changed_files):
+def load_genome_rules(workspace: str, changed_files: list[str]) -> list[dict[str, str]]:
     """Load genome rules marked as non_standard that match changed files."""
     genome_dir = os.path.join(workspace, 'genome')
     if not os.path.isdir(genome_dir):
@@ -644,7 +645,7 @@ def load_genome_rules(workspace, changed_files):
     return relevant
 
 
-def express(workspace, changed_files=None, budget=None):
+def express(workspace: str, changed_files: list[str] | None = None, budget: int | None = None) -> dict[str, object]:
     """Main JIT expression function.
 
     Returns the minimum effective governance context for the current change.

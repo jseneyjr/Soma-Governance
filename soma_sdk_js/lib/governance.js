@@ -31,7 +31,7 @@ class Governance {
 
   async _runScript(scriptName, args = [], { json: jsonOutput = true } = {}) {
     if (!this.scriptsDir) {
-      throw new Error('Prism scripts directory not found');
+      throw new Error('Soma scripts directory not found');
     }
 
     const script = path.join(this.scriptsDir, scriptName);

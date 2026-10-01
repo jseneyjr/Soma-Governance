@@ -1,9 +1,12 @@
 """Core Governance API."""
+from __future__ import annotations
+
 import json
 import subprocess
 import sys
 import re
 from pathlib import Path
+from typing import Any, Optional
 
 try:
     import yaml
@@ -24,13 +27,13 @@ class Governance:
         grade = gov.grade()
     """
     
-    def __init__(self, project_root='.'):
-        self.root = Path(project_root).resolve()
-        self.cells_dir = self.root / '.soma' / 'cells'
-        self.metrics_dir = self.root / '.soma' / 'metrics'
-        self.scripts_dir = self._find_scripts_dir()
+    def __init__(self, project_root: str | Path = '.') -> None:
+        self.root: Path = Path(project_root).resolve()
+        self.cells_dir: Path = self.root / '.soma' / 'cells'
+        self.metrics_dir: Path = self.root / '.soma' / 'metrics'
+        self.scripts_dir: Optional[Path] = self._find_scripts_dir()
     
-    def _find_scripts_dir(self):
+    def _find_scripts_dir(self) -> Optional[Path]:
         """Locate Soma scripts directory."""
         candidates = [
             self.root / 'vendor' / 'soma' / 'enzymes',
@@ -42,7 +45,7 @@ class Governance:
                 return c
         return None
     
-    def _run_script(self, script_name, *args, json_output=True):
+    def _run_script(self, script_name: str, *args: str, json_output: bool = True) -> dict[str, Any] | str:
         """Run a Soma enzyme script and return parsed output."""
         if not self.scripts_dir:
             raise RuntimeError('Soma enzymes directory not found')
@@ -75,7 +78,7 @@ class Governance:
     
     # === Cell Management ===
     
-    def list_cells(self):
+    def list_cells(self) -> list[dict[str, Any]]:
         """List all immune cells."""
         cells = []
         if not self.cells_dir.exists():
@@ -92,8 +95,15 @@ class Governance:
             except Exception: pass
         return cells
     
-    def create_cell(self, hypothesis, type='vacuole', target_paths=None,
-                    minimum_mode='breeze', tags=None, cell_id=None):
+    def create_cell(
+        self,
+        hypothesis: str,
+        type: str = 'vacuole',
+        target_paths: Optional[list[str]] = None,
+        minimum_mode: str = 'breeze',
+        tags: Optional[list[str]] = None,
+        cell_id: Optional[str] = None,
+    ) -> dict[str, Any] | str:
         """Create a new immune cell."""
         raw_slug = cell_id or hypothesis[:40]
         safe_slug = re.sub(r'[^a-zA-Z0-9_.-]', '-', raw_slug).strip('-')
@@ -109,7 +119,9 @@ class Governance:
         
         return self._run_script('cell_create.sh', *args, json_output=False)
     
-    def create_cell_from_description(self, description, domain=None, cell_type=None):
+    def create_cell_from_description(
+        self, description: str, domain: Optional[str] = None, cell_type: Optional[str] = None,
+    ) -> dict[str, Any] | str:
         """Create a cell using natural language via Gemini API."""
         args = [description]
         if domain:
@@ -118,7 +130,9 @@ class Governance:
             args.extend(['--type', cell_type])
         return self._run_script('cell_create_nl.py', *args, json_output=False)
     
-    def signal(self, cell_name, signal_type, metric=None):
+    def signal(
+        self, cell_name: str, signal_type: str, metric: Optional[dict[str, Any]] = None,
+    ) -> dict[str, Any] | str:
         """Send a fitness signal to a cell.
         
         Args:
@@ -135,40 +149,54 @@ class Governance:
     
     # === Analysis ===
     
-    def fitness_landscape(self, bayesian=False):
+    def fitness_landscape(self, bayesian: bool = False) -> dict[str, Any] | str:
         """Get fitness scores for all cells."""
         args = []
         if bayesian:
             args.append('--bayesian')
         return self._run_script('cell_fitness.py', *args)
     
-    def coverage_report(self, exclude=None):
+    def coverage_report(self, exclude: Optional[str] = None) -> dict[str, Any] | str:
         """Get cell coverage report."""
         args = []
         if exclude:
             args.extend(['--exclude', exclude])
         return self._run_script('cell_coverage.py', *args)
     
-    def replay(self, commits=20):
+    def replay(self, commits: int = 20) -> dict[str, Any] | str:
         """Replay governance against historical commits."""
         return self._run_script('immune_replay.py', '--commits', str(commits))
     
-    def trends(self, days=30):
+    def trends(self, days: int = 30) -> dict[str, Any] | str:
         """Get cross-session governance trends."""
         return self._run_script('immune_trends.py', '--days', str(days))
     
-    def grade(self):
+    def grade(self) -> dict[str, Any] | str:
         """Get governance report card."""
         return self._run_script('immune_grade.py')
     
-    def quorum(self, threshold=3):
+    def quorum(self, threshold: int = 3) -> dict[str, Any] | str:
         """Check for quorum (systemic multi-cell triggers)."""
         return self._run_script('cell_quorum.py', '--threshold', str(threshold))
     
-    def dependencies(self, format='text'):
+    def dependencies(self, format: str = 'text') -> dict[str, Any] | str:
         """Get cell dependency graph."""
         return self._run_script('cell_deps.py', '--format', format, json_output=(format != 'mermaid'))
     
-    def scan(self):
+    def scan(self) -> dict[str, Any] | str:
         """Scan current diff against cells."""
         return self._run_script('cell_scan.py')
+
+    def entropy(self) -> dict[str, Any] | str:
+        """Compute immune entropy across all cells."""
+        return self._run_script('immune_entropy.py')
+
+    def adversarial(self, cell_name: Optional[str] = None) -> dict[str, Any] | str:
+        """Run adversarial stress test against a cell.
+
+        Args:
+            cell_name: Optional name of the cell to test. If omitted,
+                       tests all cells.
+        """
+        args = [cell_name] if cell_name else []
+        return self._run_script('cell_adversarial.py', *args)

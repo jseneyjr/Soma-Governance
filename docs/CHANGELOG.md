@@ -3,6 +3,167 @@
 All notable changes to Soma are documented here.
 This project uses [Semantic Versioning](https://semver.org/).
 
+## [0.60.0] — 2026-09-30 — "Two-Layer Verification & Cell Lifecycle"
+
+### Added
+- **Two-Layer Verification System** (`immune_system/verification/`):
+  - **Layer 1 (Deterministic AST Tools)**: Objective, ungameable evidence collection via `persistence_checker`, `call_graph`, `mutation_tester`, `branch_coverage`, and `import_guard`. Orchestrated via `runner.py` producing boolean `ToolEvidence`.
+  - **Layer 2 (Adversarial Information-Partitioned Agents)**: Multi-agent verification leveraging information asymmetry between Spec Agent (sees task specification) and Code Agent (sees implementation/tests).
+  - **Deterministic Arbiter**: Set-algebra adjudication over a fixed 14-category risk taxonomy, issuing `SHIP`, `BLOCK`, or `REVISE` verdicts with zero LLM in the loop.
+  - **Transcript Verifier**: Post-hoc validation of self-reported agent claims against JSONL session logs.
+- **Unified CLI Suite** (`soma`): 9 subcommands — `init`, `status`, `report`, `doctor`, `verify`, `checkpoint`, `oracle`, `promote`, `demote`.
+  - `soma verify`: Full two-layer verification with `--layer1-only` support.
+  - `soma checkpoint`: Fast deterministic quality gate with `--pre-commit` hook integration.
+  - `soma oracle`: Cell health classification (healthy, noisy, expired, unobserved).
+  - `soma promote` / `soma demote`: Automated lifecycle evaluation with `--dry-run` and `--json`.
+  - `soma init`: Enhanced with `--rules {minimal|standard|full}`, MCP config, and pre-commit hook.
+- **Cell Lifecycle Engine** (`immune_system/verification/lifecycle.py`):
+  - Deterministic state machine: Vacuole → Wall → Genome (and demotions).
+  - Grounded in JSONL evidence ledgers, not YAML frontmatter.
+  - Promotion: triggers ≥ 20, tp_rate > 0.85, age > 30 days.
+  - Demotion: fp_rate > 0.5 or dormancy ≥ 90 days.
+- **MCP Tools**: Added `soma_verify_changes` and `soma_checkpoint` for zero-API-key in-agent verification.
+- **Supercell Review Intensity**: New highest review tier (above Tempest) — adversarial Prosecutor/Defender pairs per prong, iterative fix-revalidate with no deferrals until clean ship.
+- **Quality Gate Checks**: Assertion density, bare `pass` detection, import verification, test sanity.
+- **Doc Consistency Tests**: 6 tests verifying README ↔ SKILL.md intensity level consistency.
+- **Test Suite**: 1184 tests with shared fixtures (`tests/helpers_cell.py`).
+- **Governance Cells**: 44 total — 20 walls, 2 plasmodesmata, 3 membranes, 3 chloroplasts, 16 vacuoles.
+  - NEW: `trap-stdout-protocol-corruption` (wall) — hooks emitting to stdout after JSON.
+  - NEW: `trap-tautological-test` (wall) — tests that verify nothing.
+  - NEW: `contract-sdk-feature-parity` (plasmodesmata) — Python/JS SDK method parity.
+- **SDK Parity**: Added `entropy()` and `adversarial()` to Python SDK (matching JS SDK).
+
+### Changed
+- Package discovery updated to include `immune_system*`.
+- Pre-commit hook auto-installed by `soma init`.
+- Architecture diagram widened for Supercell intensity level.
+- **SDK `is_extinct`/`is_promotable`**: Now use Bayesian scoring aligned with `cell_promote.py` standards (score > 0.85, triggers ≥ 20) instead of legacy `raw_score`.
+- **DRY**: `outcome_engine.py` imports canonical `resolve_workspace()` from `soma_resolve.py`. Intentional duplication in `soma_mcp/` documented (zero-dep wall).
+- **Type Annotations**: Added to all public APIs in `governance.py`, `cells.py`, `jit_engine.py`, `bayesian_score.py`.
+- **Test Fixtures**: Deduplicated `soma_workspace`, `_write_cell`, `_make_cell` into shared `helpers_cell.py`.
+- **Hardcoded Paths**: `safety_gate.sh` and `immune_init.sh` now use `${SOMA_LOGS_DIR}` / `${SOMA_CONF}` env vars with fallbacks.
+- **Makefile validate**: Now covers `soma_cli/` and `immune_system/` in addition to `enzymes/`, `soma_mcp/`, `soma_sdk/`.
+- **Docs**: Fixed ABSTRACT contribution count (3→4), step count (12,000→11,900), removed duplicate PHYLOGENY section, added Phase 16/18/19/20/21 stubs.
+
+### Fixed
+- **Evidence Pipeline**: 4 critical bugs fixed (schema mismatch, dead detectors, missing FPSR extraction).
+- 2 new evidence detectors: `test-before-implementation`, `no-hardcoded-paths`.
+- **Security (Supercell S1)**: Code injection via `.format()` in `branch_coverage.py` — paths now escaped with `repr()`.
+- **Security (Supercell S2)**: Path traversal via `--files` — containment check added to `verify.py`.
+- **Correctness (Supercell C1)**: Outcomes path/schema desync between MCP and lifecycle engine.
+- **Correctness (Supercell C2)**: JSONL crash on non-dict lines in lifecycle evidence loading.
+- **Correctness (Supercell C3)**: Lifecycle threshold bugs (boundary values, min sample size, dormancy).
+- **Bug**: 5 pre-existing `test_status.py` failures from real filesystem leak through platform auto-detection.
+- **Robustness (Phase 2)**: 9 fixes across verification tools:
+  - `branch_coverage.py`: Parse `missing_branches`, add subprocess timeout (120s), UTF-8 encoding.
+  - `transcript_verifier.py`: FileNotFoundError guard, tool_calls-based write detection (no more content-string false positives), collection error sentinel `(-1,-1)`, multi-run false positive fix.
+  - `immune_init.sh`: JSON protocol corruption — 4 echo statements redirected to stderr.
+  - `escalation_sentinel.sh`: Frontmatter `target_paths` parsing replaces fragile hypothesis regex.
+- **Layer 2 Fail-Open (Phase 3)**: Empty spec agent predictions now produce `Verdict.BLOCK` instead of silently passing through to `SHIP`.
+
+---
+
+## [0.60.0-rc] — 2026-09-30 — "Wire Verification & Cell Lifecycle RC"
+
+### Added
+- **Gitflow**: Standardized branch lifecycle with session pattern rules.
+- **Content Coherence Tests**: Automated doc ↔ code consistency validation.
+- **MCP Self-Install**: `soma init` auto-configures MCP server in agent config.
+- `soma init --rules {minimal|standard|full}`: Tiered rule installation.
+- **Wire Verification System (Phase 2)**: End-to-end evidence pipeline validation.
+- **Pre-Commit Hook**: Deterministic quality gate via `soma checkpoint --pre-commit`.
+- **Cell Lifecycle Engine**: Oracle, promote, and demote commands with deterministic state machine.
+- **Supercell Review Process**: Highest review tier — adversarial Prosecutor/Defender pairs per prong.
+- **Checkpoint Extraction**: Deterministic quality gate checks (assertion density, bare `pass`, imports).
+- **Evidence Pipeline Fix**: 4 critical bugs (schema mismatch, dead detectors, missing FPSR extraction).
+
+### Changed
+- 5 review cycles completed during RC hardening.
+
+---
+
+## [0.52.0] — 2026-09-30 — "Gitflow & Hardening"
+
+### Added
+- **Gitflow**: Standardized branch lifecycle in `docs/GITFLOW.md`.
+- **Gitflow Review Gate**: Rule enforcing branch naming and PR-based landing.
+
+### Fixed
+- All 15 findings from v0.52 production audit.
+- 4 must-fix findings from audit round 2.
+- Hardcoded absolute paths in documentation.
+
+---
+
+## [0.51.0] — 2026-09-30 — "Soma CLI & Distribution"
+
+### Added
+- **Soma CLI** (`soma_cli/`): `soma init`, `soma status`, `soma report`.
+- Starter pack manifests and templates.
+- CLI entrypoints in `pyproject.toml`.
+
+### Fixed
+- 10 audit findings across argument validation, path resolution, error reporting.
+
+---
+
+## [0.50.0] — 2026-09-29 — "Incentive-Compatible Governance"
+
+> Tagged release — Version jump from v0.22.0 reflects Phases 23–50: TTC Oracles, JIT context, interoception, and the evidence pipeline.
+
+### Added
+- **Evidence Pipeline**: `evidence_collector.py`, `fitness_updater.py`, `cell_expiry.py`, `oracle_checkpoint.py`, `post_session_hook.sh`.
+- **Mechanism Design Framework** (`docs/MECHANISM_DESIGN.md`).
+- **Fitness Updater**: Automated fitness scoring from evidence ledgers.
+- **Cell Expiry**: Time- and session-based cell lifecycle enforcement.
+- **Oracle Checkpoint**: Cell health classification with evidence grounding.
+- **Trap Cells**: `trap-fix-one-not-all`, `trap-unverified-delegation`, `trap-local-green-ci-red`.
+- README trustworthiness rewrite.
+
+### Changed
+- Fitness ledger decoupled from frontmatter → append-only JSONL.
+- `pyyaml` accepted as mandatory dependency.
+- Idle overhead stabilized at ~3,800 tokens/turn (down 8.6%).
+- 6 audit rounds completed.
+
+### Fixed
+- Tautological assertions and brittle source-code grepping remediated (515+ tests).
+- Critical fitness inflation bug.
+- CI execution hang from hook test sourcing.
+
+---
+
+## [0.31.0] — 2026-09-29 — "Human Insight Pipeline"
+
+### Added
+- **Human Insight Pipeline**: Structured pathway for human-observed defects to influence cell fitness.
+- **TDD Protocol** (`genome/.oracles/tdd-protocol.md`): Test-driven development with sequential phase gates.
+- **Mechanism Design Framework**: Incentive-compatible governance architecture documentation.
+- **Evidence Collector**: Automated correlation of rule compliance with session outcomes.
+
+---
+
+## [0.30.0] — 2026-09-29 — "Two-Layer Verification Foundation"
+
+### Added
+- **Two-Layer Verification Framework**: Deterministic AST tools (Layer 1) + adversarial information-partitioned agents (Layer 2).
+- **Import Guard** (`import_guard`): Layer 1 tool detecting unguarded third-party imports that crash CI.
+- **Keyring Secret Storage**: Secure credential management for inference providers.
+
+---
+
+## [0.25.0] — 2026-09-28 — "TTC & Biological Docs"
+
+### Added
+- **TTC/Tempest MCP Tooling**: Test-Time Compute oracle integration with MCP server.
+- **Last Gasp Auto-Escalator**: Pre-failure evaluation mechanism that auto-escalates before token budget is consumed.
+- **Biological Documentation Suite**: PHYLOGENY.md, MECHANISM_DESIGN.md, and naming unification docs.
+
+### Fixed
+- 15 bug fixes across the governance pipeline.
+
+---
+
 ## [0.22.0] — 2026-09-28 — "Soma Rebirth"
 
 ### Breaking Changes

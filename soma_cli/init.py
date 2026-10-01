@@ -6,6 +6,7 @@ from __future__ import annotations
 
 import argparse
 import importlib.resources
+import json
 import shutil
 from pathlib import Path
 
@@ -21,6 +22,8 @@ STARTER_RULES = [
     "cost-optimization",
     "git-workflow",
 ]
+
+MINIMAL_RULES = ["providence", "destructive-ops"]
 
 # Legacy mapping for manifest cross-validation (starter_pack.txt)
 STARTER_RULES_LEGACY = {
@@ -126,12 +129,193 @@ def get_rules_dir(platform: str, home: Path | None = None,
         )
     return dirs[platform]
 
+# ── Pre-commit Hook ─────────────────────────────────────────────────────────
+
+_SOMA_HOOK_START = "# >>> soma pre-commit >>>"
+_SOMA_HOOK_END = "# <<< soma pre-commit <<<"
+_SOMA_HOOK_BLOCK = f"""{_SOMA_HOOK_START}
+# Installed by soma init — runs deterministic quality checks before commit.
+soma checkpoint --pre-commit
+{_SOMA_HOOK_END}
+"""
+
+
+def install_hook(project_root: Path, dry_run: bool = False) -> bool:
+    """Install a git pre-commit hook that runs soma checkpoint.
+
+    Args:
+        project_root: Root of the git repository.
+        dry_run: If True, preview without creating files.
+
+    Returns:
+        True if hook was installed (or would be in dry-run), False if
+        no .git directory exists.
+    """
+    project_root = Path(project_root)
+    git_hooks_dir = project_root / ".git" / "hooks"
+
+    if not git_hooks_dir.is_dir():
+        return False
+
+    if dry_run:
+        return True
+
+    hook_file = git_hooks_dir / "pre-commit"
+
+    if hook_file.exists():
+        content = hook_file.read_text(encoding="utf-8")
+        # Idempotent: don't add if already present
+        if _SOMA_HOOK_START in content:
+            return True
+        # Append to existing hook
+        if not content.endswith("\n"):
+            content += "\n"
+        content += "\n" + _SOMA_HOOK_BLOCK
+        hook_file.write_text(content, encoding="utf-8")
+    else:
+        hook_file.write_text("#!/bin/sh\n\n" + _SOMA_HOOK_BLOCK, encoding="utf-8")
+
+    # Ensure executable
+    hook_file.chmod(hook_file.stat().st_mode | 0o755)
+    return True
+
 
 # ── Installation ────────────────────────────────────────────────────────────
 
 def check_existing_install(project_root: Path) -> bool:
     """Check if Soma is already installed in this project."""
     return (Path(project_root) / ".soma").is_dir()
+
+
+def _get_soma_root() -> Path:
+    """Find the Soma source root (repo root with genome/ dir).
+
+    Tries importlib.resources (works for editable installs) then falls
+    back to CWD.
+    """
+    try:
+        pkg_root = Path(str(importlib.resources.files("soma_cli"))).parent
+        if (pkg_root / "genome").is_dir():
+            return pkg_root
+    except (TypeError, FileNotFoundError):
+        pass
+    cwd = Path.cwd()
+    if (cwd / "genome").is_dir():
+        return cwd
+    return cwd
+
+
+def _discover_full_rules() -> list[Path]:
+    """Discover all genome rule .md files for the full preset.
+
+    Scans genome/ and genome/.oracles/, skipping META.md and README.md.
+    """
+    soma_root = _get_soma_root()
+    genome_dir = soma_root / "genome"
+    if not genome_dir.is_dir():
+        return []
+
+    skip = {"META.md", "README.md"}
+    results: list[Path] = []
+
+    # Top-level genome/*.md
+    for f in sorted(genome_dir.glob("*.md")):
+        if f.is_file() and f.name not in skip:
+            results.append(f)
+
+    # genome/.oracles/*.md
+    oracles_dir = genome_dir / ".oracles"
+    if oracles_dir.is_dir():
+        for f in sorted(oracles_dir.glob("*.md")):
+            if f.is_file() and f.name not in skip:
+                results.append(f)
+
+    return results
+
+
+def install_rules(
+    rules_dir: Path,
+    preset: str = "standard",
+    dry_run: bool = False,
+    force: bool = False,
+) -> list[str]:
+    """Install rules to the target directory based on the chosen preset.
+
+    Args:
+        rules_dir: Target directory for rules.
+        preset: One of 'minimal', 'standard', 'full'.
+        dry_run: If True, only print what would be done.
+        force: If True, overwrite existing rules.
+
+    Returns:
+        List of installed rule names.
+    """
+    if preset == "full":
+        sources = _discover_full_rules()
+        return _copy_rule_files(rules_dir, sources, force=force, dry_run=dry_run)
+    elif preset == "minimal":
+        names = MINIMAL_RULES
+    else:  # standard
+        names = STARTER_RULES
+
+    return _install_named_rules(rules_dir, names, force=force, dry_run=dry_run)
+
+
+def _install_named_rules(
+    rules_dir: Path,
+    names: list[str],
+    force: bool = False,
+    dry_run: bool = False,
+) -> list[str]:
+    """Install named rules from the starter_rules bundle."""
+    installed = []
+    for name in names:
+        source = _get_starter_rule_path(name)
+        if source is None:
+            print(f"  ⚠️  {name}: source not found")
+            continue
+
+        dest = rules_dir / f"{name}.md"
+        if dest.is_symlink():
+            print(f"  ⚠️  {name}: skipped (destination is a symlink)")
+            continue
+        if dest.exists() and not force:
+            print(f"  ℹ️  {name}: already exists, skipping (use --force to overwrite)")
+            installed.append(name)
+            continue
+
+        if not dry_run:
+            rules_dir.mkdir(parents=True, exist_ok=True)
+            shutil.copy2(source, dest)
+        installed.append(name)
+
+    return installed
+
+
+def _copy_rule_files(
+    rules_dir: Path,
+    sources: list[Path],
+    force: bool = False,
+    dry_run: bool = False,
+) -> list[str]:
+    """Copy a list of source .md files into rules_dir."""
+    installed = []
+    for src in sources:
+        dest = rules_dir / src.name
+        if dest.is_symlink():
+            print(f"  ⚠️  {src.name}: skipped (destination is a symlink)")
+            continue
+        if dest.exists() and not force:
+            print(f"  ℹ️  {src.stem}: already exists, skipping (use --force to overwrite)")
+            installed.append(src.stem)
+            continue
+
+        if not dry_run:
+            rules_dir.mkdir(parents=True, exist_ok=True)
+            shutil.copy2(src, dest)
+        installed.append(src.stem)
+
+    return installed
 
 
 def install_starter_rules(
@@ -141,6 +325,8 @@ def install_starter_rules(
 ) -> list[str]:
     """Install the 5 starter rules to the target directory.
 
+    Backward-compatible wrapper around install_rules().
+
     Args:
         rules_dir: Target directory for rules.
         dry_run: If True, don't create files.
@@ -149,35 +335,42 @@ def install_starter_rules(
     Returns:
         List of installed rule names.
     """
-    installed = []
+    return _install_named_rules(rules_dir, STARTER_RULES, force=force, dry_run=dry_run)
 
-    for name in STARTER_RULES:
-        source = _get_starter_rule_path(name)
-        if source is None:
-            print(f"  ⚠️  {name}: source not found")
-            continue
 
-        dest = rules_dir / f"{name}.md"
+# ── MCP Config ──────────────────────────────────────────────────────────────
 
-        # Security: reject symlink destinations to prevent arbitrary
-        # file overwrite (e.g. symlink pointing to ~/.bashrc)
-        if dest.is_symlink():
-            print(f"  ⚠️  {name}: skipped (destination is a symlink)")
-            continue
+def generate_mcp_config(project_root: Path, dry_run: bool = False) -> None:
+    """Create or merge .mcp.json with the soma MCP server config.
 
-        # Don't overwrite user-customized rules unless forced
-        if dest.exists() and not force:
-            print(f"  ℹ️  {name}: already exists, skipping (use --force to overwrite)")
-            installed.append(name)
-            continue
+    Uses relative paths (cwd='.', SOMA_ROOT='.') so the config is portable.
+    Merges into an existing .mcp.json without clobbering other servers.
+    Idempotent — running twice yields the same result.
+    """
+    mcp_file = Path(project_root) / ".mcp.json"
 
-        if not dry_run:
-            rules_dir.mkdir(parents=True, exist_ok=True)
-            shutil.copy2(source, dest)
+    soma_entry = {
+        "command": "python3",
+        "args": ["-m", "soma_mcp"],
+        "cwd": ".",
+        "env": {"SOMA_ROOT": "."}
+    }
 
-        installed.append(name)
+    if dry_run:
+        print(f"  Would create/update: {mcp_file}")
+        return
 
-    return installed
+    # Load existing or start fresh
+    if mcp_file.exists():
+        data = json.loads(mcp_file.read_text(encoding="utf-8"))
+    else:
+        data = {}
+
+    servers = data.setdefault("mcpServers", {})
+    servers["soma"] = soma_entry
+
+    mcp_file.write_text(json.dumps(data, indent=2) + "\n", encoding="utf-8")
+    print(f"  📡 MCP config written to {mcp_file}")
 
 
 # ── Main flow ───────────────────────────────────────────────────────────────
@@ -237,7 +430,7 @@ def run_init(args: argparse.Namespace) -> int:
     # 5. Confirmation prompt (unless --yes or --dry-run)
     skip_confirm = getattr(args, "yes", False) or dry_run
     if not skip_confirm:
-        print(f"  Will install 5 starter rules to: {rules_dir}")
+        print(f"  Will install starter rules to: {rules_dir}")
         try:
             answer = input("  Proceed? [Y/n] ").strip().lower()
             if answer and answer not in ("y", "yes"):
@@ -248,21 +441,34 @@ def run_init(args: argparse.Namespace) -> int:
             return 0
     print()
 
-    # 6. Install starter rules
-    if dry_run:
-        print("  Installing 5 starter rules (dry run)...")
-    else:
-        print("  Installing 5 starter rules...")
-
+    # 6. Install rules based on preset
+    preset = getattr(args, "rules", "standard")
     force = getattr(args, 'force', False)
-    installed = install_starter_rules(rules_dir, dry_run=dry_run, force=force)
+
+    if dry_run:
+        print(f"  Installing rules (preset={preset}, dry run)...")
+    else:
+        print(f"  Installing rules (preset={preset})...")
+
+    installed = install_rules(rules_dir, preset=preset, dry_run=dry_run, force=force)
 
     for name in installed:
         print(f"    ✅ {name}")
 
     print()
 
-    # 7. Claude-specific: concatenate rules into CLAUDE.md
+    # 7. MCP config (if requested)
+    if getattr(args, "mcp", False):
+        generate_mcp_config(project_root, dry_run=dry_run)
+
+    # 7.5. Install pre-commit hook
+    hook_result = install_hook(project_root, dry_run=dry_run)
+    if hook_result and not dry_run:
+        print("    🪝 Pre-commit hook installed (.git/hooks/pre-commit)")
+    elif hook_result and dry_run:
+        print("    🪝 Would install pre-commit hook")
+
+    # 8. Claude-specific: concatenate rules into CLAUDE.md
     if platform == "claude" and installed and not dry_run:
         _install_claude_md(rules_dir, force=force)
 

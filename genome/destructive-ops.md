@@ -5,6 +5,7 @@ non_standard: true
 name: Destructive Ops Safety
 description: Mandates dry-runs and explicit user confirmation for destructive state mutations across infrastructure, databases, and filesystem/git.
 trigger: model_decision
+enforcement: advisory
 ---
 # State-Mutating Operations Safety Net
 

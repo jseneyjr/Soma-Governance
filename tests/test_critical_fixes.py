@@ -16,6 +16,10 @@ import time
 
 import pytest
 
+from tests.helpers_cell import (
+    soma_workspace, write_cell_with_fitness,
+)
+
 REPO_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, REPO_ROOT)
 sys.path.insert(0, os.path.join(REPO_ROOT, 'enzymes'))
@@ -39,21 +43,29 @@ class TestBayesianScoreParity:
         assert bayesian_score(0, 0, 1.8) == pytest.approx(0.9)
 
     def test_cell_fitness_agrees_with_shared_module(self):
-        """cell_fitness.bayesian_fitness must produce results consistent with bayesian_score."""
+        """cell_fitness.bayesian_fitness and bayesian_score agree on directionality."""
         from bayesian_score import bayesian_score
         from cell_fitness import bayesian_fitness
-        # Both should give 0.5 for zero data
-        shared = bayesian_score(0, 0)
-        cell = bayesian_fitness(tp=0, fp=0)
-        assert cell['mean'] == pytest.approx(shared, abs=0.05), \
-            f"cell_fitness ({cell['mean']}) diverges from bayesian_score ({shared})"
+        # Non-trivial data: tp=3, fp=1 (triggers=4 for bayesian_score)
+        # bayesian_score: Laplace — (3+1)/(4+2) = 4/6 ≈ 0.6667
+        shared = bayesian_score(3, 4)
+        assert shared == pytest.approx(4 / 6)
+        # bayesian_fitness: Jeffrey's prior — a=3.5, b=1.5, mean=3.5/5.0=0.7
+        cell = bayesian_fitness(tp=3, fp=1)
+        assert cell['mean'] == pytest.approx(0.7)
+        # Both must agree: high-tp data → score well above 0.5
+        assert shared > 0.5
+        assert cell['mean'] > 0.5
 
     def test_cell_promote_normalize_fitness_callable(self):
-        """cell_promote.normalize_fitness must be callable and return a dict."""
+        """cell_promote.normalize_fitness must extract and preserve fitness fields."""
         from cell_promote import normalize_fitness
         meta = {'fitness': {'triggers': 5, 'true_positives': 3, 'false_positives': 1}}
         result = normalize_fitness(meta)
         assert isinstance(result, dict)
+        assert result['triggers'] == 5
+        assert result['true_positives'] == 3
+        assert result['false_positives'] == 1
 
     def test_cell_promote_normalizes_scalar_fitness(self):
         """cell_promote.normalize_fitness handles scalar fitness values."""
@@ -104,23 +116,37 @@ class TestPromotionZeroTriggerGuard:
     """Verify untested cells cannot be promoted regardless of impact_weight."""
 
     def test_normalize_fitness_zero_triggers_not_promoted(self):
-        """A cell with 0 triggers should not get a high normalized fitness score."""
+        """A cell with 0 triggers must not be promotable: score below threshold."""
+        from bayesian_score import bayesian_score
         from cell_promote import normalize_fitness
         meta = {'fitness': {'triggers': 0, 'true_positives': 0, 'false_positives': 0}}
         result = normalize_fitness(meta)
-        score = result.get('score')
-        # Zero-trigger cells: normalize_fitness passes through the dict as-is
-        # (no 'score' key computed), so score should be None
-        assert score is None or score <= 0.5, \
-            f"Zero-trigger cell should not score above 0.5, got {score}"
+        # Compute the Bayesian score this cell would receive
+        score = bayesian_score(
+            result.get('true_positives', 0), result.get('triggers', 0)
+        )
+        # Score must be 0.5 (maximally uncertain), well below promotion threshold 0.7
+        assert score == pytest.approx(0.5)
+        assert score < 0.7, \
+            f"Zero-trigger cell must not meet promotion threshold, got {score}"
+        # Triggers must remain 0 — hard gate for promotion
+        assert result.get('triggers', 0) == 0
 
     def test_normalize_fitness_high_triggers_preserves_data(self):
-        """A cell with many true positives should have triggers preserved in normalized dict."""
+        """Normalization must preserve data, and high-quality cells must score above 0.9."""
+        from bayesian_score import bayesian_score
         from cell_promote import normalize_fitness
         meta = {'fitness': {'triggers': 50, 'true_positives': 48, 'false_positives': 1}}
         result = normalize_fitness(meta)
-        assert result.get('triggers') == 50
-        assert result.get('true_positives') == 48
+        # All fields preserved
+        assert result['triggers'] == 50
+        assert result['true_positives'] == 48
+        assert result['false_positives'] == 1
+        # Score computed from preserved data should reflect high quality
+        score = bayesian_score(result['true_positives'], result['triggers'])
+        assert score == pytest.approx((48 + 1) / (50 + 2))
+        assert score > 0.9, \
+            f"High-quality cell should score above 0.9, got {score}"
 
 
 # ── Phase 4: C3 — Mandatory Cells Fitness Score ──────────────────────────
@@ -129,35 +155,21 @@ class TestMandatoryCellsFitnessScore:
     """Verify mandatory wall/gate cells have their fitness score computed."""
 
     @pytest.fixture
-    def soma_workspace(self, tmp_path):
-        workspace = tmp_path / "project"
-        cells_dir = workspace / ".soma" / "cells"
-        cells_dir.mkdir(parents=True)
+    def populated_workspace(self, soma_workspace):
+        """Workspace with a wall cell and an advisory cell for fitness tests."""
+        cells_dir = soma_workspace / ".soma" / "cells"
+        write_cell_with_fitness(cells_dir, "wall-auth", cell_type="wall",
+                               triggers=50, tp=48, fp=1,
+                               hypothesis="Auth check")
+        write_cell_with_fitness(cells_dir, "advisory-style",
+                               triggers=10, tp=8, fp=1,
+                               hypothesis="Style check")
+        return str(soma_workspace)
 
-        (cells_dir / "wall-auth.md").write_text(
-            "---\n"
-            "type: wall\n"
-            "hypothesis: Auth check\n"
-            "enforcement: advisory\n"
-            "target_paths:\n  - \"*.py\"\n"
-            "fitness:\n  triggers: 50\n  true_positives: 48\n  false_positives: 1\n"
-            "---\n# Wall content\n"
-        )
-        (cells_dir / "advisory-style.md").write_text(
-            "---\n"
-            "type: vacuole\n"
-            "hypothesis: Style check\n"
-            "enforcement: advisory\n"
-            "target_paths:\n  - \"*.py\"\n"
-            "fitness:\n  triggers: 10\n  true_positives: 8\n  false_positives: 1\n"
-            "---\n# Style content\n"
-        )
-        return str(workspace)
-
-    def test_mandatory_cells_have_nonzero_fitness(self, soma_workspace):
+    def test_mandatory_cells_have_nonzero_fitness(self, populated_workspace):
         """Wall cells must have their fitness computed, not default to 0."""
         from jit_engine import express
-        result = express(soma_workspace, changed_files=["app.py"], budget=5)
+        result = express(populated_workspace, changed_files=["app.py"], budget=5)
 
         for cell in result['relevant_cells']:
             if cell.get('type') == 'wall':
@@ -165,10 +177,10 @@ class TestMandatoryCellsFitnessScore:
                 assert fitness > 0, \
                     f"Mandatory cell '{cell.get('name')}' has fitness {fitness}, expected > 0"
 
-    def test_all_expressed_cells_have_fitness(self, soma_workspace):
+    def test_all_expressed_cells_have_fitness(self, populated_workspace):
         """Every expressed cell (mandatory or candidate) must have fitness."""
         from jit_engine import express
-        result = express(soma_workspace, changed_files=["app.py"], budget=5)
+        result = express(populated_workspace, changed_files=["app.py"], budget=5)
 
         for cell in result['relevant_cells']:
             assert 'fitness' in cell, \

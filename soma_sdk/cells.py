@@ -1,4 +1,5 @@
 """Cell data structures and utilities."""
+from __future__ import annotations
 import math
 from dataclasses import dataclass, field
 from typing import Optional
@@ -14,13 +15,13 @@ class CellFitness:
     stress_survived: int = 0
     
     @property
-    def raw_score(self):
+    def raw_score(self) -> float | None:
         if self.triggers == 0:
             return None
         return self.true_positives / self.triggers
     
     @property
-    def snr_db(self):
+    def snr_db(self) -> float | None:
         """Signal-to-noise ratio in decibels."""
         tp, fp = self.true_positives, self.false_positives
         if tp > 0 and fp > 0:
@@ -29,7 +30,7 @@ class CellFitness:
             return None  # JSON-safe encoding of infinite SNR (RFC 8259)
         return 0.0
     
-    def bayesian(self, confidence=0.90):
+    def bayesian(self, confidence: float = 0.90) -> dict[str, float | str]:
         """Beta-Binomial posterior with Jeffrey's prior."""
         a = self.true_positives + 0.5
         b = max(0, self.triggers - self.true_positives) + 0.5
@@ -60,15 +61,19 @@ class Cell:
     fitness: CellFitness = field(default_factory=CellFitness)
     
     @property
-    def is_wall(self):
+    def is_wall(self) -> bool:
         return self.type == 'wall'
     
     @property
-    def is_extinct(self):
-        s = self.fitness.raw_score
-        return s is not None and s <= 0.3
+    def is_extinct(self) -> bool:
+        if self.fitness.triggers == 0:
+            return False
+        bayesian_score = (self.fitness.true_positives + 1) / (self.fitness.triggers + 2)
+        return bayesian_score <= 0.15
     
     @property
-    def is_promotable(self):
-        s = self.fitness.raw_score
-        return s is not None and s > 0.7 and self.fitness.triggers >= 5
+    def is_promotable(self) -> bool:
+        if self.fitness.triggers == 0:
+            return False
+        bayesian_score = (self.fitness.true_positives + 1) / (self.fitness.triggers + 2)
+        return bayesian_score > 0.85 and self.fitness.triggers >= 20

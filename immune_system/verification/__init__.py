@@ -39,6 +39,19 @@ class RiskCategory(Enum):
     TAUTOLOGICAL_TEST = "tautological_test"      # Test that passes regardless of implementation
     MISSING_COVERAGE = "missing_coverage"        # Changed code not exercised by any test
 
+    # Security (added for Supercell review)
+    CODE_INJECTION = "code_injection"            # Untrusted input in exec/eval/format
+    PATH_TRAVERSAL = "path_traversal"            # User paths escape containment root
+    SHELL_INJECTION = "shell_injection"          # subprocess shell=True with user input
+
+    # Quality
+    DRY_VIOLATION = "dry_violation"              # Copy-pasted logic across modules
+    DOC_DRIFT = "doc_drift"                      # Documentation diverges from implementation
+    CONVENTION_VIOLATION = "convention_violation" # Schema/naming doesn't match existing instances
+
+    # Portability
+    PLATFORM_INCOMPATIBLE = "platform_incompatible"  # Code fails on non-host OS
+
 
 class Severity(Enum):
     CRITICAL = "critical"    # Ship blocker

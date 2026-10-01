@@ -18,6 +18,8 @@ def arbitrate(
     predictions: list[Prediction],
     claims: list[Claim],
     layer1_evidence: list[ToolEvidence],
+    *,
+    spec_agent_failed: bool = False,
 ) -> ArbitrationResult:
     """Compare predictions vs claims vs tool evidence.
 
@@ -117,7 +119,11 @@ def arbitrate(
             ))
 
     # Verdict logic
-    verdict = _compute_verdict(divergences, layer1_failures)
+    verdict = _compute_verdict(
+        divergences, layer1_failures,
+        predictions=predictions,
+        spec_agent_failed=spec_agent_failed,
+    )
 
     return ArbitrationResult(
         divergences=divergences,
@@ -132,6 +138,9 @@ def arbitrate(
 def _compute_verdict(
     divergences: list[Divergence],
     layer1_failures: list[ToolEvidence],
+    *,
+    predictions: list[Prediction] | None = None,
+    spec_agent_failed: bool = False,
 ) -> Verdict:
     """Deterministic verdict computation.
 
@@ -139,6 +148,7 @@ def _compute_verdict(
       - Any Layer 1 tool FAILS
       - Any divergence has a critical prediction
       - Any claim is contradicted by Layer 1
+      - Spec Agent failed and produced no predictions (fail-closed)
 
     REVISE if:
       - Any unmatched prediction with severity >= HIGH
@@ -146,6 +156,10 @@ def _compute_verdict(
     SHIP otherwise.
     """
     if layer1_failures:
+        return Verdict.BLOCK
+
+    # Fail-closed: if spec agent produced no predictions, don't silently ship
+    if spec_agent_failed and not (predictions or []):
         return Verdict.BLOCK
 
     for d in divergences:
@@ -157,7 +171,11 @@ def _compute_verdict(
             return Verdict.BLOCK
 
     for d in divergences:
-        if d.prediction and d.prediction.severity in (Severity.CRITICAL, Severity.HIGH):
+        if d.prediction and d.prediction.severity == Severity.CRITICAL:
+            return Verdict.BLOCK
+
+    for d in divergences:
+        if d.prediction and d.prediction.severity == Severity.HIGH:
             return Verdict.REVISE
 
     return Verdict.SHIP

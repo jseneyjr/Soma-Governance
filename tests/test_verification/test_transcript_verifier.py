@@ -253,3 +253,91 @@ class TestRealTranscripts:
         assert metrics.first_run_failed == 0, f"Expected 0 failures, got {metrics.first_run_failed}"
         assert metrics.fix_cycles == 0
 
+
+class TestFix22aMissingFile:
+    """Fix 2.2a: extract_metrics must not crash on missing transcript files."""
+
+    def test_extract_metrics_missing_file_returns_empty(self):
+        """Calling extract_metrics with a non-existent path should return empty SubagentMetrics."""
+        from immune_system.verification.transcript_verifier import extract_metrics, SubagentMetrics
+
+        result = extract_metrics("/tmp/definitely_does_not_exist_transcript.jsonl")
+        assert isinstance(result, SubagentMetrics)
+        assert result.pytest_runs == 0
+        assert result.first_run_passed == 0
+        assert result.first_run_failed == 0
+        assert result.final_passed == 0
+        assert result.final_failed == 0
+        assert result.file_writes == 0
+        assert result.fix_cycles == 0
+
+
+class TestFix22bWriteStepFalsePositive:
+    """Fix 2.2b: _is_write_step must not match content-string mentions of tool names."""
+
+    def test_write_step_ignores_content_mentions(self):
+        """A PLANNER_RESPONSE mentioning 'write_to_file' in content should NOT count as a write."""
+        from immune_system.verification.transcript_verifier import _is_write_step
+
+        step = {
+            "type": "PLANNER_RESPONSE",
+            "content": "I will use write_to_file to create the module.",
+        }
+        assert _is_write_step(step) is False
+
+    def test_write_step_detects_tool_calls(self):
+        """A step with tool_calls containing write_to_file must be detected as a write."""
+        from immune_system.verification.transcript_verifier import _is_write_step
+
+        step = {
+            "type": "TOOL_USE",
+            "tool_calls": [{"name": "write_to_file"}],
+            "content": "",
+        }
+        assert _is_write_step(step) is True
+
+
+class TestFix22cCollectionErrors:
+    """Fix 2.2c: _parse_test_counts must detect pytest collection errors."""
+
+    def test_collection_error_returns_sentinel(self):
+        """Content with 'collection error' must return (-1, -1) sentinel."""
+        from immune_system.verification.transcript_verifier import _parse_test_counts
+
+        result = _parse_test_counts("ERROR collecting tests/test_foo.py - collection error")
+        assert result == (-1, -1)
+
+    def test_errors_marker_returns_sentinel(self):
+        """Content with 'ERRORS' must return (-1, -1) sentinel."""
+        from immune_system.verification.transcript_verifier import _parse_test_counts
+
+        result = _parse_test_counts("===== ERRORS =====\nImportError in test_bar.py")
+        assert result == (-1, -1)
+
+
+class TestFix22dMultiRunNoFalsePositive:
+    """Fix 2.2d: multiple pytest runs with all passing should not flag divergence."""
+
+    def test_multi_run_all_passing_no_divergence(self, tmp_path):
+        """Two passing pytest runs with 0 fix cycles should verify as first-pass."""
+        from immune_system.verification.transcript_verifier import extract_metrics, verify_claim
+
+        transcript = tmp_path / "transcript.jsonl"
+        transcript.write_text('\n'.join([
+            json.dumps({"step_index": 0, "source": "MODEL", "type": "WRITE_FILE", "status": "DONE", "content": "Created file"}),
+            json.dumps({"step_index": 1, "source": "MODEL", "type": "RUN_COMMAND", "status": "DONE", "exit_code": 0, "content": "pytest tests/test_a.py\n6 passed in 1.0s"}),
+            json.dumps({"step_index": 2, "source": "MODEL", "type": "RUN_COMMAND", "status": "DONE", "exit_code": 0, "content": "pytest tests/ -q\n6 passed in 2.0s"}),
+        ]))
+
+        metrics = extract_metrics(str(transcript))
+        assert metrics.pytest_runs == 2
+        assert metrics.fix_cycles == 0
+
+        result = verify_claim(
+            metrics=metrics,
+            claimed_first_pass=True,
+            claimed_tests_passed=6,
+            agent_role="test_agent",
+        )
+        assert result.verdict is True, f"Expected True but got divergence: {result.detail}"
+

@@ -30,13 +30,7 @@ tags:
 - qa
 - persona
 domain: correctness
-fitness:
-  score: null
-  impact_weight: 1.0
-  triggers: 4
-  true_positives: 0
-  false_positives: 4
-  last_trigger_date: '2026-09-30T20:09:18Z'
+minimum_mode: breeze
 ---
 When reviewing changes to shell scripts or installers, adopt the persona of a
 Cross-Platform QA Engineer. Check for:

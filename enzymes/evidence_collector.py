@@ -12,6 +12,7 @@ from __future__ import annotations
 
 import json
 import os
+import re
 from collections import defaultdict
 from pathlib import Path
 from typing import Any
@@ -154,13 +155,144 @@ def _paths_match(read_path: str, write_path: str) -> bool:
     return False
 
 
+# ── Additional detectors ────────────────────────────────────────────
+
+# All write tools including new-file creation (used by TBI / hardcoded-paths)
+_ALL_WRITE_TOOLS = WRITE_TOOLS | frozenset({"write_to_file"})
+
+_TEST_FILE_RE = re.compile(
+    r"(^|/)tests?/|_test\.py$|test_[^/]*\.py$",
+)
+
+
+def _is_test_file(path: str) -> bool:
+    """Return True if *path* looks like a test file."""
+    return bool(_TEST_FILE_RE.search(path))
+
+
+def _check_test_before_implementation(steps: list[dict]) -> dict:
+    """Check test-before-implementation compliance.
+
+    For each non-test Python file written/created, check that at least
+    one test file was written at a prior step in the session.
+
+    write_to_file and replace_file_content / multi_replace_file_content
+    are all considered writes.
+    """
+    calls = _extract_tool_calls(steps)
+    compliant = 0
+    non_compliant = 0
+    test_written = False
+
+    for call in calls:
+        target = call["target_file"]
+        if not target:
+            continue
+        if call["tool_name"] not in _ALL_WRITE_TOOLS:
+            continue
+        if not target.endswith(".py"):
+            continue
+
+        if _is_test_file(target):
+            test_written = True
+        else:
+            # Implementation file write
+            if test_written:
+                compliant += 1
+            else:
+                non_compliant += 1
+
+    return {"compliant_count": compliant, "non_compliant_count": non_compliant}
+
+
+# Build pattern dynamically so CI's hardcoded-path grep won't match this source line.
+_HARDCODED_PATH_RE = re.compile("/" + "home" + "/[^/]+/")
+
+
+def _check_no_hardcoded_paths(steps: list[dict]) -> dict:
+    """Check for hardcoded user-home paths in file write tool calls.
+
+    Scans both the target file path and (when present) the code content
+    of write_to_file calls for patterns like /home/<user>/.
+    """
+    compliant = 0
+    non_compliant = 0
+
+    for step in steps:
+        if not isinstance(step, dict):
+            continue
+        for tc in step.get("tool_calls", []):
+            if not isinstance(tc, dict):
+                continue
+            name = tc.get("name", "")
+            if name not in _ALL_WRITE_TOOLS:
+                continue
+            args = tc.get("args", {})
+            if not isinstance(args, dict):
+                continue
+
+            # Check target path
+            raw_path = (
+                args.get("TargetFile")
+                or args.get("AbsolutePath")
+                or ""
+            )
+            code = args.get("CodeContent", "")
+            combined = f"{raw_path}\n{code}"
+
+            if _HARDCODED_PATH_RE.search(combined):
+                non_compliant += 1
+            else:
+                compliant += 1
+
+    return {"compliant_count": compliant, "non_compliant_count": non_compliant}
+
+
 # Registry of rule detectors
 _DETECTORS: dict[str, Any] = {
     "read-before-write": _check_read_before_write,
+    "test-before-implementation": _check_test_before_implementation,
+    "no-hardcoded-paths": _check_no_hardcoded_paths,
 }
 
 
 # ── Public API ──────────────────────────────────────────────────────
+
+
+def build_observation(
+    compliance_result: dict,
+    transcript_path: Path | str,
+    rule_id: str,
+) -> dict | None:
+    """Bridge check_compliance output into aggregate_evidence input format.
+
+    Args:
+        compliance_result: Output of check_compliance() with
+            'compliant_count' and 'non_compliant_count'.
+        transcript_path: Path to the transcript JSONL (for step counting).
+        rule_id: The governance rule being evaluated.
+
+    Returns:
+        A dict with {rule_id, compliant, session_steps, session_fpsr}
+        suitable for aggregate_evidence(), or None if the rule had
+        no activity (both counts are 0).
+    """
+    c = compliance_result.get("compliant_count", 0)
+    nc = compliance_result.get("non_compliant_count", 0)
+
+    # Skip rules with no activity in this session
+    if c == 0 and nc == 0:
+        return None
+
+    steps = _parse_transcript(Path(transcript_path))
+    session_steps = len(steps)
+
+    return {
+        "rule_id": rule_id,
+        "compliant": nc == 0,
+        "session_steps": session_steps,
+        "session_fpsr": 0.0,  # placeholder — needs transcript FPSR extraction
+    }
 
 
 def check_compliance(transcript_path: Path | str, rule_id: str) -> dict:

@@ -5,9 +5,10 @@
 [![Agent Skills](https://img.shields.io/badge/Agent_Skills-15-purple?style=flat-square)](#-agent-skills)
 [![Automation Scripts](https://img.shields.io/badge/Automation_Scripts-58-red?style=flat-square)](#%EF%B8%8F-automation-scripts)
 [![Adaptive Rules](https://img.shields.io/badge/Adaptive_Rules-5_Types-orange?style=flat-square)](#-adaptive-rules)
-[![Tests](https://img.shields.io/badge/Tests-604%2B-brightgreen?style=flat-square)](#testing--ci)
-[![Version](https://img.shields.io/badge/Version-0.51.0-informational?style=flat-square)](docs/CHANGELOG.md)
+[![Tests](https://img.shields.io/badge/Tests-1162%2B-brightgreen?style=flat-square)](#testing--ci)
+[![Version](https://img.shields.io/badge/Version-0.60.0-informational?style=flat-square)](docs/CHANGELOG.md)
 [![Blog Post](https://img.shields.io/badge/Blog-dev.to-black?style=flat-square&logo=devdotto)](https://dev.to/nseney1/rules-that-cant-prove-themselves-die-adaptive-governance-for-ai-coding-agents-25bn)
+[![Blog Post 2](https://img.shields.io/badge/Blog_2-dev.to-black?style=flat-square&logo=devdotto)](https://dev.to/nseney1/your-ai-agents-rules-file-is-a-gentlemans-agreement-heres-what-happens-when-you-make-3df5)
 
 **Governance framework that makes AI coding agents trustworthy.**
 
@@ -29,7 +30,7 @@ See the [NOTICE](NOTICE) file for our full local-only Data Privacy Statement.
 
 ```bash
 # Clone
-git clone https://github.com/nseney1/soma.git && cd soma
+git clone https://github.com/nseney1/Soma-Governance.git && cd Soma-Governance
 
 # Install the CLI
 pip install -e .
@@ -74,13 +75,13 @@ Add Soma as an MCP server in your AI agent's config — **zero API key needed**.
 }
 ```
 
-Works with Gemini Antigravity, Claude Code, Cursor, and any MCP-compatible agent. Tools exposed: `soma_create_cell`, `soma_scan`, `soma_grade`, `soma_coverage`, `soma_fitness`, `soma_list_cells`, `soma_report_outcome`, `soma_propose_change`, `soma_audit_security`, `soma_audit_performance`.
+Works with Gemini Antigravity, Claude Code, Cursor, and any MCP-compatible agent. Tools exposed: `soma_create_cell`, `soma_scan`, `soma_grade`, `soma_coverage`, `soma_fitness`, `soma_list_cells`, `soma_report_outcome`, `soma_propose_change`, `soma_audit_security`, `soma_audit_performance`, `soma_verify_changes`, `soma_checkpoint`.
 
 ### SDK
 
 ```bash
-pip install soma-steering          # Python
-npm install soma-steering          # JavaScript / TypeScript
+pip install soma-governance        # Python
+npm install soma-governance        # JavaScript / TypeScript
 ```
 
 ```python
@@ -120,27 +121,59 @@ Works with **any AI provider** — Gemini, Anthropic, OpenAI — or via MCP stdi
 
 ---
 
+## CLI Commands
+
+All governance workflows are available via the `soma` CLI:
+
+| Command | Description |
+|:--------|:------------|
+| `soma init` | Set up governance — auto-detects platform, installs rules + pre-commit hook |
+| `soma status` | Show active rules, cell counts, and fitness stats |
+| `soma report` | Session report card with compliance metrics |
+| `soma doctor` | System health check — verifies installation integrity |
+| `soma verify` | Layer 1 deterministic verification on changed files (`--layer1-only` available) |
+| `soma checkpoint` | Deterministic quality checks (`--pre-commit` for git hooks) |
+| `soma oracle` | Cell health classification — healthy, noisy, expired, unobserved |
+| `soma promote` | Evaluate cells for promotion (vacuole → wall → genome). `--force --cell <id>` for manual |
+| `soma demote` | Evaluate cells for demotion (high FP rate or dormant). `--force --cell <id>` for manual |
+
+```bash
+# Quick quality check before committing
+soma checkpoint
+
+# Deterministic verification (Layer 1)
+soma verify
+
+# Cell health dashboard
+soma oracle --json
+
+# See what cells earned promotion
+soma promote --dry-run
+```
+
+---
+
 ## Architecture
 
 Soma models governance as a layered system of rules, skills, and automation. Every component maps to a specific role:
 
 ```text
-┌─────────────────────────────────────────────────────────────────┐
-│  📐 CORE RULES (genome/)          15 Rules — inherited defaults │
-│  🔧 AGENT SKILLS (organs/)       15 Skills — complex behaviors  │
-│  ⚙️  AUTOMATION (enzymes/)        58 Scripts — task automation   │
-├─────────────────────────────────────────────────────────────────┤
-│  🛡️ REVIEW PROTOCOL              Two-Layer Verification         │
-│     Layer 1: Deterministic AST tools (ungameable)               │
-│     Layer 2: Adversarial information-partitioned agents         │
-├─────────────────────────────────────────────────────────────────┤
-│  🌲 REVIEW INTENSITY (Global) → Environmental Pressure Levels  │
-│     Breeze → Gale → Trident → Maelstrom → Tempest              │
-│  🔍 ANALYTICAL PRONGS         → Multi-Perspective Analysis     │
-│     Spores → Mycelium → Roots → Thorns → Bedrock → Mulch       │
-│  📋 ADAPTIVE RULES (.soma/cells/) → Per-Repo Governance        │
-│     Vacuoles · Chloroplasts · Walls · Membranes · Plasmodesmata │
-└─────────────────────────────────────────────────────────────────┘
+┌──────────────────────────────────────────────────────────────────────┐
+│  📐 CORE RULES (genome/)          15 Rules — inherited defaults      │
+│  🔧 AGENT SKILLS (organs/)       15 Skills — complex behaviors       │
+│  ⚙️  AUTOMATION (enzymes/)        58 Scripts — task automation        │
+├──────────────────────────────────────────────────────────────────────┤
+│  🛡️ REVIEW PROTOCOL              Two-Layer Verification              │
+│     Layer 1: Deterministic AST tools (ungameable)                    │
+│     Layer 2: Adversarial information-partitioned agents              │
+├──────────────────────────────────────────────────────────────────────┤
+│  🌲 REVIEW INTENSITY (Global) → Environmental Pressure Levels       │
+│     Breeze → Gale → Trident → Maelstrom → Tempest → Supercell       │
+│  🔍 ANALYTICAL PRONGS         → Multi-Perspective Analysis          │
+│     Spores → Mycelium → Roots → Thorns → Bedrock → Mulch            │
+│  📋 ADAPTIVE RULES (.soma/cells/) → Per-Repo Governance             │
+│     Vacuoles · Chloroplasts · Walls · Membranes · Plasmodesmata      │
+└──────────────────────────────────────────────────────────────────────┘
 ```
 
 | Layer | Directory | What It Contains |
@@ -205,7 +238,7 @@ Independently verifies subagent self-reported claims against JSONL transcript ev
 from immune_system.verification.transcript_verifier import extract_metrics, verify_claim
 
 metrics = extract_metrics("path/to/transcript.jsonl")
-result = verify_claim(metrics, claimed_first_pass=True, claimed_test_count=45)
+result = verify_claim(metrics, claimed_first_pass=True, claimed_tests_passed=45, agent_role="coder")
 # → ToolEvidence(verdict=False, detail="Agent claimed first-pass but transcript shows 3 fix cycles")
 ```
 
@@ -224,6 +257,7 @@ When code changes, the system mounts a review response. The intensity scales wit
 | 🔱 Trident | 5-8 | ~8-12k | Features, refactors |
 | 🌊 Maelstrom | 7-12 | ~15-20k | Architecture, security |
 | ⛈️ Tempest | 8-12 | ~30-50k | Catastrophic risk |
+| 🌪️ Supercell | 8×N | iterative | Pre-release clean ship — adversarial Prosecutor/Defender pairs per prong, iterative until zero findings |
 
 ### Analytical Prongs
 
@@ -379,7 +413,7 @@ Recent academic studies ([arXiv:2602.11988](https://arxiv.org/abs/2602.11988), [
 
 ### 1. The Context Bloat Trap
 **The Research**: Injecting massive repository overviews into the context window does not improve task success, increases inference costs by over 20%, and leads to "brevity bias" or "context collapse" as the agent loses track of details over time.
-**Soma's Solution**: **JIT (Just-In-Time) Context Loading**. Soma does not load a monolithic rulebook. It only loads the specific adaptive rules related to the exact files the agent is currently touching. This keeps the token overhead at a flat ~4,380 idle tokens (3.4%), preventing context collapse.
+**Soma's Solution**: **JIT (Just-In-Time) Context Loading**. Soma does not load a monolithic rulebook. It only loads the specific adaptive rules related to the exact files the agent is currently touching. This keeps the token overhead at a flat ~3,800 idle tokens (measured at v0.50 baseline), preventing context collapse.
 
 ### 2. The Generic Advice Trap
 **The Research**: Context files are largely ignored by LLMs when they contain standard coding practices (which the models already know), and are only useful for "non-standard coding practices" or exact wiring/architectural quirks.
@@ -389,7 +423,7 @@ Recent academic studies ([arXiv:2602.11988](https://arxiv.org/abs/2602.11988), [
 **The Critique**: If an AI agent generates rules and then grades its own rules, isn't that just memory with extra steps? How do we know the rules are working, and it's not just the underlying foundation models getting better?
 **Soma's Solution**: **Two-Layer Verification**. Layer 1 uses deterministic AST tools (mutation testing, call graph analysis, branch coverage, import guards) that produce objective evidence no LLM can game. Layer 2 uses adversarial information-partitioned agents — a Spec Agent and Code Agent that can't collude because they see different inputs — with a deterministic set-algebra Arbiter. The Transcript Verifier independently checks subagent claims against actual execution logs. Additionally, Escaped Defect Tracking hooks into CI/CD exit codes to establish ground truth.
 
-| Feature | Standard AI Agents | Prompt Files (`.cursorrules`) | **Soma (v0.51)** |
+| Feature | Standard AI Agents | Prompt Files (`.cursorrules`) | **Soma (v0.60)** |
 |:--|:---:|:---:|:---:|
 | **Rule Enforcement** | Relies on LLM obedience | Relies on LLM obedience | **Mechanistic rejection via TTC Oracles** |
 | **Verification** | Self-grading | None | **Two-layer: deterministic tools + adversarial agents** |
@@ -410,7 +444,7 @@ Instead of pleading with the AI in a system prompt to "think step-by-step," Soma
 - **Typical Load** (genome + 3 matched cells): ~4,013 tokens/turn
 - **Waste Rate**: < 1.0% in governed sessions (via Last Gasp & TTC Oracles)
 - **Calibrated Token Ratio**: 1.35 measured directly against Gemini API
-- **Verification Framework**: 604+ tests across 21 test files
+- **Verification Framework**: 1,162+ tests across 30+ test files
 
 See [METRICS.md](docs/METRICS.md) for a complete system breakdown. See [BENCHMARK.md](docs/BENCHMARK.md) for the standardized governance effectiveness benchmark.
 
@@ -435,7 +469,7 @@ make validate   # Shell syntax, Python compilation, JSON templates
 make doctor     # System health check
 ```
 
-**515+ tests** across 20 test files covering:
+**1,162+ tests** across 30+ test files covering:
 
 | Suite | Tests | Coverage |
 |:------|:-----:|:---------|
@@ -488,7 +522,7 @@ Soma has evolved across 50 measured phases, from manually written logic into a s
 | 23–25 | **TTC & JIT Context** — Last Gasp, TTC Oracles, zero-waste validation |
 | 26–29 | **Perception & Homeostasis** — Interoception, resilience engine, signal coherence |
 | 30 | **Two-Layer Verification** — Deterministic tools, adversarial pairing, transcript verification |
-| 31–50 | **Incentive-Compatible Governance** — Evidence pipeline, fitness ledger migration, cell expiry enforcement, oracle checkpoint, test hardening (tautological → behavioral), delegation verification, multi-platform support, 515+ tests |
+| 31–50 | **Incentive-Compatible Governance** — Evidence pipeline, fitness ledger migration, cell expiry enforcement, oracle checkpoint, test hardening (tautological → behavioral), delegation verification, multi-platform support, 1,162+ tests |
 
 Read [PHYLOGENY.md](docs/PHYLOGENY.md) for the complete evolutionary narrative.
 

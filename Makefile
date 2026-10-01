@@ -115,7 +115,7 @@ validate: ## Check script syntax and config values
 	  fi; \
 	done; \
 	if command -v python3 >/dev/null 2>&1; then \
-	  for p in enzymes/*.py soma_mcp/*.py soma_sdk/*.py; do \
+	  for p in enzymes/*.py soma_cli/*.py soma_mcp/*.py soma_sdk/*.py immune_system/**/*.py; do \
 	    if [ -f "$$p" ]; then \
 	      if python3 -m py_compile "$$p" 2>/dev/null; then :; \
 	      else echo "  ❌ $$p (syntax error)"; failed=1; fi; \

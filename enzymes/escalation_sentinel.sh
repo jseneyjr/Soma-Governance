@@ -259,17 +259,30 @@ main() {
       [ -f "$membrane" ] || continue
       local mem_mode
       mem_mode=$(grep '^minimum_mode:' "$membrane" 2>/dev/null | awk '{print $2}' | tr -d '\r' || true)
-      local mem_path
-      mem_path=$(grep -m 1 '^hypothesis:' "$membrane" 2>/dev/null | sed -E 's/.*Changes to ([^ ]+) .*/\1/' | sed -E 's/["'\'']//g' || true)
-      
-      if [ -n "$mem_mode" ] && [ -n "$mem_path" ]; then
-        if echo "$files" | grep -qiE "$mem_path"; then
+      # Read target_paths from frontmatter (array or single value)
+      local mem_paths
+      mem_paths=$(awk '/^target_paths:/{found=1; next} found && /^  - /{gsub(/^  - /,""); print; next} found{exit}' "$membrane" 2>/dev/null || true)
+      if [ -z "$mem_paths" ]; then
+        # Try single-value form: target_paths: path/to/file
+        mem_paths=$(grep '^target_paths:' "$membrane" 2>/dev/null | sed 's/^target_paths:[[:space:]]*//' | tr -d "\"'" || true)
+      fi
+
+      if [ -n "$mem_mode" ] && [ -n "$mem_paths" ]; then
+        local path_matched=false
+        while IFS= read -r mem_path; do
+          [ -z "$mem_path" ] && continue
+          if echo "$files" | grep -qF "$mem_path"; then
+            path_matched=true
+            break
+          fi
+        done <<< "$mem_paths"
+        if [ "$path_matched" = true ]; then
           # Escalate if mem_mode > protocol
           local current_rank=1
           case "$protocol" in breeze) current_rank=1;; gale) current_rank=2;; trident) current_rank=3;; maelstrom) current_rank=4;; tempest) current_rank=5;; esac
           local mem_rank=1
           case "$mem_mode" in breeze) mem_rank=1;; gale) mem_rank=2;; trident) mem_rank=3;; maelstrom) mem_rank=4;; tempest) mem_rank=5;; esac
-          
+
           if [ "$mem_rank" -gt "$current_rank" ]; then
             protocol="$mem_mode"
             reasons="Membrane escalation for $mem_path ($mem_mode)"
