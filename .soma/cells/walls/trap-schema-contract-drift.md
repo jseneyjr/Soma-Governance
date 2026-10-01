@@ -2,7 +2,7 @@
 id: trap-schema-contract-drift
 domain: correctness
 type: wall
-enforcement: blocking
+enforcement: gate
 promotion_threshold: 0.85
 demotion_threshold: 0.3
 hypothesis: JSONL producer/consumer pairs in separate enzyme files use mismatched

@@ -28,27 +28,28 @@ SUPERCELL_CELLS = {
     "trap-path-traversal": {
         "type": "walls",
         "domain": "security",
-        "enforcement": "blocking",
+        "enforcement": "gate",
     },
     # Correctness antipatterns (from C1, C2, C3)
     "trap-schema-contract-drift": {
         "type": "walls",
         "domain": "correctness",
-        "enforcement": "blocking",
+        "enforcement": "gate",
     },
     "trap-orphaned-module": {
         "type": "vacuoles",
         "domain": "correctness",
     },
     "trap-threshold-spec-drift": {
-        "type": "vacuoles",
+        "type": "walls",
         "domain": "correctness",
+        "enforcement": "gate",
     },
     # Quality / process antipatterns (from doc-drift RCA)
     "trap-doc-feature-drift": {
         "type": "walls",
         "domain": "documentation",
-        "enforcement": "blocking",
+        "enforcement": "gate",
     },
     "trap-ascii-art-render": {
         "type": "vacuoles",
@@ -62,11 +63,12 @@ SUPERCELL_CELLS = {
     "trap-layer-violation": {
         "type": "walls",
         "domain": "architecture",
-        "enforcement": "blocking",
+        "enforcement": "gate",
     },
     "trap-shell-true-portability": {
-        "type": "vacuoles",
+        "type": "walls",
         "domain": "portability",
+        "enforcement": "gate",
     },
 }
 
@@ -128,12 +130,12 @@ class TestSupercellCells:
 
     @pytest.mark.parametrize("cell_id,spec", [
         (k, v) for k, v in SUPERCELL_CELLS.items()
-        if v.get("enforcement") == "blocking"
+        if v.get("enforcement") == "gate"
     ])
-    def test_blocking_cells_are_walls(self, cell_id, spec):
-        """Blocking enforcement cells must be in walls/ directory."""
+    def test_gate_cells_are_walls(self, cell_id, spec):
+        """Gate enforcement cells must be in walls/ directory."""
         fm = _load_cell(cell_id, spec["type"])
-        assert fm["enforcement"] == "blocking"
+        assert fm["enforcement"] == "gate"
         assert spec["type"] == "walls"
 
     def test_security_cells_target_python(self):

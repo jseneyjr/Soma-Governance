@@ -2,7 +2,7 @@
 id: trap-layer-violation
 domain: architecture
 type: wall
-enforcement: blocking
+enforcement: gate
 hypothesis: When module A imports private functions (_prefixed) from module B in a
   different architectural layer, it creates hidden coupling that breaks when B
   refactors

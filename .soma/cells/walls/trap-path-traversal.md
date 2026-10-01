@@ -2,7 +2,7 @@
 id: trap-path-traversal
 domain: security
 type: wall
-enforcement: blocking
+enforcement: gate
 hypothesis: User-supplied file paths (CLI --files, API params) that are joined with
   a root directory without containment checks enable reading/writing arbitrary files
   outside the workspace

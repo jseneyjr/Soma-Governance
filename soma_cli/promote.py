@@ -76,7 +76,7 @@ def _force_promote(project_root: Path, cell_id: str, dry_run: bool, use_json: bo
     if next_type == "wall":
         content = re.sub(
             r"^enforcement:\s*\S+",
-            "enforcement: blocking",
+            "enforcement: gate",
             content,
             count=1,
             flags=re.MULTILINE,

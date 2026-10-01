@@ -2,7 +2,7 @@
 id: trap-format-code-injection
 domain: security
 type: wall
-enforcement: blocking
+enforcement: gate
 hypothesis: Using str.format() or f-strings to inject variables into executable
   code templates enables code injection when inputs contain quotes or Python syntax
 prediction: Will catch .format() calls on strings that are later executed via

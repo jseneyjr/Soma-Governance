@@ -1,8 +1,8 @@
 ---
 id: trap-threshold-spec-drift
 domain: correctness
-type: vacuole
-enforcement: advisory
+type: wall
+enforcement: gate
 hypothesis: When numeric thresholds are documented in docstrings with > but
   implemented with >= (or vice versa), boundary behavior silently diverges from
   the specification

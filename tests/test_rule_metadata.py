@@ -23,7 +23,10 @@ CELLS_DIR = REPO_ROOT / ".soma" / "cells"
 
 # Fields required for the evidence enrichment pipeline
 REQUIRED_FIELDS = {"id", "domain"}
-VALID_DOMAINS = {"efficiency", "correctness", "security", "style", "governance"}
+VALID_DOMAINS = {
+    "architecture", "correctness", "documentation", "efficiency",
+    "governance", "portability", "security", "style", "testing",
+}
 
 # Regex to extract YAML frontmatter block
 FRONTMATTER_RE = re.compile(r"^---\n(.+?)\n---\n", re.DOTALL)
