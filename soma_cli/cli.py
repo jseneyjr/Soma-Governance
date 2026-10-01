@@ -102,6 +102,21 @@ def _build_parser() -> argparse.ArgumentParser:
     p_demote.add_argument("--cell", type=str, default=None,
                           help="Target cell ID for --force demotion")
 
+    # soma genesis
+    p_genesis = sub.add_parser("genesis", help="Analyze codebase and generate governance cells")
+    p_genesis.add_argument("--dry-run", action="store_true",
+                           help="Show candidates without writing files")
+    p_genesis.add_argument("--json", action="store_true",
+                           help="Emit machine-readable JSON output")
+    p_genesis.add_argument("--min-confidence", type=float, default=0.5,
+                           help="Minimum confidence threshold (default: 0.5)")
+    p_genesis.add_argument("--force", action="store_true",
+                           help="Overwrite existing cells with same name")
+    p_genesis.add_argument("--yes", "-y", action="store_true",
+                           help="Skip confirmation prompts")
+    p_genesis.add_argument("--project-root", default=None,
+                           help="Override project root path")
+
     return parser
 
 
@@ -165,6 +180,12 @@ def cmd_demote(args: argparse.Namespace) -> int:
     return run_demote(args)
 
 
+def cmd_genesis(args: argparse.Namespace) -> int:
+    """Analyze codebase and generate governance cells."""
+    from soma_cli.genesis import run_genesis
+    return run_genesis(args)
+
+
 COMMANDS = {
     "init": cmd_init,
     "status": cmd_status,
@@ -176,6 +197,7 @@ COMMANDS = {
     "oracle": cmd_oracle,
     "promote": cmd_promote,
     "demote": cmd_demote,
+    "genesis": cmd_genesis,
 }
 
 
