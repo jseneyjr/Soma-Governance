@@ -17,8 +17,8 @@ import os
 import sys
 from datetime import datetime
 
-import yaml
 from soma_resolve import resolve_workspace
+from soma_sdk.cells import parse_cell_file
 from cell_expiry import audit_expiry
 
 
@@ -89,14 +89,7 @@ def _load_cells(workspace):
         if os.path.basename(md_file) == 'README.md':
             continue
         try:
-            with open(md_file, 'r', encoding='utf-8') as f:
-                content = f.read()
-            if not content.startswith('---'):
-                continue
-            end = content.find('---', 3)
-            if end == -1:
-                continue
-            metadata = yaml.safe_load(content[3:end]) or {}
+            metadata, _body = parse_cell_file(md_file)
             metadata['_filepath'] = md_file
             cells.append(metadata)
         except Exception:

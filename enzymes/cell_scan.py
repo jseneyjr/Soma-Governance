@@ -1,5 +1,11 @@
 import sys, json, os, glob, subprocess
 import fnmatch
+from pathlib import Path
+
+_project_root = str(Path(__file__).resolve().parent.parent)
+if _project_root not in sys.path:
+    sys.path.insert(0, _project_root)
+from soma_sdk.cells import parse_cell_file
 
 def get_workspace():
     # Fallback if soma_resolve is missing
@@ -27,15 +33,13 @@ if not os.path.isdir(cells_dir):
     sys.exit(0)
 
 cells = glob.glob(os.path.join(cells_dir, '**', '*.md'), recursive=True)
-import yaml
+
 
 triggered = []
 for f in cells:
     if os.path.basename(f) == 'README.md': continue
     try:
-        with open(f, encoding="utf-8") as fh: content = fh.read()
-        if not content.startswith('---'): continue
-        fm = yaml.safe_load(content[3:content.find('---',3)])
+        fm, _body = parse_cell_file(f)
         target_paths = fm.get('target_paths', [])
         hypothesis = fm.get('hypothesis', '')
         

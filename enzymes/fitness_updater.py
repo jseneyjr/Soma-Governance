@@ -19,7 +19,10 @@ except ImportError:
 from datetime import datetime, timezone
 from pathlib import Path
 
-import yaml
+_project_root = str(Path(__file__).resolve().parent.parent)
+if _project_root not in sys.path:
+    sys.path.insert(0, _project_root)
+from soma_sdk.cells import parse_cell_file
 
 
 # Platform-specific transcript format configs.
@@ -201,17 +204,9 @@ def match_cells(modified_files, cells_dir, repo_root=""):
     for md_file in cells_dir.rglob("*.md"):
         if md_file.name == "README.md":
             continue
-        content = md_file.read_text(encoding="utf-8")
-        if not content.startswith("---"):
-            continue
-        end = content.find("---", 3)
-        if end == -1:
-            continue
         try:
-            fm = yaml.safe_load(content[3:end])
+            fm, _body = parse_cell_file(str(md_file))
         except Exception:
-            continue
-        if not fm or not isinstance(fm, dict):
             continue
 
         cell_id = fm.get("id", md_file.stem)

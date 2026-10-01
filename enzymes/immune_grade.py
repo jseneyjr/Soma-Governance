@@ -6,8 +6,8 @@ import math
 import os
 import subprocess
 
-import yaml
 from soma_resolve import resolve_workspace
+from soma_sdk.cells import parse_cell_file
 
 
 def letter_grade(pct):
@@ -37,9 +37,7 @@ def main():
     for cell_file in glob.glob(os.path.join(cells_dir, '**', '*.md'), recursive=True):
         if os.path.basename(cell_file) == 'README.md': continue
         try:
-            with open(cell_file, encoding="utf-8") as f: content = f.read()
-            if not content.startswith('---'): continue
-            fm = yaml.safe_load(content[3:content.find('---', 3)])
+            fm, _body = parse_cell_file(cell_file)
             if isinstance(fm.get('fitness'), (int, float)):
                 fm['fitness'] = {'score': float(fm['fitness'])}
             cells.append(fm | {'_name': os.path.splitext(os.path.basename(cell_file))[0]})

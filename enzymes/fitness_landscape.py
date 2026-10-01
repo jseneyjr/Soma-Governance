@@ -3,10 +3,11 @@ import os
 import sys
 import argparse
 import glob
-import yaml
+
 import csv
 from datetime import datetime
 from soma_resolve import resolve_workspace
+from soma_sdk.cells import parse_cell_file
 
 def decayed_fitness(raw_score, last_trigger_date, telomere_days=30):
     if last_trigger_date is None or raw_score is None:
@@ -33,18 +34,8 @@ def main():
         if os.path.basename(file_path) == 'README.md':
             continue
             
-        with open(file_path, 'r', encoding="utf-8") as f:
-            content = f.read()
-            
-        if not content.startswith('---'):
-            continue
-            
-        end_idx = content.find('---', 3)
-        if end_idx == -1:
-            continue
-            
         try:
-            metadata = yaml.safe_load(content[3:end_idx].strip())
+            metadata, _body = parse_cell_file(file_path)
         except Exception:
             continue
             

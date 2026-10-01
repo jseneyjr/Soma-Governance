@@ -11,10 +11,15 @@ Usage:
     python cell_enforce.py --list             # List all enforcement artifacts
 """
 import os, sys, argparse, glob, json, re
-import yaml
 from datetime import datetime
 from datetime import timezone
+from pathlib import Path
 from soma_resolve import resolve_workspace
+
+_project_root = str(Path(__file__).resolve().parent.parent)
+if _project_root not in sys.path:
+    sys.path.insert(0, _project_root)
+from soma_sdk.cells import parse_cell_file
 
 
 def load_cells(cells_dir):
@@ -22,13 +27,10 @@ def load_cells(cells_dir):
     for cell_file in glob.glob(os.path.join(cells_dir, '**', '*.md'), recursive=True):
         if os.path.basename(cell_file) == 'README.md': continue
         try:
-            with open(cell_file, encoding="utf-8") as f: content = f.read()
-            if not content.startswith('---'): continue
-            end_idx = content.find('---', 3)
-            fm = yaml.safe_load(content[3:end_idx])
+            fm, body = parse_cell_file(cell_file)
             fm['_path'] = cell_file
             fm['_name'] = os.path.splitext(os.path.basename(cell_file))[0]
-            fm['_body'] = content[end_idx + 3:].strip()
+            fm['_body'] = body.strip()
             cells.append(fm)
         except Exception: pass
     return cells

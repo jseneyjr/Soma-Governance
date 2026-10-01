@@ -21,9 +21,14 @@ import os
 import sys
 import glob
 import json
-import yaml
 import re
 from datetime import datetime, timezone
+from pathlib import Path
+
+_project_root = str(Path(__file__).resolve().parent.parent)
+if _project_root not in sys.path:
+    sys.path.insert(0, _project_root)
+from soma_sdk.cells import parse_cell_file
 
 PRUNE_SCORE_THRESHOLD = 0.4
 RECENCY_WEIGHT = 2.0  # Today's outcomes count double
@@ -44,16 +49,9 @@ def load_cells(workspace):
     cells = []
     for f in glob.glob(os.path.join(cells_dir, "**", "*.md"), recursive=True):
         try:
-            with open(f, encoding="utf-8") as fh:
-                content = fh.read()
-            if not content.startswith("---"):
-                continue
-            end = content.find("---", 3)
-            if end == -1:
-                continue
-            metadata = yaml.safe_load(content[3:end].strip()) or {}
+            metadata, body = parse_cell_file(f)
             metadata["_path"] = f
-            metadata["_body"] = content[end + 3:].strip()
+            metadata["_body"] = body
             cells.append(metadata)
         except Exception:
             continue

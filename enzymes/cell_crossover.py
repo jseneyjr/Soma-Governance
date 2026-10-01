@@ -9,6 +9,7 @@ from datetime import datetime
 from datetime import timezone
 import re
 from soma_resolve import resolve_workspace
+from soma_sdk.cells import parse_cell_file
 
 def find_cell(workspace, cell_id):
     cells_dir = os.path.join(workspace, '.soma', 'cells')
@@ -22,20 +23,11 @@ def find_cell(workspace, cell_id):
     return matches[0]
 
 def parse_cell(file_path):
-    with open(file_path, 'r', encoding="utf-8") as f:
-        content = f.read()
-    if not content.startswith('---'):
-        return None, content
-    end_idx = content.find('---', 3)
-    if end_idx == -1:
-        return None, content
-    frontmatter = content[3:end_idx].strip()
-    body = content[end_idx+3:].strip()
     try:
-        metadata = yaml.safe_load(frontmatter)
+        metadata, body = parse_cell_file(file_path)
         return metadata, body
     except Exception:
-        return None, content
+        return None, ''
 
 def get_type_plural(cell_type):
     cell_type = cell_type.lower()

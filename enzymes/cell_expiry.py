@@ -20,6 +20,7 @@ from datetime import datetime
 
 import yaml
 from soma_resolve import resolve_workspace
+from soma_sdk.cells import parse_cell_file
 
 
 def audit_expiry(workspace, session_count=None):
@@ -46,19 +47,7 @@ def audit_expiry(workspace, session_count=None):
             continue
 
         try:
-            with open(md_file, 'r', encoding='utf-8') as f:
-                content = f.read()
-        except Exception:
-            continue
-
-        if not content.startswith('---'):
-            continue
-        end = content.find('---', 3)
-        if end == -1:
-            continue
-
-        try:
-            metadata = yaml.safe_load(content[3:end]) or {}
+            metadata, _body = parse_cell_file(md_file)
         except Exception:
             continue
 
@@ -158,19 +147,7 @@ def prune_expired(workspace, audit_results):
 
         filepath = result['filepath']
         try:
-            with open(filepath, 'r', encoding='utf-8') as f:
-                content = f.read()
-        except Exception:
-            continue
-
-        if not content.startswith('---'):
-            continue
-        end = content.find('---', 3)
-        if end == -1:
-            continue
-
-        try:
-            metadata = yaml.safe_load(content[3:end]) or {}
+            metadata, body = parse_cell_file(filepath)
         except Exception:
             continue
 
@@ -178,8 +155,7 @@ def prune_expired(workspace, audit_results):
         metadata['expired_reason'] = result.get('reason', 'unknown')
 
         new_fm = yaml.dump(metadata, default_flow_style=False, sort_keys=False)
-        body = content[end + 3:]
-        new_content = '---\n' + new_fm + '---' + body
+        new_content = '---\n' + new_fm + '---\n' + body
 
         with open(filepath, 'w', encoding='utf-8') as f:
             f.write(new_content)

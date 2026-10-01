@@ -11,7 +11,13 @@ import json
 import yaml
 from datetime import datetime
 from datetime import timezone
+from pathlib import Path
 from soma_resolve import resolve_workspace
+
+_project_root = str(Path(__file__).resolve().parent.parent)
+if _project_root not in sys.path:
+    sys.path.insert(0, _project_root)
+from soma_sdk.cells import parse_cell_file
 
 # The 11 built-in core rules that must not be demoted
 PROTECTED_RULES = {
@@ -57,28 +63,9 @@ def main():
     actual_rule_name = os.path.basename(rule_path)[:-3]
 
     try:
-        with open(rule_path, 'r', encoding="utf-8") as f:
-            content = f.read()
+        metadata, body_str = parse_cell_file(rule_path)
     except Exception as e:
-        print(f"Error reading rule {actual_rule_name}: {e}")
-        sys.exit(1)
-        
-    if not content.startswith('---'):
-        print(f"Error: Rule {actual_rule_name} does not have YAML frontmatter.")
-        sys.exit(1)
-        
-    end_idx = content.find('---', 3)
-    if end_idx == -1:
-        print(f"Error: Rule {actual_rule_name} has malformed YAML frontmatter.")
-        sys.exit(1)
-        
-    frontmatter_str = content[3:end_idx].strip()
-    body_str = content[end_idx+3:]
-    
-    try:
-        metadata = yaml.safe_load(frontmatter_str) or {}
-    except Exception as e:
-        print(f"Error parsing YAML for {actual_rule_name}: {e}")
+        print(f"Error reading/parsing rule {actual_rule_name}: {e}")
         sys.exit(1)
 
     # Modify the frontmatter for demotion

@@ -12,6 +12,7 @@ import shutil
 from datetime import datetime
 from datetime import timezone
 from soma_resolve import resolve_workspace
+from soma_sdk.cells import parse_cell_file
 
 METAMORPHOSIS_PATHS = {
     "vacuole": [
@@ -46,28 +47,9 @@ def main():
     cell_filename = os.path.basename(cell_path)
     
     try:
-        with open(cell_path, 'r', encoding="utf-8") as f:
-            content = f.read()
+        metadata, body_str = parse_cell_file(cell_path)
     except Exception as e:
-        print(f"Error reading cell {cell_filename}: {e}")
-        sys.exit(1)
-        
-    if not content.startswith('---'):
-        print(f"Error: Cell {cell_filename} does not have YAML frontmatter.")
-        sys.exit(1)
-        
-    end_idx = content.find('---', 3)
-    if end_idx == -1:
-        print(f"Error: Cell {cell_filename} has malformed YAML frontmatter.")
-        sys.exit(1)
-        
-    frontmatter_str = content[3:end_idx].strip()
-    body_str = content[end_idx+3:]
-    
-    try:
-        metadata = yaml.safe_load(frontmatter_str) or {}
-    except Exception as e:
-        print(f"Error parsing YAML for {cell_filename}: {e}")
+        print(f"Error reading/parsing cell {cell_filename}: {e}")
         sys.exit(1)
         
     current_type = metadata.get('type')
