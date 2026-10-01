@@ -168,7 +168,7 @@ Soma models governance as a layered system of rules, skills, and automation. Eve
 │     Layer 2: Adversarial information-partitioned agents         │
 ├─────────────────────────────────────────────────────────────────┤
 │  🌲 REVIEW INTENSITY (Global) → Environmental Pressure Levels  │
-│     Breeze → Gale → Trident → Maelstrom → Tempest              │
+│     Breeze → Gale → Trident → Maelstrom → Tempest → Supercell  │
 │  🔍 ANALYTICAL PRONGS         → Multi-Perspective Analysis     │
 │     Spores → Mycelium → Roots → Thorns → Bedrock → Mulch       │
 │  📋 ADAPTIVE RULES (.soma/cells/) → Per-Repo Governance        │
@@ -257,6 +257,7 @@ When code changes, the system mounts a review response. The intensity scales wit
 | 🔱 Trident | 5-8 | ~8-12k | Features, refactors |
 | 🌊 Maelstrom | 7-12 | ~15-20k | Architecture, security |
 | ⛈️ Tempest | 8-12 | ~30-50k | Catastrophic risk |
+| 🌪️ Supercell | 8×N | iterative | Pre-release clean ship — 8-prong review-fix loop until zero findings |
 
 ### Analytical Prongs
 
