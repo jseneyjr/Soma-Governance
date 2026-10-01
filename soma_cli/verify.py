@@ -67,7 +67,7 @@ def verdict_to_exit_code(verdict) -> int:
 def resolve_target_files(args: argparse.Namespace) -> list[str]:
     """Resolve target files from --files flag or git staged/changed files."""
     if args.files:
-        repo_root = os.path.abspath(getattr(args, 'repo_root', None) or os.getcwd())
+        repo_root = os.path.realpath(getattr(args, 'repo_root', None) or os.getcwd())
         safe_files = []
         for f in args.files:
             resolved = os.path.realpath(os.path.join(repo_root, f))

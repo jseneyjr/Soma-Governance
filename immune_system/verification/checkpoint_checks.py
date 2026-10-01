@@ -61,7 +61,20 @@ def find_python_files(root: Path, subdir: str) -> list[Path]:
 def check_test_coverage(root: Path) -> list[dict]:
     """Check that every src/*.py has a corresponding tests/test_*.py."""
     issues: list[dict] = []
-    src_files = find_python_files(root, "src")
+    # Auto-detect source directories (support src/, lib/, and package-named dirs)
+    src_dirs: list[str] = []
+    for candidate in sorted(root.iterdir()):
+        if not candidate.is_dir():
+            continue
+        name = candidate.name
+        if name.startswith(".") or name in SKIP_DIRS or name == "tests":
+            continue
+        # Include if it contains at least one .py file at any depth
+        if any(candidate.rglob("*.py")):
+            src_dirs.append(name)
+    src_files: list[Path] = []
+    for sd in src_dirs:
+        src_files.extend(find_python_files(root, sd))
     test_dir = root / "tests"
     for src_file in src_files:
         stem = src_file.stem
@@ -76,10 +89,16 @@ def check_test_coverage(root: Path) -> list[dict]:
 
 
 def check_hardcoded_paths(root: Path) -> list[dict]:
-    """Scan all .py files for hardcoded absolute paths."""
+    """Scan source .py files for hardcoded absolute paths."""
     issues: list[dict] = []
-    for subdir in ("src", "tests"):
-        for py_file in find_python_files(root, subdir):
+    # Auto-detect source directories (same logic as check_test_coverage)
+    for candidate in sorted(root.iterdir()):
+        if not candidate.is_dir():
+            continue
+        name = candidate.name
+        if name.startswith(".") or name in SKIP_DIRS or name == "tests":
+            continue
+        for py_file in find_python_files(root, name):
             try:
                 content = py_file.read_text(encoding="utf-8", errors="replace")
             except OSError:
@@ -283,8 +302,7 @@ def check_arbitration_evidence(root: Path) -> list[dict]:
 
     # Sort numerically by cycle number to avoid lex ordering (10 < 9)
     def _cycle_num(path: str) -> int:
-        import re as _re
-        m = _re.search(r'cycle_(\d+)', path)
+        m = re.search(r'cycle_(\d+)', path)
         return int(m.group(1)) if m else 0
 
     arb_files.sort(key=_cycle_num)
@@ -299,7 +317,7 @@ def check_arbitration_evidence(root: Path) -> list[dict]:
         })
         return issues
 
-    verdict = record.get("verdict", "unknown")
+    verdict = record.get("verdict", "unknown").lower()
     cycle = record.get("cycle", "?")
     divergences = record.get("divergence_count", 0)
 
