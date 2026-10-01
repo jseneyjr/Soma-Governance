@@ -21,8 +21,8 @@ Lightweight A/B experiments on the governance system. Each experiment changes on
 | E26 | Repo-local cells that achieve fitness > 0.7 across ≥3 unrelated repos identify universal governance patterns suitable for promotion to global rules | Track cell fitness across repos; identify convergent cells; promote top candidates to conditional global rules | Promoted-cell defect catch rate in new repos vs unpromoted baseline; false promotion rate (promoted cells that fail in new contexts) | No cross-repo cell tracking exists | Medium-High | 🔬 TESTING (Phase 14 Implemented) |
 | E27 | Test-Time Compute (TTC) Oracles predicting tool failure before execution will drop waste rate to <1.0% | Add TTC Oracle evaluation layer before tool dispatch | Waste rate | ~1.1% | Low | ⚠️ UNVALIDATED — TTC Oracle shipped (Phase 23-25) but < 1.0% waste target lacks independent measurement |
 | E28 | Exposing Soma via MCP standardizes agent integrations without custom plugins | Implement `soma_mcp` server | Number of supported agents | Gemini only | Low | ✅ VALIDATED (Phase 22) |
-| E29 | Automated claim gating via `verify_readme_claims.py` catches documentation overclaims before they ship | Add `enzymes/verify_readme_claims.py` to pre-release pipeline | Overclaims detected per release; false-positive rate | Manual review only | Low | 🔬 PROPOSED (Foundation) |
-| E30 | Unifying scoring on Wilson interval confidence bounds (replacing Laplace smoothing) improves low-sample cell ranking accuracy | Migrate `bayesian_score.py` → `soma_sdk.scoring` with Wilson intervals | Ranking correlation with human-assessed cell value at N < 10 triggers | Laplace-smoothed posterior (current) | Low | 🔬 PROPOSED (Foundation) |
+| E29 | Automated claim gating via `verify_readme_claims.py` catches documentation overclaims before they ship | Add `enzymes/verify_readme_claims.py` to pre-release pipeline | Overclaims detected per release; false-positive rate | Manual review only | Low | ✅ SHIPPED (v0.73/v0.74) |
+| E30 | Unifying scoring on Wilson interval confidence bounds (replacing Laplace smoothing) improves low-sample cell ranking accuracy | Migrate `bayesian_score.py` → `soma_sdk.scoring` with Wilson intervals | Ranking correlation with human-assessed cell value at N < 10 triggers | Laplace-smoothed posterior (current) | Low | ✅ SHIPPED (v0.73/v0.74) |
 
 ## Experiment Backlog
 
@@ -41,10 +41,10 @@ Ideas to test. Pick the highest-signal, lowest-risk experiment next.
 
 | ID | Hypothesis | Result | Graduated? |
 |:---|:-----------|:-------|:-----------|
-| E1 | Higher concurrency reduces wall-clock time without waste regression | Fan-out raised to 4 readers / 3 writers. Waste held at [1.1%](METRICS.md#live-ab-validation) across 1,325 steps; wall-clock time improved ~2x on parallel lanes. | ✅ Yes — graduated to `subagent-delegation.md §2` |
-| E2 | Pre-seeding domain context reduces research steps | Context Pre-Seeding (~200 tokens/dispatch) eliminated 2–3 exploratory steps per subagent (~8k–12k tokens saved). See [METRICS.md](METRICS.md#conditional-loading-roi). | ✅ Yes — graduated to `subagent-delegation.md §2` (Context Pre-Seeding Protocol) |
-| E3 | Auto-activating session-preflight on coding projects catches env issues before step 10 | Auto-preflight in `immune_init.sh` prevented 40–120 steps of venv/env drift per session. Zero false triggers across 17 sessions. See [METRICS.md](METRICS.md#conditional-loading-roi). | ✅ Yes — graduated to `immune_init.sh` hook |
-| E6 | Dispatching domain-researcher at session start for game projects eliminates mid-session wiki lookups | Domain detection in `immune_init.sh` reduced wiki/search steps by ~90% after step 50. Desktop automation guessing dropped from [255 steps](METRICS.md#top-waste-sources-ranked) to near-zero in governed sessions. | ✅ Yes — graduated to `immune_init.sh` domain hints |
+| E1 | Higher concurrency reduces wall-clock time without waste regression | Fan-out raised to 4 readers / 3 writers. Waste held at [1.1%](../project/METRICS.md#live-ab-validation) across 1,325 steps; wall-clock time improved ~2x on parallel lanes. | ✅ Yes — graduated to `subagent-delegation.md §2` |
+| E2 | Pre-seeding domain context reduces research steps | Context Pre-Seeding (~200 tokens/dispatch) eliminated 2–3 exploratory steps per subagent (~8k–12k tokens saved). See [METRICS.md](../project/METRICS.md#conditional-loading-roi). | ✅ Yes — graduated to `subagent-delegation.md §2` (Context Pre-Seeding Protocol) |
+| E3 | Auto-activating session-preflight on coding projects catches env issues before step 10 | Auto-preflight in `immune_init.sh` prevented 40–120 steps of venv/env drift per session. Zero false triggers across 17 sessions. See [METRICS.md](../project/METRICS.md#conditional-loading-roi). | ✅ Yes — graduated to `immune_init.sh` hook |
+| E6 | Dispatching domain-researcher at session start for game projects eliminates mid-session wiki lookups | Domain detection in `immune_init.sh` reduced wiki/search steps by ~90% after step 50. Desktop automation guessing dropped from [255 steps](../project/METRICS.md#top-waste-sources-ranked) to near-zero in governed sessions. | ✅ Yes — graduated to `immune_init.sh` domain hints |
 | E11 | Delegating multi-prong orchestration to a dedicated review_orchestrator subagent will reduce parent context growth | Nesting via `enable_subagent_tools` confirmed. | ✅ VALIDATED (graduated from TESTING) |
 
 ---
@@ -73,7 +73,7 @@ Revert trigger: [when to abort]
 Make the smallest possible change. One variable only — never bundle experiments.
 
 ### 4. Measure
-Use `immune_sweep.sh` to collect metrics. Compare against baseline. Reference [METRICS.md](METRICS.md) for current baselines.
+Use `immune_sweep.sh` to collect metrics. Compare against baseline. Reference [METRICS.md](../project/METRICS.md) for current baselines.
 
 ### 5. Decide
 | Outcome | Action |

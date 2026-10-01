@@ -92,7 +92,7 @@ These 3 bash scripts manage the installation and clean removal of Soma across de
 
 ## Utility Scripts
 
-These 53 scripts encompass the master pipeline orchestrator, evolutionary computation enzymes, runtime verification engines, telemetry scanners, and shared infrastructure libraries.
+These 53 scripts encompass the master pipeline orchestrator, automation enzymes, runtime verification engines, telemetry scanners, and shared infrastructure libraries.
 
 ### 1. Master Pipeline Orchestrator (1 script)
 
@@ -105,7 +105,7 @@ These 53 scripts encompass the master pipeline orchestrator, evolutionary comput
 | Script | Location | Purpose |
 |:-------|:---------|:--------|
 | **`cell_selection.sh`** | `enzymes/cell_selection.sh` | Shell entrypoint for evaluating local cell fitness, invoking `cell_fitness.py` and downstream adaptation scripts. |
-| **`cell_fitness.py`** | `enzymes/cell_fitness.py` | Computes cell fitness scores using a Beta-Binomial posterior with Jeffrey's prior from empirical TP/FP/trigger counts. |
+| **`cell_fitness.py`** | `enzymes/cell_fitness.py` | Computes cell fitness scores using Wilson-bounded fitness scoring with credible intervals from empirical TP/FP/trigger counts. |
 | **`cell_adapt.py`** | `enzymes/cell_adapt.py` | Modifies underperforming cells (score 0.3–0.7) by refining hypotheses, predictions, and target paths to improve SNR. |
 | **`cell_promote.py`** | `enzymes/cell_promote.py` | Promotes high-performing cells (score > 0.7) into global forest-floor rules with decay weighting to prevent Beta-locking. |
 | **`cell_demote.py`** | `enzymes/cell_demote.py` | Demotes global rules back to local cells when they cause false positives in new repository contexts. |
