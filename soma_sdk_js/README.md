@@ -51,7 +51,7 @@ const entropy = await gov.entropy();
 const adversarial = await gov.adversarial('wall-gae-truncation');
 ```
 
-> **Note on v0.25+**: This SDK provides programmatic access to the governance cells, analysis, and manual signaling. For full end-to-end biological execution (including Interoception, Test-Time Compute (TTC), Coherence checking, and Sleep cycles), use the Python Master Orchestrator (`soma_run.py`) provided in the core repository.
+> **Note on v0.25+**: This SDK provides programmatic access to the governance cells, analysis, and manual signaling. For full end-to-end biological execution (including Interoception, Test-Time Compute (TTC), Coherence checking, and Sleep cycles), use the MCP server (`soma_mcp/`) provided in the core repository.
 
 ## API
 
