@@ -3,11 +3,11 @@ id: contract-sdk-feature-parity
 domain: correctness
 type: plasmodesmata
 enforcement: advisory
-hypothesis: The Python SDK (soma_sdk/) and JavaScript SDK (soma_sdk_js/) must
-  expose equivalent public API methods — when a public method is added to either
-  SDK, the corresponding method must be added to the other before release
-prediction: New SDK features added to one language without the other create
-  invisible feature gaps that are only discovered during cross-language audits
+hypothesis: The Python SDK (soma_sdk/) and JavaScript SDK (soma_sdk_js/) must expose
+  equivalent public API methods — when a public method is added to either SDK, the
+  corresponding method must be added to the other before release
+prediction: New SDK features added to one language without the other create invisible
+  feature gaps that are only discovered during cross-language audits
 falsification: SDKs are intentionally divergent by design → reclassify
 target_paths:
 - soma_sdk/governance.py
@@ -25,14 +25,13 @@ tags:
 - parity
 - cross-language
 fitness:
-  score: null
+  score: 1.0
   impact_weight: 1.0
-  triggers: 1
-  true_positives: 1
+  triggers: 3
+  true_positives: 3
   false_positives: 0
-  last_trigger_date: '2026-10-01'
+  last_trigger_date: '2026-10-01T04:26:19Z'
 ---
-
 The Python and JavaScript SDKs are parallel interfaces to the same governance
 system. Feature drift between them means users on different platforms get
 different capabilities without documentation.

@@ -23,12 +23,12 @@ tags:
 - windows
 - subprocess
 fitness:
-  score: null
+  score: 0.6
   impact_weight: 1.0
-  triggers: 0
-  true_positives: 0
+  triggers: 5
+  true_positives: 3
   false_positives: 0
-  last_trigger_date: null
+  last_trigger_date: '2026-10-01T04:26:19Z'
 ---
 Supercell C6 incident: `jit_engine.py` used
 `subprocess.check_output(cmd, shell=True)` for git diff commands. On Windows,

@@ -28,12 +28,12 @@ tags:
 - anti-pattern
 - high-value
 fitness:
-  score: null
+  score: 0.5
   impact_weight: 1.0
   triggers: 4
-  true_positives: 0
-  false_positives: 4
-  last_trigger_date: '2026-09-30T20:09:18Z'
+  true_positives: 2
+  false_positives: 1
+  last_trigger_date: '2026-10-01T04:26:19Z'
 ---
 After the Phase 22 Soma Rebirth rename, multiple stale references survived:
 - `scripts_dir = "$repo_dir/scripts"` in common.sh (CRITICAL — broke all hooks)

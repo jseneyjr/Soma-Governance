@@ -3,15 +3,15 @@ id: trap-orphaned-module
 domain: correctness
 type: vacuole
 enforcement: advisory
-hypothesis: A module with passing unit tests but zero callers in production code
-  indicates an integration gap where functionality was built but never wired
-prediction: Will catch modules that have test_*.py coverage but no imports from
-  soma_cli/, soma_mcp/, or enzymes/
+hypothesis: A module with passing unit tests but zero callers in production code indicates
+  an integration gap where functionality was built but never wired
+prediction: Will catch modules that have test_*.py coverage but no imports from soma_cli/,
+  soma_mcp/, or enzymes/
 falsification: 0 findings in 20 sessions → prune
 target_paths:
-- 'immune_system/**/*.py'
-- 'soma_cli/*.py'
-- 'soma_mcp/*.py'
+- immune_system/**/*.py
+- soma_cli/*.py
+- soma_mcp/*.py
 triggers:
 - module_creation
 - test_creation
@@ -26,12 +26,12 @@ tags:
 - dead-module
 - coverage-gap
 fitness:
-  score: null
+  score: 0.3333
   impact_weight: 1.0
-  triggers: 0
-  true_positives: 0
-  false_positives: 0
-  last_trigger_date: null
+  triggers: 3
+  true_positives: 1
+  false_positives: 1
+  last_trigger_date: '2026-10-01T04:26:19Z'
 ---
 Supercell C4 incident: `quality_gate.py` had 30 passing unit tests and proper
 AST-based assertion density checking, but `checkpoint.py` reimplemented the same

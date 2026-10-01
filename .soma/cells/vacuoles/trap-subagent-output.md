@@ -7,8 +7,8 @@ promotion_threshold: 0.85
 demotion_threshold: 0.3
 hypothesis: Subagent-generated content committed without orchestrator verification
   contains hardcoded paths, platform-specific assumptions, or hallucinated data
-prediction: Will flag subagent deliverables that introduce machine-specific or
-  ungrounded content into the repository
+prediction: Will flag subagent deliverables that introduce machine-specific or ungrounded
+  content into the repository
 falsification: 0 findings in 10 sessions → prune
 target_paths:
 - genome/*.md
@@ -28,12 +28,12 @@ tags:
 - hallucination
 - verification
 fitness:
-  score: null
+  score: 0.5
   impact_weight: 0.9
-  triggers: 0
-  true_positives: 0
-  false_positives: 0
-  last_trigger_date: null
+  triggers: 6
+  true_positives: 3
+  false_positives: 1
+  last_trigger_date: '2026-10-01T04:26:19Z'
 ---
 Subagent-generated content (documentation, rules, configs) must be verified
 by the orchestrator before committing. Known failure modes:

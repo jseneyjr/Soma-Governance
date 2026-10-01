@@ -6,7 +6,7 @@ enforcement: advisory
 hypothesis: Version numbers across VERSION, pyproject.toml, soma_sdk/__init__.py,
   and soma_sdk_js/package.json must stay in sync
 prediction: Will catch version drift when bumping versions in one file but not others
-falsification: "0 version mismatches in 10 sessions \u2192 prune"
+falsification: 0 version mismatches in 10 sessions → prune
 target_paths:
 - VERSION
 - pyproject.toml
@@ -22,14 +22,13 @@ tags:
 - consistency
 - release
 fitness:
-  score: null
+  score: 0.7273
   impact_weight: 1.0
-  triggers: 0
-  true_positives: 0
-  false_positives: 0
-  last_trigger_date: null
+  triggers: 11
+  true_positives: 8
+  false_positives: 2
+  last_trigger_date: '2026-10-01T04:26:19Z'
 ---
-
 Version consistency is enforced across 4 sources:
 - `VERSION` (single source of truth)
 - `pyproject.toml` (Python package)

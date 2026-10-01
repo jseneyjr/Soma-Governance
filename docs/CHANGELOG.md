@@ -3,6 +3,21 @@
 All notable changes to Soma are documented here.
 This project uses [Semantic Versioning](https://semver.org/).
 
+## [0.62.0] — 2026-10-01 — "Evidence Pipeline"
+
+### Added
+- **`soma sync` command**: Reconciles `.soma/evidence/fitness.jsonl` and `outcomes.jsonl` with cell frontmatter. Supports `--dry-run` and `--json` flags.
+
+### Fixed
+- **Fitness pipeline disconnect**: `fitness_updater.py` wrote trigger events to JSONL but never updated cell frontmatter, causing `immune_grade.py` and `cell_fitness.py` to report zero fitness despite evidence existing.
+- **`soma checkpoint`** now auto-syncs evidence → frontmatter before running quality checks, so the report card is always fresh.
+- **`fitness_updater.py`** now auto-syncs frontmatter after writing JSONL, closing the pipeline gap.
+
+### Changed
+- Bootstrapped fitness evidence from two Supercell session transcripts (170+ trigger events, 42 cells scored).
+
+---
+
 ## [0.61.0] — 2026-10-01 — "Python 3.9 Compatibility"
 
 ### Fixed

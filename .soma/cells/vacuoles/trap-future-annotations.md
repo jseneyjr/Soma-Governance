@@ -5,10 +5,10 @@ type: vacuole
 enforcement: advisory
 promotion_threshold: 0.85
 demotion_threshold: 0.3
-hypothesis: Python files using PEP 604 union syntax (X | None) without
-  from __future__ import annotations crash on Python 3.9
-prediction: Will flag new or modified .py files using pipe unions without the
-  future import
+hypothesis: Python files using PEP 604 union syntax (X | None) without from __future__
+  import annotations crash on Python 3.9
+prediction: Will flag new or modified .py files using pipe unions without the future
+  import
 falsification: 0 findings in 10 sessions → prune
 target_paths:
 - '**/*.py'
@@ -24,12 +24,12 @@ tags:
 - python39
 - runtime-crash
 fitness:
-  score: null
+  score: 0.6
   impact_weight: 0.8
-  triggers: 0
-  true_positives: 0
+  triggers: 5
+  true_positives: 3
   false_positives: 0
-  last_trigger_date: null
+  last_trigger_date: '2026-10-01T04:26:19Z'
 ---
 Any Python file using `X | None`, `list[str] | None`, or similar PEP 604
 union type syntax MUST include `from __future__ import annotations` at the

@@ -16,9 +16,14 @@ tags:
 - mcp
 - persona
 - api-surface
-created: "2026-09-28"
+created: '2026-09-28'
+fitness:
+  triggers: 3
+  true_positives: 2
+  false_positives: 0
+  score: 0.6667
+  last_trigger_date: '2026-10-01T04:26:19Z'
 ---
-
 # Persona: MCP Specialist
 
 Description: A specialist persona for maintaining and architecting the Soma MCP server and its tools, ensuring high performance and security.

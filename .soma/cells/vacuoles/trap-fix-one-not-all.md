@@ -22,12 +22,12 @@ minimum_mode: standard
 expiry_sessions: 30
 expiry_days: 90
 fitness:
-  score: null
+  score: 0.5714
   impact_weight: 1.0
-  triggers: 4
-  true_positives: 0
-  false_positives: 4
-  last_trigger_date: '2026-09-30T20:09:18Z'
+  triggers: 7
+  true_positives: 4
+  false_positives: 2
+  last_trigger_date: '2026-10-01T04:26:19Z'
 ---
 # Refactoring Sweep: Fix One → Fix All
 

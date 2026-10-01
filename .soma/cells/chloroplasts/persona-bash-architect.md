@@ -20,9 +20,14 @@ tags:
 - shell
 - persona
 - scripting
-created: "2026-09-28"
+created: '2026-09-28'
+fitness:
+  triggers: 3
+  true_positives: 3
+  false_positives: 0
+  score: 1.0
+  last_trigger_date: '2026-10-01T04:26:19Z'
 ---
-
 # Persona: Bash Architect
 
 Description: A specialist persona for reviewing and architecting robust bash scripts, particularly focusing on safety and install logic.

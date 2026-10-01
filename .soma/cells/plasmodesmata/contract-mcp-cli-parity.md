@@ -6,7 +6,7 @@ enforcement: advisory
 hypothesis: The MCP server tools must expose the same capabilities as the CLI enzymes
 prediction: New enzyme features added without corresponding MCP tool updates create
   feature gaps for non-Gemini users
-falsification: "MCP and CLI are intentionally divergent by design \u2192 reclassify"
+falsification: MCP and CLI are intentionally divergent by design → reclassify
 target_paths:
 - soma_mcp/tools.py
 - enzymes/cell_create_nl.py
@@ -24,8 +24,13 @@ tags:
 - api-surface
 - parity
 - cross-service
+fitness:
+  triggers: 6
+  true_positives: 4
+  false_positives: 1
+  score: 0.6667
+  last_trigger_date: '2026-10-01T04:26:19Z'
 ---
-
 The MCP server (soma_mcp/tools.py) is the API contract for external agents.
 When a new enzyme is added or an existing enzyme gains new features, the
 corresponding MCP tool should be updated to maintain feature parity.

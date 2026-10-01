@@ -17,9 +17,14 @@ tags:
 - pytest
 - exit-code
 - testing
-created: "2026-09-28"
+created: '2026-09-28'
+fitness:
+  triggers: 3
+  true_positives: 2
+  false_positives: 0
+  score: 0.6667
+  last_trigger_date: '2026-10-01T04:26:19Z'
 ---
-
 # Trap: Pytest Exit Code 5
 
 Target: `enzymes/outcome_engine.py`

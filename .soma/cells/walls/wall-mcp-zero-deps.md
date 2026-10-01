@@ -20,12 +20,12 @@ tags:
 - portability
 - wall
 fitness:
-  score: null
+  score: 0.0
   impact_weight: 1.0
-  triggers: 4
+  triggers: 1
   true_positives: 0
-  false_positives: 4
-  last_trigger_date: '2026-09-30T20:09:18Z'
+  false_positives: 0
+  last_trigger_date: '2026-10-01T04:26:19Z'
 ---
 The MCP stdio server is the primary entry point for Claude Code, Cursor, and other
 non-Gemini agents. These users run `python -m soma_mcp` without installing the full

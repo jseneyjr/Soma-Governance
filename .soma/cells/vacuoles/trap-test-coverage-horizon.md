@@ -9,7 +9,7 @@ prediction: Will fire when a test file checks consistency between 2 sources but 
   3rd related source exists untested
 falsification: 0 findings in 20 sessions → prune
 target_paths:
-- 'tests/test_*.py'
+- tests/test_*.py
 triggers:
 - test_creation
 - documentation_edit
@@ -24,12 +24,12 @@ tags:
 - coverage
 - flashlight-effect
 fitness:
-  score: null
+  score: 0.3333
   impact_weight: 1.0
-  triggers: 0
-  true_positives: 0
-  false_positives: 0
-  last_trigger_date: null
+  triggers: 3
+  true_positives: 1
+  false_positives: 1
+  last_trigger_date: '2026-10-01T04:26:19Z'
 ---
 Supercell doc-drift incident: `test_review_intensity.py` verified README ↔ SKILL.md
 consistency for intensity levels but did not check CHANGELOG or SCRIPTS.md. The test

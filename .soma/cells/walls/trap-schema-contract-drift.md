@@ -27,12 +27,12 @@ tags:
 - schema
 - silent-failure
 fitness:
-  score: null
+  score: 0.7692
   impact_weight: 1.0
-  triggers: 0
-  true_positives: 0
-  false_positives: 0
-  last_trigger_date: null
+  triggers: 13
+  true_positives: 10
+  false_positives: 2
+  last_trigger_date: '2026-10-01T04:26:19Z'
 ---
 When modifying an enzyme that writes to a JSONL file (fitness.jsonl,
 sessions_processed.jsonl, outcomes.jsonl), grep for ALL consumers of that
