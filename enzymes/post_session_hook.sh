@@ -31,7 +31,7 @@ python3 "${SCRIPT_DIR}/fitness_updater.py" "$TRANSCRIPT"
 python3 -c "
 import sys, json, os
 sys.path.insert(0, '${SCRIPT_DIR}')
-from evidence_collector import check_compliance, aggregate_evidence
+from evidence_collector import check_compliance, build_observation, aggregate_evidence
 from pathlib import Path
 
 transcript = Path('$TRANSCRIPT')
@@ -39,15 +39,13 @@ if not transcript.exists():
     sys.exit(0)
 
 # Check compliance for known governance rules
-rules = ['read-before-write', 'diagnose-before-repair']
+rules = ['read-before-write', 'test-before-implementation', 'no-hardcoded-paths']
 observations = []
 for rule_id in rules:
-    try:
-        obs = check_compliance(transcript, rule_id)
-        if obs.get('total', 0) > 0:
-            observations.append(obs)
-    except Exception:
-        pass
+    result = check_compliance(transcript, rule_id)
+    obs = build_observation(result, transcript, rule_id)
+    if obs is not None:
+        observations.append(obs)
 
 if observations:
     summary = aggregate_evidence(observations)
@@ -56,4 +54,5 @@ if observations:
     outfile = os.path.join(evidence_dir, 'compliance.jsonl')
     with open(outfile, 'a') as f:
         f.write(json.dumps(summary) + '\n')
-" 2>/dev/null || true
+"
+

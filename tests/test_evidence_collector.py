@@ -634,3 +634,172 @@ class TestMultiReplaceAndEdgeCases:
         # After quote stripping, paths should match
         assert results["compliant_count"] >= 1
 
+
+# ── Contract: build_observation bridge ──────────────────────────────
+
+
+class TestBuildObservation:
+    """build_observation() must bridge check_compliance output into
+    the aggregate_evidence input schema."""
+
+    def test_build_observation_bridges_schema(self, tmp_path):
+        """build_observation() transforms check_compliance output into
+        aggregate_evidence format."""
+        from enzymes.evidence_collector import build_observation
+
+        transcript = _write_transcript(tmp_path, [
+            {"step_index": 0, "source": "MODEL", "type": "PLANNER_RESPONSE",
+             "tool_calls": [
+                 {"name": "view_file",
+                  "args": {"AbsolutePath": "/repo/src/main.py"}},
+             ]},
+            {"step_index": 1, "source": "MODEL", "type": "PLANNER_RESPONSE",
+             "tool_calls": [
+                 {"name": "replace_file_content",
+                  "args": {"TargetFile": "/repo/src/main.py",
+                           "TargetContent": "x", "ReplacementContent": "y"}},
+             ]},
+        ])
+        compliance = {"compliant_count": 1, "non_compliant_count": 0}
+        result = build_observation(compliance, transcript, "read-before-write")
+        assert result is not None
+        assert result["rule_id"] == "read-before-write"
+        assert result["compliant"] is True
+        assert "session_steps" in result
+        assert "session_fpsr" in result
+
+    def test_build_observation_compliant_when_zero_violations(self, tmp_path):
+        """compliant=True when non_compliant_count == 0 and compliant_count > 0."""
+        from enzymes.evidence_collector import build_observation
+
+        transcript = _write_transcript(tmp_path, [
+            {"step_index": 0},
+            {"step_index": 1},
+        ])
+        compliance = {"compliant_count": 5, "non_compliant_count": 0}
+        result = build_observation(compliance, transcript, "r1")
+        assert result is not None
+        assert result["compliant"] is True
+
+    def test_build_observation_non_compliant_when_violations(self, tmp_path):
+        """compliant=False when non_compliant_count > 0."""
+        from enzymes.evidence_collector import build_observation
+
+        transcript = _write_transcript(tmp_path, [
+            {"step_index": 0},
+        ])
+        compliance = {"compliant_count": 3, "non_compliant_count": 2}
+        result = build_observation(compliance, transcript, "r1")
+        assert result is not None
+        assert result["compliant"] is False
+
+    def test_build_observation_extracts_step_count(self, tmp_path):
+        """session_steps should equal the number of steps in the transcript."""
+        from enzymes.evidence_collector import build_observation
+
+        transcript = _write_transcript(tmp_path, [
+            {"step_index": i} for i in range(7)
+        ])
+        compliance = {"compliant_count": 1, "non_compliant_count": 0}
+        result = build_observation(compliance, transcript, "r1")
+        assert result is not None
+        assert result["session_steps"] == 7
+
+    def test_build_observation_skips_inactive_rules(self, tmp_path):
+        """Returns None when both counts are 0 (rule had no activity)."""
+        from enzymes.evidence_collector import build_observation
+
+        transcript = _write_transcript(tmp_path, [{"step_index": 0}])
+        compliance = {"compliant_count": 0, "non_compliant_count": 0}
+        result = build_observation(compliance, transcript, "r1")
+        assert result is None
+
+
+# ── Contract: test-before-implementation detector ───────────────────
+
+
+class TestTBIDetector:
+    """The test-before-implementation detector checks that test files
+    are written before their corresponding implementation files."""
+
+    def test_tbi_detector_compliant_when_test_before_impl(self, tmp_path):
+        """Compliant when test file write precedes implementation file write."""
+        from enzymes.evidence_collector import check_compliance
+
+        steps = [
+            {"step_index": 0, "source": "MODEL", "type": "PLANNER_RESPONSE",
+             "tool_calls": [
+                 {"name": "write_to_file",
+                  "args": {"TargetFile": "/repo/tests/test_widget.py",
+                           "CodeContent": "def test_foo(): ..."}},
+             ]},
+            {"step_index": 1, "source": "MODEL", "type": "PLANNER_RESPONSE",
+             "tool_calls": [
+                 {"name": "write_to_file",
+                  "args": {"TargetFile": "/repo/src/widget.py",
+                           "CodeContent": "class Widget: ..."}},
+             ]},
+        ]
+        transcript = _write_transcript(tmp_path, steps)
+        results = check_compliance(transcript, "test-before-implementation")
+        assert results["compliant_count"] >= 1
+        assert results["non_compliant_count"] == 0
+
+    def test_tbi_detector_non_compliant_when_impl_before_test(self, tmp_path):
+        """Non-compliant when implementation write has no preceding test write."""
+        from enzymes.evidence_collector import check_compliance
+
+        steps = [
+            {"step_index": 0, "source": "MODEL", "type": "PLANNER_RESPONSE",
+             "tool_calls": [
+                 {"name": "write_to_file",
+                  "args": {"TargetFile": "/repo/src/widget.py",
+                           "CodeContent": "class Widget: ..."}},
+             ]},
+        ]
+        transcript = _write_transcript(tmp_path, steps)
+        results = check_compliance(transcript, "test-before-implementation")
+        assert results["non_compliant_count"] >= 1
+        assert results["compliant_count"] == 0
+
+
+# ── Contract: no-hardcoded-paths detector ───────────────────────────
+
+
+class TestHardcodedPathsDetector:
+    """The no-hardcoded-paths detector checks for absolute home-dir
+    paths in file write tool calls."""
+
+    def test_hardcoded_paths_detects_home_dir(self, tmp_path):
+        """Non-compliant when /home/username paths appear in write tool calls."""
+        from enzymes.evidence_collector import check_compliance
+
+        steps = [
+            {"step_index": 0, "source": "MODEL", "type": "PLANNER_RESPONSE",
+             "tool_calls": [
+                 {"name": "write_to_file",
+                  "args": {"TargetFile": "/home/alice/project/src/main.py",
+                           "CodeContent": "x = '/home/alice/data/file.csv'"}},
+             ]},
+        ]
+        transcript = _write_transcript(tmp_path, steps)
+        results = check_compliance(transcript, "no-hardcoded-paths")
+        assert results["non_compliant_count"] >= 1
+
+    def test_hardcoded_paths_clean_when_relative(self, tmp_path):
+        """Compliant when only relative paths used."""
+        from enzymes.evidence_collector import check_compliance
+
+        steps = [
+            {"step_index": 0, "source": "MODEL", "type": "PLANNER_RESPONSE",
+             "tool_calls": [
+                 {"name": "write_to_file",
+                  "args": {"TargetFile": "/repo/src/main.py",
+                           "CodeContent": "x = 'data/file.csv'"}},
+             ]},
+        ]
+        transcript = _write_transcript(tmp_path, steps)
+        results = check_compliance(transcript, "no-hardcoded-paths")
+        assert results["compliant_count"] >= 1
+        assert results["non_compliant_count"] == 0
+
