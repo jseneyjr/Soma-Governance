@@ -43,6 +43,7 @@ The orchestrator runs Spores first, then decides:
 | Any 🔴 critical | **Full Trident** — Roots + Bedrock |
 | 2+ 🔴 or security finding | **Maelstrom** — Roots + Thorns + Bedrock |
 | Infra/auth/schema 🔴 | **Tempest** — + Mycelium + Mulch |
+| Pre-release / user-requested | **Supercell** — 8 orthogonal prongs, iterative fix-revalidate until all clean |
 
 ## Self-Healing
 
