@@ -125,22 +125,27 @@ def run_status(args: argparse.Namespace) -> int:
     proj = _project_root(args)
 
     # 1. Count installed rules: detect platform and scan rules dir
+    #    Skip platform auto-detection when _root is explicitly provided (e.g. tests)
+    #    to prevent leaking the real filesystem into test results.
     core_files: list[Path] = []
-    try:
-        from soma_cli.init import detect_platform, get_rules_dir
-        platform = detect_platform(proj)
-        if platform == "unknown":
-            platform = detect_platform(Path.home())
-        if platform != "unknown":
-            rules_dir = get_rules_dir(platform, project_root=proj)
-            if rules_dir.is_dir():
-                for p in sorted(rules_dir.glob("*.md")):
-                    if p.is_file() and p.name.lower() not in ("readme.md", "claude.md"):
-                        core_files.append(p)
-    except (ImportError, ValueError):
-        pass
+    explicit_root = getattr(args, '_root', getattr(args, '_project_root', None))
 
-    # Fallback: scan genome/ if running from the Soma repo
+    if explicit_root is None:
+        try:
+            from soma_cli.init import detect_platform, get_rules_dir
+            platform = detect_platform(proj)
+            if platform == "unknown":
+                platform = detect_platform(Path.home())
+            if platform != "unknown":
+                rules_dir = get_rules_dir(platform, project_root=proj)
+                if rules_dir.is_dir():
+                    for p in sorted(rules_dir.glob("*.md")):
+                        if p.is_file() and p.name.lower() not in ("readme.md", "claude.md"):
+                            core_files.append(p)
+        except (ImportError, ValueError):
+            pass
+
+    # Fallback: scan genome/ from the resolved root
     if not core_files:
         genome_dir = root / "genome"
         if genome_dir.is_dir():
