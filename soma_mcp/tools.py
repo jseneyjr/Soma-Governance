@@ -56,132 +56,21 @@ def resolve_workspace():
     return cwd
 
 
-# ── Inlined checkpoint helpers (stdlib only) ──────────────────────────
-# These replicate the checks from soma_cli.checkpoint without importing
-# private _check_* symbols — avoiding an MCP→CLI layer violation.
+# ── Checkpoint helpers (shared with soma_cli.checkpoint) ──────────────
+# Imported from immune_system.verification.checkpoint_checks to avoid
+# copy-paste divergence. See trap-recurring-finding-escape.md.
 
-_HARDCODED_PATH_RE = re.compile(r'''(?:"|')(/home/|/Users/|/tmp/)''')
+from immune_system.verification.checkpoint_checks import (
+    run_all_checks as _run_checkpoint_checks,
+    check_test_coverage as _checkpoint_test_coverage,
+    check_hardcoded_paths as _checkpoint_hardcoded_paths,
+    check_assertion_density as _checkpoint_assertion_density,
+    check_cell_fitness as _checkpoint_cell_fitness,
+    check_cell_conventions as _checkpoint_cell_conventions,
+    check_arbitration_evidence as _checkpoint_arbitration_evidence,
+    CHECK_NAMES as _CHECKPOINT_NAMES,
+)
 
-_SKIP_DIRS = {
-    "__pycache__", ".git", ".soma", "node_modules", ".venv", "venv",
-    ".tox", ".mypy_cache", ".pytest_cache", "dist", "build", "egg-info",
-}
-
-
-def _find_python_files(root, subdir):
-    """Walk *root/subdir* and return all .py paths (excluding __*.py)."""
-    from pathlib import Path
-    target = root / subdir
-    if not target.is_dir():
-        return []
-    result = []
-    for dirpath, dirnames, filenames in os.walk(target):
-        dirnames[:] = [d for d in dirnames if d not in _SKIP_DIRS]
-        for f in filenames:
-            if f.endswith(".py") and not f.startswith("__"):
-                result.append(Path(dirpath) / f)
-    return result
-
-
-def _checkpoint_test_coverage(root):
-    """Check that every src/*.py has a corresponding tests/test_*.py."""
-    issues = []
-    src_files = _find_python_files(root, "src")
-    test_dir = root / "tests"
-    for src_file in src_files:
-        stem = src_file.stem
-        expected_test = test_dir / f"test_{stem}.py"
-        if not expected_test.exists():
-            issues.append({
-                "check": "test_coverage",
-                "file": str(src_file.relative_to(root)),
-                "message": f"Missing test file for {src_file.name}: expected tests/test_{stem}.py",
-            })
-    return issues
-
-
-def _checkpoint_hardcoded_paths(root):
-    """Scan all .py files for hardcoded absolute paths."""
-    issues = []
-    for subdir in ("src", "tests"):
-        for py_file in _find_python_files(root, subdir):
-            try:
-                content = py_file.read_text(encoding="utf-8", errors="replace")
-            except OSError:
-                continue
-            for line_no, line in enumerate(content.splitlines(), 1):
-                if _HARDCODED_PATH_RE.search(line):
-                    issues.append({
-                        "check": "hardcoded_paths",
-                        "file": str(py_file.relative_to(root)),
-                        "line": line_no,
-                        "message": f"Hardcoded absolute path found in {py_file.name}:{line_no}",
-                    })
-    return issues
-
-
-def _checkpoint_assertion_density(root):
-    """Flag test files that contain zero assert statements."""
-    issues = []
-    test_files = _find_python_files(root, "tests")
-    for tf in test_files:
-        if not tf.name.startswith("test_"):
-            continue
-        try:
-            content = tf.read_text(encoding="utf-8", errors="replace")
-        except OSError:
-            continue
-        has_assertion = (
-            "assert " in content
-            or "assert(" in content
-            or "pytest.raises" in content
-        )
-        if not has_assertion:
-            issues.append({
-                "check": "assertion_density",
-                "file": str(tf.relative_to(root)),
-                "message": f"Low assertion density in {tf.name}: no assert statements found",
-            })
-    return issues
-
-
-def _checkpoint_cell_fitness(root):
-    """Check .soma/evidence for cells with high false-positive rates."""
-    issues = []
-    evidence_dir = root / ".soma" / "evidence"
-    outcomes_file = evidence_dir / "outcomes.jsonl"
-    if not outcomes_file.exists():
-        return issues
-    cell_outcomes = {}
-    try:
-        for line in outcomes_file.read_text(encoding="utf-8").strip().splitlines():
-            if not line.strip():
-                continue
-            record = json.loads(line)
-            cid = record.get("cell_id", "unknown")
-            outcome = record.get("outcome", "")
-            if cid not in cell_outcomes:
-                cell_outcomes[cid] = {"tp": 0, "fp": 0, "total": 0}
-            cell_outcomes[cid]["total"] += 1
-            if outcome == "fp":
-                cell_outcomes[cid]["fp"] += 1
-            elif outcome == "tp":
-                cell_outcomes[cid]["tp"] += 1
-    except (OSError, json.JSONDecodeError):
-        return issues
-    for cid, counts in cell_outcomes.items():
-        if counts["total"] >= 2 and counts["fp"] / counts["total"] > 0.5:
-            fp_rate = counts["fp"] / counts["total"]
-            issues.append({
-                "check": "cell_fitness",
-                "cell_id": cid,
-                "message": (
-                    f"Cell '{cid}' has unhealthy fitness: "
-                    f"{counts['fp']}/{counts['total']} false positives "
-                    f"({fp_rate:.0%} FP rate)"
-                ),
-            })
-    return issues
 
 
 def _parse_frontmatter(content):
@@ -575,13 +464,10 @@ def execute_tool(name: str, args: dict):
         root = Path(workspace)
         if not root.is_dir():
             return {"error": f"Workspace not found: {workspace}"}
-        issues = []
-        issues.extend(_checkpoint_test_coverage(root))
-        issues.extend(_checkpoint_hardcoded_paths(root))
-        issues.extend(_checkpoint_assertion_density(root))
-        issues.extend(_checkpoint_cell_fitness(root))
+        issues = _run_checkpoint_checks(root)
         return {
             "status": "PASS" if not issues else "FAIL",
+            "checks": _CHECKPOINT_NAMES,
             "issue_count": len(issues),
             "issues": issues,
         }
