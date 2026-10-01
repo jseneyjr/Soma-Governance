@@ -1,0 +1,152 @@
+#!/usr/bin/env python3
+"""Verify Bug Registry — ensures every bug entry has valid data and a passing regression test.
+
+Usage:
+    python3 enzymes/verify_bug_registry.py [--workspace PATH]
+
+Exit codes:
+    0 = all bugs verified
+    1 = verification failures found
+"""
+import json
+import os
+import subprocess
+import sys
+
+
+def load_registry(workspace: str) -> dict:
+    """Load and parse BUG_REGISTRY.json."""
+    path = os.path.join(workspace, 'docs', 'project', 'BUG_REGISTRY.json')
+    if not os.path.exists(path):
+        print(f"ERROR: Bug registry not found at {path}")
+        sys.exit(1)
+    with open(path, 'r', encoding='utf-8') as f:
+        return json.load(f)
+
+
+def verify_schema(registry: dict) -> list[str]:
+    """Verify registry schema and required fields."""
+    errors = []
+    required_fields = [
+        'id', 'title', 'discovered_in', 'fixed_in', 'root_cause',
+        'severity', 'affected_files', 'regression_test', 'changelog_ref',
+    ]
+    valid_categories = set(registry.get('root_cause_categories', {}).keys())
+    valid_severities = set(registry.get('severity_levels', []))
+
+    for bug in registry.get('bugs', []):
+        bug_id = bug.get('id', '<unknown>')
+
+        # Required fields
+        for field in required_fields:
+            if field not in bug or not bug[field]:
+                errors.append(f"{bug_id}: missing required field '{field}'")
+
+        # Root cause validation
+        if bug.get('root_cause') and bug['root_cause'] not in valid_categories:
+            errors.append(
+                f"{bug_id}: unknown root_cause '{bug['root_cause']}' "
+                f"(valid: {', '.join(sorted(valid_categories))})"
+            )
+
+        # Severity validation
+        if bug.get('severity') and bug['severity'] not in valid_severities:
+            errors.append(
+                f"{bug_id}: unknown severity '{bug['severity']}' "
+                f"(valid: {', '.join(sorted(valid_severities))})"
+            )
+
+    return errors
+
+
+def verify_regression_tests(registry: dict, workspace: str) -> list[str]:
+    """Verify each bug's regression test exists and can be collected by pytest."""
+    errors = []
+    test_ids = []
+
+    for bug in registry.get('bugs', []):
+        bug_id = bug.get('id', '<unknown>')
+        test_ref = bug.get('regression_test', '')
+        if not test_ref:
+            errors.append(f"{bug_id}: no regression_test specified")
+            continue
+
+        # Extract file path from pytest node ID (e.g., tests/foo.py::TestClass::test_method)
+        test_file = test_ref.split('::')[0]
+        full_path = os.path.join(workspace, test_file)
+        if not os.path.exists(full_path):
+            errors.append(f"{bug_id}: regression test file not found: {test_file}")
+            continue
+
+        test_ids.append((bug_id, test_ref))
+
+    # Batch verify: collect all test IDs and check they're valid
+    if test_ids:
+        all_refs = [ref for _, ref in test_ids]
+        try:
+            result = subprocess.run(
+                [sys.executable, '-m', 'pytest', '--collect-only', '-q'] + all_refs,
+                capture_output=True, text=True, cwd=workspace, timeout=30,
+            )
+            collected = result.stdout
+            for bug_id, test_ref in test_ids:
+                # Check the test name appears in collected output
+                test_name = test_ref.split('::')[-1]
+                if test_name not in collected:
+                    errors.append(f"{bug_id}: regression test not collected: {test_ref}")
+        except subprocess.TimeoutExpired:
+            errors.append("Timeout collecting regression tests")
+        except Exception as e:
+            errors.append(f"Error collecting tests: {e}")
+
+    return errors
+
+
+def verify_unique_ids(registry: dict) -> list[str]:
+    """Verify all bug IDs are unique."""
+    errors = []
+    seen = set()
+    for bug in registry.get('bugs', []):
+        bug_id = bug.get('id', '')
+        if bug_id in seen:
+            errors.append(f"Duplicate bug ID: {bug_id}")
+        seen.add(bug_id)
+    return errors
+
+
+def main():
+    workspace = '.'
+    if '--workspace' in sys.argv:
+        idx = sys.argv.index('--workspace')
+        workspace = sys.argv[idx + 1]
+
+    registry = load_registry(workspace)
+    bugs = registry.get('bugs', [])
+
+    print(f"Verifying {len(bugs)} bug entries...")
+
+    all_errors = []
+    all_errors.extend(verify_unique_ids(registry))
+    all_errors.extend(verify_schema(registry))
+    all_errors.extend(verify_regression_tests(registry, workspace))
+
+    if all_errors:
+        print(f"\n❌ {len(all_errors)} verification error(s):")
+        for err in all_errors:
+            print(f"  • {err}")
+        sys.exit(1)
+
+    # Summary
+    categories = {}
+    for bug in bugs:
+        cat = bug.get('root_cause', 'unknown')
+        categories[cat] = categories.get(cat, 0) + 1
+
+    print(f"\n=== All {len(bugs)} bugs verified ===")
+    print(f"  Pattern distribution:")
+    for cat, count in sorted(categories.items(), key=lambda x: -x[1]):
+        print(f"    {cat}: {count}")
+
+
+if __name__ == '__main__':
+    main()

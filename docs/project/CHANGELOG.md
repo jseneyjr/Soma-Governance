@@ -3,6 +3,16 @@
 All notable changes to Soma are documented here.
 This project uses [Semantic Versioning](https://semver.org/).
 
+## [0.84.0] — 2026-10-01 — "Bug Ledger"
+
+### Added
+- **Bug Registry** (`docs/project/BUG_REGISTRY.json`): Machine-parseable registry with root cause taxonomy (`path_error`, `schema_drift`, `silent_failure`, `mapping_error`, `dead_code`), severity levels, regression test links, and pattern descriptions. Backfilled with Bugs 1–5.
+- **Verification enzyme** (`enzymes/verify_bug_registry.py`): Validates schema, ID uniqueness, root cause categories, and regression test existence.
+- **Governance cell**: `trap-unregistered-bug-fix` — gate enforcement requiring BUG_REGISTRY.json entries alongside bug fixes.
+- 9 new tests in `tests/test_bug_registry.py` — schema validation, uniqueness, and integration with the real registry.
+
+---
+
 ## [0.83.0] — 2026-10-01 — "Fast Path"
 
 ### Added

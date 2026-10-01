@@ -88,11 +88,11 @@ Update ROADMAP and README to match shipped state.
 **Status**: ✅ Shipped (v0.83)  
 mtime-based in-memory cache for MCP hot path. Eliminates redundant disk I/O.
 
-## Phase 4.8 — v0.84 (Next)
+## Phase 4.8 — v0.84 ✅ Shipped
 
 ### Bug Registry
-**Status**: In Progress  
-Machine-parseable bug registry with verification enzyme and governance cell.
+**Status**: ✅ Shipped (v0.84)  
+Machine-parseable bug registry with verification enzyme and governance cell. Backfilled Bugs 1–5.
 
 ## Research
 
