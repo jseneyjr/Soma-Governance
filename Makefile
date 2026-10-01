@@ -47,7 +47,10 @@ info: ## Show current configuration
 	@echo "└───────────────────────────────┘"
 
 install: ## Install for configured platform (SOMA_PLATFORM)
-	@pip install -e . --quiet 2>/dev/null || pip install -e . 2>/dev/null || echo "  ⚠️  pip install -e . failed (soma CLI may not be on PATH)"
+	@pip install --user -e . --quiet 2>/dev/null || pip install --user --break-system-packages -e . --quiet 2>/dev/null || pip install -e . --quiet 2>/dev/null || echo "  ⚠️  pip install -e . failed (soma CLI may not be on PATH)"
+	@if ! echo "$$PATH" | grep -q "$$HOME/.local/bin"; then \
+	  echo "  ℹ️  Add ~/.local/bin to your PATH: export PATH=\"$$HOME/.local/bin:\$$PATH\""; \
+	fi
 	@bash install/install.sh $(SOMA_PLATFORM)
 
 install-gemini: ## Install rules for Gemini/Antigravity (alias)

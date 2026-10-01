@@ -293,8 +293,8 @@ case "$PLATFORM" in
           log_info "[dry-run] would install skill/$skill_name -> $(normalize_path "$TARGET_SKILLS/$skill_name")"
         else
           backup_dir "$TARGET_SKILLS/$skill_name"
-          # Remove existing to prevent nesting
-          [ -d "$TARGET_SKILLS/$skill_name" ] && rm -rf -- "$TARGET_SKILLS/$skill_name"
+          # Remove existing (file or dir) to prevent type conflicts
+          rm -rf -- "$TARGET_SKILLS/$skill_name"
           cp -r -- "$skill" "$TARGET_SKILLS/$skill_name"
           record_installed_skill "$TARGET_SKILLS/$skill_name"
           log_info "skill/$skill_name"

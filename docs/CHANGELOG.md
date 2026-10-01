@@ -3,6 +3,15 @@
 All notable changes to Soma are documented here.
 This project uses [Semantic Versioning](https://semver.org/).
 
+## [0.62.1] — 2026-10-01 — Patch
+
+### Fixed
+- **`make install`**: Handle PEP 668 externally-managed Python environments (`--user --break-system-packages` fallback chain).
+- **`make install`**: Print PATH hint when `~/.local/bin` is not on PATH.
+- **`install.sh`**: Fix skill install crash when a previously-installed file/symlink is being replaced by a directory (`cp: cannot overwrite non-directory`).
+
+---
+
 ## [0.62.0] — 2026-10-01 — "Evidence Pipeline"
 
 ### Added
