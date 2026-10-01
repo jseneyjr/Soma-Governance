@@ -23,6 +23,11 @@ def _build_parser() -> argparse.ArgumentParser:
                         help="Show what would be installed without doing it")
     p_init.add_argument("--platform", choices=["gemini", "claude", "cursor", "copilot"],
                         help="Skip platform detection, force a platform")
+    p_init.add_argument("--rules", choices=["minimal", "standard", "full"],
+                        default="standard",
+                        help="Rule set to install (default: standard)")
+    p_init.add_argument("--mcp", action="store_true",
+                        help="Generate .mcp.json for JIT cell matching")
     p_init.add_argument("--yes", "-y", action="store_true",
                         help="Skip confirmation prompts")
     p_init.add_argument("--force", action="store_true",
