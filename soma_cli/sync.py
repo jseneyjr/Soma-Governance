@@ -74,9 +74,9 @@ def aggregate_evidence(evidence_dir: str) -> dict[str, dict]:
                         "last_trigger": None,
                     })
                     outcome = record.get("outcome", "")
-                    if outcome == "tp":
+                    if outcome in ("tp", "success"):
                         entry["tp"] += 1
-                    elif outcome == "fp":
+                    elif outcome in ("fp", "failure"):
                         entry["fp"] += 1
                 except (json.JSONDecodeError, ValueError):
                     continue

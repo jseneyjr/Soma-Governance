@@ -28,7 +28,20 @@ jobs:
         run: make validate
       
       - name: Run test suite
+        id: test
         run: make test
+
+      - name: Soma CI Outcome Report
+        if: always()
+        run: |
+          CHANGED=$(git diff --name-only origin/${{ github.event.pull_request.base.sha || 'HEAD~1' }}...HEAD 2>/dev/null || echo "")
+          if [ -n "$CHANGED" ]; then
+            python3 enzymes/ci_outcome_reporter.py \
+              --changed-files "$CHANGED" \
+              --test-result "${{ steps.test.outcome }}" \
+              --commit-sha "${{ github.sha }}" \
+              --format markdown >> $GITHUB_STEP_SUMMARY
+          fi
 
       - name: Verify README claims
         run: python enzymes/verify_readme_claims.py

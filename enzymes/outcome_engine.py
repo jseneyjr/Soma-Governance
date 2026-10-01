@@ -277,7 +277,7 @@ def capture_git_signals(workspace):
 
 def capture_mcp_outcomes(workspace):
     """Read any soma_report_outcome calls from this session."""
-    outcomes_file = os.path.join(workspace, '.soma', 'outcomes.jsonl')
+    outcomes_file = os.path.join(workspace, '.soma', 'evidence', 'outcomes.jsonl')
     outcomes = []
     if not os.path.isfile(outcomes_file):
         return outcomes
@@ -620,8 +620,10 @@ def compute_fitness_signals(triggered_cells, outcomes, changed_files=None):
 
         # 5. MCP self-report — WEAKEST (agent grading itself)
         for mcp_entry in mcp:
+            # Support both schemas: {cells_used: [list]} and {cell_id: str}
             cells_used = mcp_entry.get('cells_used', [])
-            if cell['_name'] in cells_used:
+            cell_id = mcp_entry.get('cell_id', '')
+            if cell['_name'] in cells_used or cell['_name'] == cell_id:
                 outcome = mcp_entry.get('outcome', '')
                 if outcome == 'success':
                     # OVERCONFIDENCE PENALTY
