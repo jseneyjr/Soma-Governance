@@ -1,0 +1,221 @@
+"""Behavioral tests for outcome_engine.py — signal-in/fitness-out interface.
+
+Tests match_cells_to_changes, compute_fitness_signals, and update_cell_fitness.
+
+NOTE: outcome_engine.py has bare imports (soma_resolve) that require enzymes/ on
+sys.path. We use lazy imports inside test methods to avoid collection errors.
+"""
+import os
+import sys
+import json
+import pytest
+import yaml
+
+REPO_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+if REPO_ROOT not in sys.path:
+    sys.path.insert(0, REPO_ROOT)
+
+# Add enzymes/ to path for soma_resolve
+_enzymes = os.path.join(REPO_ROOT, 'enzymes')
+if _enzymes not in sys.path:
+    sys.path.insert(0, _enzymes)
+
+from soma_sdk.cells import parse_cell_file
+
+
+def _make_cell(workspace, cell_id, target_paths, cell_type='vacuole', fitness=None):
+    """Create a minimal valid cell file in the workspace."""
+    type_dir = {
+        'vacuole': 'vacuoles', 'wall': 'walls', 'membrane': 'membranes',
+    }.get(cell_type, 'vacuoles')
+    cells_dir = os.path.join(workspace, '.soma', 'cells', type_dir)
+    os.makedirs(cells_dir, exist_ok=True)
+    fm = {
+        'id': cell_id,
+        'type': cell_type,
+        'target_paths': target_paths,
+        'hypothesis': f'Test hypothesis for {cell_id}',
+        'prediction': f'Test prediction for {cell_id}',
+    }
+    if fitness is not None:
+        fm['fitness'] = fitness
+    content = '---\n' + yaml.dump(fm, default_flow_style=False) + '---\nBody text\n'
+    path = os.path.join(cells_dir, f'{cell_id}.md')
+    with open(path, 'w', encoding='utf-8') as f:
+        f.write(content)
+    return path
+
+
+class TestMatchCellsToChanges:
+    """Tests for matching cells to changed files."""
+
+    def test_cell_with_matching_target_is_returned(self, tmp_path):
+        from enzymes.outcome_engine import match_cells_to_changes
+        ws = str(tmp_path)
+        _make_cell(ws, 'cell-src', ['src/*.py'])
+        result = match_cells_to_changes(ws, ['src/foo.py'])
+        assert len(result) >= 1
+        cell_ids = [c.get('id', c.get('_name', '')) for c in result]
+        assert any('cell-src' in cid for cid in cell_ids)
+
+    def test_cell_with_non_matching_target_excluded(self, tmp_path):
+        from enzymes.outcome_engine import match_cells_to_changes
+        ws = str(tmp_path)
+        _make_cell(ws, 'cell-tests', ['tests/*.py'])
+        result = match_cells_to_changes(ws, ['src/foo.py'])
+        cell_ids = [c.get('id', c.get('_name', '')) for c in result]
+        assert not any('cell-tests' in cid for cid in cell_ids)
+
+    def test_empty_changed_files_returns_empty(self, tmp_path):
+        from enzymes.outcome_engine import match_cells_to_changes
+        ws = str(tmp_path)
+        _make_cell(ws, 'cell-any', ['src/*.py'])
+        result = match_cells_to_changes(ws, [])
+        assert result == []
+
+    def test_multiple_cells_only_matching_returned(self, tmp_path):
+        from enzymes.outcome_engine import match_cells_to_changes
+        ws = str(tmp_path)
+        _make_cell(ws, 'cell-match', ['src/*.py'])
+        _make_cell(ws, 'cell-nomatch', ['docs/*.md'])
+        result = match_cells_to_changes(ws, ['src/bar.py'])
+        cell_ids = [c.get('id', c.get('_name', '')) for c in result]
+        assert any('cell-match' in cid for cid in cell_ids)
+        assert not any('cell-nomatch' in cid for cid in cell_ids)
+
+    def test_wildcard_glob_matching(self, tmp_path):
+        from enzymes.outcome_engine import match_cells_to_changes
+        ws = str(tmp_path)
+        _make_cell(ws, 'cell-deep', ['src/**/*.py'])
+        result = match_cells_to_changes(ws, ['src/sub/deep.py'])
+        assert len(result) >= 1
+
+
+class TestComputeFitnessSignals:
+    """Tests for computing fitness signals from outcomes."""
+
+    def test_test_passed_produces_positive_signal(self):
+        from enzymes.outcome_engine import compute_fitness_signals
+        cells = [{'id': 'c1', '_name': 'c1', '_path': '/tmp/c1.md',
+                  'target_paths': ['src/*.py']}]
+        outcomes = {'test': {'verified': True, 'passed': True, 'exit_code': 0}}
+        signals = compute_fitness_signals(cells, outcomes)
+        assert len(signals) >= 1
+        assert signals[0]['signal'] >= 0  # Non-negative for passed test
+
+    def test_test_failed_produces_negative_signal(self):
+        from enzymes.outcome_engine import compute_fitness_signals
+        cells = [{'id': 'c1', '_name': 'c1', '_path': '/tmp/c1.md',
+                  'target_paths': ['src/*.py']}]
+        outcomes = {'test': {'verified': True, 'passed': False, 'exit_code': 1}}
+        signals = compute_fitness_signals(cells, outcomes)
+        assert len(signals) >= 1
+        assert signals[0]['signal'] <= 0  # Non-positive for failed test
+
+    def test_signal_clamped_to_range(self):
+        from enzymes.outcome_engine import compute_fitness_signals
+        cells = [{'id': 'c1', '_name': 'c1', '_path': '/tmp/c1.md',
+                  'target_paths': ['src/*.py']}]
+        outcomes = {
+            'test': {'verified': True, 'passed': False, 'exit_code': 1},
+            'build': {'exit_code': 1},
+            'git': {'reverted': True},
+            'mcp': [{'reported_success': True}],
+        }
+        signals = compute_fitness_signals(cells, outcomes)
+        for sig in signals:
+            assert -2.0 <= sig['signal'] <= 2.0
+
+    def test_signal_has_required_keys(self):
+        from enzymes.outcome_engine import compute_fitness_signals
+        cells = [{'id': 'c1', '_name': 'c1', '_path': '/tmp/c1.md',
+                  'target_paths': ['src/*.py']}]
+        outcomes = {'test': {'verified': True, 'passed': True, 'exit_code': 0}}
+        signals = compute_fitness_signals(cells, outcomes)
+        assert len(signals) >= 1
+        sig = signals[0]
+        assert 'cell' in sig or '_name' in sig
+        assert 'signal' in sig
+
+    def test_empty_cells_returns_empty_signals(self):
+        from enzymes.outcome_engine import compute_fitness_signals
+        signals = compute_fitness_signals([], {'test': {'passed': True}})
+        assert signals == []
+
+
+class TestUpdateCellFitness:
+    """Tests for updating cell fitness in frontmatter."""
+
+    def test_positive_signal_increments_true_positives(self, tmp_path):
+        from enzymes.outcome_engine import update_cell_fitness
+        ws = str(tmp_path)
+        path = _make_cell(ws, 'cell-pos', ['src/*.py'],
+                          fitness={'triggers': 5, 'true_positives': 3,
+                                   'false_positives': 1, 'score': 0.5})
+        signals = [{'cell': 'cell-pos', '_path': path, 'signal': 1.0,
+                     'reasons': ['test passed'], 'verified': True}]
+        update_cell_fitness(ws, signals)
+        fm, _ = parse_cell_file(path)
+        assert int(fm['fitness']['true_positives']) >= 4
+
+    def test_negative_signal_increments_false_positives(self, tmp_path):
+        from enzymes.outcome_engine import update_cell_fitness
+        ws = str(tmp_path)
+        path = _make_cell(ws, 'cell-neg', ['src/*.py'],
+                          fitness={'triggers': 5, 'true_positives': 3,
+                                   'false_positives': 1, 'score': 0.5})
+        signals = [{'cell': 'cell-neg', '_path': path, 'signal': -1.0,
+                     'reasons': ['test failed'], 'verified': True}]
+        update_cell_fitness(ws, signals)
+        fm, _ = parse_cell_file(path)
+        assert int(fm['fitness']['false_positives']) >= 2
+
+    def test_triggers_always_incremented(self, tmp_path):
+        from enzymes.outcome_engine import update_cell_fitness
+        ws = str(tmp_path)
+        path = _make_cell(ws, 'cell-trg', ['src/*.py'],
+                          fitness={'triggers': 5, 'true_positives': 3,
+                                   'false_positives': 1, 'score': 0.5})
+        signals = [{'cell': 'cell-trg', '_path': path, 'signal': 0.5,
+                     'reasons': ['partial'], 'verified': True}]
+        update_cell_fitness(ws, signals)
+        fm, _ = parse_cell_file(path)
+        assert int(fm['fitness']['triggers']) >= 6
+
+    def test_frontmatter_survives_roundtrip(self, tmp_path):
+        from enzymes.outcome_engine import update_cell_fitness
+        ws = str(tmp_path)
+        path = _make_cell(ws, 'cell-rt', ['src/*.py'],
+                          fitness={'triggers': 5, 'true_positives': 3,
+                                   'false_positives': 1, 'score': 0.5})
+        signals = [{'cell': 'cell-rt', '_path': path, 'signal': 1.0,
+                     'reasons': ['test'], 'verified': True}]
+        update_cell_fitness(ws, signals)
+        fm, body = parse_cell_file(path)
+        assert fm['id'] == 'cell-rt'
+        assert fm['type'] == 'vacuole'
+        assert 'Body text' in body
+
+    def test_corrupt_cell_no_crash(self, tmp_path):
+        from enzymes.outcome_engine import update_cell_fitness
+        ws = str(tmp_path)
+        cells_dir = os.path.join(ws, '.soma', 'cells', 'vacuoles')
+        os.makedirs(cells_dir, exist_ok=True)
+        corrupt_path = os.path.join(cells_dir, 'corrupt.md')
+        with open(corrupt_path, 'w', encoding='utf-8') as f:
+            f.write('not valid yaml at all')
+        signals = [{'cell': 'corrupt', '_path': corrupt_path, 'signal': 1.0,
+                     'reasons': ['test'], 'verified': True}]
+        # Should not raise — handles gracefully
+        update_cell_fitness(ws, signals)
+
+    def test_missing_fitness_field_initialized(self, tmp_path):
+        from enzymes.outcome_engine import update_cell_fitness
+        ws = str(tmp_path)
+        path = _make_cell(ws, 'cell-nofitness', ['src/*.py'])
+        signals = [{'cell': 'cell-nofitness', '_path': path, 'signal': 1.0,
+                     'reasons': ['test'], 'verified': True}]
+        update_cell_fitness(ws, signals)
+        fm, _ = parse_cell_file(path)
+        assert 'fitness' in fm
+        assert int(fm['fitness'].get('triggers', 0)) >= 1

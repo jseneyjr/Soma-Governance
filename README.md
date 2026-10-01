@@ -5,7 +5,7 @@
 [![Agent Skills](https://img.shields.io/badge/Agent_Skills-15-purple?style=flat-square)](#-agent-skills)
 [![Automation Scripts](https://img.shields.io/badge/Automation_Scripts-57-red?style=flat-square)](#%EF%B8%8F-automation-scripts)
 [![Adaptive Rules](https://img.shields.io/badge/Adaptive_Rules-5_Types-orange?style=flat-square)](#-adaptive-rules)
-[![Version](https://img.shields.io/badge/Version-0.73-informational?style=flat-square)](docs/CHANGELOG.md)
+[![Version](https://img.shields.io/badge/Version-0.75-informational?style=flat-square)](docs/project/CHANGELOG.md)
 [![Blog Post](https://img.shields.io/badge/Blog-dev.to-black?style=flat-square&logo=devdotto)](https://dev.to/nseney1/rules-that-cant-prove-themselves-die-adaptive-governance-for-ai-coding-agents-25bn)
 [![Blog Post 2](https://img.shields.io/badge/Blog_2-dev.to-black?style=flat-square&logo=devdotto)](https://dev.to/nseney1/your-ai-agents-rules-file-is-a-gentlemans-agreement-heres-what-happens-when-you-make-3df5)
 
@@ -15,7 +15,7 @@ Soma makes AI agents trustworthy by providing observably traceable governance �
 
 > **The Problem**: Ungoverned AI coding agents waste significant portions of tokens in circular rework loops, hallucinated API calls, and broken assumptions. Static rule files (`.cursorrules`, `CLAUDE.md`) help but never adapt, and the agent can simply ignore them.
 >
-> **The Solution**: Soma provides JIT context injection, adaptive rule lifecycle, and pre-commit enforcement hooks to reduce waste. Rules are scored by Laplace-smoothed fitness and pruned when they stop proving value.
+> **The Solution**: Soma provides JIT context injection, adaptive rule lifecycle, and pre-commit enforcement hooks to reduce waste. Rules are scored by Wilson-bounded fitness intervals and pruned when they stop proving value.
 
 > **Internal naming convention**: Soma uses a biological metaphor internally (genome, enzymes, organs, cells) to model rule evolution — see the codebase for details.
 
@@ -239,17 +239,23 @@ Generate → Score (Confidence Decay) → Adapt → Differentiate → Prune / Re
 
 **Lifecycle operators**: Differentiation (vacuoles harden into walls), Confidence Decay (confidence decays unless reinforced), Retirement (immediate eviction on excess false positives), Horizontal Transfer (cross-project sharing with probation), Version History (provenance tracking).
 
-**Fitness scoring**: Laplace-smoothed fitness scoring `(tp + 1) / (triggers + 2)` — cells are scored by true positive rate with smoothing for low-observation confidence. Higher-fitness cells earn promotion; low-fitness cells are pruned.
+**Fitness scoring**: Wilson-bounded fitness scoring with credible intervals — cells are scored by true positive rate using Wilson score intervals for statistically rigorous confidence bounds. Laplace smoothing `(tp + 1) / (triggers + 2)` provides the point estimate; Wilson bounds determine promotion and pruning thresholds. All tools use a single canonical cell parser (`parse_cell_file`) for consistent frontmatter extraction.
+
+**Credit assignment**: Scope-narrowed credit assignment with per-file conservation — when multiple cells match the same changed file, each cell's fitness signal is weighted by `1/N` (where N = matching cells for that file). Probabilistic rounding (`prob_round`) converts fractional credit to integer tp/fp counters while preserving expected value over many observations. Signal provenance is tracked in JSONL with `credit_weight` and `signal_method` fields.
+
+**Structured crossover**: Structured field-level rule merging — two high-fitness cells can be crossed to produce offspring with combined hypotheses, max impact weight, merged target paths (union), and reset fitness counters. Lineage tracking records parent IDs, generation number, and creation method.
+
+**Tournament selection**: Tournament selection for rule competition — random k-sample selection identifies the highest-fitness cell per round. Read-only operation preserves cell state. Handles null fitness, oversized k, and empty cell directories gracefully.
 
 **Tiered enforcement**: Rules earn their enforcement tier through demonstrated defect prevention — `advisory` (prompt injection) → `mechanical` (pre-commit block). Pre-commit hooks block commits matching cell target patterns when invariant violations are detected.
 
-> **Planned features** (not yet shipped): Crossover, tournament selection, quorum sensing, gate enforcement DSL. See [ROADMAP.md](docs/ROADMAP.md).
+> **Planned features** (not yet shipped): Quorum sensing, gate enforcement DSL. See [ROADMAP.md](docs/project/ROADMAP.md).
 
 ---
 
 ## ⚙️ Automation Scripts
 
-Soma includes 57 task-specific scripts driving rule lifecycles, verification, and evidence pipelines. See [SCRIPTS.md](docs/SCRIPTS.md) for full documentation.
+Soma includes 57 task-specific scripts driving rule lifecycles, verification, and evidence pipelines. See [SCRIPTS.md](docs/architecture/scripts.md) for full documentation.
 
 ---
 
@@ -285,7 +291,7 @@ Copy [`soma.conf.example`](install/soma.conf.example) → `soma.conf` to customi
 
 Soma replaces passive prompt files with active lifecycle-managed governance: JIT context loading prevents bloat, adaptive cells trap repo-specific bugs, and AST analysis catches violations deterministically.
 
-For design analysis, see [ABSTRACT.md](docs/ABSTRACT.md).
+For design analysis, see [ABSTRACT.md](docs/research/abstract.md).
 
 ---
 
@@ -299,7 +305,7 @@ make validate   # Shell syntax, Python compilation, JSON templates
 make doctor     # System health check
 ```
 
-See [CONTRIBUTING.md](docs/CONTRIBUTING.md) for test guidelines and execution instructions.
+See [CONTRIBUTING.md](docs/project/CONTRIBUTING.md) for test guidelines and execution instructions.
 
 ### CI/CD Pipeline
 
@@ -309,29 +315,29 @@ GitHub Actions runs on `ubuntu-latest`, `macos-latest`, and `windows-latest`:
 
 ### Documentation Gating
 
-Every feature claim in this README is tracked in [`docs/CLAIM_REGISTRY.json`](docs/CLAIM_REGISTRY.json). A claim can only appear in README when:
+Every feature claim in this README is tracked in [`docs/project/CLAIM_REGISTRY.json`](docs/project/CLAIM_REGISTRY.json). A claim can only appear in README when:
 1. Its behavioral test suite exists and passes
 2. It has a Claim Registry entry with status `unlocked`
 3. The CI gate (`enzymes/verify_readme_claims.py`) confirms no regressions
 
-Features that are planned but not yet shipped are listed in [ROADMAP.md](docs/ROADMAP.md).
+Features that are planned but not yet shipped are listed in [ROADMAP.md](docs/project/ROADMAP.md).
 
 ---
 
 ## Documentation
 
-| Document | Description |
-|:---------|:------------|
-| [**Blog Post**](https://dev.to/nseney1/rules-that-cant-prove-themselves-die-adaptive-governance-for-ai-coding-agents-25bn) | "Rules That Can't Prove Themselves Die" — full introduction |
-| [CHANGELOG](docs/CHANGELOG.md) | Release history |
-| [ROADMAP](docs/ROADMAP.md) | Planned features and their tracking status |
-| [PHYLOGENY](docs/PHYLOGENY.md) | Phase-by-phase evolutionary narrative |
-| [MECHANISM_DESIGN](docs/MECHANISM_DESIGN.md) | Formal mechanism design mapping |
-| [SCRIPTS](docs/SCRIPTS.md) | Full automation script catalog |
-| [METRICS](docs/METRICS.md) | Empirical measurement methodology |
-| [ABSTRACT](docs/ABSTRACT.md) | Research paper abstract |
-| [CONTRIBUTING](docs/CONTRIBUTING.md) | Contribution guidelines |
-| [Templates](templates/README.md) | Domain-specific rule template packs |
+| Document | Audience | Description |
+|:---------|:---------|:------------|
+| [**Blog Post**](https://dev.to/nseney1/rules-that-cant-prove-themselves-die-adaptive-governance-for-ai-coding-agents-25bn) | Everyone | "Rules That Can't Prove Themselves Die" — full introduction |
+| [CHANGELOG](docs/project/CHANGELOG.md) | Users | Release history |
+| [ROADMAP](docs/project/ROADMAP.md) | Users | Planned features and their tracking status |
+| [PHYLOGENY](docs/architecture/phylogeny.md) | Contributors | Phase-by-phase evolutionary narrative |
+| [MECHANISM_DESIGN](docs/architecture/mechanism_design.md) | Contributors | Formal mechanism design mapping |
+| [SCRIPTS](docs/architecture/scripts.md) | Contributors | Full automation script catalog |
+| [METRICS](docs/project/METRICS.md) | Users | Empirical measurement methodology |
+| [ABSTRACT](docs/research/abstract.md) | Researchers | Research paper abstract |
+| [CONTRIBUTING](docs/project/CONTRIBUTING.md) | Contributors | Contribution guidelines |
+| [Templates](templates/README.md) | Users | Domain-specific rule template packs |
 
 ## Uninstalling
 

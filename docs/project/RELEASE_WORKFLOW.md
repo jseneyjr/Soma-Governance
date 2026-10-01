@@ -30,8 +30,8 @@ develop ──→ release/v0.XX ──→ PR to main ──→ tag v0.XX.0 ─�
 
 | Phase | Version | Theme |
 |:------|:--------|:------|
-| Phase 1 | v0.73 | Stop the Bleeding — README strip, hook fix, claim registry |
-| Phase 2 | v0.74 | Foundation — canonical parser, scoring unification, error handling |
+| Phase 1 | v0.73 ✅ | Stop the Bleeding — README strip, hook fix, claim registry |
+| Phase 2 | v0.74 ✅ | Foundation — canonical parser, scoring unification, error handling |
 | Phase 3 | v0.75 | Advanced Features — credit assignment, mutation testing, crossover |
 | Phase 4 | v0.80 | Polish — gate enforcement, integrity, dogfooding activation |
 
@@ -42,10 +42,39 @@ Before creating a release PR, verify:
 - [ ] `python3 enzymes/verify_readme_claims.py` passes
 - [ ] `pytest tests/` passes with 0 failures
 - [ ] Version synced across `pyproject.toml`, `VERSION`, and README badge
-- [ ] CHANGELOG updated (if exists)
+
+### Documentation Hygiene (mandatory per release)
+
+Audit every doc file for staleness. For each file, determine: **UPDATE**, **DELETE**, or **OK**.
+
+- [ ] `README.md` — version references, feature claims match unlocked claims only
+- [ ] `docs/ABSTRACT.md` — figures and architecture match current implementation
+- [ ] `docs/project/CHANGELOG.md` — has entry for this release with summary of changes
+- [ ] `docs/project/ROADMAP.md` — reflects current phase status (completed phases marked, next phase current)
+- [ ] `docs/project/SCRIPTS.md` — script descriptions match current enzyme signatures and behavior
+- [ ] `docs/METRICS.md` — metrics are honest, no unverified quantitative claims
+- [ ] `docs/MECHANISM_DESIGN.md` — architecture matches current code (e.g., scoring method, parser)
+- [ ] `docs/project/CLAIM_REGISTRY.json` — all unlocked claims have passing tests, no stale locks
+- [ ] `docs/CONTRIBUTING.md` — setup instructions work, dependencies current
+- [ ] `docs/project/RELEASE_WORKFLOW.md` — lessons learned section updated
+- [ ] `docs/GITFLOW.md` — consistent with RELEASE_WORKFLOW.md (no contradictions)
+- [ ] `docs/archive/` — stale archives reviewed; delete if no longer referenced
+
+**Rule**: If a doc references a version older than `current - 2` (e.g., v0.30 when shipping v0.74), it must be updated or archived.
+
+### Post-Release Cleanup (after back-merge)
+
+- [ ] Delete merged release branch: `git push origin --delete release/v0.XX`
+- [ ] Delete any stale feature branches merged into develop
+- [ ] Verify `docs/project/CHANGELOG.md` has the release entry
+- [ ] Verify GitHub Release notes match PR body
 
 ## Lessons Learned
 
 ### v0.73
 - **VERSION file missed**: `pyproject.toml` was bumped but `VERSION` was not. The `test_version_is_single_sourced` invariant caught it in CI. Always use the version bump checklist above.
 - **Cherry-pick after merge**: If a fix is committed to the release branch after the PR is merged, cherry-pick to main rather than creating a new PR.
+
+### v0.74
+- **Property test flaky**: `test_interval_narrows_with_more_data` used additive extra (changes proportion), not multiplicative scale (preserves proportion). Hypothesis found the counterexample `tp=1, fp=8, extra=1`. Fix: multiply both by scale factor.
+- **Documentation not audited**: No systematic doc review was part of the workflow. Added Documentation Hygiene checklist above.

@@ -33,6 +33,20 @@ _UNARYOP_SWAPS: dict[type, type] = {
     ast.USub: ast.UAdd,
 }
 
+_CMPOP_SWAPS: dict[type, type] = {
+    ast.Gt: ast.Lt,
+    ast.Lt: ast.Gt,
+    ast.GtE: ast.LtE,
+    ast.LtE: ast.GtE,
+    ast.Eq: ast.NotEq,
+    ast.NotEq: ast.Eq,
+}
+
+_BOOLOP_SWAPS: dict[type, type] = {
+    ast.And: ast.Or,
+    ast.Or: ast.And,
+}
+
 
 class _Mutation:
     """Represents a single mutation to apply."""
@@ -61,11 +75,7 @@ def _collect_mutations(source: str, function_name: str) -> list[_Mutation]:
     for node in ast.walk(func_node):
         # 1) Binary operator swaps (+↔-, *↔/)
         if isinstance(node, ast.BinOp) and type(node.op) in _BINOP_SWAPS:
-            original_op_type = type(node.op)
-            swap_type = _BINOP_SWAPS[original_op_type]
-            lineno = node.lineno
-
-            mutations.append(_Mutation(lineno, None))
+            mutations.append(_Mutation(node.lineno, None))
 
         # 2) Unary operator swaps
         if isinstance(node, ast.UnaryOp) and type(node.op) in _UNARYOP_SWAPS:
@@ -75,6 +85,27 @@ def _collect_mutations(source: str, function_name: str) -> list[_Mutation]:
         if isinstance(node, ast.Constant) and isinstance(node.value, (int, float)):
             if node.value != 0:
                 mutations.append(_Mutation(node.lineno, None))
+
+        # 4) Comparison operator swaps (<↔>, <=↔>=, ==↔!=)
+        if isinstance(node, ast.Compare):
+            for op in node.ops:
+                if type(op) in _CMPOP_SWAPS:
+                    mutations.append(_Mutation(node.lineno, None))
+                    break  # One mutation per Compare node
+
+        # 5) Boolean operator swaps (and↔or)
+        if isinstance(node, ast.BoolOp) and type(node.op) in _BOOLOP_SWAPS:
+            mutations.append(_Mutation(node.lineno, None))
+
+    # 6) Statement deletion (replace with pass) — one per non-trivial stmt
+    for node in ast.walk(func_node):
+        if isinstance(node, (ast.Assign, ast.AugAssign, ast.Expr)):
+            mutations.append(_Mutation(node.lineno, None))
+
+    # 7) Return value mutation (return X → return None)
+    for node in ast.walk(func_node):
+        if isinstance(node, ast.Return) and node.value is not None:
+            mutations.append(_Mutation(node.lineno, None))
 
     return mutations
 
@@ -118,7 +149,7 @@ def _apply_mutation_by_index(
     tree2 = ast.parse(source)
 
 
-    # Simpler approach: replicate _collect_mutations exactly on tree2.
+    # Collect mutation targets on tree2 in the exact same order
     targets2: list[ast.AST] = []
     kinds2: list[str] = []
     func_node2: Optional[ast.FunctionDef] = None
@@ -140,6 +171,27 @@ def _apply_mutation_by_index(
             if node.value != 0:
                 targets2.append(node)
                 kinds2.append("const")
+        if isinstance(node, ast.Compare):
+            for op in node.ops:
+                if type(op) in _CMPOP_SWAPS:
+                    targets2.append(node)
+                    kinds2.append("cmpop")
+                    break
+        if isinstance(node, ast.BoolOp) and type(node.op) in _BOOLOP_SWAPS:
+            targets2.append(node)
+            kinds2.append("boolop")
+
+    # Statement deletion targets
+    for node in ast.walk(func_node2):
+        if isinstance(node, (ast.Assign, ast.AugAssign, ast.Expr)):
+            targets2.append(node)
+            kinds2.append("stmt_del")
+
+    # Return value mutation targets
+    for node in ast.walk(func_node2):
+        if isinstance(node, ast.Return) and node.value is not None:
+            targets2.append(node)
+            kinds2.append("return_val")
 
     if mutation_index >= len(targets2):
         return None
@@ -156,6 +208,26 @@ def _apply_mutation_by_index(
             node_to_mutate.value = node_to_mutate.value + 1
         else:
             node_to_mutate.value = node_to_mutate.value + 1.0
+    elif k == "cmpop":
+        node_to_mutate.ops = [
+            _CMPOP_SWAPS.get(type(op), type(op))() for op in node_to_mutate.ops
+        ]
+    elif k == "boolop":
+        node_to_mutate.op = _BOOLOP_SWAPS[type(node_to_mutate.op)]()
+    elif k == "stmt_del":
+        # Replace the statement with `pass`
+        pass_node = ast.Pass()
+        ast.copy_location(pass_node, node_to_mutate)
+        # Find parent and replace
+        for parent_node in ast.walk(tree2):
+            for field, value in ast.iter_fields(parent_node):
+                if isinstance(value, list):
+                    for idx, item in enumerate(value):
+                        if item is node_to_mutate:
+                            value[idx] = pass_node
+    elif k == "return_val":
+        node_to_mutate.value = ast.Constant(value=None)
+        ast.copy_location(node_to_mutate.value, node_to_mutate)
 
     ast.fix_missing_locations(tree2)
     try:

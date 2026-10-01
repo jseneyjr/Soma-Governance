@@ -72,29 +72,29 @@
     },
     "claim_credit_assignment": {
       "phase": 3,
-      "status": "locked",
+      "status": "unlocked",
       "readme_text": "Scope-narrowed credit assignment with per-file conservation",
       "required_tests": [
-        "tests/test_credit_assignment.py::test_credit_conservation",
-        "tests/test_credit_assignment.py::test_scope_narrowing"
+        "tests/test_credit_assignment.py::TestCreditConservation::test_per_file_credit_sums_to_one",
+        "tests/test_credit_assignment.py::TestScopeNarrowing::test_cell_matching_tests_gets_no_credit_for_src"
       ]
     },
     "claim_structured_crossover": {
       "phase": 3,
-      "status": "locked",
+      "status": "unlocked",
       "readme_text": "Structured field-level rule merging",
       "required_tests": [
-        "tests/test_crossover_integration.py::test_field_merge_rules",
-        "tests/test_crossover_integration.py::test_crossover_produces_valid_cell"
+        "tests/test_crossover_structured.py::TestCrossoverMergeRules::test_same_type_parents_produce_same_type",
+        "tests/test_crossover_structured.py::TestCrossoverOutput::test_output_is_valid_cell_file"
       ]
     },
     "claim_tournament_selection": {
       "phase": 3,
-      "status": "locked",
+      "status": "unlocked",
       "readme_text": "Tournament selection for rule competition",
       "required_tests": [
-        "tests/test_tournament_integration.py::test_jsonl_output_format",
-        "tests/test_tournament_integration.py::test_prune_losers"
+        "tests/test_tournament_integration.py::TestTournamentBasics::test_tournament_with_cells_exits_zero",
+        "tests/test_tournament_integration.py::TestTournamentReadOnly::test_cell_files_unchanged_after_tournament"
       ]
     },
     "claim_quorum_sensing": {

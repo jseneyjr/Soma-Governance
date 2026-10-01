@@ -6,7 +6,7 @@ Thank you for your interest in contributing!
 
 ### Reporting Issues
 - Open a GitHub issue with a clear description
-- Include your platform (gemini/kiro/copilot) and OS
+- Include your platform (gemini/claude/kiro/copilot) and OS
 - Include `make doctor` output if relevant
 
 ### Submitting Changes
@@ -21,11 +21,11 @@ Thank you for your interest in contributing!
 - **Python 3.9+** — all code must be compatible with Python 3.9 through 3.12
 - **`from __future__ import annotations`** — required as the first import in any file using `X | None` union syntax
 - **CI matrix** — tests run on Python 3.9 + 3.11 across Linux, macOS, and Windows
-- **Test command**: `python3 -m pytest tests/ -q` (1228+ tests)
+- **Test command**: `python3 -m pytest tests/ -q` (~1,359 tests)
 
 ### Contributing Cells
 If your Genesis scan produced useful cells, you can contribute them:
-1. Run `python3 enzymes/cell_fitness.py` to verify fitness > 0.7
+1. Run `python3 enzymes/cell_fitness.py` to verify fitness > 0.7 (scored via Wilson interval confidence bounds)
 2. Submit the cell file via PR to `.soma/cells/`
 3. Include the cell's hypothesis and fitness data
 

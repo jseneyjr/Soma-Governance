@@ -488,7 +488,66 @@ def match_cells_to_changes(workspace, changed_files):
 
 # ── Fitness Signal Computation (ACE Reflector) ───────────────────────
 
-def compute_fitness_signals(triggered_cells, outcomes):
+def prob_round(credit):
+    """Probabilistic rounding: convert fractional credit to 0 or 1.
+
+    Preserves expected value: prob_round(0.3) returns 1 with probability 0.3,
+    0 with probability 0.7. Over many calls, sum(prob_round(c)) ≈ N*c.
+
+    This is how fractional credit (e.g., 3 cells share a file → each gets 1/3)
+    gets converted to the integer tp/fp counters without systematic bias.
+    """
+    import random
+    credit = max(0.0, min(1.0, float(credit)))
+    if credit >= 1.0:
+        return 1
+    if credit <= 0.0:
+        return 0
+    return 1 if random.random() < credit else 0
+
+
+def compute_credit_weights(triggered_cells, changed_files):
+    """Compute per-cell credit weights using per-file scope narrowing.
+
+    For each changed file, only cells whose target_paths match that file
+    share credit. Credit per file sums to exactly 1.0 (conservation).
+    A cell's total credit is the sum across all files it matches.
+
+    Returns:
+        dict: {cell_name: credit_weight} where credit_weight is a float.
+    """
+    if not changed_files or not triggered_cells:
+        return {c.get('_name', c.get('id', '')): 1.0 for c in triggered_cells}
+
+    # Build file → matching cells index
+    file_to_cells = {}  # file_path → [cell_name, ...]
+    for fpath in changed_files:
+        matching = []
+        for cell in triggered_cells:
+            cell_name = cell.get('_name', cell.get('id', ''))
+            target_paths = cell.get('target_paths', [])
+            if isinstance(target_paths, str):
+                target_paths = [target_paths]
+            for tp in target_paths:
+                if fnmatch.fnmatch(fpath, tp) or fnmatch.fnmatch(os.path.basename(fpath), tp):
+                    matching.append(cell_name)
+                    break
+        if matching:
+            file_to_cells[fpath] = matching
+
+    # Sum credit per cell across all files
+    credit = {c.get('_name', c.get('id', '')): 0.0 for c in triggered_cells}
+    for fpath, cell_names in file_to_cells.items():
+        per_cell = 1.0 / len(cell_names)
+        for cn in cell_names:
+            credit[cn] += per_cell
+
+    # Cells that matched no specific files get 0 credit
+    # (they were triggered by match_cells_to_changes but don't match any
+    # individual changed file — shouldn't happen but defensive)
+    return credit
+
+def compute_fitness_signals(triggered_cells, outcomes, changed_files=None):
     """ACE-aligned reflector: score cells based on VERIFIABLE outcomes.
 
     Signal weights:
@@ -498,9 +557,16 @@ def compute_fitness_signals(triggered_cells, outcomes):
       Rework detection: -0.3 (weak but verifiable)
       MCP self-report:  ±0.2 (weakest — agent grading itself)
 
+    Credit assignment (Phase 3.1):
+      When multiple cells match the same changed file, each cell's signal
+      is weighted by its per-file credit (1/N where N = matching cells).
+      This prevents double-counting: if 3 cells match src/foo.py and tests
+      pass, each gets ~1/3 credit instead of full credit.
+
     A cell gets NO signal (0.0) if we can't verify the outcome.
     This is intentional: uncertain signals are worse than no signal.
     """
+    credit_weights = compute_credit_weights(triggered_cells, changed_files or [])
     results = []
     test_outcome = outcomes.get('tests', {})
     build_outcome = outcomes.get('build', {})
@@ -580,7 +646,9 @@ def compute_fitness_signals(triggered_cells, outcomes):
             '_path': cell['_path'],
             'signal': round(signal, 2),
             'reasons': reasons,
-            'verified': test_outcome.get('verified', False) or build_outcome.get('verified', False)
+            'verified': test_outcome.get('verified', False) or build_outcome.get('verified', False),
+            'credit_weight': credit_weights.get(cell['_name'], 1.0),
+            'signal_method': 'credit_weighted',
         })
 
     return results
@@ -637,9 +705,11 @@ def update_cell_fitness(workspace, fitness_signals):
             fitness['true_positives'] = _as_int(fitness['true_positives'])
             fitness['false_positives'] = _as_int(fitness['false_positives'])
             if signal > 0:
-                fitness['true_positives'] += 1
+                credit_weight = sig.get('credit_weight', 1.0)
+                fitness['true_positives'] += prob_round(credit_weight)
             elif signal < 0:
-                fitness['false_positives'] += 1
+                credit_weight = sig.get('credit_weight', 1.0)
+                fitness['false_positives'] += prob_round(credit_weight)
 
             fitness['last_trigger_date'] = datetime.now(timezone.utc).strftime(
                 '%Y-%m-%dT%H:%M:%SZ'
@@ -670,6 +740,8 @@ def append_fitness_log(workspace, fitness_signals, outcomes):
                     'cell': sig['cell'],
                     'signal': sig['signal'],
                     'verified': sig.get('verified', False),
+                    'credit_weight': sig.get('credit_weight', 1.0),
+                    'signal_method': sig.get('signal_method', 'legacy'),
                     'reasons': sig.get('reasons', []),
                     'outcomes': {
                         'tests': {
@@ -743,7 +815,7 @@ def main():
         return
 
     # 3. Compute fitness signals (ACE reflector step)
-    signals = compute_fitness_signals(triggered, outcomes) if triggered else []
+    signals = compute_fitness_signals(triggered, outcomes, changed_files=changed_files) if triggered else []
 
     # Merge human insight signals, deduplicating cells already scored
     existing_paths = {s['_path'] for s in signals if '_path' in s}

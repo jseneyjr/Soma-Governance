@@ -27,7 +27,7 @@ class TestReviewIntensityDocs:
 
     def test_readme_contains_all_intensity_levels(self):
         """Intensity levels are documented in ROADMAP (stripped from README in v0.73)."""
-        roadmap = _read(os.path.join(REPO_ROOT, "docs", "ROADMAP.md"))
+        roadmap = _read(os.path.join(REPO_ROOT, "docs", "project", "ROADMAP.md"))
         assert "Review Intensity" in roadmap or "Breeze" in roadmap, \
             "Review intensity should be documented in ROADMAP.md"
 

@@ -74,6 +74,7 @@ All token values in this document are empirical, step-based measurements, genera
 | **Trident** | 5–8 Flash | Prevents architectural regressions (saves ~50-80 steps) |
 | **Maelstrom** | 7–12 Flash | Caught 5 critical bugs in dogfooding |
 | **Tempest** | 8–12 Flash | Highest assurance; human gate before verdict |
+| **Supercell** | 10–16 Flash | Apex assurance; adversarial Prosecutor/Defender pairs per prong, zero deferrals |
 
 | Prong | Cost | Role |
 |:------|:-----|:-----|
@@ -94,7 +95,7 @@ All token values in this document are empirical, step-based measurements, genera
 
 | Approach | Tokens/Turn |
 |:---------|:------------|
-| **Naive** — all 11 rules + 15 skills always loaded | 25,163 |
+| **Naive** — all 15 rules + 15 skills always loaded | 25,163 |
 | **Optimized** — conditional rules + skills idle | ~3,800 |
 | **Savings** | **20,783 tokens/turn (82.6%)** |
 
@@ -168,7 +169,7 @@ All token values in this document are empirical, step-based measurements, genera
 
 | Metric | Before Rules | After Rules |
 |:-------|:-------------|:------------|
-| Waste rate | ~56% (earliest) | 27.6% (mid) → 1.1% (Phase 22) / < 1.0% (Phase 25 TTC) |
+| Waste rate | ~56% (earliest) | 27.6% (mid) → 1.1% (Phase 22) |
 | First-Pass Success Rate | < 35% (uncontrolled) | > 80% target (87.2% benchmark) |
 | Rework loops per session | ~5 incidents | ~1 incident |
 | Failed subagent steps | ~150 per session | ~0 (model tier fix) |
@@ -291,7 +292,7 @@ Comparison dataset from a new set of 66 masked and sanitized production sessions
 ### Key Findings
 
 > [!IMPORTANT]
-> The 66-session dataset proves that **rules without skills provide incomplete governance**. All 11 rules were deployed, but review protocol references (Spores→Mulch) were unresolvable because skills weren't installed. The `doctor` target gave false assurance.
+> The 66-session dataset proves that **rules without skills provide incomplete governance**. All 15 rules were deployed, but review protocol references (Spores→Mulch) were unresolvable because skills weren't installed. The `doctor` target gave false assurance.
 
 > [!NOTE]
 > **Delegation evolves in 3 phases**: zero delegation → context-saving delegation → adversarial second-opinion delegation. The transition from phase 2 to phase 3 requires governance skills, not just rules.

@@ -3,10 +3,78 @@
 All notable changes to Soma are documented here.
 This project uses [Semantic Versioning](https://semver.org/).
 
+## [0.75.0] — 2026-10-01 — "Credit Where Due"
+
+### Added
+- **Credit assignment** (Phase 3.1): `prob_round()` probabilistic rounding, `compute_credit_weights()` per-file scope narrowing with credit conservation. Signal provenance tracked in JSONL via `credit_weight` and `signal_method` fields.
+- **Mutation operators** (Phase 3.2): Comparison swap (`<`↔`>`, `<=`↔`>=`, `==`↔`!=`), boolean swap (`and`↔`or`), statement deletion (stmt→pass), return value mutation (`return X`→`return None`).
+- **TDD test suite**: 8 new behavioral test files — `test_credit_assignment.py` (14), `test_outcome_engine.py` (18), `test_jit_engine_behavioral.py` (22), `test_error_handling.py` (13), `test_mcp_tools_contract.py` (12), `test_tournament_integration.py` (8), `test_crossover_structured.py` (12), `test_mutation_tester_upgraded.py` (10).
+
+### Fixed
+- **Crossover target_paths** (Phase 3.6): `cell_crossover.py` now merges `target_paths` as deduplicated union of both parents. Previously omitted entirely, making child cells unable to match any files.
+- **Crossover tags**: Tags now merged as union instead of reset to empty list.
+
+### Changed
+- `compute_fitness_signals()` accepts optional `changed_files` kwarg for credit weighting.
+- `update_cell_fitness()` uses `prob_round(credit_weight)` for tp/fp counter updates.
+- `append_fitness_log()` includes `credit_weight` and `signal_method` provenance.
+- Claim registry: `claim_credit_assignment`, `claim_structured_crossover`, `claim_tournament_selection` unlocked.
+
+### Metrics
+- Test suite: **1465 passed**, 7 skipped, 0 failed (up from 1359 in v0.74)
+
+---
+
 ## [0.71.0] — 2026-10-01 — "Branch Sync"
 
 ### Fixed
 - **Gitflow step 7**: Release checklist now merges **main** back to develop (not the release branch). Previous workflow skipped main's PR merge commit, causing main and develop to diverge over 5 releases.
+
+---
+
+## [0.74.0] — 2026-10-01 — "Foundation"
+
+### Added
+- `soma_sdk/errors.py`: Complete error hierarchy (SomaError → CellParseError, CellNotFoundError, CellPathTraversalError, FitnessError)
+- `soma_sdk/scoring.py`: Wilson-bounded fitness scoring (bayesian_posterior, laplace_score, _wilson_interval)
+- `soma_sdk/cells.py`: Canonical cell parser (parse_cell_file, write_cell_frontmatter, load_cell, _sanitize_cell_id)
+- `tests/test_bayesian_correctness.py`: 17 mathematical ground truth tests
+- `tests/test_sdk_behavioral.py`: 21 SDK public API tests
+- `tests/test_escaped_defects.py`: 12 antifragile behavior tests
+- `tests/test_cell_deps_behavioral.py`: 5 co-trigger detection tests
+- `tests/test_integration_lifecycle.py`: 8 end-to-end lifecycle tests
+- `tests/test_threshold_recalibration.py`: 12 boundary value tests
+
+### Changed
+- Migrated 27 enzyme/CLI files from inline YAML parsing to canonical `parse_cell_file()`
+- `CellFitness.bayesian()` upgraded from Wald approximation to Wilson score interval
+- `Cell.is_extinct` / `Cell.is_promotable` now use `laplace_score()` import
+- `enzymes/bayesian_score.py` converted to thin wrapper re-exporting from `soma_sdk.scoring`
+- `enzymes/cell_deps.py` added `--workspace` argument for testability
+
+### Metrics
+- Suite: 1359 passed, 5 skipped, 0 failed
+- Claims: 8 unlocked, 5 locked, 7 removed (20/20 verified)
+- Net code change: +1606/-353 lines across 41 files
+
+---
+
+## [0.73.0] — 2026-10-01 — "Stop the Bleeding"
+
+### Added
+- `docs/CLAIM_REGISTRY.json`: Machine-readable claim tracking (locked/unlocked/removed)
+- `enzymes/verify_readme_claims.py`: CI gate verifying README claims against tests
+- `tests/test_static_invariants.py::test_version_is_single_sourced`: Version sync invariant
+- `docs/ROADMAP.md`: Future features moved from README
+- `docs/RELEASE_WORKFLOW.md`: Codified gitflow release procedure
+
+### Changed
+- README stripped to earned claims only — removed 7 unverified claims
+- Fixed `exit 1` bug in pre-commit hook generation (cell_enforce.py)
+- Version synced across pyproject.toml and VERSION file
+
+### Removed
+- Unearned README claims: evolutionary computation, gate enforcement, < 1.0% waste rate, deterministic verification, inflated test count
 
 ---
 

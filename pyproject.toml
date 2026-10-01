@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "soma-governance"
-version = "0.74.0"
+version = "0.75.0"
 description = "Governance framework that makes AI coding agents trustworthy"
 readme = "README.md"
 license = {text = "Apache-2.0"}
@@ -45,7 +45,7 @@ dev = ["pytest", "ruff", "hypothesis", "coverage"]
 [project.urls]
 Homepage = "https://github.com/nseney1/Soma-Governance"
 Documentation = "https://github.com/nseney1/Soma-Governance/tree/main/docs"
-Changelog = "https://github.com/nseney1/Soma-Governance/blob/main/docs/CHANGELOG.md"
+Changelog = "https://github.com/nseney1/Soma-Governance/blob/main/docs/project/CHANGELOG.md"
 
 [tool.setuptools.packages.find]
 include = ["soma_cli*", "soma_sdk*", "enzymes*", "soma_mcp*", "immune_system*"]
