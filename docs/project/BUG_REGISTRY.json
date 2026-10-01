@@ -1,0 +1,79 @@
+{
+  "schema_version": "1.0",
+  "description": "Machine-parseable registry of all known bugs with root cause analysis, regression test links, and pattern categorization.",
+  "root_cause_categories": {
+    "path_error": "Wrong file path or directory reference",
+    "schema_drift": "Expected vs actual data shape mismatch",
+    "silent_failure": "Error swallowed without logging or effect",
+    "mapping_error": "Wrong value translation or type coercion",
+    "dead_code": "Code that writes to a file or endpoint nothing reads"
+  },
+  "severity_levels": ["critical", "moderate", "low"],
+  "bugs": [
+    {
+      "id": "BUG-001",
+      "title": "outcome_engine reads from wrong evidence path",
+      "discovered_in": "v0.81-dev",
+      "fixed_in": "v0.81.0",
+      "root_cause": "path_error",
+      "severity": "critical",
+      "description": "outcome_engine.py read outcomes from .soma/outcomes.jsonl instead of the canonical .soma/evidence/outcomes.jsonl path.",
+      "affected_files": ["enzymes/outcome_engine.py"],
+      "regression_test": "tests/test_telemetry_bugfixes.py::TestBug1OutcomeEnginePath::test_reads_from_evidence_dir",
+      "pattern": "Hardcoded paths diverge from actual evidence directory structure",
+      "changelog_ref": "v0.81.0"
+    },
+    {
+      "id": "BUG-002",
+      "title": "outcome_engine expects wrong schema key",
+      "discovered_in": "v0.81-dev",
+      "fixed_in": "v0.81.0",
+      "root_cause": "schema_drift",
+      "severity": "critical",
+      "description": "outcome_engine.py expected cells_used (list) but MCP tools wrote cell_id (string). Both schemas were valid in different writers.",
+      "affected_files": ["enzymes/outcome_engine.py"],
+      "regression_test": "tests/test_telemetry_bugfixes.py::TestBug2OutcomeEngineSchema::test_cell_id_schema_matches",
+      "pattern": "Multiple writers produce different schemas for the same data, reader expects only one",
+      "changelog_ref": "v0.81.0"
+    },
+    {
+      "id": "BUG-003",
+      "title": "sync.py silently ignores agent outcomes",
+      "discovered_in": "v0.81-dev",
+      "fixed_in": "v0.81.0",
+      "root_cause": "mapping_error",
+      "severity": "critical",
+      "description": "sync.py did not map success/failure outcome strings to tp/fp counters. Agent-reported outcomes were silently dropped.",
+      "affected_files": ["soma_cli/sync.py"],
+      "regression_test": "tests/test_telemetry_bugfixes.py::TestBug3SyncOutcomeMapping::test_success_mapped_to_tp",
+      "pattern": "Outcome value vocabulary not shared between writer and reader",
+      "changelog_ref": "v0.81.0"
+    },
+    {
+      "id": "BUG-004",
+      "title": "sync.py clobbers scores on missing outcome data",
+      "discovered_in": "v0.82-dev",
+      "fixed_in": "v0.82.0",
+      "root_cause": "silent_failure",
+      "severity": "moderate",
+      "description": "When a cell had triggers but zero tp/fp records, sync.py set score = 0.0 instead of preserving the existing score. Un-evaluated cells were treated as 100% failures.",
+      "affected_files": ["soma_cli/sync.py"],
+      "regression_test": "tests/test_sync_bugfix4.py::TestBug4ScoreClobber::test_score_preserved_when_no_outcomes",
+      "pattern": "Absence of evidence treated as evidence of absence",
+      "changelog_ref": "v0.82.0"
+    },
+    {
+      "id": "BUG-005",
+      "title": "Dead-end .soma/cells/fitness.jsonl file",
+      "discovered_in": "v0.82-dev",
+      "fixed_in": "v0.82.0",
+      "root_cause": "dead_code",
+      "severity": "moderate",
+      "description": "outcome_engine.py and cell_selection.sh wrote to .soma/cells/fitness.jsonl but nothing read it. The canonical evidence ledger was at .soma/evidence/fitness.jsonl.",
+      "affected_files": ["enzymes/outcome_engine.py", "enzymes/cell_selection.sh"],
+      "regression_test": "tests/test_credit_assignment.py::TestSignalProvenance::test_jsonl_entry_has_credit_weight",
+      "pattern": "Writer and reader disagree on canonical file location",
+      "changelog_ref": "v0.82.0"
+    }
+  ]
+}
