@@ -3,6 +3,48 @@
 All notable changes to Soma are documented here.
 This project uses [Semantic Versioning](https://semver.org/).
 
+## [0.88.0] — 2026-10-01 — "Key Management"
+
+### Added
+- **HMAC-SHA256 key management** (`soma_mcp/integrity.py`): 256-bit key generation, storage in `.soma/keys/manifest.key` with `0o600` permissions, key rotation with `.bak` backup.
+- **Manifest signing**: `save_manifest()` auto-signs when key exists; `verify_signature()` uses constant-time `hmac.compare_digest`.
+- **`soma_generate_manifest` MCP tool**: Generates and signs cell integrity manifests, with optional key creation. Added to `_EXECUTE_TOOLS` tier (requires session auth).
+- **Signature verification in cell cache**: `cell_cache.py` logs HMAC verification status during refresh.
+- **10 new security test cases**: Key CRUD, signing determinism, tamper detection, auto-sign on save, graceful unsigned fallback.
+
+### Technical
+- Stdlib only (`hmac` + `secrets`), no new dependencies.
+- Signs only the `cells` dict (not metadata) for canonical determinism.
+
+---
+
+## [0.87.0] — 2026-10-01 — "Content Cleanup"
+
+### Removed
+- **Deleted `soma_run.py`** (221 lines): Legacy master orchestrator, fully replaced by MCP server (`soma_mcp/`) and CLI (`soma_cli/`). Zero importers found in codebase.
+
+### Changed
+- **`docs/architecture/scripts.md`**: Marked "Master Pipeline Orchestrator" section as removed, pointing to `soma_mcp/`.
+- **`soma_sdk_js/README.md`**: Replaced `soma_run.py` reference with MCP server.
+
+---
+
+## [0.86.0] — 2026-10-01 — "Security Hardening"
+
+### Added
+- **Path confinement** (`soma_mcp/security.py` — NEW): `confine_workspace()` rejects workspaces without `.soma/cells/`; `confine_path()` blocks path traversal and symlink escape; `validate_cell_names()` rejects fabricated cell names.
+- **Enzyme import allowlist** (`soma_mcp/tools.py`): Frozen allowlist + `_safe_import_enzyme()` prevents rogue `.py` files in `enzymes/` from being loaded.
+- **SHA-256 cell integrity manifests** (`soma_mcp/integrity.py` — NEW): Manifest generation and verification during cell cache refresh with graceful degradation.
+- **Session token auth** (`soma_mcp/server.py`): Token generated on `initialize`, required for write/execute tools, read tools remain open.
+- **Per-tool rate limiting** (`soma_mcp/server.py`): Sliding window rate limits on execution-heavy tools.
+- **Permission tiers**: All tools classified into `_READ_TOOLS`, `_WRITE_TOOLS`, `_EXECUTE_TOOLS` frozensets.
+- **31 new security test cases** (`tests/test_security.py` — NEW): Path confinement, cell validation, integrity manifests, enzyme allowlist, auth tiers, rate limiting.
+
+### Fixed
+- **`tests/test_mcp_verify.py`**: Updated 8 test fixtures to create valid `.soma/cells/` workspaces (required by new confinement checks).
+
+---
+
 ## [0.85.1] — 2026-10-01
 
 ### Fixed
