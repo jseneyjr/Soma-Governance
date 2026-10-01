@@ -26,12 +26,24 @@ This project uses [Semantic Versioning](https://semver.org/).
 - **Supercell Review Intensity**: New highest review tier (above Tempest) — adversarial Prosecutor/Defender pairs per prong, iterative fix-revalidate with no deferrals until clean ship.
 - **Quality Gate Checks**: Assertion density, bare `pass` detection, import verification, test sanity.
 - **Doc Consistency Tests**: 6 tests verifying README ↔ SKILL.md intensity level consistency.
-- **Test Suite**: 931+ tests with shared fixtures (`tests/helpers_cell.py`).
+- **Test Suite**: 1184 tests with shared fixtures (`tests/helpers_cell.py`).
+- **Governance Cells**: 44 total — 20 walls, 2 plasmodesmata, 3 membranes, 3 chloroplasts, 16 vacuoles.
+  - NEW: `trap-stdout-protocol-corruption` (wall) — hooks emitting to stdout after JSON.
+  - NEW: `trap-tautological-test` (wall) — tests that verify nothing.
+  - NEW: `contract-sdk-feature-parity` (plasmodesmata) — Python/JS SDK method parity.
+- **SDK Parity**: Added `entropy()` and `adversarial()` to Python SDK (matching JS SDK).
 
 ### Changed
 - Package discovery updated to include `immune_system*`.
 - Pre-commit hook auto-installed by `soma init`.
 - Architecture diagram widened for Supercell intensity level.
+- **SDK `is_extinct`/`is_promotable`**: Now use Bayesian scoring aligned with `cell_promote.py` standards (score > 0.85, triggers ≥ 20) instead of legacy `raw_score`.
+- **DRY**: `outcome_engine.py` imports canonical `resolve_workspace()` from `soma_resolve.py`. Intentional duplication in `soma_mcp/` documented (zero-dep wall).
+- **Type Annotations**: Added to all public APIs in `governance.py`, `cells.py`, `jit_engine.py`, `bayesian_score.py`.
+- **Test Fixtures**: Deduplicated `soma_workspace`, `_write_cell`, `_make_cell` into shared `helpers_cell.py`.
+- **Hardcoded Paths**: `safety_gate.sh` and `immune_init.sh` now use `${SOMA_LOGS_DIR}` / `${SOMA_CONF}` env vars with fallbacks.
+- **Makefile validate**: Now covers `soma_cli/` and `immune_system/` in addition to `enzymes/`, `soma_mcp/`, `soma_sdk/`.
+- **Docs**: Fixed ABSTRACT contribution count (3→4), step count (12,000→11,900), removed duplicate PHYLOGENY section, added Phase 16/18/19/20/21 stubs.
 
 ### Fixed
 - **Evidence Pipeline**: 4 critical bugs fixed (schema mismatch, dead detectors, missing FPSR extraction).
@@ -42,6 +54,12 @@ This project uses [Semantic Versioning](https://semver.org/).
 - **Correctness (Supercell C2)**: JSONL crash on non-dict lines in lifecycle evidence loading.
 - **Correctness (Supercell C3)**: Lifecycle threshold bugs (boundary values, min sample size, dormancy).
 - **Bug**: 5 pre-existing `test_status.py` failures from real filesystem leak through platform auto-detection.
+- **Robustness (Phase 2)**: 9 fixes across verification tools:
+  - `branch_coverage.py`: Parse `missing_branches`, add subprocess timeout (120s), UTF-8 encoding.
+  - `transcript_verifier.py`: FileNotFoundError guard, tool_calls-based write detection (no more content-string false positives), collection error sentinel `(-1,-1)`, multi-run false positive fix.
+  - `immune_init.sh`: JSON protocol corruption — 4 echo statements redirected to stderr.
+  - `escalation_sentinel.sh`: Frontmatter `target_paths` parsing replaces fragile hypothesis regex.
+- **Layer 2 Fail-Open (Phase 3)**: Empty spec agent predictions now produce `Verdict.BLOCK` instead of silently passing through to `SHIP`.
 
 ---
 
