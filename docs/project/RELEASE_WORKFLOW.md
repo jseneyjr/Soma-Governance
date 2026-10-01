@@ -21,10 +21,11 @@ develop ──→ release/v0.XX ──→ PR to main ──→ tag v0.XX.0 ─�
 4. **Push branch**: `git push -u origin release/v0.XX`
 5. **Create PR**: `gh pr create --base main --head release/v0.XX --title "release(v0.XX): <summary>"`
 6. **Wait for CI**: All matrix jobs must pass before merge
-7. **Merge PR**: Via GitHub UI or `gh pr merge`
-8. **Tag release**: `git checkout main && git pull && git tag v0.XX.0 && git push origin v0.XX.0`
+7. **⛔ HUMAN REVIEW GATE**: Stop here. The maintainer reviews the PR and merges via GitHub UI. Agents must NOT merge to main directly — this is the owner's checkpoint.
+8. **Tag release** (after merge): `git checkout main && git pull && git tag -a v0.XX.0 -m "<message>" && git push origin v0.XX.0`
 9. **Back-merge to develop**: `git checkout develop && git merge main -m "sync: merge main back to develop after v0.XX" && git push origin develop`
 10. **Create GitHub Release**: `gh release create v0.XX.0 --title "v0.XX.0 — <Theme>" --notes "<release notes>"`
+11. **Cleanup**: Delete release branch `git push origin --delete release/v0.XX`
 
 ## Phase → Version Mapping
 
@@ -32,8 +33,8 @@ develop ──→ release/v0.XX ──→ PR to main ──→ tag v0.XX.0 ─�
 |:------|:--------|:------|
 | Phase 1 | v0.73 ✅ | Stop the Bleeding — README strip, hook fix, claim registry |
 | Phase 2 | v0.74 ✅ | Foundation — canonical parser, scoring unification, error handling |
-| Phase 3 | v0.75 ✅ | Advanced Features — credit assignment, mutation testing, crossover |
-| Phase 4 | v0.80 | Polish — gate enforcement, integrity, dogfooding activation |
+| Phase 3 | v0.75 ✅ | Credit Where Due — credit assignment, mutation testing, crossover |
+| Phase 4 | v0.80 ✅ | Consensus — quorum sensing, gate enforcement DSL, doc cleanup |
 
 ## Pre-Release Checklist
 
@@ -78,3 +79,11 @@ Audit every doc file for staleness. For each file, determine: **UPDATE**, **DELE
 ### v0.74
 - **Property test flaky**: `test_interval_narrows_with_more_data` used additive extra (changes proportion), not multiplicative scale (preserves proportion). Hypothesis found the counterexample `tp=1, fp=8, extra=1`. Fix: multiply both by scale factor.
 - **Documentation not audited**: No systematic doc review was part of the workflow. Added Documentation Hygiene checklist above.
+
+### v0.75
+- **VERSION file again**: CI broke because `VERSION` wasn't bumped alongside `pyproject.toml`. The invariant test caught it, confirming the version bump checklist is essential.
+- **Stale CHANGELOG URL**: `pyproject.toml` had a pre-restructure URL to `docs/CHANGELOG.md` (moved to `docs/project/CHANGELOG.md`).
+
+### v0.80
+- **Agent merged directly to main**: Agent bypassed the PR review step and merged release branches directly into main via `git merge`. Added explicit **⛔ HUMAN REVIEW GATE** to step 7 to prevent this. Agents must stop at the PR and let the maintainer merge.
+- **Doc fixer sandbox failures**: Subagent doc edits silently failed due to read-only sandbox. Only 3 of 9 files were written on first pass. Verified via `git diff --stat` before committing. Always spot-check subagent file writes.
