@@ -8,6 +8,7 @@ from typing import Callable, Optional, Tuple
 import yaml
 
 from soma_sdk.errors import CellParseError, CellNotFoundError, CellPathTraversalError
+from soma_sdk.scoring import bayesian_posterior, laplace_score
 
 
 @dataclass
@@ -36,20 +37,15 @@ class CellFitness:
         return 0.0
     
     def bayesian(self, confidence: float = 0.90) -> dict[str, float | str]:
-        """Beta-Binomial posterior with Jeffrey's prior."""
-        a = self.true_positives + 0.5
-        b = max(0, self.triggers - self.true_positives) + 0.5
-        mean = a / (a + b)
-        std = math.sqrt((a * b) / ((a + b) ** 2 * (a + b + 1)))
-        z = 1.645  # 90% CI
-        return {
-            'mean': round(mean, 4),
-            'lower': round(max(0, mean - z * std), 4),
-            'upper': round(min(1, mean + z * std), 4),
-            'certainty': 'low' if (self.true_positives + self.false_positives) < 5
-                        else 'medium' if (self.true_positives + self.false_positives) < 20
-                        else 'high'
-        }
+        """Wilson-bounded posterior with Jeffrey's prior.
+
+        Delegates to soma_sdk.scoring.bayesian_posterior.
+        """
+        return bayesian_posterior(
+            tp=self.true_positives,
+            fp=self.false_positives,
+            confidence=confidence,
+        )
 
 
 @dataclass
@@ -73,15 +69,15 @@ class Cell:
     def is_extinct(self) -> bool:
         if self.fitness.triggers == 0:
             return False
-        bayesian_score = (self.fitness.true_positives + 1) / (self.fitness.triggers + 2)
-        return bayesian_score <= 0.15
+        score = laplace_score(self.fitness.true_positives, self.fitness.triggers)
+        return score <= 0.15
     
     @property
     def is_promotable(self) -> bool:
         if self.fitness.triggers == 0:
             return False
-        bayesian_score = (self.fitness.true_positives + 1) / (self.fitness.triggers + 2)
-        return bayesian_score > 0.85 and self.fitness.triggers >= 20
+        score = laplace_score(self.fitness.true_positives, self.fitness.triggers)
+        return score > 0.85 and self.fitness.triggers >= 20
 
 
 # ---------------------------------------------------------------------------

@@ -8,7 +8,7 @@ from datetime import datetime
 from datetime import timezone
 from pathlib import Path
 
-from bayesian_score import bayesian_score
+from soma_sdk.scoring import bayesian_score, bayesian_posterior
 from soma_resolve import resolve_workspace
 
 _project_root = str(Path(__file__).resolve().parent.parent)
@@ -18,22 +18,11 @@ from soma_sdk.cells import parse_cell_file
 
 
 def bayesian_fitness(tp, fp, confidence=0.90):
-    """Beta-Binomial posterior with Jeffrey's prior."""
-    a = tp + 0.5
-    b = fp + 0.5
-    mean = a / (a + b)
-    import math
-    std = math.sqrt((a * b) / ((a + b) ** 2 * (a + b + 1)))
-    z = 1.645
-    lower = max(0, mean - z * std)
-    upper = min(1, mean + z * std)
-    certainty = 'low' if (tp + fp) < 5 else 'medium' if (tp + fp) < 20 else 'high'
-    return {
-        'mean': round(mean, 4),
-        'lower_90': round(lower, 4),
-        'upper_90': round(upper, 4),
-        'certainty': certainty
-    }
+    """Wilson-bounded posterior with Jeffrey's prior.
+
+    Delegates to soma_sdk.scoring.bayesian_posterior.
+    """
+    return bayesian_posterior(tp=tp, fp=fp, confidence=confidence)
 
 def antifragile_bonus(metadata):
     """Cells gain +5% fitness per survived high-intensity review."""
