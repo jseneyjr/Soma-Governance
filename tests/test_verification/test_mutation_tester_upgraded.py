@@ -141,23 +141,20 @@ def test_noop():
 
 
 class TestPhase32NewOperators:
-    """Tests for new mutation operators — Phase 3.2 (skipped until implemented)."""
+    """Tests for new mutation operators — Phase 3.2."""
 
-    @pytest.mark.skip(reason='Phase 3.2: comparison swap operator not yet implemented')
     def test_comparison_swap_gt_to_lt(self, tmp_path):
         """x > 0 should be mutated to x < 0 and caught by tests."""
         target, test_file = _write_fixture(tmp_path, FIXTURE_CMP, FIXTURE_CMP_TEST, 'cmp_fn')
         result = check(target, 'is_positive', test_file)
         assert result.verdict is True  # All mutations killed
 
-    @pytest.mark.skip(reason='Phase 3.2: boolean swap operator not yet implemented')
     def test_boolean_swap_and_to_or(self, tmp_path):
         """a and b should be mutated to a or b and caught by tests."""
         target, test_file = _write_fixture(tmp_path, FIXTURE_BOOL, FIXTURE_BOOL_TEST, 'bool_fn')
         result = check(target, 'both_positive', test_file)
         assert result.verdict is True
 
-    @pytest.mark.skip(reason='Phase 3.2: statement deletion operator not yet implemented')
     def test_statement_deletion(self, tmp_path):
         """Deleting a statement should be caught by tests."""
         source = '''
@@ -178,7 +175,6 @@ def test_empty():
         result = check(target, 'accumulate', test_file)
         assert result.verdict is True
 
-    @pytest.mark.skip(reason='Phase 3.2: return value mutation not yet implemented')
     def test_return_value_mutation(self, tmp_path):
         """return x should be mutated to return None and caught."""
         source = '''
