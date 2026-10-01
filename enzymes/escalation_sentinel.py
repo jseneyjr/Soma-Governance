@@ -48,12 +48,9 @@ def write_frontmatter(filepath, metadata, body):
 
 def main():
     workspace = os.getcwd()
-    cells_dir = os.path.join(workspace, '.prism', 'cells')
+    cells_dir = os.path.join(workspace, '.soma', 'cells')
     if not os.path.exists(cells_dir):
-        # Fallback for Soma v0.25 structure
-        cells_dir = os.path.join(workspace, '.soma', 'cells')
-        if not os.path.exists(cells_dir):
-            sys.exit(0)
+        sys.exit(0)
 
     last_gasp_dir = os.path.join(cells_dir, '.last_gasp_queue')
     archive_dir = os.path.join(cells_dir, '.archive')
@@ -77,20 +74,12 @@ def main():
         # Extract organ (default to governance-auditor)
         organ = metadata.get('organ', 'governance-auditor')
         
-        # In a real environment, we would invoke the organ via MCP or subprocess here.
-        # For the Sentinel logic: we evaluate the organ's feedback.
-        # We will mock the validation result here (validation via mock organ).
-        # We assume the organ returns a result payload in a .result file.
-        
-        # MOCK VALIDATION: We will randomly decide based on current score to simulate feedback
-        import random
-        random.seed(filename)
-        
-        # Normally organ runs here:
+        # TODO: Invoke the organ via MCP or subprocess to validate the cell.
+        # For now, check for a pre-computed .result file written by the organ.
         print(f"[Sentinel] Cell {filename} faces APOPTOSIS. Invoking Last Gasp Organ: {organ}...")
         
-        # Simulate organ result (e.g. 30% chance to save it)
-        organ_validates_cell = random.random() < 0.3
+        result_file = os.path.join(last_gasp_dir, filename.replace('.md', '.result'))
+        organ_validates_cell = os.path.exists(result_file)
         
         if organ_validates_cell:
             print(f"[Sentinel] Organ '{organ}' VALIDATED the cell! Saving from Apoptosis.")

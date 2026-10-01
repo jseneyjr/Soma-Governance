@@ -4,6 +4,7 @@ from __future__ import annotations
 import argparse
 import json
 import re
+import sys
 from pathlib import Path
 
 
@@ -13,6 +14,9 @@ TYPE_TO_DIR = {"wall": "walls", "vacuole": "vacuoles"}
 
 def _find_cell(cells_dir: Path, genome_dir: Path, cell_id: str) -> tuple[Path | None, str | None]:
     """Find a cell file by ID across walls/, vacuoles/, and genome/."""
+    # Sanitize cell_id to prevent path traversal
+    if not cell_id or "/" in cell_id or "\\" in cell_id or ".." in cell_id:
+        return None, None
     for type_dir in ("walls", "vacuoles"):
         candidate = cells_dir / type_dir / f"{cell_id}.md"
         if candidate.is_file():
@@ -86,7 +90,10 @@ def _force_demote(project_root: Path, cell_id: str, dry_run: bool, use_json: boo
             count=1,
             flags=re.MULTILINE,
         )
-        if "enforcement:" not in content:
+        # Check frontmatter only, not body
+        fm_end = content.find('---', 3)
+        frontmatter = content[:fm_end] if fm_end > 0 else content
+        if 'enforcement:' not in frontmatter:
             content = re.sub(
                 r"^(type:\s*\S+)",
                 r"\1\nenforcement: gate",
@@ -104,6 +111,15 @@ def _force_demote(project_root: Path, cell_id: str, dry_run: bool, use_json: boo
             count=1,
             flags=re.MULTILINE,
         )
+
+    # Guard against silent overwrite
+    if target_path.exists():
+        msg = f"Target already exists: {target_path}"
+        if use_json:
+            print(json.dumps({"error": msg}))
+        else:
+            print(msg)
+        return 1
 
     # Write to new location and remove old
     target_path.parent.mkdir(parents=True, exist_ok=True)
@@ -128,6 +144,9 @@ def run_demote(args: argparse.Namespace) -> int:
     dry_run = getattr(args, "dry_run", False)
     force = getattr(args, "force", False)
     cell_id = getattr(args, "cell", None)
+
+    if getattr(args, 'cell', None) and not getattr(args, 'force', False):
+        print("Warning: --cell requires --force; running normal evaluation", file=sys.stderr)
 
     if force:
         if not cell_id:

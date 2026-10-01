@@ -13,6 +13,7 @@ from __future__ import annotations
 
 import json
 import os
+import tempfile
 
 from . import (
     ArbitrationResult, Claim, Prediction, RiskCategory,
@@ -36,11 +37,13 @@ _KEYWORD_TO_CATEGORY: dict[str, RiskCategory] = {
     # Security
     "code_injection": RiskCategory.CODE_INJECTION,
     "injection": RiskCategory.CODE_INJECTION,
-    "format": RiskCategory.CODE_INJECTION,
+    "format string attack": RiskCategory.CODE_INJECTION,
+    "f-string injection": RiskCategory.CODE_INJECTION,
     "path_traversal": RiskCategory.PATH_TRAVERSAL,
     "traversal": RiskCategory.PATH_TRAVERSAL,
     "containment": RiskCategory.PATH_TRAVERSAL,
-    "shell": RiskCategory.SHELL_INJECTION,
+    "shell injection": RiskCategory.SHELL_INJECTION,
+    "shell command": RiskCategory.SHELL_INJECTION,
     "shell=true": RiskCategory.SHELL_INJECTION,
     # Structural
     "dead_code": RiskCategory.DEAD_CODE,
@@ -169,12 +172,18 @@ def save_arbitration_evidence(
     """Persist arbitration result to .soma/evidence/ for checkpoint verification.
 
     The checkpoint gate checks for this file to prevent bypassing the arbiter.
+    Uses atomic write (tempfile + rename) to prevent corruption on crash.
 
     Returns the path to the saved evidence file.
     """
+    # Sanitize cycle to prevent path traversal
+    cycle = int(cycle)
+    if cycle < 1:
+        raise ValueError(f"cycle must be a positive integer, got {cycle}")
+
     evidence_dir = os.path.join(workspace, ".soma", "evidence")
     os.makedirs(evidence_dir, exist_ok=True)
-    evidence_file = os.path.join(evidence_dir, f"arbitration_cycle_{cycle}.json")
+    target = os.path.join(evidence_dir, f"arbitration_cycle_{cycle}.json")
 
     record = {
         "cycle": cycle,
@@ -193,7 +202,14 @@ def save_arbitration_evidence(
         ],
     }
 
-    with open(evidence_file, "w", encoding="utf-8") as f:
-        json.dump(record, f, indent=2)
+    # Atomic write: write to temp file, then rename
+    tmp_fd, tmp_path = tempfile.mkstemp(dir=str(evidence_dir), suffix='.json')
+    try:
+        with os.fdopen(tmp_fd, 'w', encoding='utf-8') as f:
+            json.dump(record, f, indent=2)
+        os.replace(tmp_path, str(target))
+    except BaseException:
+        os.unlink(tmp_path)
+        raise
 
-    return evidence_file
+    return target

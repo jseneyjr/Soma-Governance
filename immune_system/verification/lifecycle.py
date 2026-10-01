@@ -79,8 +79,11 @@ def _load_evidence(workspace: str) -> dict[str, dict[str, Any]]:
                                 if isinstance(triggered_at, str) and triggered_at.endswith("Z"):
                                     triggered_at = triggered_at[:-1] + "+00:00"
                                 ts = datetime.fromisoformat(triggered_at)
-                                # Strip tzinfo so comparisons with naive datetimes don't crash
-                                ts = ts.replace(tzinfo=None)
+                                # Convert to UTC before stripping tzinfo
+                                if ts.tzinfo is not None:
+                                    ts = ts.astimezone(datetime.timezone.utc).replace(tzinfo=None)
+                                else:
+                                    ts = ts.replace(tzinfo=None)
                                 prev = evidence[cell_id].get("last_trigger_ts")
                                 if prev is None or ts > prev:
                                     evidence[cell_id]["last_trigger_ts"] = ts
@@ -115,47 +118,52 @@ def _load_evidence(workspace: str) -> dict[str, dict[str, Any]]:
 
 
 def _load_cells(workspace: str) -> list[dict[str, Any]]:
-    """Load cell metadata from .soma/cells/**/*.md files.
+    """Load cell metadata from .soma/cells/**/*.md and genome/**/*.md files.
 
     Returns:
         List of cell metadata dicts with at minimum: id, type, created, source_path.
     """
     cells = []
-    cells_root = os.path.join(workspace, ".soma", "cells")
-    if not os.path.isdir(cells_root):
-        return cells
+    scan_roots = [
+        os.path.join(workspace, ".soma", "cells"),
+        os.path.join(workspace, "genome"),
+    ]
 
-    for md_path in glob.glob(os.path.join(cells_root, "**", "*.md"), recursive=True):
-        if os.path.basename(md_path) == "README.md":
-            continue
-        try:
-            with open(md_path, encoding="utf-8") as f:
-                content = f.read()
-        except OSError:
+    for cells_root in scan_roots:
+        if not os.path.isdir(cells_root):
             continue
 
-        # Parse YAML frontmatter
-        if not content.startswith("---"):
-            continue
-        parts = content.split("---", 2)
-        if len(parts) < 3:
-            continue
-        try:
-            meta = yaml.safe_load(parts[1]) or {}
-        except yaml.YAMLError:
-            continue
+        for md_path in glob.glob(os.path.join(cells_root, "**", "*.md"), recursive=True):
+            if os.path.basename(md_path) == "README.md":
+                continue
+            try:
+                with open(md_path, encoding="utf-8") as f:
+                    content = f.read()
+            except OSError:
+                continue
 
-        cell_id = meta.get("id", os.path.splitext(os.path.basename(md_path))[0])
-        cell_type = meta.get("type", "vacuole")
-        created = meta.get("created", "")
+            # Parse YAML frontmatter
+            if not content.startswith("---"):
+                continue
+            parts = content.split("---", 2)
+            if len(parts) < 3:
+                continue
+            try:
+                meta = yaml.safe_load(parts[1]) or {}
+            except yaml.YAMLError:
+                continue
 
-        cells.append({
-            "id": cell_id,
-            "type": cell_type,
-            "created": created,
-            "source_path": md_path,
-            "meta": meta,
-        })
+            cell_id = meta.get("id", os.path.splitext(os.path.basename(md_path))[0])
+            cell_type = meta.get("type", "vacuole")
+            created = meta.get("created", "")
+
+            cells.append({
+                "id": cell_id,
+                "type": cell_type,
+                "created": created,
+                "source_path": md_path,
+                "meta": meta,
+            })
 
     return cells
 
@@ -267,7 +275,7 @@ def evaluate_demotions(workspace: str) -> list[dict]:
             # No triggers recorded — use cell age as proxy
             last_trigger_age = age_days if triggers == 0 else 0
 
-        if last_trigger_age >= DORMANT_DAYS_THRESHOLD:
+        if reason is None and last_trigger_age >= DORMANT_DAYS_THRESHOLD:
             reason = "dormant"
 
         if reason is None:

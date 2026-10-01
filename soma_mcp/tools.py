@@ -1,3 +1,4 @@
+import fcntl
 import glob
 import json
 import os
@@ -341,6 +342,34 @@ TOOL_DEFINITIONS = [
         }
     },
     {
+        "name": "soma_verify_changes",
+        "description": "Verify proposed changes against Layer-1 governance checks.",
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "workspace": {"type": "string", "description": "Path to the project workspace."},
+                "files": {
+                    "type": "array",
+                    "items": {"type": "string"},
+                    "description": "List of changed files to verify."
+                },
+                "layer1_only": {"type": "boolean", "description": "Only run Layer-1 checks (default true)."}
+            },
+            "required": ["workspace"]
+        }
+    },
+    {
+        "name": "soma_checkpoint",
+        "description": "Run all checkpoint checks against the workspace.",
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "workspace": {"type": "string", "description": "Path to the project workspace."}
+            },
+            "required": ["workspace"]
+        }
+    },
+    {
         "name": "soma_capture_insight",
         "description": (
             "Capture a human insight about the codebase. Records the insight, "
@@ -382,6 +411,8 @@ def execute_tool(name: str, args: dict):
             domain_hint=args.get("domain"),
             cell_type=args.get("cell_type")
         )
+        if args.get("dry_run"):
+            return {"prompt": prompt, "dry_run": True, "instruction": "Dry run: showing prompt that would be used. No cell will be created."}
         return {"prompt": prompt, "instruction": "Process this prompt and return the cell YAML. Then use a file-writing tool to save it to the appropriate .soma/cells/ directory."}
     
     elif name == "soma_list_cells":
@@ -411,33 +442,52 @@ def execute_tool(name: str, args: dict):
         
     elif name == "soma_audit_security":
         content = args.get("proposed_content", "")
+        file_path = args.get("file_path", "")
         # Prototype: Basic keyword scanning for secrets and OWASP basics
         flags = []
         if "password=" in content.lower() or "secret=" in content.lower():
-            flags.append("- Hardcoded secret or password detected.")
+            flags.append(f"- Hardcoded secret or password detected in {file_path}.")
         if "eval(" in content:
-            flags.append("- eval() detected. Potential injection vector.")
-            
+            flags.append(f"- eval() detected in {file_path}. Potential injection vector.")
+        # Scope checks by file extension when file_path is provided
+        if file_path:
+            ext = os.path.splitext(file_path)[1].lower()
+            if ext in ('.html', '.htm', '.js', '.jsx', '.ts', '.tsx'):
+                if 'innerHTML' in content or 'document.write' in content:
+                    flags.append(f"- Potential XSS vector in {file_path}: innerHTML/document.write usage.")
+            if ext == '.sql' or ('execute(' in content and '%s' not in content and '?' not in content):
+                if 'f"' in content or "f'" in content or '% ' in content:
+                    flags.append(f"- Potential SQL injection in {file_path}: string formatting in query.")
+
         if flags:
-            return {"status": "FAIL", "feedback": "\n".join(flags), "instruction": "Fix these issues and resubmit."}
-        return {"status": "PASS", "feedback": "Security Audit passed. No OWASP flaws or exposed secrets detected."}
-        
+            return {"status": "FAIL", "feedback": "\n".join(flags), "file_path": file_path, "instruction": "Fix these issues and resubmit."}
+        return {"status": "PASS", "feedback": f"Security Audit passed for {file_path or 'input'}. No OWASP flaws or exposed secrets detected.", "file_path": file_path}
+
     elif name == "soma_audit_performance":
         content = args.get("proposed_content", "")
+        file_path = args.get("file_path", "")
         # Prototype: Basic keyword scanning for hot-paths and inefficiencies
         flags = []
         if content.count("for ") > 2 and "in " in content:
             # Very naive nested loop check
-            flags.append("- Potential O(N^2) or deeply nested loop detected in hot path.")
+            flags.append(f"- Potential O(N^2) or deeply nested loop detected in {file_path}.")
         if ".query(" in content and "SELECT *" in content:
-            flags.append("- Inefficient DB query (SELECT *) detected. Select only needed columns.")
-            
+            flags.append(f"- Inefficient DB query (SELECT *) detected in {file_path}. Select only needed columns.")
+        # Scope checks by file extension when file_path is provided
+        if file_path:
+            ext = os.path.splitext(file_path)[1].lower()
+            if ext == '.py':
+                if 'import *' in content:
+                    flags.append(f"- Wildcard import in {file_path} may slow startup and increase memory.")
+
         if flags:
-            return {"status": "FAIL", "feedback": "\n".join(flags), "instruction": "Optimize the code and resubmit."}
-        return {"status": "PASS", "feedback": "Performance Audit passed. No obvious bottlenecks detected."}
+            return {"status": "FAIL", "feedback": "\n".join(flags), "file_path": file_path, "instruction": "Optimize the code and resubmit."}
+        return {"status": "PASS", "feedback": f"Performance Audit passed for {file_path or 'input'}. No obvious bottlenecks detected.", "file_path": file_path}
 
     if name == "soma_verify_changes":
-        workspace = args.get('workspace') or resolve_workspace()
+        workspace = os.path.realpath(args.get('workspace') or resolve_workspace())
+        if not os.path.isdir(workspace):
+            return {"error": f"Workspace not found: {workspace}"}
         files = args.get('files', [])
         layer1_only = args.get('layer1_only', True)
         try:
@@ -459,11 +509,11 @@ def execute_tool(name: str, args: dict):
         }
 
     elif name == "soma_checkpoint":
-        workspace = args.get('workspace') or resolve_workspace()
+        workspace = os.path.realpath(args.get('workspace') or resolve_workspace())
+        if not os.path.isdir(workspace):
+            return {"error": f"Workspace not found: {workspace}"}
         from pathlib import Path
         root = Path(workspace)
-        if not root.is_dir():
-            return {"error": f"Workspace not found: {workspace}"}
         issues = _run_checkpoint_checks(root)
         return {
             "status": "PASS" if not issues else "FAIL",
@@ -512,8 +562,12 @@ def execute_tool(name: str, args: dict):
             }
             records.append(record)
         with open(outcomes_file, 'a', encoding="utf-8") as f:
-            for record in records:
-                f.write(json.dumps(record) + '\n')
+            fcntl.flock(f, fcntl.LOCK_EX)
+            try:
+                for record in records:
+                    f.write(json.dumps(record) + '\n')
+            finally:
+                fcntl.flock(f, fcntl.LOCK_UN)
         return {'status': 'recorded', 'records': records}
 
     elif name == "soma_capture_insight":

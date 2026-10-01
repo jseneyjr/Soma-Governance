@@ -5,7 +5,7 @@
 [![Agent Skills](https://img.shields.io/badge/Agent_Skills-15-purple?style=flat-square)](#-agent-skills)
 [![Automation Scripts](https://img.shields.io/badge/Automation_Scripts-58-red?style=flat-square)](#%EF%B8%8F-automation-scripts)
 [![Adaptive Rules](https://img.shields.io/badge/Adaptive_Rules-5_Types-orange?style=flat-square)](#-adaptive-rules)
-[![Tests](https://img.shields.io/badge/Tests-925%2B-brightgreen?style=flat-square)](#testing--ci)
+[![Tests](https://img.shields.io/badge/Tests-1162%2B-brightgreen?style=flat-square)](#testing--ci)
 [![Version](https://img.shields.io/badge/Version-0.60.0-informational?style=flat-square)](docs/CHANGELOG.md)
 [![Blog Post](https://img.shields.io/badge/Blog-dev.to-black?style=flat-square&logo=devdotto)](https://dev.to/nseney1/rules-that-cant-prove-themselves-die-adaptive-governance-for-ai-coding-agents-25bn)
 [![Blog Post 2](https://img.shields.io/badge/Blog_2-dev.to-black?style=flat-square&logo=devdotto)](https://dev.to/nseney1/your-ai-agents-rules-file-is-a-gentlemans-agreement-heres-what-happens-when-you-make-3df5)
@@ -444,7 +444,7 @@ Instead of pleading with the AI in a system prompt to "think step-by-step," Soma
 - **Typical Load** (genome + 3 matched cells): ~4,013 tokens/turn
 - **Waste Rate**: < 1.0% in governed sessions (via Last Gasp & TTC Oracles)
 - **Calibrated Token Ratio**: 1.35 measured directly against Gemini API
-- **Verification Framework**: 925+ tests across 30+ test files
+- **Verification Framework**: 1,162+ tests across 30+ test files
 
 See [METRICS.md](docs/METRICS.md) for a complete system breakdown. See [BENCHMARK.md](docs/BENCHMARK.md) for the standardized governance effectiveness benchmark.
 
@@ -469,7 +469,7 @@ make validate   # Shell syntax, Python compilation, JSON templates
 make doctor     # System health check
 ```
 
-**515+ tests** across 20 test files covering:
+**1,162+ tests** across 30+ test files covering:
 
 | Suite | Tests | Coverage |
 |:------|:-----:|:---------|
@@ -522,7 +522,7 @@ Soma has evolved across 50 measured phases, from manually written logic into a s
 | 23–25 | **TTC & JIT Context** — Last Gasp, TTC Oracles, zero-waste validation |
 | 26–29 | **Perception & Homeostasis** — Interoception, resilience engine, signal coherence |
 | 30 | **Two-Layer Verification** — Deterministic tools, adversarial pairing, transcript verification |
-| 31–50 | **Incentive-Compatible Governance** — Evidence pipeline, fitness ledger migration, cell expiry enforcement, oracle checkpoint, test hardening (tautological → behavioral), delegation verification, multi-platform support, 515+ tests |
+| 31–50 | **Incentive-Compatible Governance** — Evidence pipeline, fitness ledger migration, cell expiry enforcement, oracle checkpoint, test hardening (tautological → behavioral), delegation verification, multi-platform support, 1,162+ tests |
 
 Read [PHYLOGENY.md](docs/PHYLOGENY.md) for the complete evolutionary narrative.
 

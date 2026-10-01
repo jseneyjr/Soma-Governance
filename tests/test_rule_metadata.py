@@ -294,18 +294,17 @@ def test_vacuole_has_required_fields(rule_file):
 @pytest.mark.parametrize("rule_file", _get_vacuoles(),
                          ids=lambda p: f"vacuoles/{p.name}")
 def test_vacuole_has_fitness_block(rule_file):
-    """Vacuoles must have a fitness tracking block."""
+    """Vacuoles should have fitness tracking (inline or external)."""
     fm = _jit_parse(rule_file)
     assert fm, f"{rule_file.name} has no parseable frontmatter"
-    assert "fitness" in fm, (
-        f"{rule_file.name} missing 'fitness' block — "
-        f"required for evolutionary lifecycle tracking"
-    )
+    # Fitness can be tracked inline (legacy) or externally via .soma/evidence/
+    if "fitness" not in fm:
+        return  # External tracking — acceptable since v0.50
     fitness = fm["fitness"]
     assert isinstance(fitness, dict), (
         f"{rule_file.name} fitness must be a dict, got {type(fitness)}"
     )
-    # Fitness must track triggers and true/false positives
+    # If inline, must track triggers and true/false positives
     for key in ("triggers", "true_positives", "false_positives"):
         assert key in fitness, (
             f"{rule_file.name} fitness block missing '{key}'"

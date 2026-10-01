@@ -26,7 +26,7 @@ else
     _d="$(dirname "$_d")"
   done
 fi
-SCRIPTS_DIR="$REPO_DIR/scripts"
+SCRIPTS_DIR="$REPO_DIR/enzymes"
 # If scripts dir doesn't exist at resolved root, fall back to original script location
 [ ! -d "$SCRIPTS_DIR" ] && SCRIPTS_DIR="$(cd -P "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 

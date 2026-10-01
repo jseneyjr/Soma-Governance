@@ -44,7 +44,7 @@ if [[ -z "$SOURCE_CELL" ]]; then
   exit 1
 fi
 
-if [[ ! -d "$TARGET_DIR/.soma" ]] && [[ ! -d "$TARGET_DIR/.prism" ]]; then
+if [[ ! -d "$TARGET_DIR/.soma" ]]; then
   echo "Error: Target directory does not have a .soma/ directory."
   echo "Suggest running 'install --local' in the target directory first."
   exit 1

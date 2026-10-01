@@ -45,6 +45,25 @@ This project uses [Semantic Versioning](https://semver.org/).
 
 ---
 
+## [0.60.0-rc] — 2026-09-30 — "Wire Verification & Cell Lifecycle RC"
+
+### Added
+- **Gitflow**: Standardized branch lifecycle with session pattern rules.
+- **Content Coherence Tests**: Automated doc ↔ code consistency validation.
+- **MCP Self-Install**: `soma init` auto-configures MCP server in agent config.
+- `soma init --rules {minimal|standard|full}`: Tiered rule installation.
+- **Wire Verification System (Phase 2)**: End-to-end evidence pipeline validation.
+- **Pre-Commit Hook**: Deterministic quality gate via `soma checkpoint --pre-commit`.
+- **Cell Lifecycle Engine**: Oracle, promote, and demote commands with deterministic state machine.
+- **Supercell Review Process**: Highest review tier — adversarial Prosecutor/Defender pairs per prong.
+- **Checkpoint Extraction**: Deterministic quality gate checks (assertion density, bare `pass`, imports).
+- **Evidence Pipeline Fix**: 4 critical bugs (schema mismatch, dead detectors, missing FPSR extraction).
+
+### Changed
+- 5 review cycles completed during RC hardening.
+
+---
+
 ## [0.52.0] — 2026-09-30 — "Gitflow & Hardening"
 
 ### Added
@@ -72,22 +91,58 @@ This project uses [Semantic Versioning](https://semver.org/).
 
 ## [0.50.0] — 2026-09-29 — "Incentive-Compatible Governance"
 
-> Version jump from v0.22.0 reflects Phases 23–50: TTC Oracles, JIT context, interoception, and the evidence pipeline.
+> Tagged release — Version jump from v0.22.0 reflects Phases 23–50: TTC Oracles, JIT context, interoception, and the evidence pipeline.
 
 ### Added
 - **Evidence Pipeline**: `evidence_collector.py`, `fitness_updater.py`, `cell_expiry.py`, `oracle_checkpoint.py`, `post_session_hook.sh`.
 - **Mechanism Design Framework** (`docs/MECHANISM_DESIGN.md`).
-- New vacuole cells: `trap-fix-one-not-all`, `trap-unverified-delegation`, `trap-local-green-ci-red`.
+- **Fitness Updater**: Automated fitness scoring from evidence ledgers.
+- **Cell Expiry**: Time- and session-based cell lifecycle enforcement.
+- **Oracle Checkpoint**: Cell health classification with evidence grounding.
+- **Trap Cells**: `trap-fix-one-not-all`, `trap-unverified-delegation`, `trap-local-green-ci-red`.
+- README trustworthiness rewrite.
 
 ### Changed
 - Fitness ledger decoupled from frontmatter → append-only JSONL.
 - `pyyaml` accepted as mandatory dependency.
 - Idle overhead stabilized at ~3,800 tokens/turn (down 8.6%).
+- 6 audit rounds completed.
 
 ### Fixed
 - Tautological assertions and brittle source-code grepping remediated (515+ tests).
 - Critical fitness inflation bug.
 - CI execution hang from hook test sourcing.
+
+---
+
+## [0.31.0] — 2026-09-29 — "Human Insight Pipeline"
+
+### Added
+- **Human Insight Pipeline**: Structured pathway for human-observed defects to influence cell fitness.
+- **TDD Protocol** (`genome/.oracles/tdd-protocol.md`): Test-driven development with sequential phase gates.
+- **Mechanism Design Framework**: Incentive-compatible governance architecture documentation.
+- **Evidence Collector**: Automated correlation of rule compliance with session outcomes.
+
+---
+
+## [0.30.0] — 2026-09-29 — "Two-Layer Verification Foundation"
+
+### Added
+- **Two-Layer Verification Framework**: Deterministic AST tools (Layer 1) + adversarial information-partitioned agents (Layer 2).
+- **Import Guard** (`import_guard`): Layer 1 tool detecting unguarded third-party imports that crash CI.
+- **Keyring Secret Storage**: Secure credential management for inference providers.
+
+---
+
+## [0.25.0] — 2026-09-28 — "TTC & Biological Docs"
+
+### Added
+- **TTC/Tempest MCP Tooling**: Test-Time Compute oracle integration with MCP server.
+- **Last Gasp Auto-Escalator**: Pre-failure evaluation mechanism that auto-escalates before token budget is consumed.
+- **Biological Documentation Suite**: PHYLOGENY.md, MECHANISM_DESIGN.md, and naming unification docs.
+
+### Fixed
+- 15 bug fixes across the governance pipeline.
 
 ---
 

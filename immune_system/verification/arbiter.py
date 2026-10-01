@@ -157,7 +157,11 @@ def _compute_verdict(
             return Verdict.BLOCK
 
     for d in divergences:
-        if d.prediction and d.prediction.severity in (Severity.CRITICAL, Severity.HIGH):
+        if d.prediction and d.prediction.severity == Severity.CRITICAL:
+            return Verdict.BLOCK
+
+    for d in divergences:
+        if d.prediction and d.prediction.severity == Severity.HIGH:
             return Verdict.REVISE
 
     return Verdict.SHIP

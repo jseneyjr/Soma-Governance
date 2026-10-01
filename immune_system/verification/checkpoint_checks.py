@@ -162,21 +162,26 @@ def check_cell_fitness(root: Path) -> list[dict]:
 
     cell_outcomes: dict[str, dict[str, int]] = {}
     try:
-        for line in outcomes_file.read_text(encoding="utf-8").strip().splitlines():
-            if not line.strip():
-                continue
-            record = json.loads(line)
-            cid = record.get("cell_id", "unknown")
-            outcome = record.get("outcome", "")
-            if cid not in cell_outcomes:
-                cell_outcomes[cid] = {"tp": 0, "fp": 0, "total": 0}
-            cell_outcomes[cid]["total"] += 1
-            if outcome in ("fp", "failure"):
-                cell_outcomes[cid]["fp"] += 1
-            elif outcome in ("tp", "success"):
-                cell_outcomes[cid]["tp"] += 1
-    except (OSError, json.JSONDecodeError):
+        lines = outcomes_file.read_text(encoding="utf-8").strip().splitlines()
+    except OSError:
         return issues
+
+    for line in lines:
+        if not line.strip():
+            continue
+        try:
+            record = json.loads(line)
+        except json.JSONDecodeError:
+            continue  # Skip corrupted lines
+        cid = record.get("cell_id", "unknown")
+        outcome = record.get("outcome", "")
+        if cid not in cell_outcomes:
+            cell_outcomes[cid] = {"tp": 0, "fp": 0, "total": 0}
+        cell_outcomes[cid]["total"] += 1
+        if outcome in ("fp", "failure"):
+            cell_outcomes[cid]["fp"] += 1
+        elif outcome in ("tp", "success"):
+            cell_outcomes[cid]["tp"] += 1
 
     # Flag cells with fp rate > 50%
     for cid, counts in cell_outcomes.items():
@@ -211,6 +216,10 @@ def check_cell_conventions(root: Path) -> list[dict]:
     try:
         import yaml
     except ImportError:
+        issues.append({
+            "check": "cell_conventions",
+            "message": "pyyaml not installed — cell convention checks skipped",
+        })
         return issues
 
     for type_dir_name, expected_type in DIR_TO_TYPE.items():
@@ -229,14 +238,19 @@ def check_cell_conventions(root: Path) -> list[dict]:
             end = content.find("---", 3)
             if end < 0:
                 continue
+
+            rel = f".soma/cells/{type_dir_name}/{cell_file.name}"
+
             try:
                 meta = yaml.safe_load(content[3:end])
-            except Exception:
+            except Exception as exc:
+                issues.append({
+                    "check": "cell_conventions",
+                    "message": f"{rel}: malformed YAML frontmatter: {exc}",
+                })
                 continue
             if not isinstance(meta, dict):
                 continue
-
-            rel = f".soma/cells/{type_dir_name}/{cell_file.name}"
 
             # Check required fields — enforcement only required for walls/vacuoles
             required = ["id", "domain", "type"]
@@ -335,6 +349,14 @@ def check_arbitration_evidence(root: Path) -> list[dict]:
             "message": (
                 f"Arbiter verdict is REVISE for cycle {cycle} "
                 f"({divergences} divergence(s)). Address high-severity findings."
+            ),
+        })
+    elif verdict not in ("ship",):
+        issues.append({
+            "check": "arbitration_evidence",
+            "message": (
+                f"Unknown arbiter verdict '{verdict}' for cycle {cycle}. "
+                f"Only 'ship' passes the gate."
             ),
         })
 

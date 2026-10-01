@@ -30,4 +30,5 @@ The MCP server (soma_mcp/tools.py) is the API contract for external agents.
 When a new enzyme is added or an existing enzyme gains new features, the
 corresponding MCP tool should be updated to maintain feature parity.
 Current MCP tools: soma_create_cell, soma_scan, soma_grade, soma_coverage,
-soma_fitness, soma_list_cells.
+soma_fitness, soma_list_cells, soma_report_outcome, soma_propose_change,
+soma_verify_changes, soma_checkpoint.

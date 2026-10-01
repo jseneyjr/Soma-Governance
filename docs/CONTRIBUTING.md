@@ -45,4 +45,4 @@ All contributions must respect the Privacy Invariant:
 - ✅ Aggregate counts, booleans, sanitized strings
 - ❌ Never: file paths, usernames, hostnames, project names, code content
 
-See the [NOTICE](NOTICE) file for the full privacy statement.
+See the [NOTICE](../NOTICE) file for the full privacy statement.

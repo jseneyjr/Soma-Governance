@@ -2,6 +2,7 @@
 id: trap-magic-numbers
 domain: style
 type: vacuole
+enforcement: advisory
 hypothesis: Hardcoded numeric literals represent brittle magic numbers that reduce
   code adaptability.
 prediction: Extracting these numbers into configuration or constants will increase
@@ -12,13 +13,12 @@ target_paths:
 - '**/*.sh'
 expiry_sessions: 50
 impact_weight: 0.8
-fitness:
-  score: null
-  impact_weight: 1.0
-  triggers: 0
-  true_positives: 0
-  false_positives: 0
-  last_trigger_date: null
+minimum_mode: breeze
+tags:
+- magic-numbers
+- style
+- configuration
+created: "2026-09-28"
 ---
 
 # Trap: Magic Numbers

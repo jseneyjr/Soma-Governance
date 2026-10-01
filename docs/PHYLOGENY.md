@@ -241,7 +241,7 @@ Analysis of a new dataset of 66 masked and sanitized production sessions (618 us
 **Key Discovery**: The governance system is structurally sound. The contamination was limited to the token economics presentation layer — 83 values across 8 files. All 11 phases' core claims survived because they were built on step counts and behavioral patterns, not token math.
 
 ### Changes
-- **Ground-truth token census**: `enzymes/token_census.py` using calibrated measurement (ratio: 1.35). Phase 11 baseline: **4,378 tokens/turn idle overhead**
+- **Ground-truth token census**: `enzymes/token_census.py` using calibrated measurement (ratio: 1.35). Phase 11 baseline: **~3,800 tokens/turn idle overhead**
 - **Rule compression**: Providence, subagent-delegation, and cost-optimization compressed by 320 words (~431 tokens/turn) through prose dedup and example tightening. §10 (Fail-Fast Validation) preserved — was misidentified as desktop automation during planning
 - **Skill consolidation**: Legacy code review skill merged into `staff-review` (16 → 15 skills) with Gale aliases and trigger absorption; all 15 skill frontmatter descriptions compressed to ≤15 words. One skill, one escalation ladder
 - **Genesis env scanning**: Privacy-first dev environment probes (sanitized outputs only — versions and booleans, not raw paths or usernames)
@@ -457,4 +457,4 @@ This phase brought the script count to 25 and established Soma as a formal evolu
 ## Phase 23-25: Test-Time Compute (TTC) Oracles & JIT Context
 
 - **TTC Oracles**: Pre-execution verification of tool calls to completely eradicate hallucinated commands and rework loops.
-- **Last Gasp**: Auto-escalation mechanisms that evaluate failures before they consume token budget, reducing overall waste to `< 1.0%` while stabilizing overhead at `4,380 tokens/turn`.
+- **Last Gasp**: Auto-escalation mechanisms that evaluate failures before they consume token budget, reducing overall waste to `< 1.0%` while stabilizing overhead at `~3,800 tokens/turn`.
