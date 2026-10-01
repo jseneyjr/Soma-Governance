@@ -296,4 +296,4 @@ Comparison dataset from a new set of 66 masked and sanitized production sessions
 > [!NOTE]
 > **Delegation evolves in 3 phases**: zero delegation → context-saving delegation → adversarial second-opinion delegation. The transition from phase 2 to phase 3 requires governance skills, not just rules.
 
-See [postmortem-work-sessions.md](postmortem_session_log_2026-09-29.md) for the full analysis.
+See [postmortem_session_log_2026-09-29.md](archive/postmortem_session_log_2026-09-29.md) for the full analysis.

@@ -1,6 +1,6 @@
 # Scripts Reference
 
-This document catalogs the 87 executable scripts and tools that power the Soma governance framework.
+This document catalogs the 90 executable scripts and tools that power the Soma governance framework.
 
 ## Summary by Category
 
@@ -8,10 +8,10 @@ This document catalogs the 87 executable scripts and tools that power the Soma g
 |:---------|:----------------------------|:------|:------------|
 | [Lifecycle Scripts (Hooks)](#lifecycle-scripts-hooks--bash) | bash (`enzymes/`, `install/hooks/`) | 7 | Environment, agent execution, and pre-commit lifecycle hooks |
 | [Verification Scripts](#verification-scripts--python) | Python (`immune_system/verification/`) | 13 | Deterministic AST checkers, coverage tools, and adversarial verification |
-| [CLI Commands](#cli-commands--python-soma_cli) | Python & bash (`soma_cli/`, root) | 12 | User-facing commands and binary wrapper for the `soma` CLI |
+| [CLI Commands](#cli-commands--python-soma_cli) | Python & bash (`soma_cli/`, root) | 15 | User-facing commands and binary wrapper for the `soma` CLI |
 | [Install Scripts](#install-scripts--bash) | bash (`install/`, root) | 3 | Multi-platform installers, uninstaller, and root wrapper |
 | [Utility Scripts](#utility-scripts) | Python & bash (`enzymes/`, root) | 52 | Cell genetics, runtime engines, telemetry, and shared utilities |
-| **Total** | | **87** | |
+| **Total** | | **90** | |
 
 ---
 
@@ -55,7 +55,7 @@ These 13 Python scripts form the deterministic and adversarial verification engi
 
 ## CLI Commands — Python (`soma_cli/`)
 
-These 12 scripts provide the command-line interface for Soma, including the root shell launcher and all 11 subcommands in `soma_cli/`.
+These 15 scripts provide the command-line interface for Soma, including the root shell launcher, 12 subcommands in `soma_cli/`, and genesis scanner and generator modules.
 
 | Command / Script | Location | Purpose |
 |:-----------------|:---------|:--------|
@@ -64,6 +64,9 @@ These 12 scripts provide the command-line interface for Soma, including the root
 | **`checkpoint.py`** | `soma_cli/checkpoint.py` | `soma checkpoint`: Deterministic quality checks (test coverage, git status, docstring presence) without LLM calls. |
 | **`demote.py`** | `soma_cli/demote.py` | `soma demote`: Evaluates and displays cell demotion candidates when false positive rates exceed acceptable bounds. |
 | **`doctor.py`** | `soma_cli/doctor.py` | `soma doctor`: System health check verifying workspace structure, rules, configuration, and dependencies. |
+| **`genesis.py`** | `soma_cli/genesis.py` | `soma genesis`: Analyzes codebase architecture with 8 language-agnostic detectors and generates governance cell candidates. |
+| **`genesis_generator.py`** | `soma_cli/genesis_generator.py` | Generates candidate cell files in `vacuoles/` and architecture map `docs/organelles.md` from scan results. |
+| **`genesis_scanner.py`** | `soma_cli/genesis_scanner.py` | Language-agnostic codebase scanner detecting 8 architectural patterns for governance cell candidate generation. |
 | **`init.py`** | `soma_cli/init.py` | `soma init`: Initializes Soma governance for a project, detecting platform and project type, installing starter rules. |
 | **`oracle.py`** | `soma_cli/oracle.py` | `soma oracle`: Cell health classification, diagnostics, and pruning recommendations (wraps `oracle_checkpoint.py`). |
 | **`promote.py`** | `soma_cli/promote.py` | `soma promote`: Evaluates and displays high-performing local cells eligible for promotion to forest-floor rules. |
