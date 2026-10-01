@@ -66,6 +66,27 @@ def _build_parser() -> argparse.ArgumentParser:
     p_checkpoint.add_argument("--workspace", default=None,
                               help="Override target workspace directory")
 
+    # soma oracle
+    p_oracle = sub.add_parser("oracle", help="Cell health classification and recommendations")
+    p_oracle.add_argument("--json", action="store_true",
+                          help="Emit machine-readable JSON output")
+    p_oracle.add_argument("--session-count", type=int, default=None,
+                          help="Override session count for expiry calculation")
+
+    # soma promote
+    p_promote = sub.add_parser("promote", help="Evaluate cell promotion candidates")
+    p_promote.add_argument("--dry-run", action="store_true",
+                           help="Show candidates without performing promotions")
+    p_promote.add_argument("--json", action="store_true",
+                           help="Emit machine-readable JSON output")
+
+    # soma demote
+    p_demote = sub.add_parser("demote", help="Evaluate cell demotion candidates")
+    p_demote.add_argument("--dry-run", action="store_true",
+                          help="Show candidates without performing demotions")
+    p_demote.add_argument("--json", action="store_true",
+                          help="Emit machine-readable JSON output")
+
     return parser
 
 
@@ -105,6 +126,24 @@ def cmd_checkpoint(args: argparse.Namespace) -> int:
     return run_checkpoint(args)
 
 
+def cmd_oracle(args: argparse.Namespace) -> int:
+    """Cell health classification and recommendations."""
+    from soma_cli.oracle import run_oracle
+    return run_oracle(args)
+
+
+def cmd_promote(args: argparse.Namespace) -> int:
+    """Evaluate cell promotion candidates."""
+    from soma_cli.promote import run_promote
+    return run_promote(args)
+
+
+def cmd_demote(args: argparse.Namespace) -> int:
+    """Evaluate cell demotion candidates."""
+    from soma_cli.demote import run_demote
+    return run_demote(args)
+
+
 COMMANDS = {
     "init": cmd_init,
     "status": cmd_status,
@@ -112,6 +151,9 @@ COMMANDS = {
     "doctor": cmd_doctor,
     "verify": cmd_verify,
     "checkpoint": cmd_checkpoint,
+    "oracle": cmd_oracle,
+    "promote": cmd_promote,
+    "demote": cmd_demote,
 }
 
 
