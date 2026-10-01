@@ -204,7 +204,6 @@ class TestCrossoverOutput:
         result = _run_crossover(ws, 'nonexistent-a', 'nonexistent-b')
         assert result.returncode != 0
 
-    @pytest.mark.skip(reason='Known bug: target_paths not merged in crossover. Phase 3.6 fix.')
     def test_target_paths_union_of_parents(self, tmp_path):
         ws = str(tmp_path)
         _make_parent(ws, 'tp-a', target_paths=['src/*.py'])

@@ -102,16 +102,45 @@ def main():
     gen_b = meta_b.get('lineage', {}).get('generation', 0) if isinstance(meta_b.get('lineage'), dict) else 0
     merged_generation = max(gen_a, gen_b) + 1
 
+    # Merge target_paths as union (deduplicated, order preserved)
+    tp_a = meta_a.get('target_paths', [])
+    tp_b = meta_b.get('target_paths', [])
+    if isinstance(tp_a, str):
+        tp_a = [tp_a]
+    if isinstance(tp_b, str):
+        tp_b = [tp_b]
+    seen = set()
+    merged_target_paths = []
+    for tp in tp_a + tp_b:
+        if tp not in seen:
+            seen.add(tp)
+            merged_target_paths.append(tp)
+
+    # Merge tags as union
+    tags_a = meta_a.get('tags', []) or []
+    tags_b = meta_b.get('tags', []) or []
+    if isinstance(tags_a, str):
+        tags_a = [tags_a]
+    if isinstance(tags_b, str):
+        tags_b = [tags_b]
+    seen_tags = set()
+    merged_tags = []
+    for t in tags_a + tags_b:
+        if t not in seen_tags:
+            seen_tags.add(t)
+            merged_tags.append(t)
+
     new_meta = {
         'type': merged_type,
         'hypothesis': merged_hypothesis,
         'prediction': merged_prediction,
         'falsification': falsification,
+        'target_paths': merged_target_paths,
         'expiry_sessions': 15,
         'expiry_days': 60,
         'created': date_str,
         'impact_weight': merged_weight,
-        'tags': [],
+        'tags': merged_tags,
         'lineage': {
             'parent_id': f"{args.cell_a_id} × {args.cell_b_id}",
             'created_by': "crossover",
