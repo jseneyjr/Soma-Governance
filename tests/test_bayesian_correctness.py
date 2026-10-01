@@ -180,17 +180,17 @@ try:
         @given(
             tp=st.integers(min_value=1, max_value=100),
             fp=st.integers(min_value=0, max_value=100),
-            extra=st.integers(min_value=1, max_value=50),
+            scale=st.integers(min_value=2, max_value=5),
         )
         @settings(max_examples=100)
-        def test_interval_narrows_with_more_data(self, tp, fp, extra):
-            """Adding more observations should narrow or maintain the interval."""
+        def test_interval_narrows_with_more_data(self, tp, fp, scale):
+            """Scaling observations by k (same ratio) should narrow the interval."""
             r1 = bayesian_posterior(tp=tp, fp=fp)
-            # Scale up: double the data with same ratio
-            r2 = bayesian_posterior(tp=tp + extra, fp=fp + extra)
+            # Scale up: multiply both by scale to keep same proportion
+            r2 = bayesian_posterior(tp=tp * scale, fp=fp * scale)
             width1 = r1['upper'] - r1['lower']
             width2 = r2['upper'] - r2['lower']
-            assert width2 <= width1 + 0.01  # tolerance for rounding
+            assert width2 <= width1 + 0.001  # tolerance for rounding
 
 except ImportError:
     pass  # hypothesis not installed — skip property tests
