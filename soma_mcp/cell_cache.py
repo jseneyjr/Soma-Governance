@@ -93,6 +93,21 @@ class CellCache:
                 cells.append(fm)
             except Exception as e:
                 warn(f'skipped cell {rel}: {e.__class__.__name__}: {e}')
+
+        # Integrity verification: check cells against manifest if present.
+        # Graceful degradation — warnings only, never blocks cell loading.
+        try:
+            from soma_mcp.integrity import load_manifest, verify_manifest
+            manifest = load_manifest(workspace)
+            if manifest is not None:
+                issues = verify_manifest(cells_dir, manifest)
+                for issue in issues:
+                    warn(
+                        f"integrity: {issue['type']} — {issue['detail']}"
+                    )
+        except Exception as exc:
+            warn(f"integrity check failed (non-fatal): {exc}")
+
         return cells
 
     @staticmethod
