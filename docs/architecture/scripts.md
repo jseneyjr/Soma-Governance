@@ -94,11 +94,12 @@ These 3 bash scripts manage the installation and clean removal of Soma across de
 
 These 53 scripts encompass the master pipeline orchestrator, automation enzymes, runtime verification engines, telemetry scanners, and shared infrastructure libraries.
 
-### 1. Master Pipeline Orchestrator (1 script)
+### 1. Master Pipeline Orchestrator (removed)
 
-| Script | Location | Purpose |
-|:-------|:---------|:--------|
-| **`soma_run.py`** | `soma_run.py` | Master execution orchestrator connecting all Soma engines into a unified pipeline (Oracle Check -> Change Execution -> Outcome Verification -> Interoception -> Coherence). |
+> **`soma_run.py` was removed in v0.86.0.** The unified execution pipeline
+> (Interoception → TTC → Outcome → Coherence → Sleep) is now handled by the
+> MCP server (`soma_mcp/`) and the CLI (`soma_cli/`). See `soma_mcp/tools.py`
+> for the tool-based equivalents of each pipeline stage.
 
 ### 2. Cell Evolutionary Lifecycle & Genetics (20 scripts)
 
