@@ -1,6 +1,14 @@
 {
   "schema_version": "1.0",
   "description": "Machine-parseable registry of all known bugs with root cause analysis, regression test links, and pattern categorization.",
+  "boost_config": {
+    "file_heat_threshold": 2,
+    "pattern_heat_threshold": 3,
+    "release_window": 10,
+    "min_outcomes_for_boost": 3,
+    "max_file_boost": 0.5,
+    "max_pattern_boost": 0.3
+  },
   "root_cause_categories": {
     "path_error": "Wrong file path or directory reference",
     "schema_drift": "Expected vs actual data shape mismatch",
