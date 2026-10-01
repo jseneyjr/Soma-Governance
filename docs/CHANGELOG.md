@@ -3,6 +3,85 @@
 All notable changes to Soma are documented here.
 This project uses [Semantic Versioning](https://semver.org/).
 
+## [0.60.0] — 2026-09-30 — "Two-Layer Verification & Cell Lifecycle"
+
+### Added
+- **Two-Layer Verification System** (`immune_system/verification/`):
+  - **Layer 1 (Deterministic AST Tools)**: Objective, ungameable evidence collection via `persistence_checker`, `call_graph`, `mutation_tester`, `branch_coverage`, and `import_guard`. Orchestrated via `runner.py` producing boolean `ToolEvidence`.
+  - **Layer 2 (Adversarial Information-Partitioned Agents)**: Multi-agent verification leveraging information asymmetry between Spec Agent (sees task specification) and Code Agent (sees implementation/tests).
+  - **Deterministic Arbiter**: Set-algebra adjudication over a fixed 14-category risk taxonomy, issuing `SHIP`, `BLOCK`, or `REVISE` verdicts with zero LLM in the loop.
+  - **Transcript Verifier**: Post-hoc validation of self-reported agent claims against JSONL session logs.
+- **Unified CLI Suite** (`soma`): 9 subcommands — `init`, `status`, `report`, `doctor`, `verify`, `checkpoint`, `oracle`, `promote`, `demote`.
+  - `soma verify`: Full two-layer verification with `--layer1-only` and `--json` support.
+  - `soma checkpoint`: Fast deterministic quality gate with `--pre-commit` hook integration.
+  - `soma oracle`: Cell health classification (healthy, noisy, expired, unobserved).
+  - `soma promote` / `soma demote`: Automated lifecycle evaluation with `--dry-run` and `--json`.
+  - `soma init`: Enhanced with `--rules {minimal|standard|full}`, MCP config, and pre-commit hook.
+- **Cell Lifecycle Engine** (`immune_system/verification/lifecycle.py`):
+  - Deterministic state machine: Vacuole → Wall → Genome (and demotions).
+  - Grounded in JSONL evidence ledgers, not YAML frontmatter.
+  - Promotion: triggers ≥ 20, tp_rate > 0.85, age > 30 days.
+  - Demotion: fp_rate > 0.5 or dormancy ≥ 90 days.
+- **MCP Tools**: Added `soma_verify_changes` and `soma_checkpoint` for zero-API-key in-agent verification.
+- **Quality Gate Checks**: Assertion density, bare `pass` detection, import verification, test sanity.
+- **Test Suite**: 925+ tests with shared fixtures (`tests/helpers_cell.py`).
+
+### Changed
+- Package discovery updated to include `immune_system*`.
+- Pre-commit hook auto-installed by `soma init`.
+
+### Fixed
+- **Evidence Pipeline**: 4 critical bugs fixed (schema mismatch, dead detectors, missing FPSR extraction).
+- 2 new evidence detectors: `test-before-implementation`, `no-hardcoded-paths`.
+
+---
+
+## [0.52.0] — 2026-09-30 — "Gitflow & Hardening"
+
+### Added
+- **Gitflow**: Standardized branch lifecycle in `docs/GITFLOW.md`.
+- **Gitflow Review Gate**: Rule enforcing branch naming and PR-based landing.
+
+### Fixed
+- All 15 findings from v0.52 production audit.
+- 4 must-fix findings from audit round 2.
+- Hardcoded absolute paths in documentation.
+
+---
+
+## [0.51.0] — 2026-09-30 — "Soma CLI & Distribution"
+
+### Added
+- **Soma CLI** (`soma_cli/`): `soma init`, `soma status`, `soma report`.
+- Starter pack manifests and templates.
+- CLI entrypoints in `pyproject.toml`.
+
+### Fixed
+- 10 audit findings across argument validation, path resolution, error reporting.
+
+---
+
+## [0.50.0] — 2026-09-29 — "Incentive-Compatible Governance"
+
+> Version jump from v0.22.0 reflects Phases 23–50: TTC Oracles, JIT context, interoception, and the evidence pipeline.
+
+### Added
+- **Evidence Pipeline**: `evidence_collector.py`, `fitness_updater.py`, `cell_expiry.py`, `oracle_checkpoint.py`, `post_session_hook.sh`.
+- **Mechanism Design Framework** (`docs/MECHANISM_DESIGN.md`).
+- New vacuole cells: `trap-fix-one-not-all`, `trap-unverified-delegation`, `trap-local-green-ci-red`.
+
+### Changed
+- Fitness ledger decoupled from frontmatter → append-only JSONL.
+- `pyyaml` accepted as mandatory dependency.
+- Idle overhead stabilized at ~3,800 tokens/turn (down 8.6%).
+
+### Fixed
+- Tautological assertions and brittle source-code grepping remediated (515+ tests).
+- Critical fitness inflation bug.
+- CI execution hang from hook test sourcing.
+
+---
+
 ## [0.22.0] — 2026-09-28 — "Soma Rebirth"
 
 ### Breaking Changes
