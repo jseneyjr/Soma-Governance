@@ -130,6 +130,6 @@ jobs:
           $result = & powershell -NoProfile -ExecutionPolicy Bypass -File install/install.ps1 -DryRun 2>&1 | Out-String
           Write-Host $result
           if ($result -notmatch 'Dry-run complete') {
-            Write-Error "install.ps1 dry-run failed under Windows PowerShell 5.1 — BUG-011 regression"
+            Write-Error "install.ps1 dry-run failed under Windows PowerShell 5.1 - BUG-011 regression"
             exit 1
           }
