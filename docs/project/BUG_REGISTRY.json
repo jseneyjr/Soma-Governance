@@ -98,7 +98,6 @@
       "changelog_ref": "v0.85.1"
     },
     {
-<<<<<<< HEAD
       "id": "BUG-008",
       "issue_url": "https://github.com/nseney1/Soma-Governance/issues/45",
       "status": "fixed",
