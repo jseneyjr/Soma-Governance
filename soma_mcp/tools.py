@@ -80,8 +80,20 @@ except ImportError:
 
 # INTENTIONAL DUPLICATION: wall-mcp-zero-deps prohibits importing from enzymes/
 # Canonical source: enzymes/soma_resolve.py — keep in sync manually
-def resolve_workspace():
+def resolve_workspace(args=None):
     """Find the project root containing .soma/cells/."""
+    if args and args.get("workspace"):
+        ws = args.get("workspace")
+        if os.path.isdir(os.path.join(ws, ".soma", "cells")):
+            return os.path.abspath(ws)
+
+    soma_ws = os.environ.get("SOMA_WORKSPACE")
+    if soma_ws:
+        if os.path.isdir(os.path.join(soma_ws, ".soma", "cells")):
+            return os.path.abspath(soma_ws)
+        else:
+            raise ValueError(f"SOMA_WORKSPACE is set to {soma_ws} but no .soma/cells found there.")
+
     soma_root = os.environ.get("SOMA_ROOT")
     if soma_root:
         if os.path.isdir(os.path.join(soma_root, ".soma", "cells")):
@@ -197,15 +209,15 @@ def _classify_propose_result(result):
     return (_STATUS_PASS if verdict in _PASSING_VERDICTS else _STATUS_FAIL), verdict
 
 
-def get_governance():
+def get_governance(args=None):
     if not _HAS_SDK:
         return None
-    workspace = resolve_workspace()
+    workspace = resolve_workspace(args)
     return Governance(project_root=workspace)
 
 
-def build_cell_create_prompt(description: str, domain_hint: str = None, cell_type: str = None) -> str:
-    workspace = resolve_workspace()
+def build_cell_create_prompt(description: str, domain_hint: str = None, cell_type: str = None, args=None) -> str:
+    workspace = resolve_workspace(args)
     
     examples = []
     cells_dir = os.path.join(workspace, '.soma', 'cells')
@@ -278,7 +290,8 @@ TOOL_DEFINITIONS = [
                 "description": {"type": "string", "description": "Natural language description"},
                 "cell_type": {"type": "string", "description": "Optional cell type hint"},
                 "domain": {"type": "string", "description": "Optional domain hint"},
-                "dry_run": {"type": "boolean", "description": "Optional dry run flag"}
+                "dry_run": {"type": "boolean", "description": "Optional dry run flag"},
+                "receipt": {"type": "string", "description": "Execution receipt ID obtained from soma_request_receipt"}
             },
             "required": ["description"]
         }
@@ -323,7 +336,8 @@ TOOL_DEFINITIONS = [
                 },
                 "tests_passed": {"type": "boolean", "description": "Did tests pass?"},
                 "rework_count": {"type": "integer", "description": "How many times you redid work"},
-                "notes": {"type": "string", "description": "Optional notes on what helped or didn't"}
+                "notes": {"type": "string", "description": "Optional notes on what helped or didn't"},
+                "receipt": {"type": "string", "description": "Execution receipt ID obtained from soma_request_receipt"}
             },
             "required": ["outcome"]
         }
@@ -470,7 +484,8 @@ TOOL_DEFINITIONS = [
                 "category": {
                     "type": "string",
                     "description": "Optional category tag (e.g. contract_mismatch)"
-                }
+                },
+                "receipt": {"type": "string", "description": "Execution receipt ID obtained from soma_request_receipt"}
             },
             "required": ["insight", "context_files"]
         }
@@ -478,13 +493,14 @@ TOOL_DEFINITIONS = [
 ]
 
 def execute_tool(name: str, args: dict):
-    gov = get_governance()
+    gov = get_governance(args)
     
     if name == "soma_create_cell":
         prompt = build_cell_create_prompt(
             description=args.get("description"),
             domain_hint=args.get("domain"),
-            cell_type=args.get("cell_type")
+            cell_type=args.get("cell_type"),
+            args=args
         )
         if args.get("dry_run"):
             return {"prompt": prompt, "dry_run": True, "instruction": "Dry run: showing prompt that would be used. No cell will be created."}
@@ -494,12 +510,12 @@ def execute_tool(name: str, args: dict):
         # list_cells works without pyyaml via stdlib fallback
         if gov:
             return gov.list_cells()
-        return _list_cells_stdlib(resolve_workspace())
+        return _list_cells_stdlib(resolve_workspace(args))
 
     elif name == "soma_propose_change":
         if not soma_propose_change:
             return {"error": "soma_propose_change not available"}
-        workspace = resolve_workspace()
+        workspace = resolve_workspace(args)
         file_path = args.get('file_path')
         proposed_content = args.get('proposed_content')
         
@@ -561,7 +577,7 @@ def execute_tool(name: str, args: dict):
 
     if name == "soma_verify_changes":
         try:
-            workspace = confine_workspace(args.get('workspace') or resolve_workspace())
+            workspace = confine_workspace(args.get('workspace') or resolve_workspace(args))
         except ValueError as exc:
             return {"error": str(exc), "status": _STATUS_FAIL}
         files = args.get('files', [])
@@ -591,7 +607,7 @@ def execute_tool(name: str, args: dict):
 
     elif name == "soma_checkpoint":
         try:
-            workspace = confine_workspace(args.get('workspace') or resolve_workspace())
+            workspace = confine_workspace(args.get('workspace') or resolve_workspace(args))
         except ValueError as exc:
             return {"error": str(exc), "status": _STATUS_FAIL}
         from pathlib import Path
@@ -606,13 +622,13 @@ def execute_tool(name: str, args: dict):
 
     elif name == "soma_scan":
         # v0.23: JIT expression — returns only relevant cells, not everything
-        workspace = resolve_workspace()
+        workspace = resolve_workspace(args)
         files = args.get('files', None)
         return jit_express(workspace, changed_files=files)
 
     elif name == "soma_report_outcome":
         # v0.23: Agent reports execution outcome for fitness scoring
-        workspace = resolve_workspace()
+        workspace = resolve_workspace(args)
         # Enforce the advertised enum here: persisting 'unknown' would silently
         # poison fitness scoring with un-gradeable rows.
         raw_outcome = args.get('outcome')
@@ -679,7 +695,7 @@ def execute_tool(name: str, args: dict):
         return {'status': 'recorded', 'records': records}
 
     elif name == "soma_capture_insight":
-        workspace = resolve_workspace()
+        workspace = resolve_workspace(args)
         try:
             capture_insight = _safe_import_enzyme("insight_capture", "capture_insight")
         except ImportError:

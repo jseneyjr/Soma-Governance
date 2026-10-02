@@ -182,7 +182,7 @@ def handle_request(request: Dict[str, Any]) -> Dict[str, Any]:
 
         if name == "soma_request_receipt":
             operation = args.get("operation")
-            if operation not in _EXECUTE_TOOLS:
+            if operation not in _EXECUTE_TOOLS and operation not in _WRITE_TOOLS:
                 return {
                     "jsonrpc": "2.0",
                     "id": req_id,
@@ -191,7 +191,7 @@ def handle_request(request: Dict[str, Any]) -> Dict[str, Any]:
                         "message": f"Tool '{operation}' does not require a receipt or does not exist."
                     }
                 }
-            if not _execution_enabled:
+            if operation in _EXECUTE_TOOLS and not _execution_enabled:
                 return {
                     "jsonrpc": "2.0",
                     "id": req_id,
@@ -201,7 +201,8 @@ def handle_request(request: Dict[str, Any]) -> Dict[str, Any]:
                     }
                 }
             
-            # Issue the receipt
+            # Issue the receipt using the exact arguments provided by the client.
+            # We don't inject workspace yet, so the hash exactly matches what the client passed.
             receipt_id = issue_receipt(
                 session_id=_session_token,
                 workspace=_canonical_workspace,
@@ -220,8 +221,9 @@ def handle_request(request: Dict[str, Any]) -> Dict[str, Any]:
                 }
             }
 
-        if name in _EXECUTE_TOOLS:
-            if not _execution_enabled:
+        # Both EXECUTE and WRITE tools require a valid receipt
+        if name in _EXECUTE_TOOLS or name in _WRITE_TOOLS:
+            if name in _EXECUTE_TOOLS and not _execution_enabled:
                 return {
                     "jsonrpc": "2.0",
                     "id": req_id,
@@ -238,13 +240,12 @@ def handle_request(request: Dict[str, Any]) -> Dict[str, Any]:
                     "id": req_id,
                     "error": {
                         "code": -32600,
-                        "message": f"Execution tool '{name}' requires a valid 'receipt'."
+                        "message": f"Tool '{name}' requires a valid 'receipt'."
                     }
                 }
                 
-            # Override workspace argument to prevent path redirection
-            args["workspace"] = _canonical_workspace
-                
+            # Verify the receipt *before* injecting workspace or modifying args
+            # so the hash matches the state at issuance
             if not verify_receipt(
                 receipt_id=receipt,
                 session_id=_session_token,
@@ -263,6 +264,10 @@ def handle_request(request: Dict[str, Any]) -> Dict[str, Any]:
                         "message": "Invalid, expired, or mismatched receipt."
                     }
                 }
+
+            # Safely override workspace *after* verification if required
+            if name in _EXECUTE_TOOLS:
+                args["workspace"] = _canonical_workspace
 
         # Rate limit check
         if not _check_rate_limit(name):

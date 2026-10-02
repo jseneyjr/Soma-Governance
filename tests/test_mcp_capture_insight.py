@@ -21,7 +21,7 @@ class TestMCPCaptureInsight:
 
         workspace = str(tmp_path)
         os.makedirs(os.path.join(workspace, ".soma"), exist_ok=True)
-        monkeypatch.setattr("soma_mcp.tools.resolve_workspace", lambda: workspace)
+        monkeypatch.setattr("soma_mcp.tools.resolve_workspace", lambda args=None: workspace)
 
         result = execute_tool("soma_capture_insight", {
             "insight": "Check the aspect ratio",
@@ -39,7 +39,7 @@ class TestMCPCaptureInsight:
 
         workspace = str(tmp_path)
         os.makedirs(os.path.join(workspace, ".soma"), exist_ok=True)
-        monkeypatch.setattr("soma_mcp.tools.resolve_workspace", lambda: workspace)
+        monkeypatch.setattr("soma_mcp.tools.resolve_workspace", lambda args=None: workspace)
 
         result = execute_tool("soma_capture_insight", {
             "insight": "Something",
@@ -54,7 +54,7 @@ class TestMCPCaptureInsight:
 
         workspace = str(tmp_path)
         os.makedirs(os.path.join(workspace, ".soma"), exist_ok=True)
-        monkeypatch.setattr("soma_mcp.tools.resolve_workspace", lambda: workspace)
+        monkeypatch.setattr("soma_mcp.tools.resolve_workspace", lambda args=None: workspace)
 
         execute_tool("soma_capture_insight", {
             "insight": "Test persistence",

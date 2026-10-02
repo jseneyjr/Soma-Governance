@@ -69,24 +69,21 @@ def verify_receipt(
             return False
         
         # Server recomputes hashes to compare
-        if stored["session_id"] != session_id:
-            return False
-        if stored["workspace"] != workspace:
-            return False
-        if stored["operation"] != operation:
-            return False
-        if stored["args_hash"] != _hash_args(args):
-            return False
-        if stored["file_digest"] != file_digest:
-            return False
-        if stored["cell_digest"] != cell_digest:
-            return False
-            
-        # Only consume upon successful verification
-        if consume:
+        is_valid = (
+            stored["session_id"] == session_id and
+            stored["workspace"] == workspace and
+            stored["operation"] == operation and
+            stored["args_hash"] == _hash_args(args) and
+            stored["file_digest"] == file_digest and
+            stored["cell_digest"] == cell_digest
+        )
+        
+        # Pop receipt immediately if validation fails (prevent replay/enumeration),
+        # or if verification succeeds and it is meant to be consumed.
+        if not is_valid or consume:
             _receipt_store.pop(receipt_id, None)
             
-        return True
+        return is_valid
 
 def clear_receipts():
     """Clear all receipts (simulates process restart invalidation)."""
