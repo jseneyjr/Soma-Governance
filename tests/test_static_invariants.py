@@ -377,6 +377,7 @@ def test_soma_mcp_has_no_unguarded_third_party_imports():
 def test_mcp_server_answers_jsonrpc_without_pyyaml(tmp_path):
     """SOMA-C01 end to end: initialize + tools/list must return valid JSON on a
     bare interpreter. Regression: ModuleNotFoundError, exit 1, 0 bytes stdout."""
+    (tmp_path / ".soma" / "cells").mkdir(parents=True)
     requests = (
         json.dumps({"jsonrpc": "2.0", "id": 1, "method": "initialize", "params": {}}) + "\n"
         + json.dumps({"jsonrpc": "2.0", "id": 2, "method": "tools/list", "params": {}}) + "\n"

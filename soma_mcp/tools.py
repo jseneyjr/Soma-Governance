@@ -258,6 +258,18 @@ Generate ONLY the complete markdown cell file content. Start with --- for the YA
 
 TOOL_DEFINITIONS = [
     {
+        "name": "soma_request_receipt",
+        "description": "Request an execution receipt for a privileged tool. Required before calling any execution tools (if execution is enabled).",
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "operation": {"type": "string", "description": "The name of the execute tool you want to call."},
+                "arguments": {"type": "object", "description": "The arguments you will pass to the execute tool."}
+            },
+            "required": ["operation", "arguments"]
+        }
+    },
+    {
         "name": "soma_create_cell",
         "description": "Takes a natural language description and builds a prompt to create a governance cell.",
         "inputSchema": {
@@ -357,7 +369,8 @@ TOOL_DEFINITIONS = [
             "type": "object",
             "properties": {
                 "file_path": {"type": "string", "description": "Absolute or relative path to the file to change."},
-                "proposed_content": {"type": "string", "description": "The complete proposed file content."}
+                "proposed_content": {"type": "string", "description": "The complete proposed file content."},
+                "receipt": {"type": "string", "description": "Execution receipt ID obtained from soma_request_receipt"}
             },
             "required": ["file_path", "proposed_content"]
         }
@@ -369,7 +382,8 @@ TOOL_DEFINITIONS = [
             "type": "object",
             "properties": {
                 "file_path": {"type": "string", "description": "Path to the file being changed."},
-                "proposed_content": {"type": "string", "description": "The complete proposed file content."}
+                "proposed_content": {"type": "string", "description": "The complete proposed file content."},
+                "receipt": {"type": "string", "description": "Execution receipt ID obtained from soma_request_receipt"}
             },
             "required": ["file_path", "proposed_content"]
         }
@@ -381,7 +395,8 @@ TOOL_DEFINITIONS = [
             "type": "object",
             "properties": {
                 "file_path": {"type": "string", "description": "Path to the file being changed."},
-                "proposed_content": {"type": "string", "description": "The complete proposed file content."}
+                "proposed_content": {"type": "string", "description": "The complete proposed file content."},
+                "receipt": {"type": "string", "description": "Execution receipt ID obtained from soma_request_receipt"}
             },
             "required": ["file_path", "proposed_content"]
         }
@@ -392,15 +407,14 @@ TOOL_DEFINITIONS = [
         "inputSchema": {
             "type": "object",
             "properties": {
-                "workspace": {"type": "string", "description": "Path to the project workspace."},
                 "files": {
                     "type": "array",
                     "items": {"type": "string"},
                     "description": "List of changed files to verify."
                 },
-                "layer1_only": {"type": "boolean", "description": "Only run Layer-1 checks (default true)."}
-            },
-            "required": ["workspace"]
+                "layer1_only": {"type": "boolean", "description": "Only run Layer-1 checks (default true)."},
+                "receipt": {"type": "string", "description": "Execution receipt ID obtained from soma_request_receipt"}
+            }
         }
     },
     {
@@ -409,9 +423,8 @@ TOOL_DEFINITIONS = [
         "inputSchema": {
             "type": "object",
             "properties": {
-                "workspace": {"type": "string", "description": "Path to the project workspace."}
-            },
-            "required": ["workspace"]
+                "receipt": {"type": "string", "description": "Execution receipt ID obtained from soma_request_receipt"}
+            }
         }
     },
     {
@@ -423,13 +436,12 @@ TOOL_DEFINITIONS = [
         "inputSchema": {
             "type": "object",
             "properties": {
-                "workspace": {"type": "string", "description": "Path to the project workspace."},
                 "generate_key": {
                     "type": "boolean",
                     "description": "Generate HMAC key if none exists (default false)."
                 },
-            },
-            "required": ["workspace"]
+                "receipt": {"type": "string", "description": "Execution receipt ID obtained from soma_request_receipt"}
+            }
         }
     },
     {

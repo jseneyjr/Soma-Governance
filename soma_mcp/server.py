@@ -10,14 +10,19 @@ from collections import defaultdict
 from typing import Any, Dict
 
 from .tools import TOOL_DEFINITIONS, execute_tool
+from .security import confine_workspace
+from soma_core.receipts import issue_receipt, verify_receipt
 
 _session_token = None
+_canonical_workspace = None
+_execution_enabled = False
 
 _READ_TOOLS = frozenset({
     "soma_scan", "soma_list_cells", "soma_grade", "soma_coverage", "soma_fitness",
 })
 _WRITE_TOOLS = frozenset({
     "soma_report_outcome", "soma_capture_insight", "soma_create_cell",
+    "soma_request_receipt"
 })
 _EXECUTE_TOOLS = frozenset({
     "soma_propose_change", "soma_verify_changes", "soma_checkpoint",
@@ -140,27 +145,122 @@ def handle_request(request: Dict[str, Any]) -> Dict[str, Any]:
             }
         }
     elif method == "tools/list":
+        if not _session_token:
+            return {
+                "jsonrpc": "2.0",
+                "id": req_id,
+                "error": {
+                    "code": -32002,
+                    "message": "Server not initialized"
+                }
+            }
+            
+        tools = TOOL_DEFINITIONS
+        if not _execution_enabled:
+            tools = [t for t in tools if t["name"] not in _EXECUTE_TOOLS and t["name"] != "soma_request_receipt"]
+            
         return {
             "jsonrpc": "2.0",
             "id": req_id,
             "result": {
-                "tools": TOOL_DEFINITIONS
+                "tools": tools
             }
         }
     elif method == "tools/call":
+        if not _session_token:
+            return {
+                "jsonrpc": "2.0",
+                "id": req_id,
+                "error": {
+                    "code": -32002,
+                    "message": "Server not initialized"
+                }
+            }
+            
         name = params.get("name")
         args = params.get("arguments", {})
 
-        # Auth check: write and execute tools require session token
-        if name not in _READ_TOOLS:
-            client_token = args.get("_sessionToken")
-            if not _session_token or not isinstance(client_token, str) or not hmac.compare_digest(client_token, _session_token):
+        if name == "soma_request_receipt":
+            operation = args.get("operation")
+            if operation not in _EXECUTE_TOOLS:
+                return {
+                    "jsonrpc": "2.0",
+                    "id": req_id,
+                    "error": {
+                        "code": -32602,
+                        "message": f"Tool '{operation}' does not require a receipt or does not exist."
+                    }
+                }
+            if not _execution_enabled:
                 return {
                     "jsonrpc": "2.0",
                     "id": req_id,
                     "error": {
                         "code": -32600,
-                        "message": f"Authentication required for tool '{name}'. Provide _sessionToken from initialize response."
+                        "message": "Execution capabilities are disabled."
+                    }
+                }
+            
+            # Issue the receipt
+            receipt_id = issue_receipt(
+                session_id=_session_token,
+                workspace=_canonical_workspace,
+                operation=operation,
+                args=args.get("arguments", {}),
+                file_digest="",
+                cell_digest="",
+                ttl_seconds=300
+            )
+            return {
+                "jsonrpc": "2.0",
+                "id": req_id,
+                "result": {
+                    "content": [{"type": "text", "text": json.dumps({"receipt": receipt_id})}],
+                    "isError": False
+                }
+            }
+
+        if name in _EXECUTE_TOOLS:
+            if not _execution_enabled:
+                return {
+                    "jsonrpc": "2.0",
+                    "id": req_id,
+                    "error": {
+                        "code": -32600,
+                        "message": "Execution capabilities are disabled."
+                    }
+                }
+                
+            receipt = args.pop("receipt", None)
+            if not receipt or not isinstance(receipt, str):
+                return {
+                    "jsonrpc": "2.0",
+                    "id": req_id,
+                    "error": {
+                        "code": -32600,
+                        "message": f"Execution tool '{name}' requires a valid 'receipt'."
+                    }
+                }
+                
+            # Override workspace argument to prevent path redirection
+            args["workspace"] = _canonical_workspace
+                
+            if not verify_receipt(
+                receipt_id=receipt,
+                session_id=_session_token,
+                workspace=_canonical_workspace,
+                operation=name,
+                args=args,
+                file_digest="",
+                cell_digest="",
+                consume=True
+            ):
+                return {
+                    "jsonrpc": "2.0",
+                    "id": req_id,
+                    "error": {
+                        "code": -32600,
+                        "message": "Invalid, expired, or mismatched receipt."
                     }
                 }
 
@@ -226,6 +326,19 @@ def handle_request(request: Dict[str, Any]) -> Dict[str, Any]:
         }
 
 def run_stdio_server():
+    global _canonical_workspace
+    global _execution_enabled
+
+    workspace_env = os.environ.get("SOMA_WORKSPACE") or os.getcwd()
+    try:
+        from .security import confine_workspace
+        _canonical_workspace = confine_workspace(workspace_env)
+    except ValueError as e:
+        print(f"Error: Invalid canonical workspace: {e}", file=sys.stderr)
+        return 1
+        
+    _execution_enabled = os.environ.get("SOMA_EXECUTION_ENABLED") == "1"
+
     try:
         for line in sys.stdin:
             line = line.strip()
