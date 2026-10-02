@@ -29,7 +29,7 @@ def no_env(monkeypatch):
 def tmp_workspace(tmp_path):
     """Create a minimal workspace with a soma.conf containing a test key."""
     conf = tmp_path / "soma.conf"
-    conf.write_text('TEST_API_KEY="config-value-123"\n', encoding="utf-8")
+    conf.write_text('TEST_CONFIG_VAL="config-value-123"\nTEST_API_KEY="leaked-secret"\n', encoding="utf-8")
     return str(tmp_path)
 
 
@@ -74,7 +74,7 @@ class TestResolveKeyConfigFallback:
             import inference_provider as mod
             importlib.reload(mod)
             try:
-                result = mod.resolve_key(tmp_workspace, ["TEST_API_KEY"])
+                result = mod.resolve_key(tmp_workspace, ["TEST_CONFIG_VAL"])
                 assert result == "config-value-123"
             finally:
                 importlib.reload(mod)
@@ -108,7 +108,7 @@ class TestResolveKeyNoKeyringPackage:
             import inference_provider as mod
             importlib.reload(mod)
             try:
-                result = mod.resolve_key(tmp_workspace, ["TEST_API_KEY"])
+                result = mod.resolve_key(tmp_workspace, ["TEST_CONFIG_VAL"])
                 assert result == "config-value-123"
             finally:
                 importlib.reload(mod)
@@ -126,7 +126,7 @@ class TestResolveKeyKeyringException:
             import inference_provider as mod
             importlib.reload(mod)
             try:
-                result = mod.resolve_key(tmp_workspace, ["TEST_API_KEY"])
+                result = mod.resolve_key(tmp_workspace, ["TEST_CONFIG_VAL"])
                 assert result == "config-value-123"
             finally:
                 importlib.reload(mod)
@@ -137,7 +137,7 @@ class TestResolveKeyKeyringException:
 class TestResolveKeyPriorityEnvOverKeyring:
     def test_env_wins_over_keyring(self, monkeypatch, tmp_workspace):
         """Env var must beat keyring, even when keyring has a value."""
-        monkeypatch.setenv("TEST_API_KEY", "env-wins")
+        monkeypatch.setenv("TEST_CONFIG_VAL", "env-wins")
         mock_keyring = MagicMock()
         mock_keyring.get_password.return_value = "keyring-loses"
         with patch.dict("sys.modules", {"keyring": mock_keyring}):
@@ -145,8 +145,26 @@ class TestResolveKeyPriorityEnvOverKeyring:
             import inference_provider as mod
             importlib.reload(mod)
             try:
-                result = mod.resolve_key(tmp_workspace, ["TEST_API_KEY"])
+                result = mod.resolve_key(tmp_workspace, ["TEST_CONFIG_VAL"])
                 assert result == "env-wins"
+            finally:
+                importlib.reload(mod)
+
+# ── 8. API keys in config are ignored ─────────────────────────────────────
+
+class TestResolveKeySecretIgnoresConfig:
+    def test_api_keys_ignore_config_file(self, no_env, tmp_workspace):
+        """Even if an API key is in soma.conf, resolve_key must ignore it and return None."""
+        mock_keyring = MagicMock()
+        mock_keyring.get_password.return_value = None
+        with patch.dict("sys.modules", {"keyring": mock_keyring}):
+            import importlib
+            import inference_provider as mod
+            importlib.reload(mod)
+            try:
+                # The fixture puts TEST_API_KEY="leaked-secret" in soma.conf
+                result = mod.resolve_key(tmp_workspace, ["TEST_API_KEY"])
+                assert result is None  # Must ignore the config file!
             finally:
                 importlib.reload(mod)
 
