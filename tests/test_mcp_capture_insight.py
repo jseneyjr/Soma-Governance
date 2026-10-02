@@ -20,7 +20,7 @@ class TestMCPCaptureInsight:
         from soma_mcp.tools import execute_tool
 
         workspace = str(tmp_path)
-        os.makedirs(os.path.join(workspace, ".soma"), exist_ok=True)
+        os.makedirs(os.path.join(workspace, ".soma", "cells"), exist_ok=True)
         monkeypatch.setattr("soma_mcp.tools.resolve_workspace", lambda args=None: workspace)
 
         result = execute_tool("soma_capture_insight", {
@@ -38,7 +38,7 @@ class TestMCPCaptureInsight:
         from soma_mcp.tools import execute_tool
 
         workspace = str(tmp_path)
-        os.makedirs(os.path.join(workspace, ".soma"), exist_ok=True)
+        os.makedirs(os.path.join(workspace, ".soma", "cells"), exist_ok=True)
         monkeypatch.setattr("soma_mcp.tools.resolve_workspace", lambda args=None: workspace)
 
         result = execute_tool("soma_capture_insight", {
@@ -53,7 +53,7 @@ class TestMCPCaptureInsight:
         from soma_mcp.tools import execute_tool
 
         workspace = str(tmp_path)
-        os.makedirs(os.path.join(workspace, ".soma"), exist_ok=True)
+        os.makedirs(os.path.join(workspace, ".soma", "cells"), exist_ok=True)
         monkeypatch.setattr("soma_mcp.tools.resolve_workspace", lambda args=None: workspace)
 
         execute_tool("soma_capture_insight", {
