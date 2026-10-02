@@ -60,6 +60,14 @@ PLATFORM="${POSITIONAL_ARGS[0]:-${SOMA_PLATFORM:-gemini}}"
 DETECTED_OS="$(detect_os)"
 RESOLVED_HOME="$(resolve_home "$DETECTED_OS")"
 WORK_DIR="$(pwd)"
+# The path checker maps MSYS paths with cygpath. Resolve it here, from PATH
+# only: native Windows Python given a bare name also searches the current
+# directory, which is the project being uninstalled from.
+SOMA_CYGPATH=""
+if [ "$DETECTED_OS" = "windows" ] && command -v cygpath >/dev/null 2>&1; then
+  SOMA_CYGPATH="$(cygpath -m "$(command -v cygpath)")"
+fi
+export SOMA_CYGPATH
 MANIFEST_PATH="$RESOLVED_HOME/.soma/manifest.json"
 MANIFEST_IS_LOCAL=false
 if [ -f "$WORK_DIR/.soma/manifest.json" ]; then
@@ -96,12 +104,46 @@ SINK_ROOTS=("${ALLOWED_ROOTS[@]}" "$REPO_DIR")
 # followed) but not for a restore source (it would be read through).
 # Paths travel via argv/env, never interpolated into the source.
 PATH_CHECK_PY='
-import json, os, sys
+import json, os, subprocess, sys
+
+# Messages name the offending path; on a cp1252 console a non-cp1252 or
+# unencodable one would crash the report instead of showing it.
+sys.stdout.reconfigure(encoding="utf-8", errors="backslashreplace")
+
+# Under Git Bash/MSYS/Cygwin, shell paths (/c/Users/..., /tmp/...) reach this
+# native Windows interpreter unconverted through the environment, stdin and the
+# manifest; only argv is auto-converted. Map them with cygpath so roots and
+# targets compare in one form. If cygpath is missing or fails, the path stays
+# unmapped and is refused: fail closed. SOMA_CYGPATH is the absolute path the
+# shell resolved; a bare name would be looked up in the current directory too.
+_native = {}
+_cygpath = os.environ.get("SOMA_CYGPATH", "")
+
+def posix_form(p):
+    return os.name == "nt" and p.startswith("/") and not p.startswith("//")
+
+def native(p):
+    if not posix_form(p):
+        return p
+    if p not in _native:
+        mapped = ""
+        if os.path.isabs(_cygpath):
+            try:
+                out = subprocess.run([_cygpath, "-m", "--", p], capture_output=True, timeout=30)
+                if out.returncode == 0:
+                    mapped = out.stdout.decode("utf-8").rstrip("\r\n")
+            except (OSError, subprocess.SubprocessError, UnicodeDecodeError):
+                pass
+        _native[p] = mapped if mapped and os.path.isabs(mapped) else None
+    return _native[p]
 
 def prep_roots(raw):
     out = []
     for r in raw:
-        if not r or not os.path.isabs(r):
+        if not r or not (os.path.isabs(r) or posix_form(r)):
+            continue
+        r = native(r)
+        if r is None:
             continue
         lex = os.path.normpath(r)
         real = os.path.realpath(lex)
@@ -123,10 +165,20 @@ def check(target, roots, kind):
         return "empty path"
     if any(c in target for c in "\n\r\0"):
         return "contains a control character"
-    if not os.path.isabs(target):
+    # read_manifest_field must be able to write every accepted entry; an encode
+    # error there ends the list early and the rest silently leave the plan.
+    try:
+        target.encode("utf-8", "surrogateescape")
+    except UnicodeEncodeError:
+        return "not encodable as a path"
+    if not (os.path.isabs(target) or posix_form(target)):
         return "not an absolute path"
     if any(s in (".", "..") for s in target.replace("\\", "/").split("/")):
         return "contains a . or .. segment"
+    # Only after the segment check: cygpath folds `..` away.
+    target = native(target)
+    if target is None:
+        return "cannot be mapped to a Windows path (cygpath missing or failed)"
     if not roots:
         return "no usable allowed root"
     norm = os.path.normpath(target)
@@ -412,6 +464,9 @@ PY
 read_manifest_field() {
   SOMA_MANIFEST="$MANIFEST_PATH" python3 -c '
 import json, os, sys
+# Bash reads one path per line as UTF-8. Native Windows Python would write
+# CRLF (leaving a CR on every entry but the last) in the console code page.
+sys.stdout.reconfigure(encoding="utf-8", errors="surrogateescape", newline="\n")
 field = sys.argv[1]
 with open(os.environ["SOMA_MANIFEST"], "r", encoding="utf-8") as fh:
     data = json.load(fh)

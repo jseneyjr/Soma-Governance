@@ -14,6 +14,9 @@ All runs use an isolated HOME and an isolated project cwd under tmp_path.
 import json
 import os
 import re
+import shutil
+import subprocess
+import sys
 
 import pytest
 
@@ -311,6 +314,183 @@ def test_sink_check_rejects_backup_source_symlink(layout):
     assert proc.returncode == 1, "restore source symlink was accepted"
     assert _path_check("source", str(layout["backup_dir"]),
                        layout["home"] / ".soma" / "backup").returncode == 0
+
+
+# ── Git Bash path forms (BUG-036) ───────────────────────────────────────
+# Under Git Bash, resolve_home and $(pwd) give MSYS paths (/c/Users/...), and
+# install.sh records them in the manifest. Native Windows Python only gets
+# them converted on argv: SOMA_ROOTS (past its first line), the plan on stdin
+# and the manifest JSON arrive as /c/..., which os.path.isabs() rejects, so
+# every entry was refused.
+
+needs_msys = pytest.mark.skipif(
+    os.name != "nt" or shutil.which("cygpath") is None,
+    reason="MSYS path forms only reach the checker under Git Bash/MSYS on Windows",
+)
+
+
+def msys(p):
+    out = subprocess.run(["cygpath", "-u", str(p)], capture_output=True, check=True)
+    return out.stdout.decode("utf-8").strip()
+
+
+def _checker(mode, *args, stdin=b"", env=None):
+    src = read(UNINSTALL_SH)
+    m = re.search(r"^PATH_CHECK_PY='(.*?)^'$", src, re.S | re.M)
+    assert m, "PATH_CHECK_PY block not found in uninstall.sh"
+    full_env = dict(os.environ)
+    # uninstall.sh exports the absolute cygpath it resolved from PATH.
+    full_env["SOMA_CYGPATH"] = shutil.which("cygpath") or ""
+    full_env.update(env or {})
+    proc = subprocess.run(
+        [sys.executable, "-I", "-S", "-c", m.group(1), mode, *args],
+        input=stdin, capture_output=True, env=full_env,
+    )
+    return proc.returncode, proc.stdout.decode("utf-8", "replace") + proc.stderr.decode("utf-8", "replace")
+
+
+def _plan(targets, roots, env=None):
+    env = dict(env or {}, SOMA_ROOTS="\n".join(roots))
+    return _checker("plan", stdin="\0".join(targets).encode("utf-8"), env=env)
+
+
+@needs_msys
+def test_msys_form_plan_entries_inside_roots_are_accepted(layout):
+    project_file = layout["project"] / ".kiro" / "settings" / "mcp.json"
+    rc, out = _plan([msys(layout["legit_file"]), msys(layout["legit_skill"]), msys(project_file)],
+                    [msys(layout["home"]), msys(layout["project"])])
+    assert rc == 0, out
+
+
+@needs_msys
+def test_msys_form_manifest_is_accepted(layout):
+    manifest = home_manifest(
+        layout, files=[msys(layout["legit_file"])], organs=[msys(layout["legit_skill"])],
+        backup_dir=msys(layout["backup_dir"]),
+    )
+    rc, out = _checker("manifest", env={
+        "SOMA_MANIFEST": str(manifest),
+        "SOMA_ROOTS": "\n".join([msys(layout["home"]), msys(layout["project"])]),
+        "SOMA_BACKUP_ROOTS": msys(layout["home"] / ".soma" / "backup"),
+    })
+    assert rc == 0, out
+
+
+@needs_msys
+def test_msys_form_non_ascii_home_is_accepted(tmp_path):
+    home = tmp_path / "hôme"
+    target = home / ".kiro" / "steering" / "soma-rule.md"
+    target.parent.mkdir(parents=True)
+    target.write_text("soma rule\n", encoding="utf-8")
+    rc, out = _plan([msys(target)], [msys(home)])
+    assert rc == 0, out
+
+
+@needs_msys
+def test_msys_form_dotdot_is_refused_as_dotdot(layout):
+    (layout["home"] / "safe").mkdir()
+    hostile = msys(layout["home"]) + "/safe/../../outside/victim"
+    rc, out = _plan([hostile], [msys(layout["home"])])
+    assert rc == 1 and "contains a . or .. segment" in out, out
+
+
+@needs_msys
+def test_msys_form_outside_roots_is_refused_as_outside(layout):
+    rc, out = _plan([msys(layout["victim"])], [msys(layout["home"]), msys(layout["project"])])
+    assert rc == 1 and "outside the allowed roots" in out, out
+
+
+@needs_msys
+@pytest.mark.parametrize("cygpath", ["", "cygpath"], ids=["unset", "bare-name"])
+def test_msys_form_without_absolute_cygpath_is_refused(layout, cygpath):
+    # A bare name is refused, not looked up: the lookup would search the cwd.
+    rc, out = _plan([msys(layout["legit_file"])], [str(layout["home"])],
+                    env={"SOMA_CYGPATH": cygpath})
+    assert rc == 1 and "cannot be mapped to a Windows path" in out, out
+
+
+@needs_msys
+def test_msys_form_home_manifest_is_removed(layout):
+    """The shape install.sh writes under Git Bash: every path in MSYS form."""
+    hook = layout["home"] / ".kiro" / "hooks" / "hooks.json"
+    hook.parent.mkdir(parents=True)
+    hook.write_text("{}\n", encoding="utf-8")
+    second = layout["legit_file"].with_name("soma-other.md")
+    second.write_text("soma rule\n", encoding="utf-8")
+    manifest = home_manifest(
+        layout, files=[msys(layout["legit_file"]), msys(second)],
+        organs=[msys(layout["legit_skill"])],
+        hooks=[msys(hook)], backup_dir=msys(layout["backup_dir"]),
+    )
+    before = snapshot_outside(layout)
+    proc = uninstall(layout)
+    assert proc.returncode == 0, proc.stdout[-1500:] + proc.stderr[-1500:]
+    assert not layout["legit_file"].exists()
+    assert not second.exists()
+    assert not layout["legit_skill"].exists()
+    assert not hook.exists()
+    assert not manifest.exists()
+    assert snapshot_outside(layout) == before
+
+
+@needs_msys
+def test_cygpath_in_the_project_dir_is_not_run(layout, monkeypatch):
+    """Native Windows Python searches the current directory before PATH for a
+    bare program name; uninstall runs from the project dir. A planted
+    cygpath.exe (here hostname.exe, whose output maps nothing) must not be
+    the one the checker runs."""
+    # Some shells set this, which turns the current-directory search off;
+    # a default Git Bash doesn't.
+    monkeypatch.delenv("NoDefaultCurrentDirectoryInExePath", raising=False)
+    hostname = os.path.join(os.environ.get("SystemRoot", r"C:\Windows"), "System32", "hostname.exe")
+    if not os.path.isfile(hostname):
+        pytest.skip("needs hostname.exe as the planted binary")
+    shutil.copy(hostname, str(layout["project"] / "cygpath.exe"))
+    second = layout["legit_file"].with_name("soma-other.md")
+    second.write_text("soma rule\n", encoding="utf-8")
+    manifest = home_manifest(layout, files=[msys(layout["legit_file"]), msys(second)])
+    proc = uninstall(layout)
+    assert proc.returncode == 0, proc.stdout[-1500:] + proc.stderr[-1500:]
+    assert not layout["legit_file"].exists() and not second.exists()
+    assert not manifest.exists()
+
+
+def test_unencodable_manifest_entry_is_refused(layout):
+    """A lone surrogate can't be written out by read_manifest_field: the
+    encode error ended the list early and the entries after it silently
+    dropped out of the plan. Validation must refuse it up front instead."""
+    hostile = str(layout["home"] / ".kiro" / "steering" / "bad-\ud800.md")
+    manifest = home_manifest(layout, files=[hostile, layout["legit_file"]],
+                             organs=[layout["legit_skill"]])
+    before = snapshot_outside(layout)
+    proc = uninstall(layout)
+    combined = proc.stdout + proc.stderr
+    assert proc.returncode != 0, combined[-1500:]
+    assert "not encodable" in combined, combined[-1500:]
+    assert layout["legit_file"].exists() and layout["legit_skill"].is_dir()
+    assert manifest.exists()
+    assert snapshot_outside(layout) == before
+
+
+def test_every_manifest_entry_reaches_the_plan(layout):
+    """read_manifest_field hands entries to bash one per line. On Windows,
+    Python's text stdout wrote CRLF and cp1252, so every entry but the last
+    kept a trailing CR and non-ASCII names arrived as the wrong bytes: those
+    files silently dropped out of the plan."""
+    steering = layout["legit_file"].parent
+    # The non-ASCII name goes last, where only the encoding can drop it.
+    names = ["soma-a.md", "soma-b.md", "règle-ô.md"]
+    files = []
+    for name in names:
+        p = steering / name
+        p.write_text("soma rule\n", encoding="utf-8")
+        files.append(p)
+    manifest = home_manifest(layout, files=files, organs=[layout["legit_skill"]])
+    proc = uninstall(layout)
+    assert proc.returncode == 0, proc.stdout[-1500:] + proc.stderr[-1500:]
+    left = [p.name for p in files if p.exists()]
+    assert left == [], f"left in place: {left}"
+    assert not manifest.exists()
 
 
 def test_every_sink_is_guarded():
