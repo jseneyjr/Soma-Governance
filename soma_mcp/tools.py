@@ -211,12 +211,15 @@ def _classify_propose_result(result):
 def get_governance(args=None):
     if not _HAS_SDK:
         return None
-    workspace = resolve_workspace(args)
+    try:
+        workspace = confine_workspace(args.get('workspace') or resolve_workspace(args))
+    except ValueError:
+        return None
     return Governance(project_root=workspace)
 
 
 def build_cell_create_prompt(description: str, domain_hint: str = None, cell_type: str = None, args=None) -> str:
-    workspace = resolve_workspace(args)
+    workspace = confine_workspace(args.get('workspace') or resolve_workspace(args))
     
     examples = []
     cells_dir = os.path.join(workspace, '.soma', 'cells')
@@ -270,7 +273,7 @@ Generate ONLY the complete markdown cell file content. Start with --- for the YA
 TOOL_DEFINITIONS = [
     {
         "name": "soma_request_receipt",
-        "description": "Request an execution receipt for a privileged tool. Required before calling any execution tools (if execution is enabled).",
+        "description": "Request an execution receipt for a privileged tool. Required before calling any write tools, or execution tools (if execution is enabled).",
         "inputSchema": {
             "type": "object",
             "properties": {
@@ -495,12 +498,15 @@ def execute_tool(name: str, args: dict):
     gov = get_governance(args)
     
     if name == "soma_create_cell":
-        prompt = build_cell_create_prompt(
-            description=args.get("description"),
-            domain_hint=args.get("domain"),
-            cell_type=args.get("cell_type"),
-            args=args
-        )
+        try:
+            prompt = build_cell_create_prompt(
+                description=args.get("description"),
+                domain_hint=args.get("domain"),
+                cell_type=args.get("cell_type"),
+                args=args
+            )
+        except ValueError as exc:
+            return {"error": str(exc), "status": _STATUS_FAIL}
         if args.get("dry_run"):
             return {"prompt": prompt, "dry_run": True, "instruction": "Dry run: showing prompt that would be used. No cell will be created."}
         return {"prompt": prompt, "instruction": "Process this prompt and return the cell YAML. Then use a file-writing tool to save it to the appropriate .soma/cells/ directory."}
@@ -514,7 +520,10 @@ def execute_tool(name: str, args: dict):
     elif name == "soma_propose_change":
         if not soma_propose_change:
             return {"error": "soma_propose_change not available"}
-        workspace = resolve_workspace(args)
+        try:
+            workspace = confine_workspace(args.get('workspace') or resolve_workspace(args))
+        except ValueError as exc:
+            return {"error": str(exc), "status": _STATUS_FAIL}
         file_path = args.get('file_path')
         proposed_content = args.get('proposed_content')
         
@@ -627,7 +636,10 @@ def execute_tool(name: str, args: dict):
 
     elif name == "soma_report_outcome":
         # v0.23: Agent reports execution outcome for fitness scoring
-        workspace = resolve_workspace(args)
+        try:
+            workspace = confine_workspace(args.get('workspace') or resolve_workspace(args))
+        except ValueError as exc:
+            return {"error": str(exc), "status": _STATUS_FAIL}
         # Enforce the advertised enum here: persisting 'unknown' would silently
         # poison fitness scoring with un-gradeable rows.
         raw_outcome = args.get('outcome')
@@ -694,7 +706,10 @@ def execute_tool(name: str, args: dict):
         return {'status': 'recorded', 'records': records}
 
     elif name == "soma_capture_insight":
-        workspace = resolve_workspace(args)
+        try:
+            workspace = confine_workspace(args.get('workspace') or resolve_workspace(args))
+        except ValueError as exc:
+            return {"error": str(exc), "status": _STATUS_FAIL}
         try:
             capture_insight = _safe_import_enzyme("insight_capture", "capture_insight")
         except ImportError:
@@ -715,8 +730,10 @@ def execute_tool(name: str, args: dict):
         }
 
     elif name == "soma_generate_manifest":
-        workspace = args.get("workspace", "")
-        confine_workspace(workspace)
+        try:
+            workspace = confine_workspace(args.get('workspace') or resolve_workspace(args))
+        except ValueError as exc:
+            return {"error": str(exc), "status": "FAIL"}
         cells_dir = os.path.join(workspace, ".soma", "cells")
 
         # Optionally generate HMAC key

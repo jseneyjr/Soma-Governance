@@ -3,17 +3,21 @@
 All notable changes to Soma are documented here.
 This project uses [Semantic Versioning](https://semver.org/).
 
-## [Unreleased]
+## [0.89.0] — 2026-10-02 — "MCP Execution Security"
 
 ### Added
+- **Opaque, stateful, session-bound receipts for MCP execution** (Fixes BUG-009): The server now requires single-use cryptographic receipts for all write and execute tools, fetched via `soma_request_receipt`. This ensures only trusted MCP connections can mutate workspace state, mitigating cross-workspace CSRF attacks.
+- **Strict workspace injection boundaries** in the MCP dispatcher. The server forcibly injects the operator-configured `_canonical_workspace` into write and execute tools, ignoring client-provided `workspace` arguments, preventing path traversal via rogue arguments.
 - **Open-bug tracking in the Bug Registry**: entries take `status: open|fixed` (default `fixed` for existing entries). `enzymes/verify_bug_registry.py` requires only the core fields for open bugs, rejects open bugs that set fix fields, and skips regression-test collection for them.
 - **`platform_compat` root-cause category** and open bugs BUG-008–BUG-014 (Windows and MCP issues; GitHub issues #45–#50) and BUG-015 (`soma checkpoint`/`soma sync` wipe cell fitness on a fresh clone).
 - **`docs/KNOWN_ISSUES_WINDOWS.md`**: open Windows issues, workarounds, and impact.
 
 ### Changed
 - **README**: known-issue notes for the MCP server and Windows; the Windows rows of the platform table are now ⚠️ where open bugs apply.
+- **`soma_request_receipt` classification**: Reclassified from `_WRITE_TOOLS` to `_READ_TOOLS` so it remains discoverable in `tools/list` when execution mode is disabled.
 
 ### Fixed
+- **MCP write/execute tools unusable from MCP hosts** (BUG-009, #46): Handshake designed for direct clients replaced with session-bound receipt architecture. Regression test: `test_mcp_dispatch.py`.
 - **`install.ps1` failed to parse under Windows PowerShell 5.1** (BUG-011, #48): the installers were UTF-8 without a BOM, so PS 5.1 read them as cp1252. They are now saved with a UTF-8 BOM. Regression test: `test_powershell_scripts_with_non_ascii_have_utf8_bom`. CI: new Windows PowerShell 5.1 dry-run step in `validate.yml`.
 - **MCP server crashed on Windows at startup** (BUG-008, #45): `soma_mcp/tools.py` and `soma_sdk/telemetry.py` imported `fcntl` unconditionally. Both now fall back to unlocked appends when `fcntl` is unavailable, matching `enzymes/fitness_updater.py`. Regression tests: `tests/test_fcntl_optional.py`.
 - `tests/test_diagnose_hot_zones.py`: the "Insufficient data" snapshot test assumed fewer than 10 registry entries; it now asserts the warning tracks the registry size.

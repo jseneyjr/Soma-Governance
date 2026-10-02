@@ -67,7 +67,7 @@ def _server_version() -> str:
     try:
         from importlib.metadata import PackageNotFoundError, version
         try:
-            return version("soma-steering")
+            return version("soma-governance")
         except PackageNotFoundError:
             pass
     except ImportError:
@@ -157,7 +157,7 @@ def handle_request(request: Dict[str, Any]) -> Dict[str, Any]:
             
         tools = TOOL_DEFINITIONS
         if not _execution_enabled:
-            tools = [t for t in tools if t["name"] not in _EXECUTE_TOOLS and t["name"] != "soma_request_receipt"]
+            tools = [t for t in tools if t["name"] not in _EXECUTE_TOOLS]
             
         return {
             "jsonrpc": "2.0",
@@ -221,6 +221,21 @@ def handle_request(request: Dict[str, Any]) -> Dict[str, Any]:
                 }
             }
 
+            if name in _EXECUTE_TOOLS or name in _WRITE_TOOLS:
+                args["workspace"] = _canonical_workspace
+
+        # Rate limit check BEFORE consuming receipt
+        if not _check_rate_limit(name):
+            limit_info = _RATE_LIMITS.get(name, (0, 0))
+            return {
+                "jsonrpc": "2.0",
+                "id": req_id,
+                "error": {
+                    "code": -32000,
+                    "message": f"Rate limit exceeded for '{name}': max {limit_info[0]} calls per {limit_info[1]}s"
+                }
+            }
+
         # Both EXECUTE and WRITE tools require a valid receipt
         if name in _EXECUTE_TOOLS or name in _WRITE_TOOLS:
             if name in _EXECUTE_TOOLS and not _execution_enabled:
@@ -264,22 +279,6 @@ def handle_request(request: Dict[str, Any]) -> Dict[str, Any]:
                         "message": "Invalid, expired, or mismatched receipt."
                     }
                 }
-
-            # Safely override workspace *after* verification if required
-            if name in _EXECUTE_TOOLS or name in _WRITE_TOOLS:
-                args["workspace"] = _canonical_workspace
-
-        # Rate limit check
-        if not _check_rate_limit(name):
-            limit_info = _RATE_LIMITS.get(name, (0, 0))
-            return {
-                "jsonrpc": "2.0",
-                "id": req_id,
-                "error": {
-                    "code": -32000,
-                    "message": f"Rate limit exceeded for '{name}': max {limit_info[0]} calls per {limit_info[1]}s"
-                }
-            }
 
         try:
             # Tool implementations (and the enzymes they call) may print progress

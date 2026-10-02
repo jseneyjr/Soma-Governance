@@ -100,6 +100,16 @@ Machine-parseable bug registry with verification enzyme and governance cell. Bac
 **Status**: ✅ Shipped (v0.85)  
 Hot zone engine feeds bug patterns into cell fitness scoring. Bugs make the system smarter.
 
+## Phase 5.0 — v0.89.0 ✅ Shipped
+
+### MCP Execution Security
+**Status**: ✅ Shipped (v0.89.0)  
+Opaque, stateful, session-bound cryptographic receipts. MCP write/execute tools safely verify client authority and enforce strict workspace confinement.
+
+### Bug Registry
+**Status**: ✅ Shipped (v0.89.0)
+Open bug tracking, Windows/MCP platform compatibility categorizations.
+
 ## Research
 
 ### Antifragile Scaling
