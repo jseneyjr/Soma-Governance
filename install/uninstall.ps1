@@ -1,4 +1,4 @@
-﻿# Soma — Native Windows PowerShell Uninstaller
+﻿# Soma - Native Windows PowerShell Uninstaller
 # Removes steering rules and skills deployed by install.ps1 / install.sh.
 #
 # Usage:
@@ -30,7 +30,7 @@ param (
 )
 
 if ($Help) {
-    Write-Host "Soma — Windows PowerShell Uninstaller"
+    Write-Host "Soma - Windows PowerShell Uninstaller"
     Write-Host "Usage: .\uninstall.ps1 [[-Platform] <gemini|kiro|copilot|claude>] [-DryRun] [-Force] [-KeepConfig] [-NoRestore]"
     Write-Host ""
     Write-Host "Parameters:"
@@ -322,19 +322,19 @@ if ($ManifestExists) {
         $rawManifest = Get-Content -LiteralPath $ManifestPath -Raw -ErrorAction Stop
     } catch {
         Write-LogError "Manifest exists at $ManifestPath but could not be read: $($_.Exception.Message)"
-        Write-LogError "Refusing to continue — guessing paths here risks an incomplete uninstall."
+        Write-LogError "Refusing to continue - guessing paths here risks an incomplete uninstall."
         exit 1
     }
     try {
         $Manifest = $rawManifest | ConvertFrom-Json -ErrorAction Stop
     } catch {
         Write-LogError "Manifest at $ManifestPath is not valid JSON: $($_.Exception.Message)"
-        Write-LogError "Refusing to continue — repair or delete the manifest, then re-run."
+        Write-LogError "Refusing to continue - repair or delete the manifest, then re-run."
         exit 1
     }
     if ($null -eq $Manifest) {
         Write-LogError "Manifest at $ManifestPath parsed to nothing (empty file?)."
-        Write-LogError "Refusing to continue — repair or delete the manifest, then re-run."
+        Write-LogError "Refusing to continue - repair or delete the manifest, then re-run."
         exit 1
     }
 } else {
@@ -473,7 +473,7 @@ if ($Manifest) {
         "kiro" {
             Add-InstalledRuleFiles -Dir (Join-Path $UserHome ".kiro\steering")
             Add-InstalledSkillDirs -Dir (Join-Path $UserHome ".kiro\skills")
-            # .kiro\hooks is Kiro's own directory — only remove our generated file.
+            # .kiro\hooks is Kiro's own directory - only remove our generated file.
             $kiroHooks = Join-Path $UserHome ".kiro\hooks\hooks.json"
             if (Test-Path -LiteralPath $kiroHooks -PathType Leaf) {
                 Add-FileTarget $kiroHooks
@@ -504,7 +504,7 @@ if ($Manifest) {
     }
 
     if (-not $KeepConfig -and (Test-Path -LiteralPath $ConfigFile -PathType Leaf)) {
-        Write-LogSkip "$ConfigFile (user config, not recorded in a manifest — preserved)"
+        Write-LogSkip "$ConfigFile (user config, not recorded in a manifest - preserved)"
     }
 }
 
@@ -562,7 +562,7 @@ Write-Host "The following will be removed/modified:"
 foreach ($f in $FilesToRemove) { Write-Host "  - [FILE] $f" }
 foreach ($d in $DirsToRemove)  { Write-Host "  - [DIR]  $d" }
 foreach ($m in $ModifyFiles)   { Write-Host "  - [MOD]  $m (strip Soma sections, keep the rest)" }
-foreach ($c in $ConfigToRemove) { Write-Host "  - [USER CONFIG] $c (your Soma configuration — pass -KeepConfig to keep it)" }
+foreach ($c in $ConfigToRemove) { Write-Host "  - [USER CONFIG] $c (your Soma configuration - pass -KeepConfig to keep it)" }
 
 if ($PlanCount -eq 0) {
     Write-Host "Nothing to remove."
@@ -697,7 +697,7 @@ if (-not $DryRun) {
 $ConsolidatedBackupExists = ($BackupDir -and (Test-Path -LiteralPath $BackupDir -PathType Container))
 
 # Maps the consolidated backup layout install.sh actually writes (genome/organs)
-# onto the live locations. Deliberately NOT rules/skills — that mismatch is the
+# onto the live locations. Deliberately NOT rules/skills - that mismatch is the
 # bug in uninstall.sh's restore block.
 function Get-ConsolidatedRestoreMap {
     $map = @()
@@ -763,7 +763,7 @@ $HaveRestoreSources = (($InPlaceBackups.Count -gt 0) -or ($ConsolidatedMap.Count
 if ($NoRestore) {
     if ($HaveRestoreSources) {
         Write-Host ""
-        Write-LogSkip "-NoRestore supplied — leaving backups in place without restoring."
+        Write-LogSkip "-NoRestore supplied - leaving backups in place without restoring."
     }
 } elseif (-not $HaveRestoreSources) {
     if ($BackupDir -and -not $ConsolidatedBackupExists) {
@@ -784,7 +784,7 @@ if ($NoRestore) {
             $restoreConfirm = Read-Host "Restore previous configuration from backup? (y/N)"
             if ($restoreConfirm -match '^[Yy]') { $doRestore = $true }
         } else {
-            Write-LogSkip "Non-interactive host — not restoring. Copy the paths above manually if needed."
+            Write-LogSkip "Non-interactive host - not restoring. Copy the paths above manually if needed."
         }
 
         if ($doRestore) {
@@ -815,7 +815,7 @@ Write-Host ""
 if ($DryRun) {
     Write-Host "Dry-run complete. Nothing was removed."
 } elseif ($script:HadFailure) {
-    Write-LogError "Uninstall finished with errors — see the messages above."
+    Write-LogError "Uninstall finished with errors - see the messages above."
     exit 1
 } else {
     Write-Host "Uninstall complete."

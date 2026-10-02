@@ -1,4 +1,4 @@
-﻿# Soma — Native Windows PowerShell Installer
+﻿# Soma - Native Windows PowerShell Installer
 # Deploys steering rules and skills for Gemini, Kiro, and Copilot.
 # NOTE: Hooks require bash (Git Bash, WSL, or MSYS2) and cannot run via native PowerShell.
 #
@@ -24,7 +24,7 @@ param (
 )
 
 if ($Help) {
-    Write-Host "Soma — Windows PowerShell Installer"
+    Write-Host "Soma - Windows PowerShell Installer"
     Write-Host "Usage: .\install.ps1 [[-Platform] <gemini|kiro|copilot>] [[-Mode] <global|project>] [-DryRun]"
     Write-Host ""
     Write-Host "Parameters:"
@@ -387,7 +387,7 @@ switch ($Platform) {
 
         # Hook warning (PowerShell limitation)
         Write-Host ""
-        Write-LogWarn "Hooks require bash (Git Bash, WSL, or MSYS2) — hook scripts were NOT installed."
+        Write-LogWarn "Hooks require bash (Git Bash, WSL, or MSYS2) - hook scripts were NOT installed."
 
         Write-Host ""
         if ($DryRun) {
@@ -397,7 +397,7 @@ switch ($Platform) {
             Write-Host "These will take effect on your next Gemini conversation."
         }
         if ($skippedCount -gt 0) {
-            Write-Host "  ($skippedCount rules skipped — not in $Subset subset)"
+            Write-Host "  ($skippedCount rules skipped - not in $Subset subset)"
         }
     }
 
@@ -462,7 +462,7 @@ switch ($Platform) {
 
         # Hook warning (PowerShell limitation)
         Write-Host ""
-        Write-LogWarn "Hooks require bash (Git Bash, WSL, or MSYS2) — hook scripts were NOT installed."
+        Write-LogWarn "Hooks require bash (Git Bash, WSL, or MSYS2) - hook scripts were NOT installed."
 
         Write-Host ""
         if ($DryRun) {
@@ -473,7 +473,7 @@ switch ($Platform) {
             Write-Host "Rules with 'inclusion: manual' can be referenced via #rulename."
         }
         if ($skippedCount -gt 0) {
-            Write-Host "  ($skippedCount rules skipped — not in $Subset subset)"
+            Write-Host "  ($skippedCount rules skipped - not in $Subset subset)"
         }
     }
 
@@ -519,7 +519,7 @@ switch ($Platform) {
                 Write-Host "Commit .github/instructions/ to share with your team."
             }
             if ($skippedCount -gt 0) {
-                Write-Host "  ($skippedCount rules skipped — not in $Subset subset)"
+                Write-Host "  ($skippedCount rules skipped - not in $Subset subset)"
             }
         } elseif ($Mode -eq "global") {
             $targetFile = Join-Path $UserHome "copilot-instructions.md"
@@ -561,7 +561,7 @@ switch ($Platform) {
                 Write-Host "Enable 'Custom Instructions' in your IDE's Copilot settings."
             }
             if ($skippedCount -gt 0) {
-                Write-Host "  ($skippedCount rules skipped — not in $Subset subset)"
+                Write-Host "  ($skippedCount rules skipped - not in $Subset subset)"
             }
         }
     }
@@ -643,7 +643,7 @@ switch ($Platform) {
             }
         }
         if ($skippedCount -gt 0) {
-            Write-Host "  ($skippedCount rules skipped — not in $Subset subset)"
+            Write-Host "  ($skippedCount rules skipped - not in $Subset subset)"
         }
     }
 }
