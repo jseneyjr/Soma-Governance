@@ -16,8 +16,8 @@ Open Windows issues as of v0.89.0 were observed on Windows 11 with Windows Power
 | Hooks under Git Bash with a python.org install | Open: `python3` may resolve to the Windows Store stub | BUG-037 |
 | `uninstall.sh` under Git Bash | Open: rejects every path as "not an absolute path" and removes nothing | BUG-036 |
 | Test suite on Windows | v0.89.0 can write to the real home directory; fixed after v0.89.0 | BUG-010 |
-| `soma status` on a cp1252 console | Open: can crash unless `PYTHONIOENCODING=utf-8` | BUG-012 |
-| `soma_list_cells` / `Governance.list_cells` | Open: non-ASCII text can be garbled and some cells can be dropped | BUG-012 |
+| `soma status` on a cp1252 console | v0.89.0 can crash unless `PYTHONIOENCODING=utf-8`; fixed after v0.89.0 | BUG-012 |
+| `soma_list_cells` / `Governance.list_cells` | Fixed in v0.89.0 (explicit UTF-8 inventory) | BUG-012 |
 | Windows-only tests | Open: verification-contract failures root-caused (unescaped Windows paths in generated tests); path-separator failures remain | BUG-013 |
 
 ## Fixed after v0.89.0 (unreleased)
@@ -27,6 +27,9 @@ On v0.89.0, `soma_scan` and `soma_list_cells` fail with `file changed before it 
 
 ### BUG-010: Test suite wrote to the real home directory ([#47](https://github.com/nseney1/Soma-Governance/issues/47))
 Under Git Bash, `resolve_home()` prefers `USERPROFILE` over `HOME`, and six calls in `tests/test_install_lifecycle.py` overrode only `HOME`, so the installer ran against the real profile. The shared `run()` helper in `tests/conftest.py` now sets `USERPROFILE` whenever a test overrides `HOME` alone.
+
+### BUG-012: Implicit cp1252 encoding ([#49](https://github.com/nseney1/Soma-Governance/issues/49))
+On v0.89.0, `soma status` exits 1 with `UnicodeEncodeError` when stdout is cp1252 (for example, redirected output). **Workaround on v0.89.0:** `$env:PYTHONIOENCODING = "utf-8"`. `soma` and `enzymes/verify_bug_registry.py` now replace characters the console can't encode. Cell listing already reads UTF-8 explicitly since v0.89.0.
 
 ## Fixed in v0.89.0
 
@@ -44,14 +47,13 @@ The PowerShell scripts now carry a UTF-8 BOM, and CI dry-runs the installer unde
 ### BUG-036: `uninstall.sh` under Git Bash rejects every path ([#62](https://github.com/nseney1/Soma-Governance/issues/62))
 Under Git Bash the removal plan holds MSYS paths (`/c/Users/...`, `/tmp/...`), and the confinement check runs in native Windows Python, where `os.path.isabs()` rejects them. Uninstall refuses every entry and removes nothing. **Workaround:** remove Soma's files by hand.
 
+### BUG-038: Enzyme scripts crash on a cp1252 stdout
+About 20 standalone scripts under `enzymes/` print non-ASCII characters. With stdout on cp1252 (redirected or captured output) they exit 1 with `UnicodeEncodeError`; `tests/test_crossover_structured.py` fails on Windows for this reason. **Workaround:** `$env:PYTHONIOENCODING = "utf-8"` (PowerShell) or `export PYTHONIOENCODING=utf-8` (Git Bash).
+
 ### BUG-037: Git Bash `python3` may be the Windows Store stub ([#47 comment](https://github.com/nseney1/Soma-Governance/issues/47#issuecomment-5943767333))
 A python.org install may not provide `python3.exe`, so `python3` resolves to the App Installer stub. `command -v python3` succeeds but execution fails, preventing hook generation and other shell-script Python calls.
 
 **Workaround:** disable the `python3.exe` App execution alias and put a real `python3` on `PATH`, such as a shim that invokes `python.exe`.
-
-### BUG-012: Implicit cp1252 encoding ([#49](https://github.com/nseney1/Soma-Governance/issues/49))
-- `soma status` prints characters that a cp1252 console may reject. **Workaround:** `$env:PYTHONIOENCODING = "utf-8"`.
-- `soma_sdk/governance.py` has locale-dependent cell reads; decoding failures can be swallowed and cells omitted.
 
 ### BUG-013: Windows-only test failures ([#50](https://github.com/nseney1/Soma-Governance/issues/50))
 - `tests/test_verification/test_branch_coverage.py` and `test_mutation_tester.py` write `sys.path.insert(0, '{tmp_path}')` into generated test files. A Windows path contains `\U` (`C:\Users\...`), so the generated file fails with a `unicodeescape` `SyntaxError`. The mutation tester counts the uncompilable test as killing every mutant and reports `verdict=True` (`0/3 survived`), so the tautological-test contract test fails (BUG-034, [#54](https://github.com/nseney1/Soma-Governance/issues/54)).

@@ -7,7 +7,7 @@ This project uses [Semantic Versioning](https://semver.org/).
 
 ### Added
 - **Open bugs BUG-033 and BUG-034** in the Bug Registry: `soma status` miscounts installed core rules (#55), and `mutation_tester` fails open when tests cannot run (#54). Both were reproduced on v0.89.0.
-- **Open bugs BUG-036 and BUG-037**: `uninstall.sh` under Git Bash rejects every path (#62), and the Git Bash `python3` Store stub, split out of BUG-010.
+- **Open bugs BUG-036, BUG-037 and BUG-038**: `uninstall.sh` under Git Bash rejects every path (#62), the Git Bash `python3` Store stub (split out of BUG-010), and enzyme scripts crashing on a cp1252 stdout.
 
 ### Changed
 - **BUG-013 root cause** recorded in the Bug Registry and `docs/KNOWN_ISSUES_WINDOWS.md`: generated verification tests embed unescaped Windows paths and fail with a `unicodeescape` `SyntaxError`.
@@ -16,6 +16,7 @@ This project uses [Semantic Versioning](https://semver.org/).
 ### Fixed
 - **Windows: cell inventory rejected any cell edited after creation** (BUG-035, #61): `soma_core/cell_inventory.py` compared `os.stat` and `os.fstat` signatures that included `st_ctime_ns`, which Windows reports as creation time from one and change time from the other. `soma_scan` and `soma_list_cells` failed, and `soma_request_receipt` returned `Internal error`, so no write or execute MCP tool could run on Windows. `st_ctime_ns` is now left out of the signature on Windows, and cells are opened with `O_BINARY` so the snapshot holds the exact on-disk bytes. Regression tests: `test_receipt_flow_works_after_cell_edited_since_creation`, `test_cell_edited_after_creation_is_inventoried`. The `O_BINARY` change also fixes `test_inventory_is_stable_and_captures_exact_bytes` on Windows. The stale-receipt tests now match the exact verifier message, because their `"receipt"` substring check also accepted unrelated errors such as the missing-receipt error.
 - **Windows: installer tests wrote to the real user profile** (BUG-010, #47): under Git Bash `resolve_home()` prefers `USERPROFILE`, and six `tests/test_install_lifecycle.py` calls overrode only `HOME`. The shared `run()` helper in `tests/conftest.py` now sets `USERPROFILE` to `HOME` when a test overrides `HOME` alone. Regression test: `tests/test_home_isolation.py`.
+- **Windows: `soma status` crashed on a cp1252 stdout** (BUG-012, #49): printing an emoji raised `UnicodeEncodeError` and the command exited 1. `soma` and `enzymes/verify_bug_registry.py` now reconfigure stdout with `errors="replace"`; standalone enzyme scripts are still affected (open BUG-038). `tests/test_rule_metadata.py` reads rule files as UTF-8. Regression tests: `tests/test_cli.py::TestNonUtf8Console`, `tests/test_bug_registry.py::test_error_report_survives_cp1252_stdout`.
 
 ## [0.89.0] — 2026-10-02 — "MCP Execution Security"
 

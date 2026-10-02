@@ -144,6 +144,10 @@ def verify_unique_ids(registry: dict) -> list[str]:
 
 
 def main():
+    # The report uses non-ASCII symbols; a cp1252 stdout raised
+    # UnicodeEncodeError instead of listing the errors (BUG-012).
+    if hasattr(sys.stdout, 'reconfigure'):
+        sys.stdout.reconfigure(errors='replace')
     workspace = '.'
     if '--workspace' in sys.argv:
         idx = sys.argv.index('--workspace')

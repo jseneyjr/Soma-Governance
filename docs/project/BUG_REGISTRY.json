@@ -191,18 +191,22 @@
     {
       "id": "BUG-012",
       "issue_url": "https://github.com/nseney1/Soma-Governance/issues/49",
-      "status": "open",
-      "title": "Implicit cp1252 encoding on Windows: `soma status` crash, list_cells garbles or silently drops cells",
+      "status": "fixed",
+      "title": "Implicit cp1252 encoding on Windows: `soma status` crash, list_cells garbled or dropped cells",
       "discovered_in": "v0.88.2",
+      "fixed_in": "Unreleased",
       "root_cause": "platform_compat",
       "severity": "moderate",
-      "description": "soma status prints emoji to a cp1252 console and crashes with UnicodeEncodeError unless PYTHONIOENCODING=utf-8. soma_sdk/governance.py:89 calls read_text() with no encoding, so non-ASCII text comes back garbled. Inside `except Exception: pass` (line 95), any cell containing a byte cp1252 can't decode is silently dropped. Several tests in tests/test_rule_metadata.py also read files without an encoding (seen on v0.52). The pre-release review moved SDK/MCP cell listing to an explicit UTF-8 canonical inventory with visible diagnostics, fixing the silent-drop portion. The cp1252 console behavior of soma status remains open pending native Windows verification.",
+      "description": "With stdout on cp1252 (Windows, redirected output), `soma status` printed an emoji, raised UnicodeEncodeError and exited 1; enzymes/verify_bug_registry.py crashed the same way when printing its error report. Both entry points now reconfigure stdout with errors='replace', so unencodable characters print as '?'. The list_cells half (bare read_text() inside `except Exception: pass`, which garbled non-ASCII text and dropped undecodable cells) was fixed in the v0.89.0 pre-release review by the explicit UTF-8 canonical inventory; verified on Windows with a cp1252 locale and a cell containing curly quotes, an em-dash, an emoji and 'Ð' (byte 0x90). tests/test_rule_metadata.py read rule files with bare read_text() and failed 6 cases on genome/subagent-delegation.md; it now reads UTF-8 explicitly.",
       "affected_files": [
-        "soma_cli/status.py",
+        "soma_cli/cli.py",
+        "enzymes/verify_bug_registry.py",
         "soma_sdk/governance.py",
         "tests/test_rule_metadata.py"
       ],
-      "pattern": "Relying on the platform default encoding instead of an explicit utf-8"
+      "regression_test": "tests/test_cli.py::TestNonUtf8Console::test_status_survives_cp1252_stdout",
+      "pattern": "Relying on the platform default encoding instead of an explicit utf-8",
+      "changelog_ref": "Unreleased"
     },
     {
       "id": "BUG-013",
@@ -645,6 +649,38 @@
         "install/uninstall.sh"
       ],
       "pattern": "Interpreter presence checked with command -v instead of by running it"
+    },
+    {
+      "id": "BUG-038",
+      "status": "open",
+      "title": "Windows: enzyme scripts crash on a cp1252 stdout when printing non-ASCII",
+      "discovered_in": "v0.89.0",
+      "root_cause": "platform_compat",
+      "severity": "moderate",
+      "description": "Nineteen standalone enzyme scripts and immune_system/verification/runner.py print emoji, arrows or other non-ASCII characters from their __main__ entry points without reconfiguring stdout. With stdout on cp1252 (Windows, redirected or captured, including hook runs under Git Bash) they raise UnicodeEncodeError and exit 1. Seen on Windows in tests/test_crossover_structured.py: enzymes/cell_crossover.py fails at its 'Crossover: a x b -> c' line (U+2192). Same class as BUG-012, which fixed the `soma` CLI and verify_bug_registry.py only. No GitHub issue yet.",
+      "affected_files": [
+        "enzymes/cell_coverage.py",
+        "enzymes/cell_create_nl.py",
+        "enzymes/cell_crossover.py",
+        "enzymes/cell_deps.py",
+        "enzymes/cell_escaped_defects.py",
+        "enzymes/cell_genesis_stochastic.py",
+        "enzymes/cell_quorum.py",
+        "enzymes/diagnose_hot_zones.py",
+        "enzymes/hgt_ribosome.py",
+        "enzymes/immune_grade.py",
+        "enzymes/immune_replay.py",
+        "enzymes/immune_trends.py",
+        "enzymes/oracle_checkpoint.py",
+        "enzymes/outcome_engine.py",
+        "enzymes/resilience_engine.py",
+        "enzymes/soma_coherence.py",
+        "enzymes/soma_interoception.py",
+        "enzymes/soma_sleep.py",
+        "enzymes/verify_readme_claims.py",
+        "immune_system/verification/runner.py"
+      ],
+      "pattern": "Relying on the platform default encoding instead of an explicit utf-8"
     }
   ]
 }
