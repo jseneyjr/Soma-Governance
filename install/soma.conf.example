@@ -112,8 +112,5 @@ ENABLE_HOOKS=true
 # SOMA_INFERENCE_PROVIDER=auto
 
 # API keys — only needed when running standalone CLI, not with MCP.
-# Can also be set via environment variables of the same name.
-# GEMINI_API_KEY=
-# ANTHROPIC_API_KEY=
-# OPENAI_API_KEY=
+# Must be set via environment variables (e.g., GEMINI_API_KEY) or system keyring.
 # OPENAI_BASE_URL=          # For OpenAI-compatible endpoints (e.g., local LLMs)

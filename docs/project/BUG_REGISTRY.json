@@ -98,6 +98,7 @@
       "changelog_ref": "v0.85.1"
     },
     {
+<<<<<<< HEAD
       "id": "BUG-008",
       "issue_url": "https://github.com/nseney1/Soma-Governance/issues/45",
       "status": "fixed",
@@ -197,6 +198,19 @@
       "description": "The evidence .gitignore excludes fitness.jsonl (trigger events) while outcomes.jsonl (170 tp/fp records) is committed. On a fresh clone, aggregate_evidence returns triggers=0 with tp>0 for each cell that has outcomes. sync_frontmatter then overwrites `triggers` with 0 and sets score = tp/t, which is None when t == 0. Running `soma checkpoint`, which the pre-commit hook runs, reset all 41 such cells in a clean worktree of develop. A check command thereby rewrites tracked cell files, and a pre-commit run can commit the wiped fitness.",
       "affected_files": ["soma_cli/sync.py", "soma_cli/checkpoint.py", ".soma/evidence/.gitignore"],
       "pattern": "Derived state recomputed from a partially-versioned evidence set overwrites the recorded state"
+    },
+    {
+      "id": "BUG-007",
+      "title": "pyproject.toml version desynchronized from VERSION file",
+      "discovered_in": "v0.88.2",
+      "fixed_in": "v0.88.2",
+      "root_cause": "schema_drift",
+      "severity": "moderate",
+      "description": "VERSION file was bumped but pyproject.toml was missed during the release procedure, causing CI pipeline failure on test_version_is_single_sourced.",
+      "affected_files": ["pyproject.toml", "VERSION"],
+      "regression_test": "tests/test_static_invariants.py::test_version_is_single_sourced",
+      "pattern": "Duplicated configuration values fall out of sync during manual procedures",
+      "changelog_ref": "v0.88.2"
     }
   ]
 }

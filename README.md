@@ -277,9 +277,7 @@ Copy [`soma.conf.example`](install/soma.conf.example) → `soma.conf` to customi
 | `CELL_TELOMERE_DAYS` | `30` | Days for fitness confidence to halve |
 | `CELL_TELOMERE_WALL` | `null` | Walls (invariants) never decay |
 | `TEAM_SIZE` | `solo` | Team topology: `solo`, `small`, `team`, `enterprise` |
-| `GEMINI_API_KEY` | (none) | Gemini inference (not needed with MCP) |
-| `ANTHROPIC_API_KEY` | (none) | Anthropic inference (not needed with MCP) |
-| `OPENAI_API_KEY` | (none) | OpenAI-compatible inference (not needed with MCP) |
+
 
 ### Cross-OS Support
 

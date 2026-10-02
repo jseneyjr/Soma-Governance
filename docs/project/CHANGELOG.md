@@ -18,6 +18,23 @@ This project uses [Semantic Versioning](https://semver.org/).
 - **MCP server crashed on Windows at startup** (BUG-008, #45): `soma_mcp/tools.py` and `soma_sdk/telemetry.py` imported `fcntl` unconditionally. Both now fall back to unlocked appends when `fcntl` is unavailable, matching `enzymes/fitness_updater.py`. Regression tests: `tests/test_fcntl_optional.py`.
 - `tests/test_diagnose_hot_zones.py`: the "Insufficient data" snapshot test assumed fewer than 10 registry entries; it now asserts the warning tracks the registry size.
 
+---
+
+## [0.88.2] — 2026-10-01 — "Documentation Updates"
+
+### Documentation
+- Removed deprecated API Key fields from `README.md` configuration table.
+
+---
+
+## [0.88.1] — 2026-10-01 — "Credential Hardening"
+
+### Security
+- **Deprecated Plaintext API Keys**: Removed `GEMINI_API_KEY`, `ANTHROPIC_API_KEY`, and `OPENAI_API_KEY` from configuration files (`soma.conf`, `.soma/credentials.conf`).
+- **Enforced Secure Storage**: `inference_provider.py` now exclusively resolves credentials via environment variables or the system `keyring`, mitigating the risk of accidentally committing secrets.
+
+---
+
 ## [0.88.0] — 2026-10-01 — "Key Management"
 
 ### Added
