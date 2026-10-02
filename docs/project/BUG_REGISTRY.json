@@ -714,6 +714,7 @@
     },
     {
       "id": "BUG-040",
+      "issue_url": "https://github.com/nseney1/Soma-Governance/issues/70",
       "status": "open",
       "title": "Recording an outcome leaves .soma/evidence/.signals.lock as an untracked file",
       "discovered_in": "v0.89.0",
