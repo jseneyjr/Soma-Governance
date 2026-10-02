@@ -3,6 +3,39 @@
 All notable changes to Soma are documented here.
 This project uses [Semantic Versioning](https://semver.org/).
 
+## [0.89.0] — 2026-10-02 — "MCP Execution Security"
+
+### Added
+- **Opaque, stateful, session-bound receipts for MCP execution** (Fixes BUG-009): The server now requires single-use cryptographic receipts for all write and execute tools, fetched via `soma_request_receipt`. This ensures only trusted MCP connections can mutate workspace state, mitigating cross-workspace CSRF attacks.
+- **Strict workspace injection boundaries** in the MCP dispatcher. The server forcibly injects the operator-configured `_canonical_workspace` into write and execute tools, ignoring client-provided `workspace` arguments, preventing path traversal via rogue arguments.
+- **Open-bug tracking in the Bug Registry**: entries take `status: open|fixed` (default `fixed` for existing entries). `enzymes/verify_bug_registry.py` requires only the core fields for open bugs, rejects open bugs that set fix fields, and skips regression-test collection for them.
+- **`platform_compat` root-cause category** and open bugs BUG-008–BUG-014 (Windows and MCP issues; GitHub issues #45–#50) and BUG-015 (`soma checkpoint`/`soma sync` wipe cell fitness on a fresh clone).
+- **`docs/KNOWN_ISSUES_WINDOWS.md`**: open Windows issues, workarounds, and impact.
+
+### Changed
+- **README**: known-issue notes for the MCP server and Windows; the Windows rows of the platform table are now ⚠️ where open bugs apply.
+- **`soma_request_receipt` classification**: Reclassified from `_WRITE_TOOLS` to `_READ_TOOLS` so it remains discoverable in `tools/list` when execution mode is disabled.
+
+### Fixed
+- **MCP write/execute tools unusable from MCP hosts** (BUG-009, #46): Handshake designed for direct clients replaced with session-bound receipt architecture. Regression test: `test_mcp_dispatch.py`.
+- **`install.ps1` failed to parse under Windows PowerShell 5.1** (BUG-011, #48): the installers were UTF-8 without a BOM, so PS 5.1 read them as cp1252. They are now saved with a UTF-8 BOM. Regression test: `test_powershell_scripts_with_non_ascii_have_utf8_bom`. CI: new Windows PowerShell 5.1 dry-run step in `validate.yml`.
+- **MCP server crashed on Windows at startup** (BUG-008, #45): `soma_mcp/tools.py` and `soma_sdk/telemetry.py` imported `fcntl` unconditionally. Both now fall back to unlocked appends when `fcntl` is unavailable, matching `enzymes/fitness_updater.py`. Regression tests: `tests/test_fcntl_optional.py`.
+- `tests/test_diagnose_hot_zones.py`: the "Insufficient data" snapshot test assumed fewer than 10 registry entries; it now asserts the warning tracks the registry size.
+
+### Fixed (pre-release review)
+- **Canonical workspace was never injected** (BUG-016): the assignment sat after an unconditional `return`, so write/execute tools honoured a client-supplied `workspace`. The dispatcher now strips server-owned keys (`workspace`, `receipt`, `_sessionToken`) from every call, read tools included, and injects the operator-configured workspace after receipt verification. Privileged calls fail closed when no canonical workspace is configured. Tests: `tests/test_mcp_receipt_binding.py`.
+- **Receipts bound to empty digests** (BUG-017): receipts now bind sha256 digests of the target files named in the arguments (`file_path`, `files`, `context_files`) and of every cell under `.soma/cells`, recomputed at redemption. Paths outside the workspace are rejected at issuance. Note: any cell edit (including an outcome-engine fitness update) inside the 300 s receipt window makes outstanding receipts stale; request a new one.
+- **Telemetry `event_id` was not enforced** (BUG-018): `append_signal` now holds a cross-process evidence lock (`.soma/evidence/.signals.lock`; `fcntl`, `msvcrt` or thread-lock fallback), treats an identical replay as a no-op, raises `EventConflictError` for a changed payload, returns the persisted record, and stamps every record with the epoch `generation`.
+- **Epoch migration was a placeholder** (BUG-019): `run_epoch_migration` now holds the evidence lock for the whole cutover, snapshots every ledger into `snapshot/gen-<n>/` with `SHA256SUMS`, converts legacy `fitness.jsonl`/`outcomes.jsonl` rows with deterministic event ids, skips MCP twins and already-migrated rows, aborts unchanged on a reconciliation mismatch, writes atomically, and fences writers via `append_signal(expected_generation=...)` / `StaleGenerationError`.
+- **Human-insight cursor advanced before persistence** (BUG-020): reading no longer writes the cursor. `main()` appends evidence first; insight events carry a stable id, so a retry after a partial failure dedupes instead of duplicating. The cursor is then committed atomically, and cell frontmatter is updated only after that, so a retry never applies a boost twice. Appends are fenced on the generation the run observed. Partial trailing lines are re-read.
+- **MCP outcomes could be double counted by migration**: `soma_report_outcome` now writes one `outcome_id` into both the legacy `outcomes.jsonl` row and its idempotent `signals.jsonl` twin, and migration dedupes on that id. Rows without an id fall back to timestamp matching.
+- **Uninstall path confinement was lexical** (BUG-021): `uninstall.sh` and `uninstall.ps1` validate every manifest field and the full removal plan against canonical allowed roots before any mutation, fail closed, and re-check each path at the sink. Symlinked or junctioned ancestors are accepted only when their target stays inside the allowed root (stow-style `~/.kiro -> ~/dotfiles/.kiro` works; a link out of `$HOME` is refused). OneDrive placeholders, which carry the ReparsePoint attribute without being links, are not treated as redirections.
+- **`quality_gate` crashed on Python 3.14** (BUG-022): dropped the removed `ast.Str` alias.
+- **Release could ship untested bytes** (BUG-023): one build records `SHA256SUMS`; the sdist and the matrix-installed wheel are smoke-tested outside the checkout (`python -I`, `PYTHONPATH` unset, module origins asserted under site-packages) by `.github/scripts/wheel_smoke.py`; `publish.yml` verifies the digests and uploads only the verified files.
+- **BUG-009 registry entry** used a non-schema `resolved_in` field and lacked `changelog_ref`, so the registry failed its own verifier and broke CI.
+
+---
+
 ## [0.88.2] — 2026-10-01 — "Documentation Updates"
 
 ### Documentation

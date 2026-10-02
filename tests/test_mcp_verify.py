@@ -41,7 +41,7 @@ class TestMCPVerifyChanges:
                 return compute(1, 2)
         """))
 
-        monkeypatch.setattr("soma_mcp.tools.resolve_workspace", lambda: str(tmp_path))
+        monkeypatch.setattr("soma_mcp.tools.resolve_workspace", lambda args=None: str(tmp_path))
         result = execute_tool("soma_verify_changes", {
             "files": ["clean.py"],
             "workspace": str(tmp_path),
@@ -59,7 +59,7 @@ class TestMCPVerifyChanges:
         bad_file = tmp_path / "broken.py"
         bad_file.write_text("import nonexistent_forbidden_package_xyz\n")
 
-        monkeypatch.setattr("soma_mcp.tools.resolve_workspace", lambda: str(tmp_path))
+        monkeypatch.setattr("soma_mcp.tools.resolve_workspace", lambda args=None: str(tmp_path))
         result = execute_tool("soma_verify_changes", {
             "files": ["broken.py"],
             "workspace": str(tmp_path),
@@ -75,7 +75,7 @@ class TestMCPVerifyChanges:
         code_file = tmp_path / "simple.py"
         code_file.write_text("def hello(): return 'world'\n")
 
-        monkeypatch.setattr("soma_mcp.tools.resolve_workspace", lambda: str(tmp_path))
+        monkeypatch.setattr("soma_mcp.tools.resolve_workspace", lambda args=None: str(tmp_path))
         result = execute_tool("soma_verify_changes", {
             "files": ["simple.py"],
             "workspace": str(tmp_path),
@@ -90,7 +90,7 @@ class TestMCPVerifyChanges:
         from soma_mcp.tools import execute_tool
 
         (tmp_path / ".soma" / "cells").mkdir(parents=True)
-        monkeypatch.setattr("soma_mcp.tools.resolve_workspace", lambda: str(tmp_path))
+        monkeypatch.setattr("soma_mcp.tools.resolve_workspace", lambda args=None: str(tmp_path))
         result = execute_tool("soma_verify_changes", {
             "files": [],
             "workspace": str(tmp_path),
@@ -103,7 +103,7 @@ class TestMCPVerifyChanges:
         from soma_mcp.tools import execute_tool
 
         (tmp_path / ".soma" / "cells").mkdir(parents=True)
-        monkeypatch.setattr("soma_mcp.tools.resolve_workspace", lambda: str(tmp_path))
+        monkeypatch.setattr("soma_mcp.tools.resolve_workspace", lambda args=None: str(tmp_path))
         result = execute_tool("soma_verify_changes", {
             "files": [],
             "workspace": str(tmp_path),
@@ -123,7 +123,7 @@ class TestMCPCheckpoint:
         """soma_checkpoint must be handled by execute_tool without raising ValueError."""
         from soma_mcp.tools import execute_tool
 
-        monkeypatch.setattr("soma_mcp.tools.resolve_workspace", lambda: str(tmp_path))
+        monkeypatch.setattr("soma_mcp.tools.resolve_workspace", lambda args=None: str(tmp_path))
         result = execute_tool("soma_checkpoint", {"workspace": str(tmp_path)})
         assert isinstance(result, dict)
 
@@ -132,7 +132,7 @@ class TestMCPCheckpoint:
         from soma_mcp.tools import execute_tool
 
         (tmp_path / ".soma" / "cells").mkdir(parents=True)
-        monkeypatch.setattr("soma_mcp.tools.resolve_workspace", lambda: str(tmp_path))
+        monkeypatch.setattr("soma_mcp.tools.resolve_workspace", lambda args=None: str(tmp_path))
         result = execute_tool("soma_checkpoint", {"workspace": str(tmp_path)})
 
         assert result["status"] == "PASS"
@@ -143,7 +143,7 @@ class TestMCPCheckpoint:
         from soma_mcp.tools import execute_tool
 
         (tmp_path / ".soma" / "cells").mkdir(parents=True)
-        monkeypatch.setattr("soma_mcp.tools.resolve_workspace", lambda: str(tmp_path))
+        monkeypatch.setattr("soma_mcp.tools.resolve_workspace", lambda args=None: str(tmp_path))
         result = execute_tool("soma_checkpoint", {"workspace": str(tmp_path)})
 
         assert "issues" in result
@@ -153,7 +153,7 @@ class TestMCPCheckpoint:
         """Nonexistent workspace directory returns error."""
         from soma_mcp.tools import execute_tool
 
-        monkeypatch.setattr("soma_mcp.tools.resolve_workspace", lambda: "/nonexistent/dir/xyz")
+        monkeypatch.setattr("soma_mcp.tools.resolve_workspace", lambda args=None: "/nonexistent/dir/xyz")
         result = execute_tool("soma_checkpoint", {
             "workspace": "/nonexistent/dir/xyz",
         })
@@ -170,7 +170,7 @@ class TestMCPCheckpoint:
         bad_file = src / "config.py"
         bad_file.write_text('DB_PATH = "/home/user/data/production.db"\n')
 
-        monkeypatch.setattr("soma_mcp.tools.resolve_workspace", lambda: str(tmp_path))
+        monkeypatch.setattr("soma_mcp.tools.resolve_workspace", lambda args=None: str(tmp_path))
         result = execute_tool("soma_checkpoint", {"workspace": str(tmp_path)})
 
         assert result["status"] == "FAIL"

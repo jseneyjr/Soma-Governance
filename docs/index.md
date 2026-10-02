@@ -5,29 +5,32 @@
 ## Documentation by Audience
 
 ### 👤 Users & Agent Developers
-- [Quickstart](user/quickstart.md) *(coming in v1.0)*
-- [CLI Reference](user/cli.md) *(coming in v1.0)*
-- [SDK Reference](user/sdk.md) *(coming in v1.0)*
-- [MCP Integration](user/mcp.md) *(coming in v1.0)*
+- [Quickstart](../QUICKSTART.md)
+- [CLI Reference](../README.md#cli-commands)
+- [Python and JavaScript SDK overview](../README.md#sdk)
+- [JavaScript SDK reference](../soma_sdk_js/README.md)
+- [MCP Integration](../README.md#mcp-server-recommended)
+- Planned for v1.0: standalone user guides for the CLI, SDK, and MCP integration
 
 ### 🏗️ Architecture & Design
 - [Mechanism Design](architecture/mechanism_design.md) — Formal economic mapping
 - [Phylogeny](architecture/phylogeny.md) — Phase-by-phase evolutionary narrative
-- [Scripts & Tools](architecture/scripts.md) — Internal enzyme and verification tool index
+- [Scripts & Tools](architecture/scripts.md) — Internal enzyme, verification, SDK, and MCP module index
 
 ### 🤝 Contributors & Maintainers
-- [Contributing](project/CONTRIBUTING.md) — Contribution guidelines & test standards
+- [Contributing](project/CONTRIBUTING.md) — Contribution guidelines and test standards
 - [Changelog](project/CHANGELOG.md) — Full release history
-- [Roadmap](project/ROADMAP.md) — Phased milestones & claim tracking
-- [Release Workflow](project/RELEASE_WORKFLOW.md) — Codified gitflow & release checklist
+- [Roadmap](project/ROADMAP.md) — Phased milestones and claim tracking
+- [Release Workflow](project/RELEASE_WORKFLOW.md) — Gitflow, artifact verification, and release checklist
 - [Claim Registry](project/CLAIM_REGISTRY.json) — Machine-readable gated claims
+- [Bug Registry](project/BUG_REGISTRY.json) — Fixed and open defects
 - [Metrics](project/METRICS.md) — Empirical measurement methodology
 
 ### 📄 Research & Evaluation
 - [Abstract](research/abstract.md) — Research paper abstract
 - [Benchmark](research/benchmark.md) — Cross-domain benchmark protocol
-- [Experiments](research/experiments.md) — Active & completed experiment log
-- [Peer Reviews](research/peer_reviews.md) — R1-R5 review record
+- [Experiments](research/experiments.md) — Active and completed experiment log
+- [Peer Reviews](research/peer_reviews.md) — R1–R5 review record
 
 ### 📦 Archive
-- [Historical audit evidence](archive/) — Genesis reports, postmortems, tempest reviews
+- [Historical audit evidence](archive/) — Genesis reports, postmortems, and review records

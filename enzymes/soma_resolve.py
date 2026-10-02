@@ -57,6 +57,11 @@ def get_metrics_dir(workspace):
     return os.path.join(workspace, '.soma', 'metrics')
 
 
+def get_signals_file(workspace):
+    """Get the path to the canonical signals file."""
+    return os.path.join(workspace, '.soma', 'evidence', 'signals.jsonl')
+
+
 def get_outcomes_file(workspace):
-    """Get the path to the outcomes file."""
-    return os.path.join(workspace, '.soma', 'outcomes.jsonl')
+    """Deprecated alias for :func:`get_signals_file`."""
+    return get_signals_file(workspace)

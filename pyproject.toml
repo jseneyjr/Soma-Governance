@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "soma-governance"
-version = "0.88.2"
+version = "0.89.0"
 description = "Governance framework that makes AI coding agents trustworthy"
 readme = "README.md"
 license = {text = "Apache-2.0"}
@@ -48,7 +48,7 @@ Documentation = "https://github.com/nseney1/Soma-Governance/tree/main/docs"
 Changelog = "https://github.com/nseney1/Soma-Governance/blob/main/docs/project/CHANGELOG.md"
 
 [tool.setuptools.packages.find]
-include = ["soma_cli*", "soma_sdk*", "enzymes*", "soma_mcp*", "immune_system*"]
+include = ["soma_cli*", "soma_sdk*", "soma_core*", "enzymes*", "soma_mcp*", "immune_system*", "genome*"]
 
 [tool.setuptools]
 include-package-data = true
@@ -56,6 +56,9 @@ include-package-data = true
 [tool.setuptools.package-data]
 soma_sdk = ["py.typed"]
 soma_cli = ["starter_rules/*.md"]
+enzymes = ["*.sh"]
+genome = ["*.md", ".oracles/*.md"]
+
 
 [tool.pytest.ini_options]
 pythonpath = ["."]

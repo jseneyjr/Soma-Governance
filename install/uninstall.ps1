@@ -1,8 +1,8 @@
-# Soma — Native Windows PowerShell Uninstaller
+﻿# Soma - Native Windows PowerShell Uninstaller
 # Removes steering rules and skills deployed by install.ps1 / install.sh.
 #
 # Usage:
-#   .\uninstall.ps1 [-Platform <gemini|kiro|copilot|claude>] [-DryRun] [-Force] [-KeepConfig] [-NoRestore]
+#   .\uninstall.ps1 [-Platform <gemini|kiro|copilot|claude|mcp>] [-DryRun] [-Force] [-KeepConfig] [-NoRestore]
 # Examples:
 #   .\uninstall.ps1
 #   .\uninstall.ps1 kiro -DryRun
@@ -30,11 +30,11 @@ param (
 )
 
 if ($Help) {
-    Write-Host "Soma — Windows PowerShell Uninstaller"
-    Write-Host "Usage: .\uninstall.ps1 [[-Platform] <gemini|kiro|copilot|claude>] [-DryRun] [-Force] [-KeepConfig] [-NoRestore]"
+    Write-Host "Soma - Windows PowerShell Uninstaller"
+    Write-Host "Usage: .\uninstall.ps1 [[-Platform] <gemini|kiro|copilot|claude|mcp>] [-DryRun] [-Force] [-KeepConfig] [-NoRestore]"
     Write-Host ""
     Write-Host "Parameters:"
-    Write-Host "  -Platform    Target platform: gemini (default), kiro, copilot, or claude"
+    Write-Host "  -Platform    Target platform: gemini (default), kiro, copilot, claude, or mcp"
     Write-Host "  -DryRun      Print the removal plan without deleting anything"
     Write-Host "  -Force       Skip the deletion confirmation prompt (the restore offer is still made)"
     Write-Host "  -KeepConfig  Never remove soma.conf, even if the manifest lists it"
@@ -131,7 +131,7 @@ if ($Platform) { $ResolvedPlatform = $Platform }
 $Platform = $ResolvedPlatform.Trim().ToLower()
 
 # Allowed platforms must match what install.ps1 supports.
-$AllowedPlatforms = @("gemini", "kiro", "copilot", "claude")
+$AllowedPlatforms = @("gemini", "kiro", "copilot", "claude", "mcp")
 if ($AllowedPlatforms -notcontains $Platform) {
     Write-LogError "Invalid Platform: '$Platform' (allowed: $($AllowedPlatforms -join ' '))"
     exit 1
@@ -152,6 +152,152 @@ function Convert-ManifestPath {
         $p = "$($matches[1].ToUpper()):/$($matches[2])"
     }
     return $p.Replace('/', '\')
+}
+
+# ── Path Confinement ──────────────────────────────────────────────
+# Convert-ManifestPath only normalizes separators, so manifest files, organs,
+# hooks and backup_dir used to reach Remove-Item and the restore copies
+# unconfined: "..\..\x", absolute paths anywhere, and paths through junctions.
+# Allowed roots mirror where install.sh writes (see uninstall.sh): a project
+# manifest is confined to $WorkDir, the home manifest to $UserHome and $WorkDir,
+# and backup_dir always to $UserHome\.soma\backup.
+$script:UnsafeReason = ""
+
+# Normalized root without a trailing separator, or $null if unusable. A drive
+# or share root is never an acceptable confinement root.
+function Get-ConfinementRoot {
+    param([string]$Root)
+    if (-not $Root) { return $null }
+    try {
+        $full = [System.IO.Path]::GetFullPath($Root)
+    } catch {
+        return $null
+    }
+    $pathRoot = [System.IO.Path]::GetPathRoot($full)
+    $trimmed = $full.TrimEnd('\', '/')
+    if (-not $trimmed) { return $null }
+    if ($pathRoot -and $trimmed.Equals($pathRoot.TrimEnd('\', '/'), [StringComparison]::OrdinalIgnoreCase)) {
+        return $null
+    }
+    return $trimmed
+}
+
+# True when $Path is absolute, has no '.'/'..' segments, lies strictly under
+# one of $Roots (trailing-separator, case-insensitive prefix compare), and no
+# existing component between that root and the target is a reparse point
+# (symlink or junction). The final component may be a reparse point for
+# removal (Remove-Item deletes the link itself) but not for a restore source.
+# On failure the reason is left in $script:UnsafeReason.
+function Test-SafeManifestPath {
+    param(
+        [string]$Path,
+        [string[]]$Roots,
+        [switch]$RejectFinalReparsePoint
+    )
+    $script:UnsafeReason = ""
+    if (-not $Path) { $script:UnsafeReason = "empty path"; return $false }
+    if ($Path.IndexOfAny([char[]]@("`r", "`n", [char]0)) -ge 0) {
+        $script:UnsafeReason = "contains a control character"; return $false
+    }
+    if (-not ($Path -match '^[A-Za-z]:[\\/]' -or $Path -match '^\\\\[^\\/]')) {
+        $script:UnsafeReason = "not an absolute path"; return $false
+    }
+    if ($Path.IndexOf(':', 2) -ge 0) {
+        $script:UnsafeReason = "contains ':' (alternate data stream)"; return $false
+    }
+    foreach ($segment in ($Path -split '[\\/]')) {
+        if ($segment -eq '..' -or $segment -eq '.') {
+            $script:UnsafeReason = "contains a . or .. segment"; return $false
+        }
+    }
+    try {
+        $full = [System.IO.Path]::GetFullPath($Path).TrimEnd('\', '/')
+    } catch {
+        $script:UnsafeReason = "cannot be canonicalized: $($_.Exception.Message)"; return $false
+    }
+
+    $reason = ""
+    foreach ($candidate in @($Roots)) {
+        $root = Get-ConfinementRoot $candidate
+        if (-not $root) { continue }
+        if ($full.Equals($root, [StringComparison]::OrdinalIgnoreCase)) {
+            if (-not $reason) { $reason = "is an allowed root itself" }
+            continue
+        }
+        $prefix = $root + '\'
+        if (-not $full.StartsWith($prefix, [StringComparison]::OrdinalIgnoreCase)) { continue }
+
+        $parts = @($full.Substring($prefix.Length).Split([char[]]@('\', '/'), [StringSplitOptions]::RemoveEmptyEntries))
+        $limit = $parts.Count - 1
+        if ($RejectFinalReparsePoint) { $limit = $parts.Count }
+        $current = $root
+        $bad = ""
+        for ($i = 0; $i -lt $limit; $i++) {
+            $current = [System.IO.Path]::Combine($current, $parts[$i])
+            $attrs = $null
+            try {
+                $attrs = [System.IO.File]::GetAttributes($current)
+            } catch [System.IO.FileNotFoundException] {
+                break
+            } catch [System.IO.DirectoryNotFoundException] {
+                break
+            } catch {
+                $bad = "cannot inspect ${current}: $($_.Exception.Message)"
+                break
+            }
+            if (($attrs -band [System.IO.FileAttributes]::ReparsePoint) -ne 0) {
+                # Only redirecting reparse points matter. Cloud placeholders
+                # (OneDrive) carry the attribute but have no LinkType, and a
+                # symlink/junction that stays inside the root is acceptable.
+                $item = $null
+                try { $item = Get-Item -LiteralPath $current -Force -ErrorAction Stop } catch { }
+                $linkType = $null
+                if ($item) { $linkType = $item.LinkType }
+                if ($linkType -eq 'SymbolicLink' -or $linkType -eq 'Junction') {
+                    $target = @($item.Target)[0]
+                    $resolved = $null
+                    if ($target) {
+                        try {
+                            if (-not [System.IO.Path]::IsPathRooted($target)) {
+                                $target = [System.IO.Path]::Combine((Split-Path -Parent $current), $target)
+                            }
+                            $resolved = [System.IO.Path]::GetFullPath($target).TrimEnd('\', '/')
+                        } catch { $resolved = $null }
+                    }
+                    $inside = $resolved -and ($resolved.Equals($root, [StringComparison]::OrdinalIgnoreCase) -or
+                        $resolved.StartsWith($prefix, [StringComparison]::OrdinalIgnoreCase))
+                    if (-not $inside -or ($RejectFinalReparsePoint -and $i -eq $limit - 1)) {
+                        $bad = "component is a reparse point (symlink/junction) leaving the allowed root: $current"
+                        break
+                    }
+                }
+            }
+        }
+        if ($bad) {
+            if (-not $reason) { $reason = $bad }
+            continue
+        }
+        return $true
+    }
+    if (-not $reason) { $reason = "outside the allowed roots" }
+    $script:UnsafeReason = $reason
+    return $false
+}
+
+# Sink re-check, immediately before Remove-Item / rewrite / restore read. A
+# component can be swapped for a junction between validation and removal.
+function Assert-SafeSinkPath {
+    param(
+        [string]$Path,
+        [string[]]$Roots = $script:SinkRoots,
+        [switch]$Source,
+        [switch]$RejectFinalReparsePoint
+    )
+    $rejectFinal = ($Source -or $RejectFinalReparsePoint)
+    if (Test-SafeManifestPath -Path $Path -Roots $Roots -RejectFinalReparsePoint:$rejectFinal) { return }
+    Write-LogError "Refusing to touch ${Path}: $script:UnsafeReason"
+    Write-LogError "It no longer passes the confinement check. Aborting; remaining items left in place."
+    exit 1
 }
 
 function Get-ManifestProperty {
@@ -193,18 +339,40 @@ function Get-RepoSkillNames {
     return $names
 }
 
-# Only treat an mcp.json as ours if it actually references the soma server.
+# Only treat an mcp.json as ours if it has an actual mcpServers.soma member.
 function Test-SomaMcpFile {
     param([string]$Path)
     if (-not (Test-Path -LiteralPath $Path -PathType Leaf)) { return $false }
-    $text = $null
     try {
-        $text = Get-Content -LiteralPath $Path -Raw -ErrorAction Stop
+        $data = (Get-Content -LiteralPath $Path -Raw -Encoding UTF8 -ErrorAction Stop) |
+            ConvertFrom-Json -ErrorAction Stop
+        $servers = $data.PSObject.Properties["mcpServers"]
+        return ($null -ne $servers -and $null -ne $servers.Value.PSObject.Properties["soma"])
     } catch {
         return $false
     }
-    if (-not $text) { return $false }
-    return ($text -match '"soma"')
+}
+
+function Remove-SomaMcpServer {
+    param([string]$Path)
+    Assert-SafeSinkPath -Path $Path
+    $raw = Get-Content -LiteralPath $Path -Raw -Encoding UTF8 -ErrorAction Stop
+    $data = $raw | ConvertFrom-Json -ErrorAction Stop
+    $serversProperty = $data.PSObject.Properties["mcpServers"]
+    if ($null -eq $serversProperty -or $null -eq $serversProperty.Value.PSObject.Properties["soma"]) {
+        throw "MCP configuration has no owned mcpServers.soma entry: $Path"
+    }
+    $serversProperty.Value.PSObject.Properties.Remove("soma")
+    $tempPath = "$Path.soma.$([Guid]::NewGuid().ToString('N')).tmp"
+    try {
+        Write-Utf8File -Path $tempPath -Content (($data | ConvertTo-Json -Depth 12) + "`n")
+        Move-Item -LiteralPath $tempPath -Destination $Path -Force
+    } finally {
+        if (Test-Path -LiteralPath $tempPath -PathType Leaf) {
+            Remove-Item -LiteralPath $tempPath -Force
+        }
+    }
+    Write-LogInfo "cleaned soma MCP server from $Path"
 }
 
 function Test-HostInteractive {
@@ -265,8 +433,15 @@ function Find-SomaSectionStart {
 # sed '/^# Soma Governance Rules/,$d'). Preserves anything above it.
 function Remove-SomaSection {
     param([string]$FilePath)
+    Assert-SafeSinkPath -Path $FilePath
     if (-not (Test-Path -LiteralPath $FilePath -PathType Leaf)) { return }
-    $lines = @(Get-Content -LiteralPath $FilePath -ErrorAction Stop)
+    $fileItem = Get-Item -LiteralPath $FilePath -Force -ErrorAction Stop
+    if (($fileItem.Attributes -band [System.IO.FileAttributes]::ReparsePoint) -ne 0) {
+        # Rewriting would write through the link into its target.
+        Write-LogWarn "$FilePath is a symlink - not modified. Remove the Soma section by hand."
+        return
+    }
+    $lines = @(Get-Content -LiteralPath $FilePath -Encoding UTF8 -ErrorAction Stop)
     $cut = Find-SomaSectionStart -Lines $lines
     if ($cut -lt 0) {
         Write-LogSkip "$FilePath (no Soma section found, left untouched)"
@@ -303,9 +478,22 @@ function Remove-SomaSection {
 # ── Manifest Resolution ───────────────────────────────────────────
 $ManifestPath = Join-Path (Join-Path $UserHome ".soma") "manifest.json"
 $LocalManifestPath = Join-Path (Join-Path $WorkDir ".soma") "manifest.json"
+$ManifestIsLocal = $false
 if (Test-Path -LiteralPath $LocalManifestPath -PathType Leaf) {
     $ManifestPath = $LocalManifestPath
+    $ManifestIsLocal = $true
 }
+
+# Confinement roots (see Test-SafeManifestPath). The sink additionally admits
+# $RepoDir: the copilot fallback targets <repo>\.github\instructions, which is
+# script-derived rather than manifest data.
+if ($ManifestIsLocal) {
+    $AllowedRoots = @($WorkDir)
+} else {
+    $AllowedRoots = @($UserHome, $WorkDir)
+}
+$BackupRoots = @(Join-Path (Join-Path $UserHome ".soma") "backup")
+$script:SinkRoots = @($AllowedRoots + $RepoDir)
 
 $Manifest = $null
 $ManifestExists = Test-Path -LiteralPath $ManifestPath -PathType Leaf
@@ -319,22 +507,22 @@ if ($ManifestExists) {
     Write-Host "Found manifest at $ManifestPath. Reading paths..."
     $rawManifest = $null
     try {
-        $rawManifest = Get-Content -LiteralPath $ManifestPath -Raw -ErrorAction Stop
+        $rawManifest = Get-Content -LiteralPath $ManifestPath -Raw -Encoding UTF8 -ErrorAction Stop
     } catch {
         Write-LogError "Manifest exists at $ManifestPath but could not be read: $($_.Exception.Message)"
-        Write-LogError "Refusing to continue — guessing paths here risks an incomplete uninstall."
+        Write-LogError "Refusing to continue - guessing paths here risks an incomplete uninstall."
         exit 1
     }
     try {
         $Manifest = $rawManifest | ConvertFrom-Json -ErrorAction Stop
     } catch {
         Write-LogError "Manifest at $ManifestPath is not valid JSON: $($_.Exception.Message)"
-        Write-LogError "Refusing to continue — repair or delete the manifest, then re-run."
+        Write-LogError "Refusing to continue - repair or delete the manifest, then re-run."
         exit 1
     }
     if ($null -eq $Manifest) {
         Write-LogError "Manifest at $ManifestPath parsed to nothing (empty file?)."
-        Write-LogError "Refusing to continue — repair or delete the manifest, then re-run."
+        Write-LogError "Refusing to continue - repair or delete the manifest, then re-run."
         exit 1
     }
 } else {
@@ -367,10 +555,48 @@ if ($Manifest) {
     if ($ms) { $ManifestScope = ([string]$ms).Trim().ToLower() }
 }
 
+# ── Manifest Confinement ──────────────────────────────────────────
+# Validate EVERY manifest path before the plan is built. One unsafe entry
+# aborts the whole run with nothing touched and the manifest kept.
+if ($Manifest) {
+    $unsafeEntries = @()
+    foreach ($field in @("files", "organs", "hooks", "mcp_configs")) {
+        $rawList = Get-ManifestProperty -Object $Manifest -Name $field
+        if ($null -eq $rawList) { continue }
+        foreach ($item in @($rawList)) {
+            if ($null -eq $item) { continue }
+            if (-not ($item -is [string])) {
+                $unsafeEntries += "$field entry: $item (not a string)"
+                continue
+            }
+            if (-not $item.Trim()) { continue }
+            $converted = Convert-ManifestPath $item
+            if (-not (Test-SafeManifestPath -Path $converted -Roots $AllowedRoots)) {
+                $unsafeEntries += "$field entry: $item ($script:UnsafeReason)"
+            }
+        }
+    }
+    $rawBackup = Get-ManifestProperty -Object $Manifest -Name "backup_dir"
+    if ($null -ne $rawBackup -and "$rawBackup".Trim()) {
+        $convertedBackup = Convert-ManifestPath ([string]$rawBackup)
+        if (-not (Test-SafeManifestPath -Path $convertedBackup -Roots $BackupRoots -RejectFinalReparsePoint)) {
+            $unsafeEntries += "backup_dir entry: $rawBackup ($script:UnsafeReason)"
+        }
+    }
+    if ($unsafeEntries.Count -gt 0) {
+        Write-LogError "Manifest at $ManifestPath contains unsafe entries:"
+        foreach ($u in $unsafeEntries) { Write-Host "    UNSAFE $u" }
+        Write-LogError "Allowed roots: $($AllowedRoots -join ', ') (backup_dir: $($BackupRoots -join ', '))"
+        Write-LogError "Refusing to continue. Nothing was removed and the manifest was kept."
+        exit 1
+    }
+}
+
 # ── Build the Removal Plan ────────────────────────────────────────
 $FilesToRemove = @()
 $DirsToRemove  = @()
 $ModifyFiles   = @()
+$McpConfigsToClean = @()
 $ConfigToRemove = @()
 $BackupDir = ""
 
@@ -388,6 +614,11 @@ function Add-ModifyTarget {
     param([string]$Path)
     if (-not $Path) { return }
     if ($script:ModifyFiles -notcontains $Path) { $script:ModifyFiles += $Path }
+}
+function Add-McpConfigTarget {
+    param([string]$Path)
+    if (-not $Path) { return }
+    if ($script:McpConfigsToClean -notcontains $Path) { $script:McpConfigsToClean += $Path }
 }
 
 if ($Manifest) {
@@ -415,6 +646,10 @@ if ($Manifest) {
 
     foreach ($h in @(Get-ManifestPathList -Object $Manifest -Name "hooks")) {
         Add-FileTarget $h
+    }
+
+    foreach ($mcpConfig in @(Get-ManifestPathList -Object $Manifest -Name "mcp_configs")) {
+        Add-McpConfigTarget $mcpConfig
     }
 } else {
     $knownRules = Get-RepoRuleNames
@@ -473,19 +708,17 @@ if ($Manifest) {
         "kiro" {
             Add-InstalledRuleFiles -Dir (Join-Path $UserHome ".kiro\steering")
             Add-InstalledSkillDirs -Dir (Join-Path $UserHome ".kiro\skills")
-            # .kiro\hooks is Kiro's own directory — only remove our generated file.
+            # .kiro\hooks is Kiro's own directory - only remove our generated file.
             $kiroHooks = Join-Path $UserHome ".kiro\hooks\hooks.json"
             if (Test-Path -LiteralPath $kiroHooks -PathType Leaf) {
                 Add-FileTarget $kiroHooks
             }
             $kiroMcp = Join-Path $UserHome ".kiro\settings\mcp.json"
-            if (Test-SomaMcpFile -Path $kiroMcp) { Add-FileTarget $kiroMcp }
+            if (Test-SomaMcpFile -Path $kiroMcp) { Add-McpConfigTarget $kiroMcp }
         }
         "copilot" {
             # Project mode writes .github\instructions\<name>.instructions.md
-            foreach ($base in @($WorkDir, $RepoDir)) {
-                Add-InstalledRuleFiles -Dir (Join-Path $base ".github\instructions") -Extension ".instructions.md"
-            }
+            Add-InstalledRuleFiles -Dir (Join-Path $WorkDir ".github\instructions") -Extension ".instructions.md"
             # Global mode appends to a shared file
             $copilotGlobal = Join-Path $UserHome "copilot-instructions.md"
             if (Test-Path -LiteralPath $copilotGlobal -PathType Leaf) {
@@ -499,12 +732,16 @@ if ($Manifest) {
                 }
             }
             $localMcp = Join-Path $WorkDir ".mcp.json"
-            if (Test-SomaMcpFile -Path $localMcp) { Add-FileTarget $localMcp }
+            if (Test-SomaMcpFile -Path $localMcp) { Add-McpConfigTarget $localMcp }
+        }
+        "mcp" {
+            $localMcp = Join-Path $WorkDir ".mcp.json"
+            if (Test-SomaMcpFile -Path $localMcp) { Add-McpConfigTarget $localMcp }
         }
     }
 
     if (-not $KeepConfig -and (Test-Path -LiteralPath $ConfigFile -PathType Leaf)) {
-        Write-LogSkip "$ConfigFile (user config, not recorded in a manifest — preserved)"
+        Write-LogSkip "$ConfigFile (user config, not recorded in a manifest - preserved)"
     }
 }
 
@@ -544,6 +781,26 @@ foreach ($m in $ModifyFiles) {
 }
 $ModifyFiles = $realMod
 
+$realMcp = @()
+foreach ($mcpConfig in $McpConfigsToClean) {
+    if (Test-Path -LiteralPath $mcpConfig -PathType Leaf) {
+        if ($realMcp -notcontains $mcpConfig) { $realMcp += $mcpConfig }
+    } else {
+        Write-LogSkip "$mcpConfig (recorded but no longer present)"
+    }
+}
+$McpConfigsToClean = $realMcp
+
+# Parse every manifest-owned MCP config before any deletion. A corrupted or
+# concurrently changed config keeps the ownership ledger intact for retry.
+foreach ($mcpConfig in $McpConfigsToClean) {
+    if (-not (Test-SomaMcpFile -Path $mcpConfig)) {
+        Write-LogError "MCP configuration is invalid or no longer contains mcpServers.soma: $mcpConfig"
+        Write-LogError "Refusing to continue. Nothing was removed and the manifest was kept."
+        exit 1
+    }
+}
+
 $realConfig = @()
 foreach ($c in $ConfigToRemove) {
     if (Test-Path -LiteralPath $c -PathType Leaf) {
@@ -554,15 +811,31 @@ foreach ($c in $ConfigToRemove) {
 }
 $ConfigToRemove = $realConfig
 
+# Confine the complete plan (manifest and fallback entries alike) before
+# anything is touched, so a refusal never leaves a half-removed install.
+$unsafePlan = @()
+foreach ($p in @($FilesToRemove + $DirsToRemove + $ModifyFiles + $McpConfigsToClean + $ConfigToRemove)) {
+    if (-not (Test-SafeManifestPath -Path $p -Roots $script:SinkRoots)) {
+        $unsafePlan += "$p ($script:UnsafeReason)"
+    }
+}
+if ($unsafePlan.Count -gt 0) {
+    Write-LogError "The removal plan contains paths outside the allowed roots:"
+    foreach ($u in $unsafePlan) { Write-Host "    UNSAFE plan entry: $u" }
+    Write-LogError "Refusing to continue. Nothing was removed."
+    exit 1
+}
+
 # ── Print the Plan ────────────────────────────────────────────────
-$PlanCount = $FilesToRemove.Count + $DirsToRemove.Count + $ModifyFiles.Count + $ConfigToRemove.Count
+$PlanCount = $FilesToRemove.Count + $DirsToRemove.Count + $ModifyFiles.Count + $McpConfigsToClean.Count + $ConfigToRemove.Count
 
 Write-Host ""
 Write-Host "The following will be removed/modified:"
 foreach ($f in $FilesToRemove) { Write-Host "  - [FILE] $f" }
 foreach ($d in $DirsToRemove)  { Write-Host "  - [DIR]  $d" }
 foreach ($m in $ModifyFiles)   { Write-Host "  - [MOD]  $m (strip Soma sections, keep the rest)" }
-foreach ($c in $ConfigToRemove) { Write-Host "  - [USER CONFIG] $c (your Soma configuration — pass -KeepConfig to keep it)" }
+foreach ($mcpConfig in $McpConfigsToClean) { Write-Host "  - [MCP]  $mcpConfig (remove mcpServers.soma, keep the rest)" }
+foreach ($c in $ConfigToRemove) { Write-Host "  - [USER CONFIG] $c (your Soma configuration - pass -KeepConfig to keep it)" }
 
 if ($PlanCount -eq 0) {
     Write-Host "Nothing to remove."
@@ -600,6 +873,7 @@ $RestoreTargets = @()
 $RestoreTargets += $FilesToRemove
 $RestoreTargets += $DirsToRemove
 $RestoreTargets += $ModifyFiles
+$RestoreTargets += $McpConfigsToClean
 
 # Inventory the in-place backups BEFORE removing anything. Two reasons:
 #  1. Removal can delete the parent directory we would scan.
@@ -622,6 +896,7 @@ foreach ($t in $RestoreTargets) {
 if (-not $DryRun) {
     Write-Host ""
     foreach ($f in $FilesToRemove) {
+        Assert-SafeSinkPath -Path $f
         if (Test-Path -LiteralPath $f -PathType Leaf) {
             try {
                 Remove-Item -LiteralPath $f -Force -ErrorAction Stop
@@ -633,6 +908,7 @@ if (-not $DryRun) {
     }
 
     foreach ($d in $DirsToRemove) {
+        Assert-SafeSinkPath -Path $d
         if (Test-Path -LiteralPath $d -PathType Container) {
             try {
                 Remove-Item -LiteralPath $d -Recurse -Force -ErrorAction Stop
@@ -651,7 +927,16 @@ if (-not $DryRun) {
         }
     }
 
+    foreach ($mcpConfig in $McpConfigsToClean) {
+        try {
+            Remove-SomaMcpServer -Path $mcpConfig
+        } catch {
+            Set-Failure "could not clean $mcpConfig : $($_.Exception.Message)"
+        }
+    }
+
     foreach ($c in $ConfigToRemove) {
+        Assert-SafeSinkPath -Path $c
         if (Test-Path -LiteralPath $c -PathType Leaf) {
             try {
                 Remove-Item -LiteralPath $c -Force -ErrorAction Stop
@@ -665,11 +950,15 @@ if (-not $DryRun) {
     # Remove now-empty directories that Soma created itself.
     $SomaOwnedDirs = @(
         (Join-Path $UserHome ".gemini\config\plugins\governance"),
-        (Join-Path $WorkDir ".github\instructions"),
-        (Join-Path $RepoDir ".github\instructions")
+        (Join-Path $WorkDir ".github\instructions")
     )
     foreach ($dir in $SomaOwnedDirs) {
         if (Test-Path -LiteralPath $dir -PathType Container) {
+            # Script-derived, but still never removed through a junction.
+            if (-not (Test-SafeManifestPath -Path $dir -Roots $script:SinkRoots)) {
+                Write-LogSkip "$dir ($script:UnsafeReason)"
+                continue
+            }
             $remaining = @(Get-ChildItem -LiteralPath $dir -Force -ErrorAction SilentlyContinue)
             if ($remaining.Count -eq 0) {
                 try {
@@ -682,7 +971,10 @@ if (-not $DryRun) {
         }
     }
 
-    if ($ManifestExists -and (Test-Path -LiteralPath $ManifestPath -PathType Leaf)) {
+    if ($ManifestExists -and -not $script:HadFailure -and (Test-Path -LiteralPath $ManifestPath -PathType Leaf)) {
+        # Script-derived: confined to its own directory so a junctioned .soma
+        # does not block removing it.
+        Assert-SafeSinkPath -Path $ManifestPath -Roots @(Split-Path -Parent $ManifestPath)
         try {
             Remove-Item -LiteralPath $ManifestPath -Force -ErrorAction Stop
             Write-LogInfo "removed $ManifestPath"
@@ -697,7 +989,7 @@ if (-not $DryRun) {
 $ConsolidatedBackupExists = ($BackupDir -and (Test-Path -LiteralPath $BackupDir -PathType Container))
 
 # Maps the consolidated backup layout install.sh actually writes (genome/organs)
-# onto the live locations. Deliberately NOT rules/skills — that mismatch is the
+# onto the live locations. Deliberately NOT rules/skills - that mismatch is the
 # bug in uninstall.sh's restore block.
 function Get-ConsolidatedRestoreMap {
     $map = @()
@@ -727,6 +1019,9 @@ function Get-ConsolidatedRestoreMap {
             } else {
                 $map += [PSCustomObject]@{ Source = (Join-Path $BackupDir "CLAUDE.md"); Destination = (Join-Path $UserHome ".claude\CLAUDE.md"); IsDir = $false }
             }
+            $map += [PSCustomObject]@{ Source = (Join-Path $BackupDir ".mcp.json"); Destination = (Join-Path $WorkDir ".mcp.json"); IsDir = $false }
+        }
+        "mcp" {
             $map += [PSCustomObject]@{ Source = (Join-Path $BackupDir ".mcp.json"); Destination = (Join-Path $WorkDir ".mcp.json"); IsDir = $false }
         }
     }
@@ -763,7 +1058,7 @@ $HaveRestoreSources = (($InPlaceBackups.Count -gt 0) -or ($ConsolidatedMap.Count
 if ($NoRestore) {
     if ($HaveRestoreSources) {
         Write-Host ""
-        Write-LogSkip "-NoRestore supplied — leaving backups in place without restoring."
+        Write-LogSkip "-NoRestore supplied - leaving backups in place without restoring."
     }
 } elseif (-not $HaveRestoreSources) {
     if ($BackupDir -and -not $ConsolidatedBackupExists) {
@@ -784,11 +1079,17 @@ if ($NoRestore) {
             $restoreConfirm = Read-Host "Restore previous configuration from backup? (y/N)"
             if ($restoreConfirm -match '^[Yy]') { $doRestore = $true }
         } else {
-            Write-LogSkip "Non-interactive host — not restoring. Copy the paths above manually if needed."
+            Write-LogSkip "Non-interactive host - not restoring. Copy the paths above manually if needed."
         }
 
         if ($doRestore) {
+            # Restore sources: re-check right before they are read from.
+            if ($ConsolidatedMap.Count -gt 0) {
+                Assert-SafeSinkPath -Path $BackupDir -Roots $BackupRoots -Source
+            }
             foreach ($b in $InPlaceBackups) {
+                Assert-SafeSinkPath -Path $b.Source -Roots $script:SinkRoots -Source
+                Assert-SafeSinkPath -Path $b.Target -Roots $script:SinkRoots -RejectFinalReparsePoint
                 try {
                     Copy-RestoreItem -Source $b.Source -Destination $b.Target -IsDir ([bool]$b.IsDir)
                     Write-LogInfo "restored $($b.Target)"
@@ -797,6 +1098,8 @@ if ($NoRestore) {
                 }
             }
             foreach ($m in $ConsolidatedMap) {
+                Assert-SafeSinkPath -Path $m.Source -Roots $BackupRoots -Source
+                Assert-SafeSinkPath -Path $m.Destination -Roots $script:SinkRoots -RejectFinalReparsePoint
                 try {
                     Copy-RestoreItem -Source $m.Source -Destination $m.Destination -IsDir ([bool]$m.IsDir)
                     Write-LogInfo "restored $($m.Destination)"
@@ -815,7 +1118,7 @@ Write-Host ""
 if ($DryRun) {
     Write-Host "Dry-run complete. Nothing was removed."
 } elseif ($script:HadFailure) {
-    Write-LogError "Uninstall finished with errors — see the messages above."
+    Write-LogError "Uninstall finished with errors - see the messages above."
     exit 1
 } else {
     Write-Host "Uninstall complete."

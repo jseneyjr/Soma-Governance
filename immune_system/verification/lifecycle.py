@@ -1,7 +1,7 @@
 """Cell lifecycle engine — deterministic promotion and demotion decisions.
 
-Reads JSONL evidence data (fitness.jsonl + outcomes.jsonl) and cell metadata
-to compute lifecycle transitions:
+Uses canonical signal evidence and cell metadata to compute lifecycle
+transitions:
 
     vacuole (hypothesis) → wall (proven gate) → genome (universal law)
          ↑                                            ↓
@@ -15,14 +15,14 @@ Demotion criteria (deterministic):
 """
 from __future__ import annotations
 
-import collections
 import glob
-import json
 import os
-from datetime import datetime, timedelta, timezone
-from typing import Any
+from datetime import datetime, timezone
+from typing import Any, Optional
 
 import yaml
+
+from soma_core.evidence import aggregate_signals
 
 
 # ── Constants ───────────────────────────────────────────────────────────────
@@ -48,73 +48,34 @@ DEMOTION_PATH = {
 
 # ── Evidence Loading ────────────────────────────────────────────────────────
 
+def _naive_utc(timestamp: Any) -> Optional[datetime]:
+    """Parse a canonical timestamp and normalize it to naive UTC."""
+    if not isinstance(timestamp, str) or not timestamp:
+        return None
+    normalized = timestamp[:-1] + "+00:00" if timestamp.endswith("Z") else timestamp
+    try:
+        parsed = datetime.fromisoformat(normalized)
+    except (TypeError, ValueError):
+        return None
+    if parsed.tzinfo is not None:
+        return parsed.astimezone(timezone.utc).replace(tzinfo=None)
+    return parsed
+
+
 def _load_evidence(workspace: str) -> dict[str, dict[str, Any]]:
-    """Load trigger counts and outcomes from JSONL evidence files.
-
-    Returns:
-        Dict mapping cell_id → {triggers: int, tp: int, fp: int, last_trigger_ts: datetime | None}
-    """
-    evidence: dict[str, dict[str, Any]] = collections.defaultdict(
-        lambda: {"triggers": 0, "tp": 0, "fp": 0, "last_trigger_ts": None}
-    )
-
-    fitness_path = os.path.join(workspace, ".soma", "evidence", "fitness.jsonl")
-    if os.path.isfile(fitness_path):
-        with open(fitness_path, encoding="utf-8") as f:
-            for line in f:
-                line = line.strip()
-                if not line:
-                    continue
-                try:
-                    record = json.loads(line)
-                    if not isinstance(record, dict):
-                        continue
-                    cell_id = record.get("cell_id", "")
-                    if cell_id:
-                        evidence[cell_id]["triggers"] += 1
-                        triggered_at = record.get("triggered_at")
-                        if triggered_at:
-                            try:
-                                # Python 3.10 doesn't handle 'Z' suffix
-                                if isinstance(triggered_at, str) and triggered_at.endswith("Z"):
-                                    triggered_at = triggered_at[:-1] + "+00:00"
-                                ts = datetime.fromisoformat(triggered_at)
-                                # Convert to UTC before stripping tzinfo
-                                if ts.tzinfo is not None:
-                                    ts = ts.astimezone(datetime.timezone.utc).replace(tzinfo=None)
-                                else:
-                                    ts = ts.replace(tzinfo=None)
-                                prev = evidence[cell_id].get("last_trigger_ts")
-                                if prev is None or ts > prev:
-                                    evidence[cell_id]["last_trigger_ts"] = ts
-                            except (ValueError, TypeError):
-                                pass
-                except (json.JSONDecodeError, KeyError):
-                    continue
-
-    outcomes_path = os.path.join(workspace, ".soma", "evidence", "outcomes.jsonl")
-    if os.path.isfile(outcomes_path):
-        with open(outcomes_path, encoding="utf-8") as f:
-            for line in f:
-                line = line.strip()
-                if not line:
-                    continue
-                try:
-                    record = json.loads(line)
-                    if not isinstance(record, dict):
-                        continue
-                    cell_id = record.get("cell_id", "")
-                    outcome = record.get("outcome", "")
-                    if cell_id:
-                        if outcome in ("tp", "success"):
-                            evidence[cell_id]["tp"] += 1
-                        elif outcome in ("fp", "failure"):
-                            evidence[cell_id]["fp"] += 1
-                        # "partial" is intentionally skipped
-                except (json.JSONDecodeError, KeyError):
-                    continue
-
-    return dict(evidence)
+    """Load lifecycle dimensions from the canonical signal ledger."""
+    evidence_dir = os.path.join(workspace, ".soma", "evidence")
+    aggregation = aggregate_signals(evidence_dir)
+    return {
+        cell_id: {
+            "triggers": counts["triggers"],
+            "tp": counts["tp"],
+            "fp": counts["fp"],
+            "last_trigger_ts": _naive_utc(counts["last_trigger"]),
+            "has_triggers": counts["has_triggers"],
+        }
+        for cell_id, counts in aggregation.counts.items()
+    }
 
 
 def _load_cells(workspace: str) -> list[dict[str, Any]]:
@@ -186,7 +147,7 @@ def _cell_age_days(cell: dict) -> int:
 # ── Promotion ───────────────────────────────────────────────────────────────
 
 def evaluate_promotions(workspace: str) -> list[dict]:
-    """Evaluate cells for promotion based on JSONL evidence.
+    """Evaluate cells for promotion based on canonical signal evidence.
 
     Returns:
         List of promotion candidate dicts:
@@ -204,7 +165,10 @@ def evaluate_promotions(workspace: str) -> list[dict]:
         if cell_type not in PROMOTION_PATH:
             continue
 
-        ev = evidence.get(cell_id, {"triggers": 0, "tp": 0, "fp": 0, "last_trigger_ts": None})
+        ev = evidence.get(cell_id, {
+            "triggers": 0, "tp": 0, "fp": 0,
+            "last_trigger_ts": None, "has_triggers": True,
+        })
         triggers = ev["triggers"]
         tp = ev["tp"]
         age_days = _cell_age_days(cell)
@@ -233,7 +197,7 @@ def evaluate_promotions(workspace: str) -> list[dict]:
 # ── Demotion ────────────────────────────────────────────────────────────────
 
 def evaluate_demotions(workspace: str) -> list[dict]:
-    """Evaluate cells for demotion based on JSONL evidence.
+    """Evaluate cells for demotion based on canonical signal evidence.
 
     Returns:
         List of demotion candidate dicts:
@@ -251,7 +215,10 @@ def evaluate_demotions(workspace: str) -> list[dict]:
         if cell_type not in DEMOTION_PATH:
             continue
 
-        ev = evidence.get(cell_id, {"triggers": 0, "tp": 0, "fp": 0, "last_trigger_ts": None})
+        ev = evidence.get(cell_id, {
+            "triggers": 0, "tp": 0, "fp": 0,
+            "last_trigger_ts": None, "has_triggers": True,
+        })
         triggers = ev["triggers"]
         tp = ev["tp"]
         fp = ev["fp"]
@@ -272,8 +239,13 @@ def evaluate_demotions(workspace: str) -> list[dict]:
         if last_trigger_ts is not None:
             last_trigger_age = (datetime.now(timezone.utc).replace(tzinfo=None) - last_trigger_ts).days
         else:
-            # No triggers recorded — use cell age as proxy
-            last_trigger_age = age_days if triggers == 0 else 0
+            # With no evidence at all, preserve the established cell-age proxy.
+            # Outcome-only evidence leaves the trigger dimension unknown.
+            last_trigger_age = (
+                age_days
+                if triggers == 0 and ev.get("has_triggers", True)
+                else 0
+            )
 
         if reason is None and last_trigger_age >= DORMANT_DAYS_THRESHOLD:
             reason = "dormant"

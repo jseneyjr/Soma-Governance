@@ -59,7 +59,7 @@ class TestStatus:
         assert "Adaptive rules: 2 (traps/patterns)" in captured.out
 
     def test_status_reads_trigger_counts(self, tmp_path, capsys):
-        """Create mock fitness.jsonl with 3 entries for rule-a and 1 for rule-b → verify counts."""
+        """Canonical signals.jsonl trigger rows win over contradictory legacy evidence."""
         genome = tmp_path / "genome"
         genome.mkdir()
         (genome / "rule-a.md").write_text("# Rule A\n")
@@ -68,13 +68,22 @@ class TestStatus:
         evidence = tmp_path / ".soma" / "evidence"
         evidence.mkdir(parents=True)
         records = [
+            {"cell": "rule-a", "signal": "trigger", "timestamp": "2026-09-30T12:00:00Z"},
+            {"cell": "rule-a", "signal": "trigger", "timestamp": "2026-09-30T12:01:00Z"},
+            {"cell": "rule-a", "signal": "trigger", "timestamp": "2026-09-30T12:02:00Z"},
+            {"cell": "rule-b", "signal": "trigger", "timestamp": "2026-09-30T12:03:00Z"},
+        ]
+        (evidence / "signals.jsonl").write_text(
+            "\n".join(json.dumps(r) for r in records) + "\n"
+        )
+        legacy_records = [
             {"cell_id": "rule-a"},
-            {"cell_id": "rule-a"},
-            {"cell_id": "rule-a"},
+            {"cell_id": "rule-b"},
+            {"cell_id": "rule-b"},
             {"cell_id": "rule-b"},
         ]
         (evidence / "fitness.jsonl").write_text(
-            "\n".join(json.dumps(r) for r in records) + "\n"
+            "\n".join(json.dumps(r) for r in legacy_records) + "\n"
         )
 
         args = argparse.Namespace(_root=tmp_path)
@@ -110,8 +119,14 @@ class TestStatus:
 
         evidence = tmp_path / ".soma" / "evidence"
         evidence.mkdir(parents=True)
-        (evidence / "fitness.jsonl").write_text(
-            json.dumps({"cell_id": "rule-a"}) + "\n"
+        (evidence / "signals.jsonl").write_text(
+            json.dumps(
+                {
+                    "cell": "rule-a",
+                    "signal": "trigger",
+                    "timestamp": "2026-09-30T12:00:00Z",
+                }
+            ) + "\n"
         )
 
         args = argparse.Namespace(_root=tmp_path)

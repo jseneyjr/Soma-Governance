@@ -1,8 +1,8 @@
-"""soma sync — reconcile JSONL evidence with cell frontmatter.
+"""soma sync — reconcile canonical JSONL evidence with cell frontmatter.
 
-Reads .soma/evidence/fitness.jsonl and outcomes.jsonl, aggregates
-trigger/tp/fp counts per cell, and updates cell frontmatter fitness
-blocks. Idempotent — can be run repeatedly.
+Reads .soma/evidence/signals.jsonl, aggregates trigger/tp/fp signals per
+cell, and updates cell frontmatter fitness blocks. Idempotent — can be run
+repeatedly.
 """
 from __future__ import annotations
 
@@ -10,90 +10,76 @@ import argparse
 import glob
 import json
 import os
-from datetime import datetime, timezone
+import sys
+import tempfile
+from typing import Optional
 
 import yaml
 
 from soma_cli import resolve_root
+from soma_core.evidence import aggregate_signals
 from soma_sdk.cells import parse_cell_file
 
 
 def aggregate_evidence(evidence_dir: str) -> dict[str, dict]:
-    """Read JSONL files and aggregate counts per cell_id.
+    """Preserve the established counts-only return shape for callers."""
+    return aggregate_signals(evidence_dir).counts
 
-    Returns:
-        Dict mapping cell_id → {triggers: int, tp: int, fp: int,
-        last_trigger: str | None}
-    """
-    counts: dict[str, dict] = {}
 
-    # Read fitness.jsonl — trigger events
-    fitness_path = os.path.join(evidence_dir, "fitness.jsonl")
-    if os.path.isfile(fitness_path):
-        with open(fitness_path, "r", encoding="utf-8") as f:
-            for line in f:
-                line = line.strip()
-                if not line:
-                    continue
-                try:
-                    record = json.loads(line)
-                    if not isinstance(record, dict):
-                        continue
-                    cid = record.get("cell_id", "")
-                    if not cid:
-                        continue
-                    entry = counts.setdefault(cid, {
-                        "triggers": 0, "tp": 0, "fp": 0,
-                        "last_trigger": None,
-                    })
-                    entry["triggers"] += 1
-                    ts = record.get("triggered_at")
-                    if ts and (entry["last_trigger"] is None
-                               or ts > entry["last_trigger"]):
-                        entry["last_trigger"] = ts
-                except (json.JSONDecodeError, ValueError):
-                    continue
+def _fsync_dir(directory: str) -> None:
+    """Best-effort directory fsync after a replace on POSIX."""
+    if os.name != "posix":
+        return
+    try:
+        fd = os.open(directory, os.O_RDONLY)
+    except OSError:
+        return
+    try:
+        os.fsync(fd)
+    except OSError:
+        pass
+    finally:
+        os.close(fd)
 
-    # Read outcomes.jsonl — tp/fp classification
-    outcomes_path = os.path.join(evidence_dir, "outcomes.jsonl")
-    if os.path.isfile(outcomes_path):
-        with open(outcomes_path, "r", encoding="utf-8") as f:
-            for line in f:
-                line = line.strip()
-                if not line:
-                    continue
-                try:
-                    record = json.loads(line)
-                    if not isinstance(record, dict):
-                        continue
-                    cid = record.get("cell_id", "")
-                    if not cid:
-                        continue
-                    entry = counts.setdefault(cid, {
-                        "triggers": 0, "tp": 0, "fp": 0,
-                        "last_trigger": None,
-                    })
-                    outcome = record.get("outcome", "")
-                    if outcome in ("tp", "success"):
-                        entry["tp"] += 1
-                    elif outcome in ("fp", "failure"):
-                        entry["fp"] += 1
-                except (json.JSONDecodeError, ValueError):
-                    continue
 
-    return counts
+def _atomic_write(path: str, content: str) -> None:
+    """Atomically replace path using a durable same-directory temp file."""
+    directory = os.path.dirname(path) or "."
+    fd, tmp_path = tempfile.mkstemp(
+        dir=directory,
+        prefix=f".{os.path.basename(path)}.",
+        suffix=".tmp",
+    )
+    try:
+        with os.fdopen(fd, "w", encoding="utf-8") as f:
+            f.write(content)
+            f.flush()
+            os.fsync(f.fileno())
+        os.replace(tmp_path, path)
+    except BaseException:
+        try:
+            os.unlink(tmp_path)
+        except OSError:
+            pass
+        raise
+    _fsync_dir(directory)
 
 
 def sync_frontmatter(
     cells_dir: str,
     counts: dict[str, dict],
     dry_run: bool = False,
+    errors: Optional[list[dict]] = None,
 ) -> list[dict]:
     """Update cell frontmatter from aggregated evidence.
 
-    Returns list of changes made (or would-be-made in dry_run).
+    Existing trigger or outcome values are preserved when the canonical ledger
+    has no records for that dimension. Returns only changes successfully made,
+    or would-be changes in dry-run mode. Per-cell failures are appended to the
+    optional ``errors`` sink without changing the established list return type.
     """
     changes = []
+    error_sink = errors if errors is not None else []
 
     for cell_file in glob.glob(
         os.path.join(cells_dir, "**", "*.md"), recursive=True
@@ -101,21 +87,14 @@ def sync_frontmatter(
         if os.path.basename(cell_file) == "README.md":
             continue
 
+        cid = os.path.splitext(os.path.basename(cell_file))[0]
         try:
             fm, body = parse_cell_file(cell_file)
-            cid = fm.get(
-                "id", os.path.splitext(os.path.basename(cell_file))[0]
-            )
-
+            cid = fm.get("id", cid)
             if cid not in counts:
                 continue
 
             evidence = counts[cid]
-            t = evidence["triggers"]
-            tp = evidence["tp"]
-            fp = evidence["fp"]
-
-            # Read current frontmatter fitness
             fitness = fm.get("fitness", {})
             if not isinstance(fitness, dict):
                 fitness = {"score": None, "impact_weight": 1.0}
@@ -123,49 +102,69 @@ def sync_frontmatter(
             old_triggers = fitness.get("triggers", 0)
             old_tp = fitness.get("true_positives", 0)
             old_fp = fitness.get("false_positives", 0)
+            old_score = fitness.get("score")
+            old_last_trigger = fitness.get("last_trigger_date")
 
-            # Skip if already in sync
-            if old_triggers == t and old_tp == tp and old_fp == fp:
-                continue
+            has_triggers = evidence.get("has_triggers", "triggers" in evidence)
+            has_outcomes = evidence.get(
+                "has_outcomes", "tp" in evidence or "fp" in evidence
+            )
+            triggers = evidence.get("triggers", 0) if has_triggers else old_triggers
+            tp = evidence.get("tp", 0) if has_outcomes else old_tp
+            fp = evidence.get("fp", 0) if has_outcomes else old_fp
 
-            # Update
-            fitness["triggers"] = t
-            fitness["true_positives"] = tp
-            fitness["false_positives"] = fp
-            # Only update score if there's actual outcome data.
-            # Cells with triggers but no tp/fp should keep existing score,
-            # not be clobbered to 0.0 (Bug 4 fix).
+            score = old_score
             if tp + fp > 0:
-                fitness["score"] = round(tp / t, 4) if t > 0 else None
-            elif t == 0:
-                fitness["score"] = None
-            if evidence["last_trigger"]:
-                fitness["last_trigger_date"] = (
-                    datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
-                )
-            fm["fitness"] = fitness
+                score = round(tp / triggers, 4) if triggers > 0 else None
+            elif triggers == 0:
+                score = None
+
+            last_trigger = old_last_trigger
+            if has_triggers and evidence.get("last_trigger") is not None:
+                last_trigger = str(evidence["last_trigger"])
+
+            updated = dict(fitness)
+            updated["triggers"] = triggers
+            updated["true_positives"] = tp
+            updated["false_positives"] = fp
+            updated["score"] = score
+            if last_trigger is not None:
+                updated["last_trigger_date"] = last_trigger
+
+            compared_keys = (
+                "triggers", "true_positives", "false_positives", "score",
+                "last_trigger_date",
+            )
+            if all(fitness.get(key) == updated.get(key) for key in compared_keys):
+                continue
 
             change = {
                 "cell_id": cid,
-                "triggers": f"{old_triggers} → {t}",
+                "triggers": f"{old_triggers} → {triggers}",
                 "tp": f"{old_tp} → {tp}",
                 "fp": f"{old_fp} → {fp}",
-                "score": fitness["score"],
+                "score": score,
             }
+
+            if dry_run:
+                changes.append(change)
+                continue
+
+            fm["fitness"] = updated
+            new_fm = yaml.safe_dump(
+                fm,
+                sort_keys=False,
+                default_flow_style=False,
+                allow_unicode=True,
+            )
+            _atomic_write(cell_file, f"---\n{new_fm}---\n{body}")
             changes.append(change)
-
-            if not dry_run:
-                new_fm = yaml.dump(
-                    fm, sort_keys=False, default_flow_style=False,
-                    allow_unicode=True,
-                )
-                new_content = f"---\n{new_fm}---\n{body}"
-
-                with open(cell_file, "w", encoding="utf-8") as f:
-                    f.write(new_content)
-
-        except Exception:  # noqa: BLE001
-            continue
+        except Exception as exc:  # noqa: BLE001 - continue collecting cell failures
+            error_sink.append({
+                "cell_id": cid,
+                "file": cell_file,
+                "error": str(exc),
+            })
 
     return changes
 
@@ -179,25 +178,72 @@ def run_sync(args: argparse.Namespace) -> int:
     dry_run = getattr(args, "dry_run", False)
     as_json = getattr(args, "json", False)
 
-    counts = aggregate_evidence(evidence_dir)
-    if not counts:
-        print("No evidence found in .soma/evidence/")
+    aggregation = aggregate_signals(evidence_dir)
+    counts = aggregation.counts
+    errors: list[dict] = list(aggregation.errors)
+    if not counts and not errors:
+        if as_json:
+            print(json.dumps({
+                "status": "ok", "changes": [], "errors": [],
+                "dry_run": dry_run,
+            }, indent=2))
+        else:
+            print("No evidence found in .soma/evidence/")
         return 0
 
-    changes = sync_frontmatter(cells_dir, counts, dry_run=dry_run)
+    if errors:
+        if as_json:
+            print(json.dumps({
+                "status": "error", "changes": [], "errors": errors,
+                "dry_run": dry_run,
+            }, indent=2))
+        else:
+            for error in errors:
+                subject = error.get("file", "evidence")
+                detail = error.get("error", "unknown error")
+                if error.get("line") is not None:
+                    detail = f"line {error['line']}: {detail}"
+                print(f"  ! {subject}: {detail}", file=sys.stderr)
+            print(
+                f"Sync failed for {len(errors)} evidence rows.",
+                file=sys.stderr,
+            )
+        return 1
+
+    changes = sync_frontmatter(
+        cells_dir, counts, dry_run=dry_run, errors=errors
+    )
 
     if as_json:
-        print(json.dumps({"changes": changes, "dry_run": dry_run}, indent=2))
-        return 0
+        print(json.dumps({
+            "status": "error" if errors else "ok",
+            "changes": changes,
+            "errors": errors,
+            "dry_run": dry_run,
+        }, indent=2))
+        return 1 if errors else 0
+
+    for error in errors:
+        subject = error.get("cell_id") or error.get("file", "evidence")
+        detail = error.get("error") or error.get("message", "unknown error")
+        if error.get("line") is not None:
+            detail = f"line {error['line']}: {detail}"
+        print(f"  ! {subject}: {detail}", file=sys.stderr)
 
     verb = "Would update" if dry_run else "Updated"
-    if not changes:
+    if not changes and not errors:
         print("All cells already in sync with evidence.")
         return 0
 
-    for c in changes:
-        print(f"  ✓ {c['cell_id']}: triggers {c['triggers']}, "
-              f"tp {c['tp']}, fp {c['fp']} → score={c['score']}")
+    for change in changes:
+        print(
+            f"  ✓ {change['cell_id']}: triggers {change['triggers']}, "
+            f"tp {change['tp']}, fp {change['fp']} → score={change['score']}"
+        )
 
-    print(f"\n{verb} {len(changes)} cells.")
+    if changes:
+        print(f"\n{verb} {len(changes)} cells.")
+    if errors:
+        print(f"Sync failed for {len(errors)} cells.", file=sys.stderr)
+        return 1
     return 0

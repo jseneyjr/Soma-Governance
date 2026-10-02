@@ -152,3 +152,80 @@ class TestCellCacheIntegration:
         assert '_body' in cell
         assert '_full' in cell
         assert cell['_name'] == 'trap-schema'
+
+
+class TestCellCacheContentFingerprint:
+    """Cache invalidation and I/O failures are content-correct and fail closed."""
+
+    def test_same_size_edit_with_restored_mtime_invalidates(self, tmp_path):
+        cells_dir = str(tmp_path / '.soma' / 'cells')
+        cell_path = _make_cell(cells_dir, 'walls', 'trap-one')
+        cache = CellCache()
+        cells1 = cache.get_cells(str(tmp_path))
+        original_stat = os.stat(cell_path)
+        original = open(cell_path, encoding='utf-8').read()
+        changed = original.replace('trap-one', 'trap-two')
+        assert len(changed.encode('utf-8')) == len(original.encode('utf-8'))
+        with open(cell_path, 'w', encoding='utf-8') as f:
+            f.write(changed)
+        os.utime(cell_path, ns=(original_stat.st_atime_ns, original_stat.st_mtime_ns))
+
+        cells2 = cache.get_cells(str(tmp_path))
+        assert cells2 is not cells1
+        assert cells2[0]['id'] == 'trap-two'
+
+    def test_stat_failure_after_warm_cache_raises(self, tmp_path, monkeypatch):
+        import soma_core.cell_inventory as inventory
+        from soma_mcp.cell_cache import CellCacheError
+
+        cells_dir = str(tmp_path / '.soma' / 'cells')
+        cell_path = _make_cell(cells_dir, 'walls', 'trap-test')
+        cache = CellCache()
+        warmed = cache.get_cells(str(tmp_path))
+        real_stat = inventory.os.stat
+
+        def failing_stat(path, *args, **kwargs):
+            if os.fspath(path) == cell_path:
+                raise PermissionError('simulated stat denial')
+            return real_stat(path, *args, **kwargs)
+
+        monkeypatch.setattr(inventory.os, 'stat', failing_stat)
+        with pytest.raises(CellCacheError, match='stat'):
+            cache.get_cells(str(tmp_path))
+        assert warmed[0]['id'] == 'trap-test'
+
+    def test_open_failure_after_warm_cache_raises(self, tmp_path, monkeypatch):
+        import soma_core.cell_inventory as inventory
+        from soma_mcp.cell_cache import CellCacheError
+
+        cells_dir = str(tmp_path / '.soma' / 'cells')
+        cell_path = _make_cell(cells_dir, 'walls', 'trap-test')
+        cache = CellCache()
+        cache.get_cells(str(tmp_path))
+        real_open = inventory.os.open
+
+        def failing_open(path, *args, **kwargs):
+            if os.fspath(path) == cell_path:
+                raise PermissionError('simulated open denial')
+            return real_open(path, *args, **kwargs)
+
+        monkeypatch.setattr(inventory.os, 'open', failing_open)
+        with pytest.raises(CellCacheError, match='open'):
+            cache.get_cells(str(tmp_path))
+
+    def test_load_uses_inventory_bytes_without_second_open(self, tmp_path, monkeypatch):
+        import soma_core.cell_inventory as inventory
+
+        cells_dir = str(tmp_path / '.soma' / 'cells')
+        _make_cell(cells_dir, 'walls', 'trap-test')
+        inventory_result = inventory.inventory_cells(str(tmp_path))
+        monkeypatch.setattr(
+            inventory, 'inventory_cells', lambda workspace: inventory_result
+        )
+
+        def forbidden_open(*args, **kwargs):
+            raise AssertionError('cache reopened a cell after inventory')
+
+        monkeypatch.setattr('builtins.open', forbidden_open)
+        cells = CellCache().get_cells(str(tmp_path))
+        assert cells[0]['id'] == 'trap-test'

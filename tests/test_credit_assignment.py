@@ -1,6 +1,6 @@
 """Behavioral tests for Phase 3.1 credit assignment.
 
-Tests scope-narrowed per-file credit distribution, probabilistic rounding,
+Tests scope-narrowed per-file credit distribution, fractional exactness,
 and signal provenance.
 """
 import json
@@ -94,75 +94,49 @@ class TestCreditConservation:
             assert abs(weights[f'c{i}'] - 0.2) < 1e-9
 
 
-class TestProbabilisticRounding:
-    """prob_round converts fractional credit to integer 0/1 while preserving expected value."""
+class TestFractionalCredit:
+    """Fractional conversion preserves exact credit without bias."""
 
-    def test_prob_round_one_always_returns_one(self):
-        from enzymes.outcome_engine import prob_round
-        for _ in range(100):
-            assert prob_round(1.0) == 1
-
-    def test_prob_round_zero_always_returns_zero(self):
-        from enzymes.outcome_engine import prob_round
-        for _ in range(100):
-            assert prob_round(0.0) == 0
-
-    def test_prob_round_half_statistical(self):
-        from enzymes.outcome_engine import prob_round
-        results = [prob_round(0.5) for _ in range(1000)]
-        pct = sum(results) / len(results)
-        assert 0.40 <= pct <= 0.60, f"Expected ~50% but got {pct*100:.1f}%"
-
-    def test_prob_round_returns_int(self):
-        from enzymes.outcome_engine import prob_round
-        for val in [0.0, 0.1, 0.5, 0.9, 1.0]:
-            result = prob_round(val)
-            assert isinstance(result, int)
-            assert result in (0, 1)
+    def test_to_fraction_converts_correctly(self):
+        from enzymes.outcome_engine import to_fraction
+        assert to_fraction(0.5) == "1/2"
+        assert to_fraction(1.0) == "1/1"
+        assert to_fraction(0.0) == "0/1"
+        assert to_fraction("1/3") == "1/3"
 
 
 class TestSignalProvenance:
-    """Fitness JSONL entries include credit weight metadata."""
+    """Signals written to evidence ledger retain attribution metadata (BUG-005)."""
 
     def test_jsonl_entry_has_credit_weight(self, tmp_path):
-        from enzymes.outcome_engine import compute_fitness_signals, append_fitness_log
-        cells = [_make_cell_dict('prov-cell', ['src/*.py'])]
-        outcomes = {'tests': {'verified': True, 'passed': True, 'exit_code': 0}}
-        signals = compute_fitness_signals(cells, outcomes, changed_files=['src/foo.py'])
-        ws = str(tmp_path)
-        os.makedirs(os.path.join(ws, '.soma', 'evidence'), exist_ok=True)
-        append_fitness_log(ws, signals, outcomes)
-        log_path = os.path.join(ws, '.soma', 'evidence', 'signals.jsonl')
+        from enzymes.outcome_engine import append_fitness_log
+
+        workspace = str(tmp_path)
+        signals = [{
+            'cell': 'cell-a',
+            'signal': 1.0,
+            'credit_weight': 0.5,
+            'signal_method': 'scope_narrowed',
+            'reasons': ['test passed'],
+            'verified': True,
+        }]
+        outcomes = {
+            'tests': {'verified': True, 'passed': True, 'framework': 'pytest'},
+            'build': {'verified': True, 'passed': True},
+            'git': {'reverts': 0, 'rework_files': []},
+        }
+
+        append_fitness_log(workspace, signals, outcomes)
+
+        log_path = os.path.join(workspace, '.soma', 'evidence', 'signals.jsonl')
+        assert os.path.isfile(log_path)
         with open(log_path, 'r', encoding='utf-8') as f:
-            entry = json.loads(f.readline())
-        assert 'metadata' in entry
-        assert 'credit_weight' in entry['metadata']
-        assert isinstance(entry['metadata']['credit_weight'], (int, float))
-
-    def test_jsonl_entry_has_signal_method(self, tmp_path):
-        from enzymes.outcome_engine import compute_fitness_signals, append_fitness_log
-        cells = [_make_cell_dict('method-cell', ['src/*.py'])]
-        outcomes = {'tests': {'verified': True, 'passed': True, 'exit_code': 0}}
-        signals = compute_fitness_signals(cells, outcomes)
-        ws = str(tmp_path)
-        os.makedirs(os.path.join(ws, '.soma', 'evidence'), exist_ok=True)
-        append_fitness_log(ws, signals, outcomes)
-        log_path = os.path.join(ws, '.soma', 'evidence', 'signals.jsonl')
-        with open(log_path, 'r', encoding='utf-8') as f:
-            entry = json.loads(f.readline())
-        assert 'metadata' in entry
-        assert 'signal_method' in entry['metadata']
-        assert entry['metadata']['signal_method'] == 'credit_weighted'
-
-
-class TestStatisticalConvergence:
-    """Over many signals, accumulated credit converges to expected value."""
-
-    def test_convergence_within_ten_percent(self):
-        from enzymes.outcome_engine import prob_round
-        credit = 1.0 / 3.0
-        total = sum(prob_round(credit) for _ in range(1000))
-        expected = 1000 * credit  # ~333
-        assert abs(total - expected) < expected * 0.15, (
-            f"Expected ~{expected:.0f} but got {total}"
-        )
+            lines = [json.loads(line) for line in f if line.strip()]
+        assert len(lines) == 1
+        record = lines[0]
+        assert record['cell'] == 'cell-a'
+        assert record['signal'] == 'tp'
+        assert 'metadata' in record
+        assert record['metadata']['credit_weight'] == 0.5
+        assert record['metadata']['signal_method'] == 'scope_narrowed'
+        assert not os.path.exists(os.path.join(workspace, '.soma', 'cells', 'fitness.jsonl'))

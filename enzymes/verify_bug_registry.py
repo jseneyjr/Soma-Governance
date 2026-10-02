@@ -24,23 +24,48 @@ def load_registry(workspace: str) -> dict:
         return json.load(f)
 
 
+VALID_STATUSES = ('open', 'fixed')
+CORE_FIELDS = (
+    'id', 'title', 'discovered_in', 'root_cause', 'severity', 'affected_files',
+)
+FIX_FIELDS = ('fixed_in', 'regression_test', 'changelog_ref')
+
+
+def bug_status(bug: dict) -> str:
+    # Entries predating the status field were all registered after their fix.
+    return bug.get('status', 'fixed')
+
+
 def verify_schema(registry: dict) -> list[str]:
     """Verify registry schema and required fields."""
     errors = []
-    required_fields = [
-        'id', 'title', 'discovered_in', 'fixed_in', 'root_cause',
-        'severity', 'affected_files', 'regression_test', 'changelog_ref',
-    ]
     valid_categories = set(registry.get('root_cause_categories', {}).keys())
     valid_severities = set(registry.get('severity_levels', []))
 
     for bug in registry.get('bugs', []):
         bug_id = bug.get('id', '<unknown>')
+        status = bug_status(bug)
 
-        # Required fields
+        if status not in VALID_STATUSES:
+            errors.append(
+                f"{bug_id}: unknown status '{status}' "
+                f"(valid: {', '.join(VALID_STATUSES)})"
+            )
+
+        # Open bugs are tracked before any fix exists; requiring fix fields
+        # would force fabricated versions and tests.
+        required_fields = CORE_FIELDS if status == 'open' else CORE_FIELDS + FIX_FIELDS
         for field in required_fields:
             if field not in bug or not bug[field]:
                 errors.append(f"{bug_id}: missing required field '{field}'")
+
+        if status == 'open':
+            for field in FIX_FIELDS:
+                if bug.get(field):
+                    errors.append(
+                        f"{bug_id}: status is 'open' but '{field}' is set; "
+                        f"mark it 'fixed' or remove the field"
+                    )
 
         # Root cause validation
         if bug.get('root_cause') and bug['root_cause'] not in valid_categories:
@@ -65,6 +90,8 @@ def verify_regression_tests(registry: dict, workspace: str) -> list[str]:
     test_ids = []
 
     for bug in registry.get('bugs', []):
+        if bug_status(bug) == 'open':
+            continue
         bug_id = bug.get('id', '<unknown>')
         test_ref = bug.get('regression_test', '')
         if not test_ref:
@@ -80,24 +107,26 @@ def verify_regression_tests(registry: dict, workspace: str) -> list[str]:
 
         test_ids.append((bug_id, test_ref))
 
-    # Batch verify: collect all test IDs and check they're valid
+    # Batch verify: run all test IDs to prove they pass.
     if test_ids:
         all_refs = [ref for _, ref in test_ids]
         try:
             result = subprocess.run(
-                [sys.executable, '-m', 'pytest', '--collect-only', '-q'] + all_refs,
+                [sys.executable, '-m', 'pytest', '-q'] + all_refs,
                 capture_output=True, text=True, cwd=workspace, timeout=30,
             )
-            collected = result.stdout
-            for bug_id, test_ref in test_ids:
-                # Check the test name appears in collected output
-                test_name = test_ref.split('::')[-1]
-                if test_name not in collected:
-                    errors.append(f"{bug_id}: regression test not collected: {test_ref}")
+            if result.returncode != 0:
+                # If tests failed, report which ones
+                errors.append(f"Regression tests failed (exit code {result.returncode})")
+                # Try to parse the failed tests from stdout
+                for bug_id, test_ref in test_ids:
+                    test_name = test_ref.split('::')[-1]
+                    if test_name in result.stdout and ("FAILED" in result.stdout or "FAILURES" in result.stdout):
+                        errors.append(f"{bug_id}: regression test failed: {test_ref}")
         except subprocess.TimeoutExpired:
-            errors.append("Timeout collecting regression tests")
+            errors.append("Timeout running regression tests")
         except Exception as e:
-            errors.append(f"Error collecting tests: {e}")
+            errors.append(f"Error running tests: {e}")
 
     return errors
 
@@ -142,7 +171,8 @@ def main():
         cat = bug.get('root_cause', 'unknown')
         categories[cat] = categories.get(cat, 0) + 1
 
-    print(f"\n=== All {len(bugs)} bugs verified ===")
+    open_count = sum(1 for bug in bugs if bug_status(bug) == 'open')
+    print(f"\n=== All {len(bugs)} bugs verified ({open_count} open) ===")
     print(f"  Pattern distribution:")
     for cat, count in sorted(categories.items(), key=lambda x: -x[1]):
         print(f"    {cat}: {count}")

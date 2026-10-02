@@ -148,3 +148,165 @@ class TestConcurrentAppend:
                 json.loads(line)
             except json.JSONDecodeError:
                 pytest.fail(f'Line {i} is not valid JSON: {line!r}')
+
+
+# ── Idempotent event identity, evidence lock, generation fence ─────────
+
+def _signals(tmp_path):
+    log_path = tmp_path / '.soma' / 'evidence' / 'signals.jsonl'
+    if not log_path.exists():
+        return []
+    return [json.loads(l) for l in log_path.read_text(encoding='utf-8').splitlines() if l.strip()]
+
+
+class TestIdempotentEventIdentity:
+
+    def test_returns_persisted_record(self, tmp_path):
+        from soma_sdk.telemetry import append_signal
+        rec = append_signal(str(tmp_path), 'cell-a', 'tp', 'ci', metadata={'k': 'v'})
+        assert isinstance(rec, dict)
+        assert _signals(tmp_path) == [rec]
+
+    def test_no_key_means_no_event_id(self, tmp_path):
+        from soma_sdk.telemetry import append_signal
+        rec = append_signal(str(tmp_path), 'cell-a', 'tp', 'ci')
+        assert 'event_id' not in rec
+        assert 'payload_digest' not in rec
+        append_signal(str(tmp_path), 'cell-a', 'tp', 'ci')
+        assert len(_signals(tmp_path)) == 2  # no dedupe without a key
+
+    def test_event_id_excludes_signal_type_and_metadata(self, tmp_path):
+        import hashlib
+        from soma_sdk.telemetry import append_signal
+        rec = append_signal(str(tmp_path), 'cell-a', 'tp', 'ci', metadata={'x': 1},
+                            principal='p', idempotency_scope='s', idempotency_key='k')
+        expected = hashlib.sha256(b'p:s:k:cell-a').hexdigest()
+        assert rec['event_id'] == expected
+        assert len(rec['payload_digest']) == 64
+
+    def test_payload_digest_is_canonical_and_excludes_timestamp(self, tmp_path):
+        import hashlib
+        from soma_sdk.telemetry import append_signal
+        rec = append_signal(str(tmp_path), 'cell-a', 'tp', 'ci', metadata={'b': 2, 'a': 1},
+                            idempotency_key='k')
+        canonical = json.dumps({'cell': 'cell-a', 'signal': 'tp', 'source': 'ci',
+                                'metadata': {'a': 1, 'b': 2}},
+                               sort_keys=True, separators=(',', ':'))
+        assert rec['payload_digest'] == hashlib.sha256(canonical.encode('utf-8')).hexdigest()
+
+    def test_same_key_same_payload_is_noop(self, tmp_path):
+        from soma_sdk.telemetry import append_signal
+        first = append_signal(str(tmp_path), 'cell-a', 'tp', 'ci', metadata={'a': 1},
+                              idempotency_scope='run-1', idempotency_key='op-1')
+        log_path = tmp_path / '.soma' / 'evidence' / 'signals.jsonl'
+        before = log_path.read_bytes()
+        again = append_signal(str(tmp_path), 'cell-a', 'tp', 'ci', metadata={'a': 1},
+                              idempotency_scope='run-1', idempotency_key='op-1')
+        assert again == first
+        assert log_path.read_bytes() == before
+
+    def test_same_key_different_signal_conflicts(self, tmp_path):
+        from soma_sdk.telemetry import append_signal, EventConflictError
+        append_signal(str(tmp_path), 'cell-a', 'tp', 'ci', idempotency_key='op-1')
+        log_path = tmp_path / '.soma' / 'evidence' / 'signals.jsonl'
+        before = log_path.read_bytes()
+        with pytest.raises(EventConflictError):
+            append_signal(str(tmp_path), 'cell-a', 'fp', 'ci', idempotency_key='op-1')
+        assert log_path.read_bytes() == before
+        assert issubclass(EventConflictError, ValueError)
+
+    def test_same_key_different_metadata_conflicts(self, tmp_path):
+        from soma_sdk.telemetry import append_signal, EventConflictError
+        append_signal(str(tmp_path), 'cell-a', 'tp', 'ci', metadata={'a': 1}, idempotency_key='op-1')
+        with pytest.raises(EventConflictError):
+            append_signal(str(tmp_path), 'cell-a', 'tp', 'ci', metadata={'a': 2}, idempotency_key='op-1')
+        assert len(_signals(tmp_path)) == 1
+
+    def test_same_key_different_cell_is_distinct_event(self, tmp_path):
+        from soma_sdk.telemetry import append_signal
+        a = append_signal(str(tmp_path), 'cell-a', 'trigger', 'session', idempotency_key='t-1')
+        b = append_signal(str(tmp_path), 'cell-b', 'trigger', 'session', idempotency_key='t-1')
+        assert a['event_id'] != b['event_id']
+        assert len(_signals(tmp_path)) == 2
+
+    def test_concurrent_same_key_writes_exactly_once(self, tmp_path):
+        from soma_sdk.telemetry import append_signal
+        errors = []
+
+        def writer():
+            try:
+                append_signal(str(tmp_path), 'cell-a', 'tp', 'ci', idempotency_key='race')
+            except Exception as exc:  # pragma: no cover - surfaced below
+                errors.append(exc)
+
+        threads = [threading.Thread(target=writer) for _ in range(16)]
+        for t in threads:
+            t.start()
+        for t in threads:
+            t.join()
+        assert errors == []
+        assert len(_signals(tmp_path)) == 1
+
+
+class TestEvidenceLock:
+
+    def test_lock_file_location(self, tmp_path):
+        from soma_sdk.telemetry import evidence_lock
+        with evidence_lock(str(tmp_path)):
+            assert (tmp_path / '.soma' / 'evidence' / '.signals.lock').exists()
+
+    def test_append_waits_for_lock_holder(self, tmp_path):
+        import time
+        from soma_sdk.telemetry import append_signal, evidence_lock
+        done = threading.Event()
+
+        def writer():
+            append_signal(str(tmp_path), 'cell-a', 'tp', 'ci')
+            done.set()
+
+        with evidence_lock(str(tmp_path)):
+            t = threading.Thread(target=writer)
+            t.start()
+            time.sleep(0.3)
+            assert not done.is_set(), 'append_signal must block while the evidence lock is held'
+        t.join(5)
+        assert done.is_set()
+        assert len(_signals(tmp_path)) == 1
+
+
+class TestGenerationFence:
+
+    def test_default_generation_is_one(self, tmp_path):
+        from soma_sdk.telemetry import append_signal
+        rec = append_signal(str(tmp_path), 'cell-a', 'tp', 'ci')
+        assert rec['generation'] == 1
+
+    def test_invalid_generation_file_defaults_to_one(self, tmp_path):
+        from soma_sdk.telemetry import append_signal
+        (tmp_path / '.soma').mkdir()
+        (tmp_path / '.soma' / 'epoch_generation').write_text('garbage')
+        assert append_signal(str(tmp_path), 'cell-a', 'tp', 'ci')['generation'] == 1
+
+    def test_generation_read_from_file(self, tmp_path):
+        from soma_sdk.telemetry import append_signal
+        (tmp_path / '.soma').mkdir()
+        (tmp_path / '.soma' / 'epoch_generation').write_text('3\n')
+        rec = append_signal(str(tmp_path), 'cell-a', 'tp', 'ci', expected_generation=3)
+        assert rec['generation'] == 3
+
+    def test_stale_generation_rejected_without_write(self, tmp_path):
+        from soma_sdk.telemetry import append_signal, StaleGenerationError
+        (tmp_path / '.soma').mkdir()
+        (tmp_path / '.soma' / 'epoch_generation').write_text('2')
+        with pytest.raises(StaleGenerationError):
+            append_signal(str(tmp_path), 'cell-a', 'tp', 'ci', expected_generation=1)
+        assert _signals(tmp_path) == []
+        assert issubclass(StaleGenerationError, RuntimeError)
+
+    def test_migration_lock_still_blocks(self, tmp_path):
+        from soma_sdk.telemetry import append_signal
+        (tmp_path / '.soma').mkdir()
+        (tmp_path / '.soma' / 'migration.lock').touch()
+        with pytest.raises(RuntimeError, match='migration in progress'):
+            append_signal(str(tmp_path), 'cell-a', 'tp', 'ci')
+        assert _signals(tmp_path) == []

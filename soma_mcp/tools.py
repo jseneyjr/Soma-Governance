@@ -1,11 +1,12 @@
-import fcntl
-import glob
 import importlib
 import json
 import os
 import re
+import secrets
 import sys
 from datetime import datetime, timezone
+
+from soma_core.cell_inventory import CellInventoryError, inventory_cells
 
 # pyyaml is an OPTIONAL dependency of soma_mcp. The server must start on a bare
 # interpreter (see .soma/cells/walls/wall-mcp-zero-deps.md), so we only use
@@ -67,7 +68,7 @@ try:
 except ImportError:
     soma_propose_change = None
 
-# Try importing Governance SDK (requires pyyaml); fall back to stdlib-only impl
+# Try importing Governance SDK; its cell parser also has a stdlib fallback.
 try:
     from soma_sdk.governance import Governance
     _HAS_SDK = True
@@ -77,8 +78,19 @@ except ImportError:
 
 # INTENTIONAL DUPLICATION: wall-mcp-zero-deps prohibits importing from enzymes/
 # Canonical source: enzymes/soma_resolve.py — keep in sync manually
-def resolve_workspace():
+def resolve_workspace(args=None):
     """Find the project root containing .soma/cells/."""
+    # We do NOT trust args["workspace"] from client input unverified.
+    # Write and Execute tools use args["workspace"] strictly because the MCP server safely injects _canonical_workspace over whatever the client provided.
+    # Read tools and background execution must rely on SOMA_WORKSPACE to prevent cross-workspace reading attacks.
+
+    soma_ws = os.environ.get("SOMA_WORKSPACE")
+    if soma_ws:
+        if os.path.isdir(os.path.join(soma_ws, ".soma", "cells")):
+            return os.path.abspath(soma_ws)
+        else:
+            raise ValueError(f"SOMA_WORKSPACE is set to {soma_ws} but no .soma/cells found there.")
+
     soma_root = os.environ.get("SOMA_ROOT")
     if soma_root:
         if os.path.isdir(os.path.join(soma_root, ".soma", "cells")):
@@ -126,31 +138,49 @@ def _parse_frontmatter(content):
     return parse_frontmatter(content)
 
 
+def _cell_diagnostic(relative_path, message):
+    """Return a JSON-safe diagnostic without discarding the cell path."""
+    return {
+        '_name': os.path.splitext(os.path.basename(relative_path))[0],
+        '_path': relative_path,
+        '_error': message,
+    }
+
+
 def _list_cells_stdlib(workspace):
-    """List cells using only stdlib (no pyyaml)."""
+    """List cells from one canonical byte snapshot using the shared parser."""
+    try:
+        inventory = inventory_cells(workspace)
+    except CellInventoryError as exc:
+        return {'status': _STATUS_FAIL, 'error': str(exc)}
+
     cells = []
-    cells_dir = os.path.join(workspace, '.soma', 'cells')
-    if not os.path.isdir(cells_dir):
-        return cells
-    for cell_file in glob.glob(os.path.join(cells_dir, '**', '*.md'), recursive=True):
-        if os.path.basename(cell_file) == 'README.md':
+    for entry in inventory.entries:
+        rel = entry.relative_path
+        if os.path.basename(rel) == 'README.md':
             continue
-        rel = os.path.relpath(cell_file, workspace)
         try:
-            with open(cell_file, encoding="utf-8") as f:
-                content = f.read()
-            fm = _parse_frontmatter(content)
-            if fm is None:
-                warn(f'skipped cell {rel}: malformed YAML frontmatter')
-                continue
-            if not fm:
-                warn(f'skipped cell {rel}: no frontmatter metadata')
-                continue
-            fm['_name'] = os.path.splitext(os.path.basename(cell_file))[0]
-            fm['_path'] = rel
-            cells.append(fm)
-        except Exception as e:
-            warn(f'skipped cell {rel}: {e.__class__.__name__}: {e}')
+            content = entry.content.decode('utf-8')
+        except UnicodeDecodeError as exc:
+            message = f'invalid UTF-8: {exc}'
+            warn(f'skipped cell {rel}: {message}')
+            cells.append(_cell_diagnostic(rel, message))
+            continue
+
+        fm = _parse_frontmatter(content)
+        if fm is None:
+            message = 'malformed YAML frontmatter'
+            warn(f'skipped cell {rel}: {message}')
+            cells.append(_cell_diagnostic(rel, message))
+            continue
+        if not fm:
+            message = 'no frontmatter metadata'
+            warn(f'skipped cell {rel}: {message}')
+            cells.append(_cell_diagnostic(rel, message))
+            continue
+        fm['_name'] = os.path.splitext(os.path.basename(rel))[0]
+        fm['_path'] = rel
+        cells.append(fm)
     return cells
 
 
@@ -194,27 +224,32 @@ def _classify_propose_result(result):
     return (_STATUS_PASS if verdict in _PASSING_VERDICTS else _STATUS_FAIL), verdict
 
 
-def get_governance():
+def get_governance(args=None):
     if not _HAS_SDK:
         return None
-    workspace = resolve_workspace()
+    try:
+        workspace = confine_workspace(args.get('workspace') or resolve_workspace(args))
+    except ValueError:
+        return None
     return Governance(project_root=workspace)
 
 
-def build_cell_create_prompt(description: str, domain_hint: str = None, cell_type: str = None) -> str:
-    workspace = resolve_workspace()
+def build_cell_create_prompt(description: str, domain_hint: str = None, cell_type: str = None, args=None) -> str:
+    workspace = confine_workspace(args.get('workspace') or resolve_workspace(args))
     
     examples = []
-    cells_dir = os.path.join(workspace, '.soma', 'cells')
-    if os.path.isdir(cells_dir):
-        for cell_file in glob.glob(os.path.join(cells_dir, '**', '*.md'), recursive=True):
-            if os.path.basename(cell_file) == 'README.md': continue
-            try:
-                with open(cell_file, encoding="utf-8") as f:
-                    content = f.read()
-                if content.startswith('---'):
-                    examples.append(content[:500])
-            except Exception: pass
+    inventory = inventory_cells(workspace)
+    for entry in inventory.entries:
+        rel = entry.relative_path
+        if os.path.basename(rel) == 'README.md':
+            continue
+        try:
+            content = entry.content.decode('utf-8')
+        except UnicodeDecodeError as exc:
+            warn(f'skipped cell example {rel}: invalid UTF-8: {exc}')
+            continue
+        if content.startswith('---'):
+            examples.append(content[:500])
             
     example_text = '\n---\n'.join(examples[:3]) if examples else 'No existing cells found.'
     domain_context = f'\nDomain hint: {domain_hint}' if domain_hint else ''
@@ -255,6 +290,18 @@ Generate ONLY the complete markdown cell file content. Start with --- for the YA
 
 TOOL_DEFINITIONS = [
     {
+        "name": "soma_request_receipt",
+        "description": "Request an execution receipt for a privileged tool. Required before calling any write tools, or execution tools (if execution is enabled).",
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "operation": {"type": "string", "description": "The name of the execute tool you want to call."},
+                "arguments": {"type": "object", "description": "The arguments you will pass to the execute tool."}
+            },
+            "required": ["operation", "arguments"]
+        }
+    },
+    {
         "name": "soma_create_cell",
         "description": "Takes a natural language description and builds a prompt to create a governance cell.",
         "inputSchema": {
@@ -263,7 +310,8 @@ TOOL_DEFINITIONS = [
                 "description": {"type": "string", "description": "Natural language description"},
                 "cell_type": {"type": "string", "description": "Optional cell type hint"},
                 "domain": {"type": "string", "description": "Optional domain hint"},
-                "dry_run": {"type": "boolean", "description": "Optional dry run flag"}
+                "dry_run": {"type": "boolean", "description": "Optional dry run flag"},
+                "receipt": {"type": "string", "description": "Execution receipt ID obtained from soma_request_receipt"}
             },
             "required": ["description"]
         }
@@ -308,9 +356,15 @@ TOOL_DEFINITIONS = [
                 },
                 "tests_passed": {"type": "boolean", "description": "Did tests pass?"},
                 "rework_count": {"type": "integer", "description": "How many times you redid work"},
-                "notes": {"type": "string", "description": "Optional notes on what helped or didn't"}
+                "notes": {"type": "string", "description": "Optional notes on what helped or didn't"},
+                "idempotency_key": {
+                    "type": "string",
+                    "minLength": 1,
+                    "description": "Caller-supplied key making the complete report retry-safe"
+                },
+                "receipt": {"type": "string", "description": "Execution receipt ID obtained from soma_request_receipt"}
             },
-            "required": ["outcome"]
+            "required": ["outcome", "idempotency_key"]
         }
     },
     {
@@ -354,7 +408,8 @@ TOOL_DEFINITIONS = [
             "type": "object",
             "properties": {
                 "file_path": {"type": "string", "description": "Absolute or relative path to the file to change."},
-                "proposed_content": {"type": "string", "description": "The complete proposed file content."}
+                "proposed_content": {"type": "string", "description": "The complete proposed file content."},
+                "receipt": {"type": "string", "description": "Execution receipt ID obtained from soma_request_receipt"}
             },
             "required": ["file_path", "proposed_content"]
         }
@@ -366,7 +421,8 @@ TOOL_DEFINITIONS = [
             "type": "object",
             "properties": {
                 "file_path": {"type": "string", "description": "Path to the file being changed."},
-                "proposed_content": {"type": "string", "description": "The complete proposed file content."}
+                "proposed_content": {"type": "string", "description": "The complete proposed file content."},
+                "receipt": {"type": "string", "description": "Execution receipt ID obtained from soma_request_receipt"}
             },
             "required": ["file_path", "proposed_content"]
         }
@@ -378,7 +434,8 @@ TOOL_DEFINITIONS = [
             "type": "object",
             "properties": {
                 "file_path": {"type": "string", "description": "Path to the file being changed."},
-                "proposed_content": {"type": "string", "description": "The complete proposed file content."}
+                "proposed_content": {"type": "string", "description": "The complete proposed file content."},
+                "receipt": {"type": "string", "description": "Execution receipt ID obtained from soma_request_receipt"}
             },
             "required": ["file_path", "proposed_content"]
         }
@@ -389,15 +446,14 @@ TOOL_DEFINITIONS = [
         "inputSchema": {
             "type": "object",
             "properties": {
-                "workspace": {"type": "string", "description": "Path to the project workspace."},
                 "files": {
                     "type": "array",
                     "items": {"type": "string"},
                     "description": "List of changed files to verify."
                 },
-                "layer1_only": {"type": "boolean", "description": "Only run Layer-1 checks (default true)."}
-            },
-            "required": ["workspace"]
+                "layer1_only": {"type": "boolean", "description": "Only run Layer-1 checks (default true)."},
+                "receipt": {"type": "string", "description": "Execution receipt ID obtained from soma_request_receipt"}
+            }
         }
     },
     {
@@ -406,9 +462,8 @@ TOOL_DEFINITIONS = [
         "inputSchema": {
             "type": "object",
             "properties": {
-                "workspace": {"type": "string", "description": "Path to the project workspace."}
-            },
-            "required": ["workspace"]
+                "receipt": {"type": "string", "description": "Execution receipt ID obtained from soma_request_receipt"}
+            }
         }
     },
     {
@@ -420,13 +475,12 @@ TOOL_DEFINITIONS = [
         "inputSchema": {
             "type": "object",
             "properties": {
-                "workspace": {"type": "string", "description": "Path to the project workspace."},
                 "generate_key": {
                     "type": "boolean",
                     "description": "Generate HMAC key if none exists (default false)."
                 },
-            },
-            "required": ["workspace"]
+                "receipt": {"type": "string", "description": "Execution receipt ID obtained from soma_request_receipt"}
+            }
         }
     },
     {
@@ -455,7 +509,8 @@ TOOL_DEFINITIONS = [
                 "category": {
                     "type": "string",
                     "description": "Optional category tag (e.g. contract_mismatch)"
-                }
+                },
+                "receipt": {"type": "string", "description": "Execution receipt ID obtained from soma_request_receipt"}
             },
             "required": ["insight", "context_files"]
         }
@@ -463,28 +518,44 @@ TOOL_DEFINITIONS = [
 ]
 
 def execute_tool(name: str, args: dict):
-    gov = get_governance()
+    gov = get_governance(args)
     
     if name == "soma_create_cell":
-        prompt = build_cell_create_prompt(
-            description=args.get("description"),
-            domain_hint=args.get("domain"),
-            cell_type=args.get("cell_type")
-        )
+        try:
+            prompt = build_cell_create_prompt(
+                description=args.get("description"),
+                domain_hint=args.get("domain"),
+                cell_type=args.get("cell_type"),
+                args=args
+            )
+        except ValueError as exc:
+            return {"error": str(exc), "status": _STATUS_FAIL}
         if args.get("dry_run"):
             return {"prompt": prompt, "dry_run": True, "instruction": "Dry run: showing prompt that would be used. No cell will be created."}
         return {"prompt": prompt, "instruction": "Process this prompt and return the cell YAML. Then use a file-writing tool to save it to the appropriate .soma/cells/ directory."}
     
     elif name == "soma_list_cells":
-        # list_cells works without pyyaml via stdlib fallback
+        # Both SDK and stdlib paths use the same fail-closed canonical inventory.
         if gov:
-            return gov.list_cells()
-        return _list_cells_stdlib(resolve_workspace())
+            try:
+                return gov.list_cells()
+            except RuntimeError as exc:
+                return {'status': _STATUS_FAIL, 'error': str(exc)}
+        try:
+            workspace = confine_workspace(
+                args.get('workspace') or resolve_workspace(args)
+            )
+        except ValueError as exc:
+            return {'status': _STATUS_FAIL, 'error': str(exc)}
+        return _list_cells_stdlib(workspace)
 
     elif name == "soma_propose_change":
         if not soma_propose_change:
             return {"error": "soma_propose_change not available"}
-        workspace = resolve_workspace()
+        try:
+            workspace = confine_workspace(args.get('workspace') or resolve_workspace(args))
+        except ValueError as exc:
+            return {"error": str(exc), "status": _STATUS_FAIL}
         file_path = args.get('file_path')
         proposed_content = args.get('proposed_content')
         
@@ -546,7 +617,7 @@ def execute_tool(name: str, args: dict):
 
     if name == "soma_verify_changes":
         try:
-            workspace = confine_workspace(args.get('workspace') or resolve_workspace())
+            workspace = confine_workspace(args.get('workspace') or resolve_workspace(args))
         except ValueError as exc:
             return {"error": str(exc), "status": _STATUS_FAIL}
         files = args.get('files', [])
@@ -576,7 +647,7 @@ def execute_tool(name: str, args: dict):
 
     elif name == "soma_checkpoint":
         try:
-            workspace = confine_workspace(args.get('workspace') or resolve_workspace())
+            workspace = confine_workspace(args.get('workspace') or resolve_workspace(args))
         except ValueError as exc:
             return {"error": str(exc), "status": _STATUS_FAIL}
         from pathlib import Path
@@ -591,13 +662,16 @@ def execute_tool(name: str, args: dict):
 
     elif name == "soma_scan":
         # v0.23: JIT expression — returns only relevant cells, not everything
-        workspace = resolve_workspace()
+        workspace = resolve_workspace(args)
         files = args.get('files', None)
         return jit_express(workspace, changed_files=files)
 
     elif name == "soma_report_outcome":
         # v0.23: Agent reports execution outcome for fitness scoring
-        workspace = resolve_workspace()
+        try:
+            workspace = confine_workspace(args.get('workspace') or resolve_workspace(args))
+        except ValueError as exc:
+            return {"error": str(exc), "status": _STATUS_FAIL}
         # Enforce the advertised enum here: persisting 'unknown' would silently
         # poison fitness scoring with un-gradeable rows.
         raw_outcome = args.get('outcome')
@@ -610,7 +684,12 @@ def execute_tool(name: str, args: dict):
                 ),
                 "status": _STATUS_FAIL,
             }
-        timestamp = datetime.now(timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ')
+        idempotency_key = args.get('idempotency_key')
+        if not isinstance(idempotency_key, str) or not idempotency_key:
+            return {
+                "error": "'idempotency_key' must be a nonempty string.",
+                "status": _STATUS_FAIL,
+            }
         cells_used = args.get('cells_used', [])
         # Validate cell names against actual inventory
         if cells_used:
@@ -623,46 +702,42 @@ def execute_tool(name: str, args: dict):
         tests_passed = args.get('tests_passed')
         rework_count = args.get('rework_count', 0)
         notes = args.get('notes', '')
-        outcomes_file = os.path.join(workspace, '.soma', 'evidence', 'outcomes.jsonl')
-        os.makedirs(os.path.dirname(outcomes_file), exist_ok=True)
-        records = []
-        for cell_id in cells_used:
-            record = {
-                'cell_id': cell_id,
-                'outcome': outcome_value,
-                'timestamp': timestamp,
-                'tests_passed': tests_passed,
-                'rework_count': rework_count,
-                'notes': notes,
+        signal_map = {'success': 'tp', 'tp': 'tp', 'failure': 'fp',
+                      'fp': 'fp', 'partial': 'trigger'}
+        metadata = {
+            'notes': notes,
+            'tests_passed': tests_passed,
+            'rework_count': rework_count,
+        }
+        events = [
+            {
+                'cell_name': cell_id,
+                'signal_type': signal_map.get(outcome_value, 'trigger'),
+                'source': 'mcp',
+                'metadata': metadata,
+                'principal': 'mcp',
+                'idempotency_scope': 'report_outcome',
+                'idempotency_key': idempotency_key,
             }
-            records.append(record)
-        with open(outcomes_file, 'a', encoding="utf-8") as f:
-            fcntl.flock(f, fcntl.LOCK_EX)
-            try:
-                for record in records:
-                    f.write(json.dumps(record) + '\n')
-            finally:
-                fcntl.flock(f, fcntl.LOCK_UN)
-        # Also write to unified telemetry log
+            for cell_id in cells_used
+        ]
         try:
-            from soma_sdk.telemetry import append_signal
-            signal_map = {'success': 'tp', 'tp': 'tp', 'failure': 'fp',
-                          'fp': 'fp', 'partial': 'trigger'}
-            for cell_id in cells_used:
-                append_signal(
-                    workspace=workspace,
-                    cell_name=cell_id,
-                    signal_type=signal_map.get(outcome_value, 'trigger'),
-                    source='mcp',
-                    metadata={'notes': notes, 'tests_passed': tests_passed,
-                              'rework_count': rework_count},
-                )
-        except ImportError:
-            pass  # Graceful degradation
+            from soma_sdk.telemetry import append_signals, read_generation
+            generation = read_generation(workspace)
+            records = append_signals(
+                workspace, events, expected_generation=generation)
+        except Exception as exc:  # fail closed: the canonical batch was not committed
+            return {
+                'status': _STATUS_FAIL,
+                'error': f'Failed to record outcome: {exc}',
+            }
         return {'status': 'recorded', 'records': records}
 
     elif name == "soma_capture_insight":
-        workspace = resolve_workspace()
+        try:
+            workspace = confine_workspace(args.get('workspace') or resolve_workspace(args))
+        except ValueError as exc:
+            return {"error": str(exc), "status": _STATUS_FAIL}
         try:
             capture_insight = _safe_import_enzyme("insight_capture", "capture_insight")
         except ImportError:
@@ -683,8 +758,10 @@ def execute_tool(name: str, args: dict):
         }
 
     elif name == "soma_generate_manifest":
-        workspace = args.get("workspace", "")
-        confine_workspace(workspace)
+        try:
+            workspace = confine_workspace(args.get('workspace') or resolve_workspace(args))
+        except ValueError as exc:
+            return {"error": str(exc), "status": "FAIL"}
         cells_dir = os.path.join(workspace, ".soma", "cells")
 
         # Optionally generate HMAC key

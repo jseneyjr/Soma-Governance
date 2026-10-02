@@ -55,23 +55,24 @@ def _setup_clean_workspace(root):
         encoding="utf-8",
     )
 
-    # Healthy evidence directory
+    # Healthy canonical signal evidence
     evidence = root / ".soma" / "evidence"
     evidence.mkdir(parents=True, exist_ok=True)
-    fitness_record = {
-        "cell_id": "math-rule",
-        "triggered_at": "2026-09-30T12:00:00Z",
-        "matched_files": ["src/math_utils.py"],
-    }
-    outcome_record = {
-        "cell_id": "math-rule",
-        "outcome": "tp",
-    }
-    (evidence / "fitness.jsonl").write_text(
-        json.dumps(fitness_record) + "\n", encoding="utf-8"
-    )
-    (evidence / "outcomes.jsonl").write_text(
-        json.dumps(outcome_record) + "\n", encoding="utf-8"
+    signal_records = [
+        {
+            "cell": "math-rule",
+            "signal": "trigger",
+            "timestamp": "2026-09-30T12:00:00Z",
+        },
+        {
+            "cell": "math-rule",
+            "signal": "tp",
+            "timestamp": "2026-09-30T12:00:00Z",
+        },
+    ]
+    (evidence / "signals.jsonl").write_text(
+        "\n".join(json.dumps(record) for record in signal_records) + "\n",
+        encoding="utf-8",
     )
     return root
 
@@ -354,23 +355,29 @@ class TestCheckpointDeterministicQualityChecks:
         _setup_clean_workspace(tmp_path)
         evidence = tmp_path / ".soma" / "evidence"
         evidence.mkdir(parents=True, exist_ok=True)
-        # Record with heavy false positive outcomes
-        fitness_records = [
-            {"cell_id": "noisy-rule", "triggered_at": "2026-09-30T10:00:00Z", "matched_files": ["src/math_utils.py"]},
-            {"cell_id": "noisy-rule", "triggered_at": "2026-09-30T10:05:00Z", "matched_files": ["src/math_utils.py"]},
-            {"cell_id": "noisy-rule", "triggered_at": "2026-09-30T10:10:00Z", "matched_files": ["src/math_utils.py"]},
+        # Canonical signals mark the cell unhealthy.
+        signal_records = [
+            {
+                "cell": "noisy-rule",
+                "signal": signal,
+                "timestamp": f"2026-09-30T10:{index:02d}:00Z",
+            }
+            for index, signal in enumerate(
+                ("trigger", "trigger", "trigger", "fp", "fp", "fp")
+            )
         ]
-        outcome_records = [
-            {"cell_id": "noisy-rule", "outcome": "fp"},
-            {"cell_id": "noisy-rule", "outcome": "fp"},
-            {"cell_id": "noisy-rule", "outcome": "fp"},
-        ]
-        (evidence / "fitness.jsonl").write_text(
-            "\n".join(json.dumps(r) for r in fitness_records) + "\n",
+        (evidence / "signals.jsonl").write_text(
+            "\n".join(json.dumps(record) for record in signal_records) + "\n",
             encoding="utf-8",
         )
+        # Contradictory legacy outcomes would make the FP rate exactly 50% if
+        # consumed; checkpoint must ignore them in favor of canonical signals.
+        legacy_outcomes = [
+            {"cell_id": "noisy-rule", "outcome": "tp"}
+            for _ in range(3)
+        ]
         (evidence / "outcomes.jsonl").write_text(
-            "\n".join(json.dumps(r) for r in outcome_records) + "\n",
+            "\n".join(json.dumps(record) for record in legacy_outcomes) + "\n",
             encoding="utf-8",
         )
 
@@ -477,3 +484,51 @@ class TestCheckpointEdgeCases:
         )
         exit_code = run_checkpoint(args)
         assert exit_code != 0
+
+    def test_checkpoint_is_read_only(self, tmp_path, monkeypatch):
+        """checkpoint must not call aggregate_evidence or sync_frontmatter."""
+        from soma_cli.checkpoint import run_checkpoint
+        import argparse
+
+        _setup_clean_workspace(tmp_path)
+        
+        # We will mock soma_cli.sync to see if it's imported/called
+        class SyncMock:
+            called = False
+            @staticmethod
+            def aggregate_evidence(*args, **kwargs):
+                SyncMock.called = True
+                return {"test": 1}
+            @staticmethod
+            def sync_frontmatter(*args, **kwargs):
+                SyncMock.called = True
+                
+        # Actually it's probably better to check that no files in .soma/cells were modified
+        import stat
+        cells_dir = tmp_path / ".soma" / "cells"
+        cells_dir.mkdir(parents=True, exist_ok=True)
+        cell_file = cells_dir / "test-cell.md"
+        cell_file.write_text("---\nfitness: 0\n---\ncontent", encoding="utf-8")
+        
+        # Make the workspace read-only
+        # If it tries to write, it will raise an exception
+        # Let's mock aggregate_evidence directly if possible, or just rely on file modifications
+        
+        # We can just monkeypatch soma_cli.sync if it exists
+        try:
+            import soma_cli.sync
+            monkeypatch.setattr(soma_cli.sync, "aggregate_evidence", SyncMock.aggregate_evidence)
+            monkeypatch.setattr(soma_cli.sync, "sync_frontmatter", SyncMock.sync_frontmatter)
+        except ImportError:
+            pass
+
+        args = argparse.Namespace(
+            workspace=str(tmp_path),
+            pre_commit=False,
+            strict=False,
+            json=False,
+        )
+        exit_code = run_checkpoint(args)
+        assert exit_code == 0
+        assert not SyncMock.called, "Checkpoint mutated workspace state by calling sync/aggregate"
+

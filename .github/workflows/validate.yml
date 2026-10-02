@@ -5,9 +5,41 @@ on:
     branches: [main, develop]
   pull_request:
     branches: [main, develop]
+  workflow_call:
 
 jobs:
+  build-wheel:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install build tools
+        run: pip install build
+      - name: Build wheel and sdist (the only build of this release)
+        run: python -m build
+      - name: Record artifact digests
+        run: python .github/scripts/verify_dist.py record dist
+      # The sdist is published too, so it is installed and smoke-tested here
+      # rather than shipped untested.
+      - name: Smoke-test sdist (source hidden)
+        run: |
+          SMOKE="$PWD/.github/scripts/wheel_smoke.py"
+          SDIST="$(ls "$PWD"/dist/*.tar.gz)"
+          VENV="$RUNNER_TEMP/sdist-venv"
+          python -m venv "$VENV"
+          "$VENV/bin/pip" install "$SDIST"
+          cd "$RUNNER_TEMP" && env -u PYTHONPATH "$VENV/bin/python" -I "$SMOKE"
+      - name: Upload wheel artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: soma-wheel
+          path: dist/
+
   validate:
+    needs: build-wheel
     strategy:
       matrix:
         os: [ubuntu-latest, macos-latest]
@@ -15,14 +47,37 @@ jobs:
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
       
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.python-version }}
+          
+      - name: Download wheel artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: soma-wheel
+          path: dist/
       
+      - name: Verify artifact digests
+        run: python .github/scripts/verify_dist.py verify dist
+
       - name: Install test dependencies
-        run: pip install -e ".[dev]" pyyaml
+        run: |
+          pip install pytest ruff hypothesis coverage pyyaml
+          pip install dist/*.whl
+
+      # The unit suite below runs from the checkout (pythonpath = ["."]), so on
+      # its own it cannot prove the wheel works. This step runs the installed
+      # wheel from outside the repo, in isolated mode, and asserts every Soma
+      # module resolves from site-packages.
+      - name: Smoke-test installed wheel (source hidden)
+        shell: bash
+        run: |
+          SMOKE="$PWD/.github/scripts/wheel_smoke.py"
+          cd "$RUNNER_TEMP" && env -u PYTHONPATH python -I "$SMOKE"
 
       - name: Run validation
         run: make validate
@@ -34,7 +89,12 @@ jobs:
       - name: Soma CI Outcome Report
         if: always()
         run: |
-          CHANGED=$(git diff --name-only origin/${{ github.event.pull_request.base.sha || 'HEAD~1' }}...HEAD 2>/dev/null || echo "")
+          BASE_REF="${{ github.event.pull_request.base.sha }}"
+          if [ -n "$BASE_REF" ]; then
+            CHANGED=$(git diff --name-only "origin/$BASE_REF...HEAD" 2>/dev/null || git diff --name-only "$BASE_REF...HEAD" 2>/dev/null || echo "")
+          else
+            CHANGED=$(git diff --name-only HEAD~1 HEAD 2>/dev/null || echo "")
+          fi
           if [ -n "$CHANGED" ]; then
             python3 enzymes/ci_outcome_reporter.py \
               --changed-files "$CHANGED" \
@@ -45,6 +105,9 @@ jobs:
 
       - name: Verify README claims
         run: python enzymes/verify_readme_claims.py
+
+      - name: Verify Bug Registry
+        run: python3 enzymes/verify_bug_registry.py
 
       - name: Check for hardcoded paths
         run: |
@@ -119,5 +182,17 @@ jobs:
           Write-Host $result
           if ($result -match 'Installed 0 rules') {
             Write-Error "PowerShell dry-run reported 0 rules — SOMA-C11 regression"
+            exit 1
+          }
+
+      # `.\install.ps1` on stock Windows runs Windows PowerShell 5.1, which reads
+      # BOM-less scripts as cp1252; pwsh 7 defaults to UTF-8 and hides that (BUG-011).
+      - name: Dry-run under Windows PowerShell 5.1
+        shell: powershell
+        run: |
+          $result = & powershell -NoProfile -ExecutionPolicy Bypass -File install/install.ps1 -DryRun 2>&1 | Out-String
+          Write-Host $result
+          if ($result -notmatch 'Dry-run complete') {
+            Write-Error "install.ps1 dry-run failed under Windows PowerShell 5.1 - BUG-011 regression"
             exit 1
           }

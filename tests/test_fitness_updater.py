@@ -264,26 +264,24 @@ class TestUpdateFitness:
         assert len(records) == 2
 
     def test_sessions_processed_updated(self, tmp_path):
-        """sessions_processed.jsonl is updated for idempotency tracking."""
+        """Idempotency tracking uses signals.jsonl."""
         evidence = _make_evidence_dir(tmp_path)
         triggered = [
             {"cell_id": "trap-a", "cell_path": "cells/trap-a.md", "matched_files": ["enzymes/foo.py"]},
         ]
         update_fitness(triggered, "session-001", evidence)
-        ledger = evidence / "sessions_processed.jsonl"
+        ledger = evidence / "signals.jsonl"
         assert ledger.exists()
         records = [json.loads(l) for l in ledger.read_text().splitlines()]
-        assert records[0]["transcript_id"] == "session-001"
-        assert records[0]["cells_triggered"] == 1
+        assert records[0]["metadata"]["transcript_id"] == "session-001"
+
 
     def test_empty_triggered_list(self, tmp_path):
-        """Zero triggered cells still records the session as processed."""
+        """Zero triggered cells is handled correctly without failing."""
         evidence = _make_evidence_dir(tmp_path)
         update_fitness([], "session-001", evidence)
-        ledger = evidence / "sessions_processed.jsonl"
-        assert ledger.exists()
-        records = [json.loads(l) for l in ledger.read_text().splitlines()]
-        assert records[0]["cells_triggered"] == 0
+        ledger = evidence / "signals.jsonl"
+        assert not ledger.exists() # Should not create the file if nothing triggered
         # No signals.jsonl entries
         signals_file = evidence / "signals.jsonl"
         if signals_file.exists():
@@ -297,7 +295,6 @@ class TestUpdateFitness:
         ]
         update_fitness(triggered, "session-001", evidence)
         assert (evidence / "signals.jsonl").exists()
-        assert (evidence / "sessions_processed.jsonl").exists()
 
 
 # ── Platform detection & transcript ID ──

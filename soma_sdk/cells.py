@@ -3,7 +3,8 @@ from __future__ import annotations
 import math
 import os
 from dataclasses import dataclass, field
-from typing import Callable, Optional, Tuple
+from fractions import Fraction
+from typing import Callable, Optional, Tuple, Union
 
 import yaml
 
@@ -15,10 +16,50 @@ from soma_sdk.scoring import bayesian_posterior, laplace_score
 class CellFitness:
     """Fitness metrics for a governance cell."""
     triggers: int = 0
-    true_positives: int = 0
-    false_positives: int = 0
+    true_positives: Union[int, float] = 0
+    false_positives: Union[int, float] = 0
     score: Optional[float] = None
     stress_survived: int = 0
+
+    def __post_init__(self):
+        self.triggers = int(self._coerce_num(self.triggers, default=0))
+        self.true_positives = self._coerce_num(self.true_positives, default=0)
+        self.false_positives = self._coerce_num(self.false_positives, default=0)
+        if self.score is not None:
+            self.score = self._coerce_num(self.score, default=None)
+
+    @staticmethod
+    def _coerce_num(val, default=0):
+        if val is None or isinstance(val, bool):
+            return default
+        if isinstance(val, (int, float)):
+            if not math.isfinite(val):
+                return default
+            val = max(0, val)
+            return int(val) if isinstance(val, float) and val.is_integer() else val
+        if isinstance(val, str):
+            val = val.strip()
+            if not val:
+                return default
+            if '/' in val:
+                try:
+                    f = Fraction(val)
+                    flt = float(f)
+                    if not math.isfinite(flt):
+                        return default
+                    flt = max(0.0, flt)
+                    return int(flt) if flt.is_integer() else round(flt, 4)
+                except Exception:
+                    return default
+            try:
+                flt = float(val)
+                if not math.isfinite(flt):
+                    return default
+                flt = max(0.0, flt)
+                return int(flt) if flt.is_integer() else round(flt, 4)
+            except Exception:
+                return default
+        return default
     
     @property
     def raw_score(self) -> float | None:

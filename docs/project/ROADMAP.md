@@ -85,8 +85,8 @@ Update ROADMAP and README to match shipped state.
 ## Phase 4.7 — v0.83 ✅ Shipped
 
 ### JIT Cell Cache
-**Status**: ✅ Shipped (v0.83)  
-mtime-based in-memory cache for MCP hot path. Eliminates redundant disk I/O.
+**Status**: ✅ Shipped (v0.83; hardened in v0.89)  
+Content-fingerprinted in-memory cache for the MCP hot path. The canonical inventory captures exact bytes, rejects symlinked cell trees, detects concurrent changes, and invalidates even when an edit restores a file's mtime.
 
 ## Phase 4.8 — v0.84 ✅ Shipped
 
@@ -99,6 +99,16 @@ Machine-parseable bug registry with verification enzyme and governance cell. Bac
 ### Antifragile Hot Zones
 **Status**: ✅ Shipped (v0.85)  
 Hot zone engine feeds bug patterns into cell fitness scoring. Bugs make the system smarter.
+
+## Phase 5.0 — v0.89.0 ✅ Shipped
+
+### MCP Execution Security
+**Status**: ✅ Shipped (v0.89.0)  
+Opaque, stateful, session-bound cryptographic receipts. MCP write/execute tools safely verify client authority and enforce strict workspace confinement.
+
+### Bug Registry
+**Status**: ✅ Shipped (v0.89.0)
+Open bug tracking, Windows/MCP platform compatibility categorizations.
 
 ## Research
 

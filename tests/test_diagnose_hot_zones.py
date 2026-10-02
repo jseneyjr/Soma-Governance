@@ -125,6 +125,9 @@ class TestRunDiagnostic:
         result = run_diagnostic(str(tmp_path))
         assert result == {'error': 'BUG_REGISTRY.json not found'}
 
-    def test_insufficient_data_for_current_registry(self):
+    def test_insufficient_data_warning_tracks_registry_size(self):
+        # Asserting the warning unconditionally broke once the real registry
+        # passed 10 bugs; the warning is correct only below that size.
         result = run_diagnostic(REPO_ROOT)
-        assert any("Insufficient data" in s for s in result['sanity'])
+        warned = any("Insufficient data" in s for s in result['sanity'])
+        assert warned == (result['total_bugs'] < 10)

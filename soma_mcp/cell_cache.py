@@ -1,145 +1,138 @@
-"""Mtime-based in-memory cell cache for MCP hot path.
-
-v0.83 'Fast Path': Eliminates redundant disk I/O by caching parsed cell
-frontmatter and invalidating only when the cells directory mtime changes.
-
-Thread-safe via simple lock (MCP server may handle concurrent requests).
-"""
+"""Content-fingerprinted in-memory cell cache for the MCP hot path."""
 from __future__ import annotations
 
-import glob
 import os
 import threading
-from typing import Any
+from typing import Any, Iterable, Optional
+
+from soma_core import cell_inventory
+from soma_core.cell_inventory import CellInventoryEntry, CellInventoryError
+
+
+class CellCacheError(RuntimeError):
+    """Cell loading failed; cached or partial results were not returned."""
+
+    def __init__(
+        self,
+        operation: str,
+        path: str,
+        message: str,
+        cause: Optional[BaseException] = None,
+    ) -> None:
+        self.operation = operation
+        self.path = path
+        self.cause = cause
+        super().__init__(f"cell cache {operation} failed for {path}: {message}")
 
 
 class CellCache:
-    """In-memory cache for parsed governance cells.
-
-    Checks ``os.stat(cells_dir).st_mtime`` on each call. If unchanged,
-    returns the cached list. If changed, re-globs and re-parses all cells.
-
-    Also tracks individual file mtimes to detect in-place edits that may
-    not update the directory mtime on all filesystems.
-    """
+    """Thread-safe parsed-cell cache keyed by canonical content fingerprint."""
 
     def __init__(self) -> None:
         self._lock = threading.Lock()
-        self._cells: list[dict[str, Any]] = []
-        self._dir_mtime: float = 0.0
-        self._file_mtimes: dict[str, float] = {}
-        self._workspace: str | None = None
+        self._cells = []  # type: list[dict[str, Any]]
+        self._fingerprint = None  # type: Optional[str]
+        self._workspace = None  # type: Optional[str]
 
     def get_cells(self, workspace: str) -> list[dict[str, Any]]:
-        """Return cached cell list, re-parsing only if files changed."""
-        cells_dir = os.path.join(workspace, '.soma', 'cells')
-
-        if not os.path.isdir(cells_dir):
-            return []
-
+        """Return cells, reparsing only when canonical inventory bytes change."""
+        workspace_key = os.path.abspath(os.fspath(workspace))
         with self._lock:
-            # Check if directory mtime changed or workspace switched
             try:
-                current_mtime = CellCache._get_tree_mtime(cells_dir)
-            except OSError:
-                return []
+                inventory = cell_inventory.inventory_cells(workspace_key)
+            except CellInventoryError as exc:
+                raise CellCacheError(
+                    exc.operation, exc.path, str(exc), exc
+                ) from exc
 
-            if (self._workspace == workspace
-                    and current_mtime == self._dir_mtime
-                    and self._cells is not None):
+            if (
+                self._workspace == workspace_key
+                and self._fingerprint == inventory.fingerprint
+            ):
                 return self._cells
 
-            # Cache miss — re-parse all cells
-            self._cells = self._load(workspace, cells_dir)
-            self._dir_mtime = current_mtime
-            self._workspace = workspace
+            cells = self._load(workspace_key, inventory.entries)
+            self._cells = cells
+            self._fingerprint = inventory.fingerprint
+            self._workspace = workspace_key
             return self._cells
 
     def invalidate(self) -> None:
-        """Force cache invalidation on next call."""
+        """Force parsing on the next successful inventory."""
         with self._lock:
-            self._dir_mtime = 0.0
-            self._file_mtimes.clear()
+            self._fingerprint = None
+            self._workspace = None
 
     @staticmethod
-    def _load(workspace: str, cells_dir: str) -> list[dict[str, Any]]:
-        """Parse all cell files from disk. Mirrors load_all_cells() logic."""
-        # Lazy import to avoid circular dependency (jit_engine → cell_cache → jit_engine)
+    def _load(
+        workspace: str,
+        entries: Iterable[CellInventoryEntry],
+    ) -> list[dict[str, Any]]:
+        """Parse the exact bytes already captured by canonical inventory."""
         from soma_mcp.jit_engine import parse_frontmatter, _get_body, warn
 
         cells = []
-        for cell_file in glob.glob(
-            os.path.join(cells_dir, '**', '*.md'), recursive=True
-        ):
-            if os.path.basename(cell_file) == 'README.md':
+        for entry in entries:
+            if os.path.basename(entry.relative_path) == "README.md":
                 continue
-            rel = os.path.relpath(cell_file, workspace)
             try:
-                with open(cell_file, encoding='utf-8') as f:
-                    content = f.read()
+                content = entry.content.decode("utf-8")
+            except UnicodeDecodeError as exc:
+                raise CellCacheError(
+                    "decode", entry.absolute_path, str(exc), exc
+                ) from exc
+            try:
                 fm = parse_frontmatter(content)
-                if fm is None:
-                    warn(f'skipped cell {rel}: malformed YAML frontmatter')
-                    continue
-                if not fm:
-                    warn(f'skipped cell {rel}: no frontmatter metadata')
-                    continue
-                if fm.get('expired_at'):
-                    continue
-                fm['_name'] = os.path.splitext(os.path.basename(cell_file))[0]
-                fm['_path'] = rel
-                fm['_body'] = _get_body(content)
-                fm['_full'] = content
-                cells.append(fm)
-            except Exception as e:
-                warn(f'skipped cell {rel}: {e.__class__.__name__}: {e}')
+            except Exception as exc:
+                raise CellCacheError(
+                    "parse", entry.absolute_path, str(exc), exc
+                ) from exc
+            if fm is None:
+                warn(
+                    f"skipped cell {entry.relative_path}: "
+                    "malformed YAML frontmatter"
+                )
+                continue
+            if not fm:
+                warn(f"skipped cell {entry.relative_path}: no frontmatter metadata")
+                continue
+            if fm.get("expired_at"):
+                continue
+            fm["_name"] = os.path.splitext(os.path.basename(entry.absolute_path))[0]
+            fm["_path"] = entry.relative_path
+            fm["_body"] = _get_body(content)
+            fm["_full"] = content
+            cells.append(fm)
 
-        # Integrity verification: check cells against manifest if present.
-        # Graceful degradation — warnings only, never blocks cell loading.
-        try:
-            from soma_mcp.integrity import (
-                load_manifest, verify_manifest, load_key, verify_signature,
-            )
-            manifest = load_manifest(workspace)
-            if manifest is not None:
-                issues = verify_manifest(cells_dir, manifest)
-                for issue in issues:
-                    warn(
-                        f"integrity: {issue['type']} — {issue['detail']}"
-                    )
-                # HMAC signature verification
-                key = load_key(workspace)
-                if key is not None and "signature" in manifest:
-                    if verify_signature(manifest, key):
-                        warn("integrity: HMAC signature verified ✓")
-                    else:
-                        warn(
-                            "integrity: HMAC signature verification FAILED "
-                            "— manifest may be tampered"
-                        )
-        except Exception as exc:
-            warn(f"integrity check failed (non-fatal): {exc}")
-
+        CellCache._verify_integrity(workspace)
         return cells
 
     @staticmethod
-    def _get_tree_mtime(cells_dir: str) -> float:
-        """Get the maximum mtime across the cells directory tree.
+    def _verify_integrity(workspace: str) -> None:
+        """Preserve optional manifest diagnostics without affecting cell bytes."""
+        from soma_mcp.jit_engine import warn
 
-        Checks subdirectory mtimes too, since adding a file to a subdirectory
-        updates that subdirectory's mtime, not the root directory's.
-        """
-        max_mtime = os.stat(cells_dir).st_mtime
-        for dirpath, _dirnames, filenames in os.walk(cells_dir):
-            dir_mtime = os.stat(dirpath).st_mtime
-            if dir_mtime > max_mtime:
-                max_mtime = dir_mtime
-            for fname in filenames:
-                fpath = os.path.join(dirpath, fname)
-                try:
-                    fmtime = os.stat(fpath).st_mtime
-                    if fmtime > max_mtime:
-                        max_mtime = fmtime
-                except OSError:
-                    pass
-        return max_mtime
+        cells_dir = os.path.join(workspace, ".soma", "cells")
+        try:
+            from soma_mcp.integrity import (
+                load_manifest,
+                verify_manifest,
+                load_key,
+                verify_signature,
+            )
+            manifest = load_manifest(workspace)
+            if manifest is None:
+                return
+            for issue in verify_manifest(cells_dir, manifest):
+                warn(f"integrity: {issue['type']} — {issue['detail']}")
+            key = load_key(workspace)
+            if key is not None and "signature" in manifest:
+                if verify_signature(manifest, key):
+                    warn("integrity: HMAC signature verified ✓")
+                else:
+                    warn(
+                        "integrity: HMAC signature verification FAILED "
+                        "— manifest may be tampered"
+                    )
+        except Exception as exc:
+            warn(f"integrity check failed (non-fatal): {exc}")

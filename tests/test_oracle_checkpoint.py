@@ -1,7 +1,7 @@
 """Tests for the oracle checkpoint — mid-session fitness feedback.
 
 Verifies that:
-1. Checkpoint reads fitness.jsonl and produces actionable summaries
+1. Checkpoint reads canonical signals.jsonl evidence and produces actionable summaries
 2. Cells with zero triggers get "unobserved" classification
 3. Cells with high false positives get "noisy" classification
 4. Expired cells (via cell_expiry) are flagged
@@ -11,7 +11,6 @@ Verifies that:
 import json
 import os
 import sys
-import tempfile
 from datetime import datetime, timedelta
 
 import pytest
@@ -46,18 +45,10 @@ def make_cell(cells_dir, name, cell_type="vacuole", created_days_ago=10,
     return filepath
 
 
-def write_fitness_records(evidence_dir, records):
-    """Write trigger records to fitness.jsonl (real schema)."""
-    filepath = os.path.join(evidence_dir, 'fitness.jsonl')
-    with open(filepath, 'w') as f:
-        for record in records:
-            f.write(json.dumps(record) + '\n')
-
-
-def write_outcome_records(evidence_dir, records):
-    """Write outcome records to outcomes.jsonl."""
-    filepath = os.path.join(evidence_dir, 'outcomes.jsonl')
-    with open(filepath, 'w') as f:
+def append_signal_records(evidence_dir, records):
+    """Append canonical signal rows to signals.jsonl."""
+    filepath = os.path.join(evidence_dir, 'signals.jsonl')
+    with open(filepath, 'a', encoding='utf-8') as f:
         for record in records:
             f.write(json.dumps(record) + '\n')
 
@@ -95,11 +86,10 @@ class TestOracleCheckpointBasics:
         cells_dir = str(workspace / ".soma" / "cells")
         make_cell(cells_dir, "good-cell")
         evidence_dir = str(workspace / ".soma" / "evidence")
-        # Real schema: each record IS a trigger event
-        write_fitness_records(evidence_dir, [
-            {'cell_id': 'good-cell', 'triggered_at': '2026-09-30', 'matched_files': ['a.py']},
-            {'cell_id': 'good-cell', 'triggered_at': '2026-09-30', 'matched_files': ['b.py']},
-            {'cell_id': 'good-cell', 'triggered_at': '2026-09-30', 'matched_files': ['c.py']},
+        append_signal_records(evidence_dir, [
+            {'cell': 'good-cell', 'signal': 'trigger', 'timestamp': '2026-09-30T10:00:00Z'},
+            {'cell': 'good-cell', 'signal': 'trigger', 'timestamp': '2026-09-30T10:01:00Z'},
+            {'cell': 'good-cell', 'signal': 'trigger', 'timestamp': '2026-09-30T10:02:00Z'},
         ])
         report = generate_checkpoint(str(workspace))
         assert 'healthy' in report['classifications']
@@ -114,19 +104,22 @@ class TestOracleCheckpointClassifications:
         cells_dir = str(workspace / ".soma" / "cells")
         make_cell(cells_dir, "noisy-cell")
         evidence_dir = str(workspace / ".soma" / "evidence")
-        # Real schema: triggers in fitness.jsonl, outcomes in outcomes.jsonl
-        write_fitness_records(evidence_dir, [
-            {'cell_id': 'noisy-cell', 'triggered_at': '2026-09-30', 'matched_files': ['a.py']},
-            {'cell_id': 'noisy-cell', 'triggered_at': '2026-09-30', 'matched_files': ['b.py']},
-            {'cell_id': 'noisy-cell', 'triggered_at': '2026-09-30', 'matched_files': ['c.py']},
-            {'cell_id': 'noisy-cell', 'triggered_at': '2026-09-30', 'matched_files': ['d.py']},
+        append_signal_records(evidence_dir, [
+            {'cell': 'noisy-cell', 'signal': 'trigger', 'timestamp': '2026-09-30T10:00:00Z'},
+            {'cell': 'noisy-cell', 'signal': 'trigger', 'timestamp': '2026-09-30T10:01:00Z'},
+            {'cell': 'noisy-cell', 'signal': 'trigger', 'timestamp': '2026-09-30T10:02:00Z'},
+            {'cell': 'noisy-cell', 'signal': 'trigger', 'timestamp': '2026-09-30T10:03:00Z'},
         ])
-        write_outcome_records(evidence_dir, [
-            {'cell_id': 'noisy-cell', 'outcome': 'fp'},
-            {'cell_id': 'noisy-cell', 'outcome': 'fp'},
-            {'cell_id': 'noisy-cell', 'outcome': 'fp'},
-            {'cell_id': 'noisy-cell', 'outcome': 'tp'},
+        append_signal_records(evidence_dir, [
+            {'cell': 'noisy-cell', 'signal': 'fp', 'timestamp': '2026-09-30T11:00:00Z'},
+            {'cell': 'noisy-cell', 'signal': 'fp', 'timestamp': '2026-09-30T11:01:00Z',
+             'metadata': {'credit_weight': 2}},
+            {'cell': 'noisy-cell', 'signal': 'tp', 'timestamp': '2026-09-30T11:02:00Z'},
         ])
+        # A contradictory legacy ledger must not override canonical signal evidence.
+        legacy_path = os.path.join(evidence_dir, 'outcomes.jsonl')
+        with open(legacy_path, 'w', encoding='utf-8') as f:
+            f.write(json.dumps({'cell_id': 'noisy-cell', 'outcome': 'tp'}) + '\n')
         report = generate_checkpoint(str(workspace))
         assert 'noisy' in report['classifications']
         noisy = [c for c in report['classifications']['noisy'] if c['cell_id'] == 'noisy-cell']
@@ -158,9 +151,8 @@ class TestOracleCheckpointRecommendations:
         cells_dir = str(workspace / ".soma" / "cells")
         make_cell(cells_dir, "good-cell", created_days_ago=1, expiry_days=60)
         evidence_dir = str(workspace / ".soma" / "evidence")
-        # Real schema: trigger event
-        write_fitness_records(evidence_dir, [
-            {'cell_id': 'good-cell', 'triggered_at': '2026-09-30', 'matched_files': ['a.py']},
+        append_signal_records(evidence_dir, [
+            {'cell': 'good-cell', 'signal': 'trigger', 'timestamp': '2026-09-30T10:00:00Z'},
         ])
         report = generate_checkpoint(str(workspace))
         critical = [r for r in report.get('recommendations', []) if r.get('severity') == 'critical']

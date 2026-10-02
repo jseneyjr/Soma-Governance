@@ -1,4 +1,5 @@
 import contextlib
+import hmac
 import json
 import os
 import secrets
@@ -9,14 +10,26 @@ from collections import defaultdict
 from typing import Any, Dict
 
 from .tools import TOOL_DEFINITIONS, execute_tool
+from .security import confine_workspace
+from soma_core.receipts import (
+    issue_receipt,
+    verify_receipt,
+    strip_server_owned,
+    target_paths,
+    compute_file_digest,
+    compute_cell_digest,
+)
 
 _session_token = None
+_canonical_workspace = None
+_execution_enabled = False
 
 _READ_TOOLS = frozenset({
     "soma_scan", "soma_list_cells", "soma_grade", "soma_coverage", "soma_fitness",
+    "soma_request_receipt"
 })
 _WRITE_TOOLS = frozenset({
-    "soma_report_outcome", "soma_capture_insight", "soma_create_cell",
+    "soma_report_outcome", "soma_capture_insight", "soma_create_cell"
 })
 _EXECUTE_TOOLS = frozenset({
     "soma_propose_change", "soma_verify_changes", "soma_checkpoint",
@@ -61,7 +74,7 @@ def _server_version() -> str:
     try:
         from importlib.metadata import PackageNotFoundError, version
         try:
-            return version("soma-steering")
+            return version("soma-governance")
         except PackageNotFoundError:
             pass
     except ImportError:
@@ -105,6 +118,19 @@ def _is_error_result(result: Any) -> bool:
             return True
     return False
 
+def _error(req_id: Any, code: int, message: str) -> Dict[str, Any]:
+    return {"jsonrpc": "2.0", "id": req_id, "error": {"code": code, "message": message}}
+
+
+def _state_digests(args: Dict[str, Any]):
+    """(file_digest, cell_digest) for the canonical workspace and the
+    target paths named in args. Raises ValueError on a path escape."""
+    return (
+        compute_file_digest(_canonical_workspace, target_paths(args)),
+        compute_cell_digest(_canonical_workspace),
+    )
+
+
 def send_error(id: Any, code: int, message: str):
     send_response({
         "jsonrpc": "2.0",
@@ -139,31 +165,88 @@ def handle_request(request: Dict[str, Any]) -> Dict[str, Any]:
             }
         }
     elif method == "tools/list":
+        if not _session_token:
+            return {
+                "jsonrpc": "2.0",
+                "id": req_id,
+                "error": {
+                    "code": -32002,
+                    "message": "Server not initialized"
+                }
+            }
+            
+        tools = TOOL_DEFINITIONS
+        if not _execution_enabled:
+            tools = [t for t in tools if t["name"] not in _EXECUTE_TOOLS]
+            
         return {
             "jsonrpc": "2.0",
             "id": req_id,
             "result": {
-                "tools": TOOL_DEFINITIONS
+                "tools": tools
             }
         }
     elif method == "tools/call":
+        if not _session_token:
+            return {
+                "jsonrpc": "2.0",
+                "id": req_id,
+                "error": {
+                    "code": -32002,
+                    "message": "Server not initialized"
+                }
+            }
+            
         name = params.get("name")
         args = params.get("arguments", {})
 
-        # Auth check: write and execute tools require session token
-        if name not in _READ_TOOLS:
-            client_token = args.get("_sessionToken")
-            if _session_token is not None and client_token != _session_token:
-                return {
-                    "jsonrpc": "2.0",
-                    "id": req_id,
-                    "error": {
-                        "code": -32600,
-                        "message": f"Authentication required for tool '{name}'. Provide _sessionToken from initialize response."
-                    }
-                }
+        if not isinstance(args, dict):
+            return _error(req_id, -32602, "Tool arguments must be an object.")
 
-        # Rate limit check
+        if name == "soma_request_receipt":
+            operation = args.get("operation")
+            if operation not in _EXECUTE_TOOLS and operation not in _WRITE_TOOLS:
+                return _error(req_id, -32602,
+                              f"Tool '{operation}' does not require a receipt or does not exist.")
+            if operation in _EXECUTE_TOOLS and not _execution_enabled:
+                return _error(req_id, -32600, "Execution capabilities are disabled.")
+            if not _canonical_workspace:
+                return _error(req_id, -32600, "Server workspace is not configured.")
+
+            # Bind the receipt to exactly what will be dispatched: the client
+            # arguments minus server-owned keys (workspace is always the
+            # operator-configured one), plus the current content of the target
+            # files and the governance cells. Any change before redemption
+            # makes the receipt stale.
+            op_args = strip_server_owned(args.get("arguments", {}))
+            try:
+                file_digest, cell_digest = _state_digests(op_args)
+            except ValueError as exc:
+                return _error(req_id, -32602, str(exc))
+            receipt_id = issue_receipt(
+                session_id=_session_token,
+                workspace=_canonical_workspace,
+                operation=operation,
+                args=op_args,
+                file_digest=file_digest,
+                cell_digest=cell_digest,
+                ttl_seconds=300
+            )
+            return {
+                "jsonrpc": "2.0",
+                "id": req_id,
+                "result": {
+                    "content": [{"type": "text", "text": json.dumps({"receipt": receipt_id})}],
+                    "isError": False
+                }
+            }
+
+        # The client never chooses the workspace, for read tools included:
+        # strip whatever it sent and dispatch against the canonical one.
+        receipt = args.get("receipt")
+        args = strip_server_owned(args)
+
+        # Rate limit check BEFORE consuming receipt
         if not _check_rate_limit(name):
             limit_info = _RATE_LIMITS.get(name, (0, 0))
             return {
@@ -174,6 +257,38 @@ def handle_request(request: Dict[str, Any]) -> Dict[str, Any]:
                     "message": f"Rate limit exceeded for '{name}': max {limit_info[0]} calls per {limit_info[1]}s"
                 }
             }
+
+        # Both EXECUTE and WRITE tools require a valid receipt
+        if name in _EXECUTE_TOOLS or name in _WRITE_TOOLS:
+            if name in _EXECUTE_TOOLS and not _execution_enabled:
+                return _error(req_id, -32600, "Execution capabilities are disabled.")
+            if not _canonical_workspace:
+                return _error(req_id, -32600, "Server workspace is not configured.")
+            if not receipt or not isinstance(receipt, str):
+                return _error(req_id, -32600, f"Tool '{name}' requires a valid 'receipt'.")
+
+            # Recompute the state digests now; a target file or cell edited
+            # since issuance no longer matches and the receipt is consumed.
+            try:
+                file_digest, cell_digest = _state_digests(args)
+            except ValueError as exc:
+                return _error(req_id, -32602, str(exc))
+            if not verify_receipt(
+                receipt_id=receipt,
+                session_id=_session_token,
+                workspace=_canonical_workspace,
+                operation=name,
+                args=args,
+                file_digest=file_digest,
+                cell_digest=cell_digest,
+                consume=True
+            ):
+                return _error(req_id, -32600, "Invalid, expired, or mismatched receipt.")
+
+        # Inject the operator-configured workspace only after verification, so
+        # the hashed arguments match issuance and dispatch cannot be redirected.
+        if _canonical_workspace:
+            args["workspace"] = _canonical_workspace
 
         try:
             # Tool implementations (and the enzymes they call) may print progress
@@ -225,6 +340,19 @@ def handle_request(request: Dict[str, Any]) -> Dict[str, Any]:
         }
 
 def run_stdio_server():
+    global _canonical_workspace
+    global _execution_enabled
+
+    workspace_env = os.environ.get("SOMA_WORKSPACE") or os.getcwd()
+    try:
+        from .security import confine_workspace
+        _canonical_workspace = confine_workspace(workspace_env)
+    except ValueError as e:
+        print(f"Error: Invalid canonical workspace: {e}", file=sys.stderr)
+        return 1
+        
+    _execution_enabled = os.environ.get("SOMA_EXECUTION_ENABLED") == "1"
+
     try:
         for line in sys.stdin:
             line = line.strip()

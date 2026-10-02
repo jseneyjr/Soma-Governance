@@ -97,7 +97,7 @@ def test_hook_scripts_resolve_their_directory(script, bash, tmp_path):
 
 # ── SOMA-H04: unencoded file I/O corrupts on non-UTF-8 locales ──────────
 
-OPEN_CALL = re.compile(r'\bopen\s*\(')
+OPEN_CALL = re.compile(r'(?<!\.)\bopen\s*\(')
 BINARY_MODE = re.compile(r'''['"][rwxa+t]*b[rwxa+t]*['"]''')
 
 
@@ -293,6 +293,32 @@ def test_powershell_uninstaller_exists():
     )
 
 
+def test_powershell_scripts_with_non_ascii_have_utf8_bom():
+    """Windows PowerShell 5.1 decodes BOM-less scripts as ANSI (cp1252): the
+    em-dash's trailing 0x94 byte becomes a closing quote and the installer
+    fails to parse at all."""
+    offenders = []
+    for path in iter_source_files(REPO_ROOT, (".ps1", ".psm1")):
+        with open(path, "rb") as f:
+            data = f.read()
+        if not data.isascii() and not data.startswith(b"\xef\xbb\xbf"):
+            offenders.append(os.path.relpath(path, REPO_ROOT))
+    assert not offenders, f"non-ASCII PowerShell scripts missing UTF-8 BOM: {offenders}"
+
+
+def test_powershell_mcp_platform_parity():
+    """install.ps1 must support MCP and bind it to the governed workspace."""
+    ps1 = os.path.join(REPO_ROOT, "install", "install.ps1")
+    if not os.path.exists(ps1):
+        pytest.skip("install.ps1 not present")
+
+    with open(ps1, "r", encoding="utf-8") as f:
+        content = f.read()
+
+    assert '"mcp" {' in content, "install.ps1 is missing the 'mcp' platform switch case"
+    assert re.search(r'"cwd"\s*=', content), "install.ps1 MCP generation is missing cwd"
+    assert '"SOMA_WORKSPACE"' in content, "install.ps1 MCP generation is missing SOMA_WORKSPACE"
+    assert '"SOMA_ROOT"' not in content, "install.ps1 still emits the obsolete SOMA_ROOT key"
 def test_rule_basenames_are_unique_when_flattened():
     """install.sh flattens genome/**/*.md into one directory, so a duplicate
     basename would silently overwrite, last write winning."""
@@ -351,6 +377,7 @@ def test_soma_mcp_has_no_unguarded_third_party_imports():
 def test_mcp_server_answers_jsonrpc_without_pyyaml(tmp_path):
     """SOMA-C01 end to end: initialize + tools/list must return valid JSON on a
     bare interpreter. Regression: ModuleNotFoundError, exit 1, 0 bytes stdout."""
+    (tmp_path / ".soma" / "cells").mkdir(parents=True)
     requests = (
         json.dumps({"jsonrpc": "2.0", "id": 1, "method": "initialize", "params": {}}) + "\n"
         + json.dumps({"jsonrpc": "2.0", "id": 2, "method": "tools/list", "params": {}}) + "\n"
@@ -375,15 +402,32 @@ def test_mcp_server_answers_jsonrpc_without_pyyaml(tmp_path):
 # ── SOMA-M07: one source of truth for the version ───────────────────────
 
 def test_version_is_single_sourced():
-    """SOMA-M07: the version was hardcoded in server.py as a third independent
-    copy alongside VERSION and pyproject.toml, with no test tying them."""
+    """SOMA-M07: all five version surfaces must agree with VERSION."""
     version_file = read(os.path.join(REPO_ROOT, "VERSION")).strip()
+
     pyproject = read(os.path.join(REPO_ROOT, "pyproject.toml"))
     match = re.search(r'^version\s*=\s*"([^"]+)"', pyproject, re.M)
     assert match, "no version in pyproject.toml"
     assert match.group(1) == version_file, (
         f"pyproject.toml ({match.group(1)}) != VERSION ({version_file})"
     )
+
+    python_sdk = read(os.path.join(REPO_ROOT, "soma_sdk", "__init__.py"))
+    sdk_match = re.search(r"^__version__\s*=\s*['\"]([^'\"]+)['\"]", python_sdk, re.M)
+    assert sdk_match and sdk_match.group(1) == version_file, (
+        f"Python SDK ({sdk_match.group(1) if sdk_match else 'missing'}) != VERSION ({version_file})"
+    )
+
+    js_sdk = json.loads(read(os.path.join(REPO_ROOT, "soma_sdk_js", "package.json")))
+    assert js_sdk.get("version") == version_file, (
+        f"JavaScript SDK ({js_sdk.get('version')}) != VERSION ({version_file})"
+    )
+
+    from soma_mcp.server import _server_version
+    assert _server_version() == version_file, (
+        f"MCP runtime ({_server_version()}) != VERSION ({version_file})"
+    )
+
     server = read(os.path.join(REPO_ROOT, "soma_mcp", "server.py"))
     assert f'"{version_file}"' not in server.replace('_server_version', ''), (
         "server.py still hardcodes the version string"

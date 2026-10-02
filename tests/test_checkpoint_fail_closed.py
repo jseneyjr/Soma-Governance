@@ -1,0 +1,144 @@
+"""Fail-closed and read-only regression tests for CLI/MCP checkpoint."""
+import argparse
+import os
+from pathlib import Path
+
+import pytest
+
+from immune_system.verification import checkpoint_checks
+
+
+def _write_wall(root, content=None):
+    path = root / '.soma' / 'cells' / 'walls' / 'wall-test.md'
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(content or (
+        '---\n'
+        'id: wall-test\n'
+        'domain: testing\n'
+        'type: wall\n'
+        'enforcement: gate\n'
+        '---\n'
+        '# Test wall\n'
+    ), encoding='utf-8')
+    return path
+
+
+def _snapshot(root):
+    """Capture path set, file bytes, and symlink targets without following links."""
+    result = {}
+
+    def visit(directory):
+        with os.scandir(directory) as entries:
+            for entry in sorted(entries, key=lambda item: item.name):
+                path = Path(entry.path)
+                rel = path.relative_to(root).as_posix()
+                if entry.is_symlink():
+                    result[rel] = ('symlink', os.readlink(entry.path))
+                elif entry.is_dir(follow_symlinks=False):
+                    result[rel] = ('directory', None)
+                    visit(path)
+                else:
+                    result[rel] = ('file', path.read_bytes())
+
+    visit(root)
+    return result
+
+
+def test_hardcoded_path_read_failure_is_an_issue(tmp_path, monkeypatch):
+    source = tmp_path / 'src' / 'app.py'
+    source.parent.mkdir()
+    source.write_text('VALUE = 1\n', encoding='utf-8')
+    real_read_text = Path.read_text
+
+    def denied(path, *args, **kwargs):
+        if path == source:
+            raise PermissionError('simulated read denial')
+        return real_read_text(path, *args, **kwargs)
+
+    monkeypatch.setattr(Path, 'read_text', denied)
+    issues = checkpoint_checks.check_hardcoded_paths(tmp_path)
+    assert any(
+        issue['check'] == 'hardcoded_paths'
+        and issue.get('file') == 'src/app.py'
+        and 'read' in issue['message'].lower()
+        for issue in issues
+    )
+
+
+def test_cell_stat_failure_is_an_issue(tmp_path, monkeypatch):
+    import soma_core.cell_inventory as inventory
+
+    cell = _write_wall(tmp_path)
+    real_stat = inventory.os.stat
+
+    def denied(path, *args, **kwargs):
+        if os.fspath(path) == str(cell):
+            raise PermissionError('simulated stat denial')
+        return real_stat(path, *args, **kwargs)
+
+    monkeypatch.setattr(inventory.os, 'stat', denied)
+    issues = checkpoint_checks.check_cell_conventions(tmp_path)
+    assert any(
+        issue['check'] == 'cell_conventions'
+        and issue.get('file') == '.soma/cells/walls/wall-test.md'
+        and 'stat' in issue['message'].lower()
+        for issue in issues
+    )
+
+
+@pytest.mark.parametrize('content, expected', [
+    ('---\nid: [unterminated\n---\nbody\n', 'malformed'),
+    ('---\n- one\n- two\n---\nbody\n', 'mapping'),
+    ('---\nid: wall-test\n', 'unterminated'),
+])
+def test_malformed_cell_frontmatter_is_an_issue(tmp_path, content, expected):
+    _write_wall(tmp_path, content)
+    issues = checkpoint_checks.check_cell_conventions(tmp_path)
+    assert any(
+        issue['check'] == 'cell_conventions'
+        and expected in issue['message'].lower()
+        for issue in issues
+    ), issues
+
+
+def _run_cli(root):
+    from soma_cli.checkpoint import run_checkpoint
+
+    return run_checkpoint(argparse.Namespace(
+        workspace=str(root), pre_commit=False, strict=True, json=False,
+    ))
+
+
+def _run_mcp(root, monkeypatch):
+    from soma_mcp.tools import execute_tool
+
+    monkeypatch.setattr('soma_mcp.tools.confine_workspace', lambda path: str(root))
+    return execute_tool('soma_checkpoint', {'workspace': str(root)})
+
+
+@pytest.mark.parametrize('runner', ['cli', 'mcp'])
+@pytest.mark.parametrize('malformed', [False, True], ids=['pass', 'fail'])
+def test_checkpoint_is_recursively_read_only_on_pass_and_fail(
+    tmp_path, monkeypatch, runner, malformed, capsys
+):
+    content = '---\nid: [unterminated\n---\nbody\n' if malformed else None
+    _write_wall(tmp_path, content)
+    marker = tmp_path / '.marker'
+    marker.write_bytes(b'unchanged bytes\x00\xff')
+    external = tmp_path.parent / f'{tmp_path.name}-external'
+    external.mkdir()
+    link = tmp_path / '.snapshot-link'
+    try:
+        link.symlink_to(external, target_is_directory=True)
+    except (OSError, NotImplementedError):
+        pytest.skip('symlinks are unavailable')
+
+    before = _snapshot(tmp_path)
+    result = _run_cli(tmp_path) if runner == 'cli' else _run_mcp(tmp_path, monkeypatch)
+    after = _snapshot(tmp_path)
+
+    assert after == before
+    if runner == 'cli':
+        assert result == (1 if malformed else 0)
+    else:
+        assert result['status'] == ('FAIL' if malformed else 'PASS')

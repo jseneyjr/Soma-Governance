@@ -1,8 +1,8 @@
-"""Fitness updater: extract session evidence and update cell fitness data.
+"""Fitness updater: extract session evidence and update canonical signals.
 
 Reads an agent session transcript (JSONL), identifies which files were modified,
-matches those files against cell target_paths globs, and appends fitness records
-to .soma/evidence/fitness.jsonl.
+matches those files against cell target_paths globs, and appends trigger signals
+to .soma/evidence/signals.jsonl.
 
 Usage:
     python3 enzymes/fitness_updater.py <transcript_path> [--platform NAME] [--cells-dir DIR] [--evidence-dir DIR] [--repo-root DIR]
@@ -12,10 +12,6 @@ import json
 import os
 import sys
 import fnmatch
-try:
-    import fcntl
-except ImportError:
-    fcntl = None  # type: ignore[assignment]  # Windows fallback
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -233,84 +229,44 @@ def match_cells(modified_files, cells_dir, repo_root=""):
 
 
 def update_fitness(triggered_cells, transcript_id, evidence_dir):
-    """Append fitness records to fitness.jsonl with idempotency.
+    """Atomically record every cell triggered by one transcript.
 
-    Args:
-        triggered_cells: List of dicts from match_cells().
-        transcript_id: Unique identifier for the session.
-        evidence_dir: Path to .soma/evidence/.
+    Per-cell deterministic identities allow a retry to retain already durable
+    cells while adding any missing cells, without treating one row as proof
+    that the entire transcript batch completed.
     """
+    if not triggered_cells:
+        return []
+
     evidence_dir = Path(evidence_dir)
     evidence_dir.mkdir(parents=True, exist_ok=True)
+    workspace = str(evidence_dir.parent.parent)  # .soma/evidence → repo root
 
-    ledger_path = evidence_dir / "sessions_processed.jsonl"
-    fitness_path = evidence_dir / "fitness.jsonl"
-    lock_path = evidence_dir / ".fitness.lock"
-
-    # Unified lock: protects idempotency check + both file writes
-    # as a single atomic transaction to prevent TOCTOU races and
-    # partial writes on crash between fitness.jsonl and ledger.
-    lock_fd = open(lock_path, "a", encoding="utf-8")
     try:
-        if fcntl is not None:
-            fcntl.flock(lock_fd, fcntl.LOCK_EX)
+        from soma_sdk.telemetry import append_signals, read_generation
+    except ImportError:
+        print("Failed to import soma_sdk.telemetry. Unified evidence write skipped.")
+        return []
 
-        # Idempotency check (under lock to prevent TOCTOU)
-        if ledger_path.exists():
-            for line in ledger_path.read_text(encoding="utf-8").splitlines():
-                if not line.strip():
-                    continue
-                try:
-                    record = json.loads(line)
-                    if record.get("transcript_id") == transcript_id:
-                        return  # Already processed
-                except (json.JSONDecodeError, ValueError):
-                    continue
-
-        now = datetime.now(timezone.utc).isoformat()
-
-        # Append trigger signals via unified telemetry
-        if triggered_cells:
-            try:
-                from soma_sdk.telemetry import append_signal
-                workspace = str(evidence_dir.parent.parent)  # .soma/evidence → repo root
-                for cell in triggered_cells:
-                    append_signal(
-                        workspace=workspace,
-                        cell_name=cell["cell_id"],
-                        signal_type='trigger',
-                        source='session',
-                        metadata={
-                            'transcript_id': transcript_id,
-                            'matched_files': cell.get("matched_files", []),
-                        },
-                    )
-            except ImportError:
-                # Fallback: write directly if telemetry module unavailable
-                fitness_path = evidence_dir / "fitness.jsonl"
-                with open(fitness_path, "a", encoding="utf-8") as f:
-                    for cell in triggered_cells:
-                        record = {
-                            "cell_id": cell["cell_id"],
-                            "transcript_id": transcript_id,
-                            "triggered_at": now,
-                            "matched_files": cell.get("matched_files", []),
-                        }
-                        f.write(json.dumps(record) + "\n")
-
-        # Record session as processed (same lock scope as fitness write)
-        with open(ledger_path, "a", encoding="utf-8") as f:
-            ledger_record = {
-                "transcript_id": transcript_id,
-                "processed_at": now,
-                "cells_triggered": len(triggered_cells),
-            }
-            f.write(json.dumps(ledger_record) + "\n")
-
-    finally:
-        if fcntl is not None:
-            fcntl.flock(lock_fd, fcntl.LOCK_UN)
-        lock_fd.close()
+    # Fence the complete batch on the generation observed at run start.
+    generation = read_generation(workspace)
+    events = [
+        {
+            'cell_name': cell['cell_id'],
+            'signal_type': 'trigger',
+            'source': 'session',
+            'metadata': {
+                'transcript_id': transcript_id,
+                'matched_files': cell.get('matched_files', []),
+            },
+            'principal': 'fitness_updater',
+            'idempotency_scope': 'transcript',
+            'idempotency_key': f"{transcript_id}:{cell['cell_id']}",
+        }
+        for cell in triggered_cells
+    ]
+    return append_signals(
+        workspace, events, expected_generation=generation)
 
 
 def main():
@@ -347,7 +303,7 @@ def main():
         print(f"    - {t['cell_id']} ({len(t['matched_files'])} files)")
 
     update_fitness(triggered, transcript_id, evidence_dir)
-    print(f"  Fitness updated: {evidence_dir / 'fitness.jsonl'}")
+    print(f"  Fitness updated: {evidence_dir / 'signals.jsonl'}")
 
     # Sync JSONL evidence → cell frontmatter
     try:

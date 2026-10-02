@@ -32,6 +32,28 @@ def _wilson_interval(tp: int, total: int, z: float = 1.645) -> Tuple[float, floa
     return max(0.0, center - spread), min(1.0, center + spread)
 
 
+def _to_num(val, default=0.0):
+    if val is None or isinstance(val, bool):
+        return default
+    if isinstance(val, (int, float)):
+        return max(0.0, float(val)) if math.isfinite(val) else default
+    if isinstance(val, str):
+        val = val.strip()
+        if '/' in val:
+            try:
+                from fractions import Fraction
+                f = float(Fraction(val))
+                return max(0.0, f) if math.isfinite(f) else default
+            except Exception:
+                return default
+        try:
+            f = float(val)
+            return max(0.0, f) if math.isfinite(f) else default
+        except Exception:
+            return default
+    return default
+
+
 def bayesian_posterior(
     tp: int,
     fp: int,
@@ -50,6 +72,8 @@ def bayesian_posterior(
     Returns:
         Dict with keys: mean, lower, lower_90, upper, upper_90, certainty, n.
     """
+    tp = _to_num(tp)
+    fp = _to_num(fp)
     a = tp + 0.5
     b = fp + 0.5
     mean = a / (a + b)
@@ -87,7 +111,7 @@ def laplace_score(
     Returns:
         Smoothed score in [0, 1] × impact_weight.
     """
-    return ((int(tp) + 1) / (int(triggers) + 2)) * float(impact_weight)
+    return ((_to_num(tp) + 1.0) / (_to_num(triggers) + 2.0)) * float(impact_weight)
 
 
 # Deprecated alias — external scripts importing bayesian_score won't break

@@ -14,9 +14,14 @@
     "schema_drift": "Expected vs actual data shape mismatch",
     "silent_failure": "Error swallowed without logging or effect",
     "mapping_error": "Wrong value translation or type coercion",
-    "dead_code": "Code that writes to a file or endpoint nothing reads"
+    "dead_code": "Code that writes to a file or endpoint nothing reads",
+    "platform_compat": "Code assumes one OS or runtime (POSIX-only modules, default text encodings, path separators, shell availability)"
   },
-  "severity_levels": ["critical", "moderate", "low"],
+  "severity_levels": [
+    "critical",
+    "moderate",
+    "low"
+  ],
   "bugs": [
     {
       "id": "BUG-001",
@@ -26,7 +31,9 @@
       "root_cause": "path_error",
       "severity": "critical",
       "description": "outcome_engine.py read outcomes from .soma/outcomes.jsonl instead of the canonical .soma/evidence/outcomes.jsonl path.",
-      "affected_files": ["enzymes/outcome_engine.py"],
+      "affected_files": [
+        "enzymes/outcome_engine.py"
+      ],
       "regression_test": "tests/test_telemetry_bugfixes.py::TestBug1OutcomeEnginePath::test_reads_from_evidence_dir",
       "pattern": "Hardcoded paths diverge from actual evidence directory structure",
       "changelog_ref": "v0.81.0"
@@ -39,7 +46,9 @@
       "root_cause": "schema_drift",
       "severity": "critical",
       "description": "outcome_engine.py expected cells_used (list) but MCP tools wrote cell_id (string). Both schemas were valid in different writers.",
-      "affected_files": ["enzymes/outcome_engine.py"],
+      "affected_files": [
+        "enzymes/outcome_engine.py"
+      ],
       "regression_test": "tests/test_telemetry_bugfixes.py::TestBug2OutcomeEngineSchema::test_cell_id_schema_matches",
       "pattern": "Multiple writers produce different schemas for the same data, reader expects only one",
       "changelog_ref": "v0.81.0"
@@ -52,7 +61,9 @@
       "root_cause": "mapping_error",
       "severity": "critical",
       "description": "sync.py did not map success/failure outcome strings to tp/fp counters. Agent-reported outcomes were silently dropped.",
-      "affected_files": ["soma_cli/sync.py"],
+      "affected_files": [
+        "soma_cli/sync.py"
+      ],
       "regression_test": "tests/test_telemetry_bugfixes.py::TestBug3SyncOutcomeMapping::test_success_mapped_to_tp",
       "pattern": "Outcome value vocabulary not shared between writer and reader",
       "changelog_ref": "v0.81.0"
@@ -65,7 +76,9 @@
       "root_cause": "silent_failure",
       "severity": "moderate",
       "description": "When a cell had triggers but zero tp/fp records, sync.py set score = 0.0 instead of preserving the existing score. Un-evaluated cells were treated as 100% failures.",
-      "affected_files": ["soma_cli/sync.py"],
+      "affected_files": [
+        "soma_cli/sync.py"
+      ],
       "regression_test": "tests/test_sync_bugfix4.py::TestBug4ScoreClobber::test_score_preserved_when_no_outcomes",
       "pattern": "Absence of evidence treated as evidence of absence",
       "changelog_ref": "v0.82.0"
@@ -78,7 +91,10 @@
       "root_cause": "dead_code",
       "severity": "moderate",
       "description": "outcome_engine.py and cell_selection.sh wrote to .soma/cells/fitness.jsonl but nothing read it. The canonical evidence ledger was at .soma/evidence/fitness.jsonl.",
-      "affected_files": ["enzymes/outcome_engine.py", "enzymes/cell_selection.sh"],
+      "affected_files": [
+        "enzymes/outcome_engine.py",
+        "enzymes/cell_selection.sh"
+      ],
       "regression_test": "tests/test_credit_assignment.py::TestSignalProvenance::test_jsonl_entry_has_credit_weight",
       "pattern": "Writer and reader disagree on canonical file location",
       "changelog_ref": "v0.82.0"
@@ -91,10 +107,149 @@
       "root_cause": "schema_drift",
       "severity": "moderate",
       "description": "diagnose_hot_zones.py used dict | None union type syntax (PEP 604) which requires Python 3.10+. CI matrix includes Python 3.9, causing TypeError during test collection.",
-      "affected_files": ["enzymes/diagnose_hot_zones.py"],
+      "affected_files": [
+        "enzymes/diagnose_hot_zones.py"
+      ],
       "regression_test": "tests/test_diagnose_hot_zones.py::TestRunDiagnostic::test_real_workspace_runs",
       "pattern": "Type annotation syntax incompatible with minimum supported Python version",
       "changelog_ref": "v0.85.1"
+    },
+    {
+      "id": "BUG-008",
+      "issue_url": "https://github.com/nseney1/Soma-Governance/issues/45",
+      "status": "fixed",
+      "title": "MCP server crashes on Windows: unconditional `import fcntl`",
+      "discovered_in": "v0.88.2",
+      "root_cause": "platform_compat",
+      "severity": "critical",
+      "description": "soma_mcp/tools.py (since v0.60) and soma_sdk/telemetry.py import fcntl unconditionally, so `python -m soma_mcp` exits with ModuleNotFoundError on Windows and MCP hosts get no Soma tools. v0.52 fixed this only in enzymes/fitness_updater.py. Fixed by guarding both imports with try/except ImportError and skipping flock when fcntl is None, matching fitness_updater.py. Appends are unlocked on Windows.",
+      "affected_files": [
+        "soma_mcp/tools.py",
+        "soma_sdk/telemetry.py"
+      ],
+      "pattern": "Fix applied to one call site of a shared pattern, not to all of them",
+      "fixed_in": "v0.89.0",
+      "regression_test": "tests/test_fcntl_optional.py::test_mcp_server_modules_import_without_fcntl",
+      "changelog_ref": "v0.89.0"
+    },
+    {
+      "id": "BUG-009",
+      "issue_url": "https://github.com/nseney1/Soma-Governance/issues/46",
+      "status": "fixed",
+      "title": "MCP write/execute tools unusable from MCP hosts: `_sessionToken` is only returned in serverInfo",
+      "discovered_in": "v0.88.2",
+      "root_cause": "schema_drift",
+      "severity": "critical",
+      "description": "Since v0.86 the server returns a per-process random token only as serverInfo._sessionToken and requires it as a tool argument for the 3 write tools and 6 execute tools. MCP hosts handle `initialize` themselves and don't pass serverInfo to the model, and the tool schemas don't declare the argument. So only the 5 read tools are usable, outcomes can't be reported, and fitness never evolves. Not platform-specific.",
+      "affected_files": [
+        "soma_mcp/server.py"
+      ],
+      "pattern": "Auth handshake designed for a direct client, not for the host-mediated MCP protocol",
+      "regression_test": "tests/test_mcp_dispatch.py::test_dispatch_flow_with_receipt",
+      "fix_commit": "059ed35",
+      "fixed_in": "v0.89.0",
+      "changelog_ref": "v0.89.0"
+    },
+    {
+      "id": "BUG-010",
+      "issue_url": "https://github.com/nseney1/Soma-Governance/issues/47",
+      "status": "open",
+      "title": "Windows Git Bash python3 stub and lifecycle isolation require native verification",
+      "discovered_in": "v0.52.0",
+      "root_cause": "path_error",
+      "severity": "critical",
+      "description": "Running pytest on Windows (Git Bash) rewrote ~/.claude/CLAUDE.md, created ~/.kiro (128 files), and overwrote ~/.soma/manifest.json and ~/.soma/backup in the real profile. Likely cause, not confirmed: install.sh resolves RESOLVED_HOME to the real profile instead of the test's temporary HOME. Knock-on: 10 test_install_lifecycle and 5 test_status failures. Not re-run on v0.88.2, because re-running would modify the real profile again. Related, confirmed on Windows: a python.org install has no python3.exe, so in Git Bash `python3` resolves to the App Installer stub. `command -v python3` succeeds, but running it exits 49 with no output. enzymes/common.sh install_hooks() therefore renders an empty hooks.json and skips hooks, and the other python3 calls in install/ and enzymes/*.sh fail. This does not cause the missing manifest: install_hooks runs inside an `if`, so set -e doesn't abort. The patched test helpers now set both HOME and USERPROFILE, and generated MCP configs probe importability, but native Windows/Git Bash execution has not been rerun and hook scripts still assume a usable python3 command. Keep open until native lifecycle tests pass without profile writes.",
+      "affected_files": [
+        "install/install.sh",
+        "tests/test_install_lifecycle.py",
+        "tests/test_status.py",
+        "enzymes/common.sh"
+      ],
+      "pattern": "Test isolation relies on HOME overrides that the code under test does not honor"
+    },
+    {
+      "id": "BUG-011",
+      "issue_url": "https://github.com/nseney1/Soma-Governance/issues/48",
+      "status": "fixed",
+      "title": "Windows PowerShell 5.1 cannot parse the PowerShell installers (no UTF-8 BOM)",
+      "discovered_in": "v0.51.0",
+      "root_cause": "platform_compat",
+      "severity": "moderate",
+      "description": "install.ps1, install/install.ps1 and install/uninstall.ps1 are UTF-8 without a BOM. Windows PowerShell 5.1, which `.\\install.ps1` runs on stock Windows, decodes them as cp1252. The em-dash's trailing 0x94 byte becomes a closing quote, so parsing fails and nothing is installed. CI misses this because validate.yml runs pwsh 7, which defaults to UTF-8. Fixed by saving the three .ps1 files as UTF-8 with BOM. A static test now requires a BOM on every non-ASCII .ps1, and the Windows CI job dry-runs the installer under Windows PowerShell 5.1.",
+      "affected_files": [
+        "install.ps1",
+        "install/install.ps1",
+        "install/uninstall.ps1",
+        ".github/workflows/validate.yml"
+      ],
+      "pattern": "CI tests a different runtime (pwsh 7) than the one users run (Windows PowerShell 5.1)",
+      "fixed_in": "v0.89.0",
+      "changelog_ref": "v0.89.0",
+      "regression_test": "tests/test_static_invariants.py::test_powershell_scripts_with_non_ascii_have_utf8_bom"
+    },
+    {
+      "id": "BUG-012",
+      "issue_url": "https://github.com/nseney1/Soma-Governance/issues/49",
+      "status": "open",
+      "title": "Implicit cp1252 encoding on Windows: `soma status` crash, list_cells garbles or silently drops cells",
+      "discovered_in": "v0.88.2",
+      "root_cause": "platform_compat",
+      "severity": "moderate",
+      "description": "soma status prints emoji to a cp1252 console and crashes with UnicodeEncodeError unless PYTHONIOENCODING=utf-8. soma_sdk/governance.py:89 calls read_text() with no encoding, so non-ASCII text comes back garbled. Inside `except Exception: pass` (line 95), any cell containing a byte cp1252 can't decode is silently dropped. Several tests in tests/test_rule_metadata.py also read files without an encoding (seen on v0.52). The pre-release review moved SDK/MCP cell listing to an explicit UTF-8 canonical inventory with visible diagnostics, fixing the silent-drop portion. The cp1252 console behavior of soma status remains open pending native Windows verification.",
+      "affected_files": [
+        "soma_cli/status.py",
+        "soma_sdk/governance.py",
+        "tests/test_rule_metadata.py"
+      ],
+      "pattern": "Relying on the platform default encoding instead of an explicit utf-8"
+    },
+    {
+      "id": "BUG-013",
+      "issue_url": "https://github.com/nseney1/Soma-Governance/issues/50",
+      "status": "open",
+      "title": "Windows-only test failures: path-separator assertions and verification contract tests",
+      "discovered_in": "v0.52.0",
+      "root_cause": "platform_compat",
+      "severity": "low",
+      "description": "3 tests in tests/test_init.py compare str(WindowsPath) against POSIX separators. test_mutation_tester::test_catches_tautological_test reports 0/2 survived on Windows, and 2 test_branch_coverage contract tests fail; cause not diagnosed. Not re-run on v0.88.2 because of BUG-010.",
+      "affected_files": [
+        "tests/test_init.py",
+        "tests/test_verification/test_mutation_tester.py",
+        "tests/test_verification/test_branch_coverage.py"
+      ],
+      "pattern": "Tests assert on OS-specific string forms"
+    },
+    {
+      "id": "BUG-014",
+      "issue_url": "https://github.com/nseney1/Soma-Governance/issues/48",
+      "status": "open",
+      "title": "PowerShell installer writes mojibake into generated rule files",
+      "discovered_in": "v0.51.0",
+      "root_cause": "platform_compat",
+      "severity": "moderate",
+      "description": "With the parse failure worked around, install/install.ps1 reads rule files with Get-Content and no -Encoding (lines 223, 259, 280, 306, 428 and the Get-ContentWithoutFrontmatter callers). PS 5.1 decodes UTF-8 as cp1252, which put 54 garbled sequences into the generated CLAUDE.md (for example the three-character mojibake that replaces an em-dash). The PowerShell installer also skips hooks, so post-session fitness updates never run on native Windows. The patched installer now uses explicit UTF8 on rule/config reads and preserves the PowerShell BOM, but native PS 5.1 output has not been rerun; hooks remain unsupported. Keep open until native lifecycle verification.",
+      "affected_files": [
+        "install/install.ps1"
+      ],
+      "pattern": "Relying on the platform default encoding instead of an explicit utf-8"
+    },
+    {
+      "id": "BUG-015",
+      "status": "fixed",
+      "title": "`soma checkpoint` / `soma sync` wipe cell fitness on a fresh clone (triggers\u21920, score\u2192null)",
+      "discovered_in": "v0.88.2",
+      "root_cause": "schema_drift",
+      "severity": "critical",
+      "description": "The evidence .gitignore excludes fitness.jsonl (trigger events) while outcomes.jsonl (170 tp/fp records) is committed. On a fresh clone, aggregate_evidence returns triggers=0 with tp>0 for each cell that has outcomes. sync_frontmatter then overwrites `triggers` with 0 and sets score = tp/t, which is None when t == 0. Running `soma checkpoint`, which the pre-commit hook runs, reset all 41 such cells in a clean worktree of develop. A check command thereby rewrites tracked cell files, and a pre-commit run can commit the wiped fitness. Fixed in the pre-release review by making checkpoint byte-for-byte read-only and rebuilding sync on the canonical signals ledger with independent dimension presence, atomic replacement, and fail-closed parse handling.",
+      "affected_files": [
+        "soma_cli/sync.py",
+        "soma_cli/checkpoint.py",
+        ".soma/evidence/.gitignore"
+      ],
+      "pattern": "Derived state recomputed from a partially-versioned evidence set overwrites the recorded state",
+      "fixed_in": "v0.89.0",
+      "regression_test": "tests/test_canonical_evidence_readers.py::test_sync_malformed_ledger_does_not_apply_partial_counts",
+      "changelog_ref": "v0.89.0"
     },
     {
       "id": "BUG-007",
@@ -104,10 +259,313 @@
       "root_cause": "schema_drift",
       "severity": "moderate",
       "description": "VERSION file was bumped but pyproject.toml was missed during the release procedure, causing CI pipeline failure on test_version_is_single_sourced.",
-      "affected_files": ["pyproject.toml", "VERSION"],
+      "affected_files": [
+        "pyproject.toml",
+        "VERSION"
+      ],
       "regression_test": "tests/test_static_invariants.py::test_version_is_single_sourced",
       "pattern": "Duplicated configuration values fall out of sync during manual procedures",
       "changelog_ref": "v0.88.2"
+    },
+    {
+      "id": "BUG-016",
+      "status": "fixed",
+      "title": "MCP canonical-workspace injection was unreachable; tools honoured a client-supplied workspace",
+      "discovered_in": "v0.89.0",
+      "fixed_in": "v0.89.0",
+      "root_cause": "dead_code",
+      "severity": "critical",
+      "description": "In soma_mcp/server.py the `args[\"workspace\"] = _canonical_workspace` assignment sat after the unconditional return of the soma_request_receipt branch, so it never ran. Handlers used `args.get('workspace')`, so a caller could request and redeem a receipt naming another Soma workspace and mutate it; read tools also accepted a client workspace. Fixed by stripping server-owned keys from every tool call and injecting the operator-configured workspace after receipt verification; privileged calls fail closed if no canonical workspace is configured.",
+      "affected_files": [
+        "soma_mcp/server.py",
+        "soma_core/receipts.py"
+      ],
+      "regression_test": "tests/test_mcp_receipt_binding.py::test_write_tool_cannot_be_redirected_to_another_workspace",
+      "pattern": "Security control placed after an unconditional return",
+      "changelog_ref": "v0.89.0"
+    },
+    {
+      "id": "BUG-017",
+      "status": "fixed",
+      "title": "MCP receipts were bound to empty file and cell digests",
+      "discovered_in": "v0.89.0",
+      "fixed_in": "v0.89.0",
+      "root_cause": "silent_failure",
+      "severity": "critical",
+      "description": "issue_receipt and verify_receipt were called with file_digest=\"\" and cell_digest=\"\", so editing the target file or the governance cells between issuance and redemption did not invalidate a receipt. Fixed by computing sha256 digests of the target paths named in the arguments and of every cell under .soma/cells at issuance, recomputing them at redemption, and rejecting paths that escape the workspace.",
+      "affected_files": [
+        "soma_mcp/server.py",
+        "soma_core/receipts.py"
+      ],
+      "regression_test": "tests/test_mcp_receipt_binding.py::test_receipt_is_stale_after_target_file_changes",
+      "pattern": "Integrity field populated with a constant placeholder",
+      "changelog_ref": "v0.89.0"
+    },
+    {
+      "id": "BUG-018",
+      "status": "fixed",
+      "title": "Telemetry event_id was computed but never enforced",
+      "discovered_in": "v0.89.0",
+      "fixed_in": "v0.89.0",
+      "root_cause": "dead_code",
+      "severity": "critical",
+      "description": "append_signal hashed an event_id but appended unconditionally, so retries duplicated evidence and a changed payload reused the id silently. Fixed: identity excludes signal type and metadata, a payload_digest is stored, and under a cross-process evidence lock an identical replay is a no-op while a different payload raises EventConflictError.",
+      "affected_files": [
+        "soma_sdk/telemetry.py"
+      ],
+      "regression_test": "tests/test_telemetry.py::TestIdempotentEventIdentity::test_same_key_same_payload_is_noop",
+      "pattern": "Idempotency key written but never read",
+      "changelog_ref": "v0.89.0"
+    },
+    {
+      "id": "BUG-019",
+      "status": "fixed",
+      "title": "Epoch migration did not convert, reconcile or fence evidence writers",
+      "discovered_in": "v0.89.0",
+      "fixed_in": "v0.89.0",
+      "root_cause": "silent_failure",
+      "severity": "critical",
+      "description": "run_epoch_migration copied fitness.jsonl and rewrote epoch_generation with a plain write. It did not convert legacy outcomes/fitness rows into signals.jsonl, reconcile counts, write atomically, or reject writers from the previous generation, and the telemetry lock check was check-then-act. Fixed: the cutover holds the evidence lock, snapshots every ledger with SHA256SUMS, converts rows with deterministic event ids (skipping MCP twins and already-migrated rows), aborts unchanged on a reconciliation mismatch, replaces files atomically, and stamps a generation that append_signal(expected_generation=...) enforces.",
+      "affected_files": [
+        "soma_cli/migration.py",
+        "soma_sdk/telemetry.py"
+      ],
+      "regression_test": "tests/test_migration.py::test_stale_generation_writer_rejected_after_cutover",
+      "pattern": "Lock-and-counter placeholder presented as a fenced migration",
+      "changelog_ref": "v0.89.0"
+    },
+    {
+      "id": "BUG-020",
+      "status": "fixed",
+      "title": "Human-insight cursor advanced before the insights were persisted",
+      "discovered_in": "v0.89.0",
+      "fixed_in": "v0.89.0",
+      "root_cause": "silent_failure",
+      "severity": "moderate",
+      "description": "capture_human_insight_signals wrote the byte-offset cursor before main() updated cell fitness or appended signals, so a crash or failed append permanently skipped those insights, and a partial trailing line could be skipped. Fixed by splitting read (no write, complete lines only) from an atomic commit that main() performs only after a successful update and append.",
+      "affected_files": [
+        "enzymes/outcome_engine.py"
+      ],
+      "regression_test": "tests/test_outcome_engine_insights.py::TestMainCursorCommitOrdering::test_crash_in_append_leaves_cursor_and_insight_is_reread",
+      "pattern": "Progress marker committed before the work it records",
+      "changelog_ref": "v0.89.0"
+    },
+    {
+      "id": "BUG-021",
+      "status": "fixed",
+      "title": "Uninstall manifest paths were confined by a lexical prefix check only",
+      "discovered_in": "v0.89.0",
+      "fixed_in": "v0.89.0",
+      "root_cause": "path_error",
+      "severity": "critical",
+      "description": "uninstall.sh accepted `$HOME/safe/../../outside/victim` and paths under a symlinked directory, skipped unsafe entries silently, never checked backup_dir, and did not re-check at the rm/sed sink. uninstall.ps1 only normalised separators. Fixed: both uninstallers validate every manifest field and the full removal plan against canonical allowed roots (no ./.. segments, no symlinked or reparse-point ancestors) before any mutation, fail closed, and re-check each path immediately before removal.",
+      "affected_files": [
+        "install/uninstall.sh",
+        "install/uninstall.ps1"
+      ],
+      "regression_test": "tests/test_uninstall_confinement.py::test_dotdot_escape_is_refused",
+      "pattern": "String prefix check used as path containment",
+      "changelog_ref": "v0.89.0"
+    },
+    {
+      "id": "BUG-022",
+      "status": "fixed",
+      "title": "quality_gate crashes on Python 3.14: ast.Str was removed",
+      "discovered_in": "v0.89.0",
+      "fixed_in": "v0.89.0",
+      "root_cause": "platform_compat",
+      "severity": "moderate",
+      "description": "immune_system/verification/quality_gate.py referenced ast.Str, removed in Python 3.14, so check_no_bare_pass raised AttributeError on stub test bodies. ast.Constant already covers string literals since Python 3.8.",
+      "affected_files": [
+        "immune_system/verification/quality_gate.py"
+      ],
+      "regression_test": "tests/test_quality_gate.py::TestCheckNoBarePass::test_no_bare_pass_fails_for_ellipsis_body",
+      "pattern": "Deprecated stdlib alias removed in a newer runtime",
+      "changelog_ref": "v0.89.0"
+    },
+    {
+      "id": "BUG-023",
+      "status": "fixed",
+      "title": "Release tested checkout code and published untested, unverified artifacts",
+      "discovered_in": "v0.89.0",
+      "fixed_in": "v0.89.0",
+      "root_cause": "schema_drift",
+      "severity": "critical",
+      "description": "validate.yml installed `ls dist/*.whl | head -n 1` but ran tests from the checkout, where pythonpath=['.'] shadows the wheel; publish.yml uploaded dist/* (including the never-tested sdist) without a digest check. Fixed: one build records SHA256SUMS; the sdist and the matrix-installed wheel are smoke-tested from outside the checkout in isolated mode with module origins asserted under site-packages; publish verifies digests and uploads only the verified files.",
+      "affected_files": [
+        ".github/workflows/validate.yml",
+        ".github/workflows/publish.yml",
+        ".github/scripts/verify_dist.py",
+        ".github/scripts/wheel_smoke.py"
+      ],
+      "regression_test": "tests/test_release_workflow.py::test_verify_dist_rejects_tampered_artifact",
+      "pattern": "Tested artifact and shipped artifact not provably identical",
+      "changelog_ref": "v0.89.0"
+    },
+    {
+      "id": "BUG-024",
+      "status": "fixed",
+      "title": "Canonical evidence batches were not atomic or retry-safe",
+      "discovered_in": "v0.89.0",
+      "fixed_in": "v0.89.0",
+      "root_cause": "silent_failure",
+      "severity": "critical",
+      "description": "Multi-cell producers appended one signal at a time; a failure after the first row left a partial batch, and MCP report_outcome dual-wrote a legacy outcomes row before signals. Fixed with append_signals: validate/dedupe the complete batch under one cross-process lock and atomically replace the ledger; report_outcome requires an idempotency key and writes only canonical signals.",
+      "affected_files": [
+        "soma_sdk/telemetry.py",
+        "soma_mcp/tools.py",
+        "enzymes/outcome_engine.py",
+        "enzymes/fitness_updater.py"
+      ],
+      "regression_test": "tests/test_evidence_transactions.py::test_report_outcome_batch_failure_then_same_key_retries_once",
+      "pattern": "Per-item appends used for an operation that must commit as one batch",
+      "changelog_ref": "v0.89.0"
+    },
+    {
+      "id": "BUG-025",
+      "status": "fixed",
+      "title": "Migration lease could be stolen from a live owner or delete a successor lock",
+      "discovered_in": "v0.89.0",
+      "fixed_in": "v0.89.0",
+      "root_cause": "silent_failure",
+      "severity": "critical",
+      "description": "An old mtime marked a lock stale even when os.kill proved its PID alive, and unconditional cleanup could unlink a replacement lock. The lock now carries an unpredictable owner token, live PIDs are never age-stolen, dead owners are reclaimable, and release unlinks only its own token.",
+      "affected_files": [
+        "soma_cli/migration.py"
+      ],
+      "regression_test": "tests/test_evidence_transactions.py::test_old_live_migration_owner_cannot_be_stolen",
+      "pattern": "Lease age treated as stronger evidence than live ownership",
+      "changelog_ref": "v0.89.0"
+    },
+    {
+      "id": "BUG-026",
+      "status": "fixed",
+      "title": "Active readers continued consuming retired evidence ledgers",
+      "discovered_in": "v0.89.0",
+      "fixed_in": "v0.89.0",
+      "root_cause": "schema_drift",
+      "severity": "critical",
+      "description": "Status, report, oracle, lifecycle, checkpoint and session-close readers disagreed on fitness.jsonl, outcomes.jsonl and signals.jsonl. A stdlib soma_core.evidence aggregator now provides canonical weighted signals, independent trigger/outcome dimensions, and structured parse errors; active readers use it while legacy files remain migration inputs only.",
+      "affected_files": [
+        "soma_core/evidence.py",
+        "soma_cli/report.py",
+        "soma_cli/status.py",
+        "enzymes/oracle_checkpoint.py",
+        "immune_system/verification/lifecycle.py"
+      ],
+      "regression_test": "tests/test_canonical_evidence_readers.py::test_owned_production_has_no_active_legacy_evidence_paths",
+      "pattern": "Writer migration completed without migrating all readers",
+      "changelog_ref": "v0.89.0"
+    },
+    {
+      "id": "BUG-027",
+      "status": "fixed",
+      "title": "Cell cache and receipt digest observed different or stale cell trees",
+      "discovered_in": "v0.89.0",
+      "fixed_in": "v0.89.0",
+      "root_cause": "schema_drift",
+      "severity": "critical",
+      "description": "The cache used a maximum float mtime and followed recursive glob symlinks while receipt hashing did not. Restored mtimes could serve stale governance, stat errors could return an empty inventory, and symlink directories escaped the digest boundary. The canonical cell inventory captures exact bytes, content fingerprints, and race metadata without following links; cache, receipts, MCP and SDK listing share it and fail closed.",
+      "affected_files": [
+        "soma_core/cell_inventory.py",
+        "soma_core/receipts.py",
+        "soma_mcp/cell_cache.py",
+        "soma_mcp/tools.py",
+        "soma_sdk/governance.py"
+      ],
+      "regression_test": "tests/test_cell_inventory_integration.py::test_sdk_and_mcp_direct_list_reject_symlinked_directory",
+      "pattern": "Security-sensitive consumers used different filesystem inventories",
+      "changelog_ref": "v0.89.0"
+    },
+    {
+      "id": "BUG-028",
+      "status": "fixed",
+      "title": "Checkpoint skipped unreadable and malformed inputs",
+      "discovered_in": "v0.89.0",
+      "fixed_in": "v0.89.0",
+      "root_cause": "silent_failure",
+      "severity": "critical",
+      "description": "Checkpoint treated source read/stat failures and malformed cell/evidence input as absence, allowing a pass on incomplete evidence. Checks now return path-bearing issues, reject symlink/non-regular inputs, consume canonical evidence, and remain recursively read-only on pass and fail.",
+      "affected_files": [
+        "immune_system/verification/checkpoint_checks.py"
+      ],
+      "regression_test": "tests/test_checkpoint_fail_closed.py::test_malformed_cell_frontmatter_is_an_issue",
+      "pattern": "Verification converted read/parse failure into a clean result",
+      "changelog_ref": "v0.89.0"
+    },
+    {
+      "id": "BUG-029",
+      "status": "fixed",
+      "title": "Generated MCP configs governed the checkout and clobbered other servers",
+      "discovered_in": "v0.89.0",
+      "fixed_in": "v0.89.0",
+      "root_cause": "path_error",
+      "severity": "critical",
+      "description": "Bash/PowerShell installers and soma init used SOMA_ROOT/source cwd or overwrote the whole MCP JSON. Generators now merge mcpServers.soma atomically, preserve unrelated keys/servers, bind cwd and SOMA_WORKSPACE to the governed project, and add a source PYTHONPATH fallback only when the package is not installed.",
+      "affected_files": [
+        "install/install.sh",
+        "install/install.ps1",
+        "soma_cli/init.py",
+        ".mcp.json.example"
+      ],
+      "regression_test": "tests/test_packaging_install_correctness.py::test_bash_mcp_generators_merge_and_target_project",
+      "pattern": "Installer configuration targeted its own source instead of the governed project",
+      "changelog_ref": "v0.89.0"
+    },
+    {
+      "id": "BUG-030",
+      "status": "fixed",
+      "title": "Distribution leaked project evidence and omitted the full genome",
+      "discovered_in": "v0.89.0",
+      "fixed_in": "v0.89.0",
+      "root_cause": "dead_code",
+      "severity": "critical",
+      "description": "The sdist recursively included .soma evidence/dreams/locks while the wheel omitted top-level genome rules, so source-hidden soma init --rules full failed. Packaging now prunes .soma, packages genome markdown as resources, synchronizes Python/JS versions, and the wheel/sdist smoke installs all full rules outside the checkout.",
+      "affected_files": [
+        "MANIFEST.in",
+        "pyproject.toml",
+        "genome/__init__.py",
+        "soma_cli/init.py",
+        "soma_sdk/__init__.py",
+        "soma_sdk_js/package.json"
+      ],
+      "regression_test": "tests/test_packaging_install_correctness.py::test_packaging_excludes_private_soma_state_and_includes_genome_package",
+      "pattern": "Source-tree tests concealed missing wheel data and private sdist data",
+      "changelog_ref": "v0.89.0"
+    },
+    {
+      "id": "BUG-031",
+      "status": "fixed",
+      "title": "Install ownership and manifestless cleanup could delete unrelated user configuration",
+      "discovered_in": "v0.89.0",
+      "fixed_in": "v0.89.0",
+      "root_cause": "path_error",
+      "severity": "critical",
+      "description": "PowerShell wrote no exact manifest and Bash manifestless fallback enrolled all Markdown/skills. Both installers now record exact ownership including MCP configs; uninstall removes only mcpServers.soma or source-owned names, preflights config JSON, and validates restore paths at the copy sink.",
+      "affected_files": [
+        "install/install.sh",
+        "install/install.ps1",
+        "install/uninstall.sh",
+        "install/uninstall.ps1"
+      ],
+      "regression_test": "tests/test_packaging_install_correctness.py::test_manifestless_uninstall_removes_only_repo_names",
+      "pattern": "Fallback discovery treated shared directories as exclusively owned",
+      "changelog_ref": "v0.89.0"
+    },
+    {
+      "id": "BUG-032",
+      "status": "open",
+      "title": "Native PowerShell installer does not install lifecycle hooks",
+      "discovered_in": "v0.89.0",
+      "root_cause": "platform_compat",
+      "severity": "moderate",
+      "description": "install.ps1 explicitly skips hooks because they require Bash. Rule/config UTF-8 reads and exact ownership are fixed statically, but full native PowerShell install/uninstall and hook parity have not been verified on Windows PowerShell 5.1 and 7.",
+      "affected_files": [
+        "install/install.ps1",
+        "install/uninstall.ps1",
+        ".github/workflows/validate.yml"
+      ],
+      "pattern": "Cross-platform support claimed while one platform omits a lifecycle subsystem"
     }
   ]
 }

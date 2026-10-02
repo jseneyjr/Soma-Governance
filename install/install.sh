@@ -100,6 +100,7 @@ fi
 INSTALLED_FILES=""
 INSTALLED_SKILLS=""
 INSTALLED_HOOKS=""
+INSTALLED_MCP_CONFIGS=""
 # Truthful scope. Only a branch that really wrote to project-local paths may
 # set this to "local"; the old code labelled every non-gemini --local install
 # "global" while still writing a global manifest.
@@ -108,6 +109,7 @@ INSTALL_SCOPE="global"
 record_installed_file()  { [ -n "${1:-}" ] && INSTALLED_FILES="${INSTALLED_FILES}$1"$'\n'; return 0; }
 record_installed_skill() { [ -n "${1:-}" ] && INSTALLED_SKILLS="${INSTALLED_SKILLS}$1"$'\n'; return 0; }
 record_installed_hook()  { [ -n "${1:-}" ] && INSTALLED_HOOKS="${INSTALLED_HOOKS}$1"$'\n'; return 0; }
+record_mcp_config()      { [ -n "${1:-}" ] && INSTALLED_MCP_CONFIGS="${INSTALLED_MCP_CONFIGS}$1"$'\n'; return 0; }
 
 # Newline-delimited paths on stdin -> JSON array. Escapes backslash and quote
 # so Windows paths and odd filenames cannot produce invalid JSON.
@@ -146,10 +148,11 @@ write_manifest() {
   [ "$m_repo" != "null" ] && m_repo="\"$m_repo\""
   
   # Exactly what this run wrote — never a scan of the destination directory.
-  local files_arr skills_arr hooks_arr
+  local files_arr skills_arr hooks_arr mcp_configs_arr
   files_arr="$(printf '%s' "$INSTALLED_FILES" | _json_array_from_lines)"
   skills_arr="$(printf '%s' "$INSTALLED_SKILLS" | _json_array_from_lines)"
   hooks_arr="$(printf '%s' "$INSTALLED_HOOKS" | _json_array_from_lines)"
+  mcp_configs_arr="$(printf '%s' "$INSTALLED_MCP_CONFIGS" | _json_array_from_lines)"
   
   local ts=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
   local backup_path=${BACKUP_DIR:-null}
@@ -172,9 +175,73 @@ write_manifest() {
   "backup_dir": $backup_path,
   "files": $files_arr,
   "organs": $skills_arr,
-  "hooks": $hooks_arr
+  "hooks": $hooks_arr,
+  "mcp_configs": $mcp_configs_arr
 }
 EOF
+}
+
+# Merge only mcpServers.soma and preserve every unrelated key/server. The
+# governed workspace is both the server cwd and SOMA_WORKSPACE. A normal
+# installed package is preferred; source-checkout installs add PYTHONPATH only
+# when `python3 -m soma_mcp` is otherwise unavailable from that workspace.
+merge_mcp_config() {
+  local config_file="$1" workspace="$2" source_fallback=""
+  if ! command -v python3 >/dev/null 2>&1; then
+    log_error "python3 is required to safely merge MCP JSON configuration."
+    return 1
+  fi
+  if ! (cd "$workspace" && python3 -c 'import soma_mcp' >/dev/null 2>&1); then
+    source_fallback="$REPO_DIR"
+  fi
+  SOMA_MCP_FILE="$config_file" SOMA_WORKSPACE="$workspace" \
+    SOMA_SOURCE_FALLBACK="$source_fallback" python3 - <<'PY'
+import json
+import os
+import stat
+import tempfile
+
+path = os.environ["SOMA_MCP_FILE"]
+workspace = os.environ["SOMA_WORKSPACE"]
+fallback = os.environ.get("SOMA_SOURCE_FALLBACK", "")
+if os.path.exists(path):
+    with open(path, "r", encoding="utf-8") as handle:
+        data = json.load(handle)
+    if not isinstance(data, dict):
+        raise ValueError("MCP configuration root must be a JSON object")
+else:
+    data = {}
+servers = data.get("mcpServers")
+if servers is None:
+    servers = {}
+    data["mcpServers"] = servers
+elif not isinstance(servers, dict):
+    raise ValueError("MCP configuration field 'mcpServers' must be a JSON object")
+env = {"SOMA_WORKSPACE": workspace}
+if fallback:
+    env["PYTHONPATH"] = fallback
+servers["soma"] = {
+    "command": "python3",
+    "args": ["-m", "soma_mcp"],
+    "cwd": workspace,
+    "env": env,
+}
+parent = os.path.dirname(path) or "."
+fd, temp_path = tempfile.mkstemp(prefix=".soma-mcp-", dir=parent, text=True)
+try:
+    with os.fdopen(fd, "w", encoding="utf-8") as handle:
+        json.dump(data, handle, indent=2)
+        handle.write("\n")
+    if os.path.exists(path):
+        os.chmod(temp_path, stat.S_IMODE(os.stat(path).st_mode))
+    os.replace(temp_path, path)
+except Exception:
+    try:
+        os.unlink(temp_path)
+    except FileNotFoundError:
+        pass
+    raise
+PY
 }
 
 SOURCE_DIR="$REPO_DIR/genome"
@@ -392,33 +459,22 @@ case "$PLATFORM" in
 
     if [ "$LOCAL_INSTALL" = "true" ]; then
       KIRO_MCP_DIR="$(pwd)/.kiro/settings"
-      KIRO_ROOT="$(pwd)"
     else
       KIRO_MCP_DIR="$RESOLVED_HOME/.kiro/settings"
-      KIRO_ROOT="$RESOLVED_HOME"
     fi
+    # The settings file may be global, but the server always governs the
+    # project from which the installer was invoked, never the source checkout
+    # or the user's entire home directory.
+    KIRO_ROOT="$(pwd)"
     [ "$DRY_RUN" = "true" ] || mkdir -p "$KIRO_MCP_DIR"
     KIRO_MCP_FILE="$KIRO_MCP_DIR/mcp.json"
     if [ "$DRY_RUN" = "true" ]; then
       log_info "[dry-run] would create/update mcp.json at $(normalize_path "$KIRO_MCP_FILE")"
     else
       backup_file "$KIRO_MCP_FILE"
-      cat > "$KIRO_MCP_FILE" <<EOF
-{
-  "mcpServers": {
-    "soma": {
-      "command": "python3",
-      "args": ["-m", "soma_mcp"],
-      "cwd": "$REPO_DIR",
-      "env": {
-        "SOMA_ROOT": "$KIRO_ROOT"
-      }
-    }
-  }
-}
-EOF
-      record_installed_file "$KIRO_MCP_FILE"
-      log_info "created mcp.json"
+      merge_mcp_config "$KIRO_MCP_FILE" "$KIRO_ROOT"
+      record_mcp_config "$KIRO_MCP_FILE"
+      log_info "merged soma into mcp.json"
     fi
 
     echo ""
@@ -593,9 +649,9 @@ EOF
         log_info "[dry-run] would create/update .mcp.json at $(normalize_path "$MCP_FILE")"
       else
         backup_file "$MCP_FILE"
-        echo '{"mcpServers": {"soma": {"command": "python3", "args": ["-m", "soma_mcp"], "cwd": "'"$REPO_DIR"'", "env": {"SOMA_ROOT": "'"$TARGET_DIR"'"}}}}' > "$MCP_FILE"
-        record_installed_file "$MCP_FILE"
-        log_info "created .mcp.json"
+        merge_mcp_config "$MCP_FILE" "$TARGET_DIR"
+        record_mcp_config "$MCP_FILE"
+        log_info "merged soma into .mcp.json"
       fi
     fi
 
@@ -627,22 +683,9 @@ EOF
       log_info "[dry-run] would create/update .mcp.json at $(normalize_path "$MCP_FILE")"
     else
       backup_file "$MCP_FILE"
-      cat > "$MCP_FILE" <<EOF
-{
-  "mcpServers": {
-    "soma": {
-      "command": "python3",
-      "args": ["-m", "soma_mcp"],
-      "cwd": "$REPO_DIR",
-      "env": {
-        "SOMA_ROOT": "$TARGET_DIR"
-      }
-    }
-  }
-}
-EOF
-      record_installed_file "$MCP_FILE"
-      log_info "created .mcp.json"
+      merge_mcp_config "$MCP_FILE" "$TARGET_DIR"
+      record_mcp_config "$MCP_FILE"
+      log_info "merged soma into .mcp.json"
     fi
 
     echo ""

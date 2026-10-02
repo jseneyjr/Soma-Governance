@@ -5,7 +5,7 @@
       "args": ["-m", "soma_mcp"],
       "cwd": ".",
       "env": {
-        "SOMA_ROOT": "."
+        "SOMA_WORKSPACE": "."
       }
     }
   }

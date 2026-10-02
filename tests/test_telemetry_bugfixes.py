@@ -25,10 +25,10 @@ class TestBug1OutcomeEnginePath:
         # Write to the CORRECT path
         evidence_dir = tmp_path / '.soma' / 'evidence'
         evidence_dir.mkdir(parents=True)
-        outcomes_file = evidence_dir / 'outcomes.jsonl'
+        signals_file = evidence_dir / 'signals.jsonl'
         record = {'cell_id': 'trap-example', 'outcome': 'success',
                   'timestamp': '2026-10-01T00:00:00Z'}
-        outcomes_file.write_text(json.dumps(record) + '\n', encoding='utf-8')
+        signals_file.write_text(json.dumps(record) + '\n', encoding='utf-8')
 
         results = capture_mcp_outcomes(str(tmp_path))
         assert len(results) == 1
@@ -103,10 +103,10 @@ class TestBug3SyncOutcomeMapping:
         from soma_cli.sync import aggregate_evidence
 
         evidence_dir = str(tmp_path)
-        outcomes_file = tmp_path / 'outcomes.jsonl'
+        signals_file = tmp_path / 'signals.jsonl'
         record = {'cell_id': 'trap-example', 'outcome': 'success',
                   'timestamp': '2026-10-01T00:00:00Z'}
-        outcomes_file.write_text(json.dumps(record) + '\n', encoding='utf-8')
+        signals_file.write_text(json.dumps(record) + '\n', encoding='utf-8')
 
         counts = aggregate_evidence(evidence_dir)
         assert counts['trap-example']['tp'] == 1
@@ -116,10 +116,10 @@ class TestBug3SyncOutcomeMapping:
         from soma_cli.sync import aggregate_evidence
 
         evidence_dir = str(tmp_path)
-        outcomes_file = tmp_path / 'outcomes.jsonl'
+        signals_file = tmp_path / 'signals.jsonl'
         record = {'cell_id': 'trap-example', 'outcome': 'failure',
                   'timestamp': '2026-10-01T00:00:00Z'}
-        outcomes_file.write_text(json.dumps(record) + '\n', encoding='utf-8')
+        signals_file.write_text(json.dumps(record) + '\n', encoding='utf-8')
 
         counts = aggregate_evidence(evidence_dir)
         assert counts['trap-example']['fp'] == 1
@@ -129,12 +129,12 @@ class TestBug3SyncOutcomeMapping:
         from soma_cli.sync import aggregate_evidence
 
         evidence_dir = str(tmp_path)
-        outcomes_file = tmp_path / 'outcomes.jsonl'
+        signals_file = tmp_path / 'signals.jsonl'
         lines = [
             json.dumps({'cell_id': 'cell-a', 'outcome': 'tp'}),
             json.dumps({'cell_id': 'cell-a', 'outcome': 'fp'}),
         ]
-        outcomes_file.write_text('\n'.join(lines) + '\n', encoding='utf-8')
+        signals_file.write_text('\n'.join(lines) + '\n', encoding='utf-8')
 
         counts = aggregate_evidence(evidence_dir)
         assert counts['cell-a']['tp'] == 1
@@ -145,10 +145,10 @@ class TestBug3SyncOutcomeMapping:
         from soma_cli.sync import aggregate_evidence
 
         evidence_dir = str(tmp_path)
-        outcomes_file = tmp_path / 'outcomes.jsonl'
+        signals_file = tmp_path / 'signals.jsonl'
         record = {'cell_id': 'trap-example', 'outcome': 'partial',
                   'timestamp': '2026-10-01T00:00:00Z'}
-        outcomes_file.write_text(json.dumps(record) + '\n', encoding='utf-8')
+        signals_file.write_text(json.dumps(record) + '\n', encoding='utf-8')
 
         counts = aggregate_evidence(evidence_dir)
         assert counts['trap-example']['tp'] == 0

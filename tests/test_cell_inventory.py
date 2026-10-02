@@ -1,0 +1,91 @@
+"""Regression tests for the canonical governance-cell inventory."""
+import os
+
+import pytest
+
+
+def _write_cell(path, cell_id="cell-a"):
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(
+        "---\n"
+        f"id: {cell_id}\n"
+        "domain: testing\n"
+        "type: wall\n"
+        "enforcement: gate\n"
+        "target_paths: ['src/*.py']\n"
+        "---\n"
+        "# Rule\n",
+        encoding="utf-8",
+    )
+
+
+def test_inventory_is_stable_and_captures_exact_bytes(tmp_path):
+    from soma_core.cell_inventory import inventory_cells
+
+    first_path = tmp_path / ".soma" / "cells" / "walls" / "b.md"
+    second_path = tmp_path / ".soma" / "cells" / "vacuoles" / "a.md"
+    _write_cell(first_path, "b")
+    _write_cell(second_path, "a")
+
+    first = inventory_cells(str(tmp_path))
+    second = inventory_cells(str(tmp_path))
+
+    assert [entry.relative_path for entry in first.entries] == [
+        ".soma/cells/vacuoles/a.md",
+        ".soma/cells/walls/b.md",
+    ]
+    assert first.fingerprint == second.fingerprint
+    assert first.entries == second.entries
+    for entry in first.entries:
+        assert os.path.isabs(entry.absolute_path)
+        assert entry.size == len(entry.content)
+        assert len(entry.digest) == 64
+        assert entry.content == open(entry.absolute_path, "rb").read()
+
+
+def test_missing_cells_directory_has_stable_empty_inventory(tmp_path):
+    from soma_core.cell_inventory import inventory_cells
+
+    inventory = inventory_cells(str(tmp_path))
+    assert inventory.entries == ()
+    assert len(inventory.fingerprint) == 64
+
+
+def test_symlinked_cell_is_rejected(tmp_path):
+    from soma_core.cell_inventory import CellInventoryError, inventory_cells
+
+    outside = tmp_path / "outside.md"
+    _write_cell(outside, "outside")
+    link = tmp_path / ".soma" / "cells" / "walls" / "linked.md"
+    link.parent.mkdir(parents=True)
+    try:
+        link.symlink_to(outside)
+    except (OSError, NotImplementedError):
+        pytest.skip("symlinks are unavailable")
+
+    with pytest.raises(CellInventoryError, match="symlink"):
+        inventory_cells(str(tmp_path))
+
+
+def test_symlinked_directory_that_would_feed_jit_is_rejected(tmp_path):
+    from soma_mcp.cell_cache import CellCacheError
+    from soma_mcp.jit_engine import CellCache, express
+    import soma_mcp.jit_engine as jit_engine
+
+    outside = tmp_path / "outside" / "walls"
+    _write_cell(outside / "external.md", "external")
+    cells_dir = tmp_path / "workspace" / ".soma" / "cells"
+    cells_dir.mkdir(parents=True)
+    link = cells_dir / "external-rules"
+    try:
+        link.symlink_to(outside, target_is_directory=True)
+    except (OSError, NotImplementedError):
+        pytest.skip("symlinks are unavailable")
+
+    previous = jit_engine._cell_cache
+    jit_engine._cell_cache = CellCache()
+    try:
+        with pytest.raises(CellCacheError, match="symlink"):
+            express(str(tmp_path / "workspace"), changed_files=["src/app.py"])
+    finally:
+        jit_engine._cell_cache = previous

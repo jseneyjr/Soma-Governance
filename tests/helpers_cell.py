@@ -122,29 +122,24 @@ def soma_workspace(tmp_path):
 
 
 def write_evidence(evidence_dir, cell_id, triggers=0, tp=0, fp=0):
-    """Write trigger events and outcome records to JSONL evidence files.
-
-    Args:
-        evidence_dir: Path to .soma/evidence/ directory.
-        cell_id: The cell ID to write evidence for.
-        triggers: Number of trigger events to write to fitness.jsonl.
-        tp: Number of true positive outcomes to write to outcomes.jsonl.
-        fp: Number of false positive outcomes to write to outcomes.jsonl.
-    """
+    """Write canonical trigger and outcome signals for one cell."""
     evidence_dir = str(evidence_dir)
-    fitness_file = os.path.join(evidence_dir, "fitness.jsonl")
-    outcomes_file = os.path.join(evidence_dir, "outcomes.jsonl")
+    signals_file = os.path.join(evidence_dir, "signals.jsonl")
 
-    with open(fitness_file, "a") as f:
+    with open(signals_file, "a", encoding="utf-8") as f:
         for _ in range(triggers):
             f.write(json.dumps({
-                "cell_id": cell_id,
-                "triggered_at": datetime.now().isoformat(),
-                "matched_files": ["test.py"],
+                "cell": cell_id,
+                "signal": "trigger",
+                "source": "manual",
+                "timestamp": datetime.now().isoformat(),
+                "metadata": {"matched_files": ["test.py"]},
             }) + "\n")
-
-    with open(outcomes_file, "a") as f:
         for _ in range(tp):
-            f.write(json.dumps({"cell_id": cell_id, "outcome": "tp"}) + "\n")
+            f.write(json.dumps({
+                "cell": cell_id, "signal": "tp", "source": "manual",
+            }) + "\n")
         for _ in range(fp):
-            f.write(json.dumps({"cell_id": cell_id, "outcome": "fp"}) + "\n")
+            f.write(json.dumps({
+                "cell": cell_id, "signal": "fp", "source": "manual",
+            }) + "\n")
