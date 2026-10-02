@@ -95,6 +95,19 @@
       "regression_test": "tests/test_diagnose_hot_zones.py::TestRunDiagnostic::test_real_workspace_runs",
       "pattern": "Type annotation syntax incompatible with minimum supported Python version",
       "changelog_ref": "v0.85.1"
+    },
+    {
+      "id": "BUG-007",
+      "title": "pyproject.toml version desynchronized from VERSION file",
+      "discovered_in": "v0.88.2",
+      "fixed_in": "v0.88.2",
+      "root_cause": "schema_drift",
+      "severity": "moderate",
+      "description": "VERSION file was bumped but pyproject.toml was missed during the release procedure, causing CI pipeline failure on test_version_is_single_sourced.",
+      "affected_files": ["pyproject.toml", "VERSION"],
+      "regression_test": "tests/test_static_invariants.py::test_version_is_single_sourced",
+      "pattern": "Duplicated configuration values fall out of sync during manual procedures",
+      "changelog_ref": "v0.88.2"
     }
   ]
 }
