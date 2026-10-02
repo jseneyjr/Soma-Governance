@@ -1,6 +1,6 @@
 """Behavioral tests for Phase 3.1 credit assignment.
 
-Tests scope-narrowed per-file credit distribution, probabilistic rounding,
+Tests scope-narrowed per-file credit distribution, fractional exactness,
 and signal provenance.
 """
 import json
@@ -94,3 +94,49 @@ class TestCreditConservation:
             assert abs(weights[f'c{i}'] - 0.2) < 1e-9
 
 
+class TestFractionalCredit:
+    """Fractional conversion preserves exact credit without bias."""
+
+    def test_to_fraction_converts_correctly(self):
+        from enzymes.outcome_engine import to_fraction
+        assert to_fraction(0.5) == "1/2"
+        assert to_fraction(1.0) == "1/1"
+        assert to_fraction(0.0) == "0/1"
+        assert to_fraction("1/3") == "1/3"
+
+
+class TestSignalProvenance:
+    """Signals written to evidence ledger retain attribution metadata (BUG-005)."""
+
+    def test_jsonl_entry_has_credit_weight(self, tmp_path):
+        from enzymes.outcome_engine import append_fitness_log
+
+        workspace = str(tmp_path)
+        signals = [{
+            'cell': 'cell-a',
+            'signal': 1.0,
+            'credit_weight': 0.5,
+            'signal_method': 'scope_narrowed',
+            'reasons': ['test passed'],
+            'verified': True,
+        }]
+        outcomes = {
+            'tests': {'verified': True, 'passed': True, 'framework': 'pytest'},
+            'build': {'verified': True, 'passed': True},
+            'git': {'reverts': 0, 'rework_files': []},
+        }
+
+        append_fitness_log(workspace, signals, outcomes)
+
+        log_path = os.path.join(workspace, '.soma', 'evidence', 'signals.jsonl')
+        assert os.path.isfile(log_path)
+        with open(log_path, 'r', encoding='utf-8') as f:
+            lines = [json.loads(line) for line in f if line.strip()]
+        assert len(lines) == 1
+        record = lines[0]
+        assert record['cell'] == 'cell-a'
+        assert record['signal'] == 'tp'
+        assert 'metadata' in record
+        assert record['metadata']['credit_weight'] == 0.5
+        assert record['metadata']['signal_method'] == 'scope_narrowed'
+        assert not os.path.exists(os.path.join(workspace, '.soma', 'cells', 'fitness.jsonl'))

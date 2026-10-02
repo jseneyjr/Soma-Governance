@@ -1,4 +1,5 @@
 import contextlib
+import hmac
 import json
 import os
 import secrets
@@ -153,7 +154,7 @@ def handle_request(request: Dict[str, Any]) -> Dict[str, Any]:
         # Auth check: write and execute tools require session token
         if name not in _READ_TOOLS:
             client_token = args.get("_sessionToken")
-            if _session_token is not None and client_token != _session_token:
+            if not _session_token or not isinstance(client_token, str) or not hmac.compare_digest(client_token, _session_token):
                 return {
                     "jsonrpc": "2.0",
                     "id": req_id,

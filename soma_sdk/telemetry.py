@@ -57,7 +57,7 @@ def append_signal(workspace, cell_name, signal_type, source, metadata=None, prin
     }
     
     if idempotency_key:
-        identity_string = f"{principal}:{idempotency_scope}:{idempotency_key}"
+        identity_string = f"{principal}:{idempotency_scope}:{idempotency_key}:{cell_name}:{signal_type}"
         record['event_id'] = hashlib.sha256(identity_string.encode('utf-8')).hexdigest()
         
     if metadata:
@@ -74,6 +74,8 @@ def append_signal(workspace, cell_name, signal_type, source, metadata=None, prin
         if fcntl is not None:
             fcntl.flock(f.fileno(), fcntl.LOCK_EX)
         try:
+            if os.path.exists(os.path.join(workspace, ".soma", "migration.lock")):
+                raise RuntimeError("migration in progress")
             f.write(line)
             f.flush()
         finally:

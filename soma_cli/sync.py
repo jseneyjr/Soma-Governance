@@ -55,21 +55,26 @@ def aggregate_evidence(evidence_dir: str) -> dict[str, dict]:
                     })
                     
                     signal = record.get("signal")
-                    if signal == "trigger":
+                    outcome = record.get("outcome")
+
+                    if signal == "trigger" or outcome == "trigger":
                         entry["triggers"] += 1
                         ts = record.get("timestamp") or record.get("triggered_at")
-                        if ts and (entry["last_trigger"] is None or ts > entry["last_trigger"]):
-                            entry["last_trigger"] = ts
-                    elif signal in ("tp", "success"):
+                        if ts is not None:
+                            ts_str = str(ts)
+                            if entry["last_trigger"] is None or ts_str > str(entry["last_trigger"]):
+                                entry["last_trigger"] = ts_str
+
+                    # Attribute outcome once (signal takes precedence; fallback to outcome)
+                    effective_outcome = None
+                    if signal in ("tp", "success", "fp", "failure"):
+                        effective_outcome = signal
+                    elif outcome in ("tp", "success", "fp", "failure"):
+                        effective_outcome = outcome
+
+                    if effective_outcome in ("tp", "success"):
                         entry["tp"] += 1
-                    elif signal in ("fp", "failure"):
-                        entry["fp"] += 1
-                        
-                    # Handle outcome fallback for legacy schemas
-                    outcome = record.get("outcome")
-                    if outcome in ("tp", "success"):
-                        entry["tp"] += 1
-                    elif outcome in ("fp", "failure"):
+                    elif effective_outcome in ("fp", "failure"):
                         entry["fp"] += 1
                 except (json.JSONDecodeError, ValueError):
                     continue
@@ -132,10 +137,8 @@ def sync_frontmatter(
                 fitness["score"] = round(tp / t, 4) if t > 0 else None
             elif t == 0:
                 fitness["score"] = None
-            if evidence["last_trigger"]:
-                fitness["last_trigger_date"] = (
-                    datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
-                )
+            if evidence.get("last_trigger"):
+                fitness["last_trigger_date"] = str(evidence["last_trigger"])
             fm["fitness"] = fitness
 
             change = {

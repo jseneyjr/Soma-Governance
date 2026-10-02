@@ -35,6 +35,8 @@ jobs:
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
       
       - name: Set up Python
         uses: actions/setup-python@v5
@@ -60,7 +62,12 @@ jobs:
       - name: Soma CI Outcome Report
         if: always()
         run: |
-          CHANGED=$(git diff --name-only origin/${{ github.event.pull_request.base.sha || 'HEAD~1' }}...HEAD 2>/dev/null || echo "")
+          BASE_REF="${{ github.event.pull_request.base.sha }}"
+          if [ -n "$BASE_REF" ]; then
+            CHANGED=$(git diff --name-only "origin/$BASE_REF...HEAD" 2>/dev/null || git diff --name-only "$BASE_REF...HEAD" 2>/dev/null || echo "")
+          else
+            CHANGED=$(git diff --name-only HEAD~1 HEAD 2>/dev/null || echo "")
+          fi
           if [ -n "$CHANGED" ]; then
             python3 enzymes/ci_outcome_reporter.py \
               --changed-files "$CHANGED" \
@@ -71,6 +78,9 @@ jobs:
 
       - name: Verify README claims
         run: python enzymes/verify_readme_claims.py
+
+      - name: Verify Bug Registry
+        run: python3 enzymes/verify_bug_registry.py
 
       - name: Check for hardcoded paths
         run: |

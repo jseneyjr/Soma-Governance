@@ -172,20 +172,34 @@ if [ "$MANIFEST_EXISTS" = "true" ]; then
   BACKUP_DIR="$(read_manifest_field backup_dir)"
   MANIFEST_SCOPE="$(read_manifest_field scope)"
 
+  is_safe_removal_path() {
+    local target="$1"
+    [ -z "$target" ] && return 1
+    [ "$target" = "/" ] && return 1
+    [ "$target" = "$RESOLVED_HOME" ] && return 1
+    [ "$target" = "$(pwd)" ] && return 1
+    case "$target" in
+      "$RESOLVED_HOME"/*|"$(pwd)"/*) return 0 ;;
+      *) return 1 ;;
+    esac
+  }
+
   while IFS= read -r f; do
-    if [[ "$f" == *"/copilot-instructions.md" ]] || [[ "$f" == *"/CLAUDE.md" ]]; then
-      MODIFY_FILES+=("$f")
-    elif [ -n "$f" ]; then
-      FILES_TO_REMOVE+=("$f")
+    if is_safe_removal_path "$f"; then
+      if [[ "$f" == *"/copilot-instructions.md" ]] || [[ "$f" == *"/CLAUDE.md" ]]; then
+        MODIFY_FILES+=("$f")
+      elif [ -n "$f" ]; then
+        FILES_TO_REMOVE+=("$f")
+      fi
     fi
   done <<< "$(read_manifest_field files)"
 
   while IFS= read -r d; do
-    [ -n "$d" ] && DIRS_TO_REMOVE+=("$d")
+    [ -n "$d" ] && is_safe_removal_path "$d" && DIRS_TO_REMOVE+=("$d")
   done <<< "$(read_manifest_field organs)"
 
   while IFS= read -r h; do
-    [ -n "$h" ] && FILES_TO_REMOVE+=("$h")
+    [ -n "$h" ] && is_safe_removal_path "$h" && FILES_TO_REMOVE+=("$h")
   done <<< "$(read_manifest_field hooks)"
 
   FILES_TO_REMOVE+=("$MANIFEST_PATH")
@@ -366,10 +380,18 @@ fi
 # writes a fresh .bak containing Soma content, and the parent of a removed file
 # may disappear.
 for f in ${FILES_TO_REMOVE[@]+"${FILES_TO_REMOVE[@]}"}; do
-  [ -f "$f" ] && rm -f "$f" && echo "Removed $f"
+  if [ -L "$f" ]; then
+    rm -f "$f" && echo "Removed symlink $f"
+  elif [ -f "$f" ]; then
+    rm -f "$f" && echo "Removed $f"
+  fi
 done
 for d in ${DIRS_TO_REMOVE[@]+"${DIRS_TO_REMOVE[@]}"}; do
-  [ -d "$d" ] && rm -rf "$d" && echo "Removed $d/"
+  if [ -L "$d" ]; then
+    rm -f "$d" && echo "Removed directory symlink $d"
+  elif [ -d "$d" ]; then
+    rm -rf "$d" && echo "Removed $d/"
+  fi
 done
 
 for m in ${MODIFY_FILES[@]+"${MODIFY_FILES[@]}"}; do
