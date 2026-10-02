@@ -107,24 +107,26 @@ def verify_regression_tests(registry: dict, workspace: str) -> list[str]:
 
         test_ids.append((bug_id, test_ref))
 
-    # Batch verify: collect all test IDs and check they're valid
+    # Batch verify: run all test IDs to prove they pass.
     if test_ids:
         all_refs = [ref for _, ref in test_ids]
         try:
             result = subprocess.run(
-                [sys.executable, '-m', 'pytest', '--collect-only', '-q'] + all_refs,
+                [sys.executable, '-m', 'pytest', '-q'] + all_refs,
                 capture_output=True, text=True, cwd=workspace, timeout=30,
             )
-            collected = result.stdout
-            for bug_id, test_ref in test_ids:
-                # Check the test name appears in collected output
-                test_name = test_ref.split('::')[-1]
-                if test_name not in collected:
-                    errors.append(f"{bug_id}: regression test not collected: {test_ref}")
+            if result.returncode != 0:
+                # If tests failed, report which ones
+                errors.append(f"Regression tests failed (exit code {result.returncode})")
+                # Try to parse the failed tests from stdout
+                for bug_id, test_ref in test_ids:
+                    test_name = test_ref.split('::')[-1]
+                    if test_name in result.stdout and ("FAILED" in result.stdout or "FAILURES" in result.stdout):
+                        errors.append(f"{bug_id}: regression test failed: {test_ref}")
         except subprocess.TimeoutExpired:
-            errors.append("Timeout collecting regression tests")
+            errors.append("Timeout running regression tests")
         except Exception as e:
-            errors.append(f"Error collecting tests: {e}")
+            errors.append(f"Error running tests: {e}")
 
     return errors
 

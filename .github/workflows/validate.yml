@@ -5,9 +5,29 @@ on:
     branches: [main, develop]
   pull_request:
     branches: [main, develop]
+  workflow_call:
 
 jobs:
+  build-wheel:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install build tools
+        run: pip install build
+      - name: Build wheel
+        run: python -m build
+      - name: Upload wheel artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: soma-wheel
+          path: dist/
+
   validate:
+    needs: build-wheel
     strategy:
       matrix:
         os: [ubuntu-latest, macos-latest]
@@ -20,9 +40,15 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.python-version }}
+          
+      - name: Download wheel artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: soma-wheel
+          path: dist/
       
       - name: Install test dependencies
-        run: pip install -e ".[dev]" pyyaml
+        run: pip install dist/*.whl ".[dev]" pyyaml
 
       - name: Run validation
         run: make validate

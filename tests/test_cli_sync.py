@@ -53,14 +53,22 @@ def _setup_workspace(tmp_path, cells, fitness_records, outcome_records=None):
             CELL_TEMPLATE.format(cell_id=cell_id), encoding="utf-8"
         )
 
-    with open(evidence_dir / "fitness.jsonl", "w", encoding="utf-8") as f:
+    with open(evidence_dir / "signals.jsonl", "w", encoding="utf-8") as f:
         for record in fitness_records:
-            f.write(json.dumps(record) + "\n")
+            rec = {
+                "cell": record.get("cell_id"),
+                "signal": "trigger",
+                "timestamp": record.get("triggered_at")
+            }
+            f.write(json.dumps(rec) + "\n")
 
-    if outcome_records:
-        with open(evidence_dir / "outcomes.jsonl", "w", encoding="utf-8") as f:
+        if outcome_records:
             for record in outcome_records:
-                f.write(json.dumps(record) + "\n")
+                rec = {
+                    "cell": record.get("cell_id"),
+                    "signal": record.get("outcome"),
+                }
+                f.write(json.dumps(rec) + "\n")
 
     return str(evidence_dir), str(cells_dir)
 
@@ -127,9 +135,9 @@ class TestAggregateEvidence:
         """Malformed JSONL lines are skipped without crashing."""
         evidence_dir = str(tmp_path / ".soma" / "evidence")
         os.makedirs(evidence_dir, exist_ok=True)
-        with open(os.path.join(evidence_dir, "fitness.jsonl"), "w") as f:
+        with open(os.path.join(evidence_dir, "signals.jsonl"), "w") as f:
             f.write("not valid json\n")
-            f.write(json.dumps({"cell_id": "cell-a", "triggered_at": "2026-01-01T00:00:00Z"}) + "\n")
+            f.write(json.dumps({"cell": "cell-a", "signal": "trigger", "timestamp": "2026-01-01T00:00:00Z"}) + "\n")
             f.write("\n")  # blank line
         counts = aggregate_evidence(evidence_dir)
         assert counts["cell-a"]["triggers"] == 1

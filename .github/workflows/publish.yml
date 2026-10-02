@@ -5,7 +5,11 @@ on:
     types: [published]
 
 jobs:
+  validate:
+    uses: ./.github/workflows/validate.yml
+
   publish:
+    needs: validate
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -16,10 +20,13 @@ jobs:
           python-version: "3.12"
 
       - name: Install build tools
-        run: pip install build twine
+        run: pip install twine
 
-      - name: Build package
-        run: python -m build
+      - name: Download wheel artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: soma-wheel
+          path: dist/
 
       - name: Publish to PyPI
         run: twine upload dist/*

@@ -27,10 +27,10 @@ def aggregate_evidence(evidence_dir: str) -> dict[str, dict]:
     """
     counts: dict[str, dict] = {}
 
-    # Read fitness.jsonl — trigger events
-    fitness_path = os.path.join(evidence_dir, "fitness.jsonl")
-    if os.path.isfile(fitness_path):
-        with open(fitness_path, "r", encoding="utf-8") as f:
+    # Read signals.jsonl — unified evidence log (tp, fp, triggers, human_insights)
+    signals_path = os.path.join(evidence_dir, "signals.jsonl")
+    if os.path.isfile(signals_path):
+        with open(signals_path, "r", encoding="utf-8") as f:
             for line in f:
                 line = line.strip()
                 if not line:
@@ -39,41 +39,34 @@ def aggregate_evidence(evidence_dir: str) -> dict[str, dict]:
                     record = json.loads(line)
                     if not isinstance(record, dict):
                         continue
-                    cid = record.get("cell_id", "")
+                        
+                    cid = record.get("cell") or record.get("cell_id") or ""
+                    if not cid:
+                        # Legacy records used cells_used list
+                        cells_used = record.get("cells_used", [])
+                        if cells_used and isinstance(cells_used, list):
+                            cid = cells_used[0]
                     if not cid:
                         continue
+                        
                     entry = counts.setdefault(cid, {
                         "triggers": 0, "tp": 0, "fp": 0,
                         "last_trigger": None,
                     })
-                    entry["triggers"] += 1
-                    ts = record.get("triggered_at")
-                    if ts and (entry["last_trigger"] is None
-                               or ts > entry["last_trigger"]):
-                        entry["last_trigger"] = ts
-                except (json.JSONDecodeError, ValueError):
-                    continue
-
-    # Read outcomes.jsonl — tp/fp classification
-    outcomes_path = os.path.join(evidence_dir, "outcomes.jsonl")
-    if os.path.isfile(outcomes_path):
-        with open(outcomes_path, "r", encoding="utf-8") as f:
-            for line in f:
-                line = line.strip()
-                if not line:
-                    continue
-                try:
-                    record = json.loads(line)
-                    if not isinstance(record, dict):
-                        continue
-                    cid = record.get("cell_id", "")
-                    if not cid:
-                        continue
-                    entry = counts.setdefault(cid, {
-                        "triggers": 0, "tp": 0, "fp": 0,
-                        "last_trigger": None,
-                    })
-                    outcome = record.get("outcome", "")
+                    
+                    signal = record.get("signal")
+                    if signal == "trigger":
+                        entry["triggers"] += 1
+                        ts = record.get("timestamp") or record.get("triggered_at")
+                        if ts and (entry["last_trigger"] is None or ts > entry["last_trigger"]):
+                            entry["last_trigger"] = ts
+                    elif signal in ("tp", "success"):
+                        entry["tp"] += 1
+                    elif signal in ("fp", "failure"):
+                        entry["fp"] += 1
+                        
+                    # Handle outcome fallback for legacy schemas
+                    outcome = record.get("outcome")
                     if outcome in ("tp", "success"):
                         entry["tp"] += 1
                     elif outcome in ("fp", "failure"):

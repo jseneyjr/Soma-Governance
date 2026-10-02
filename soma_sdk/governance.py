@@ -31,50 +31,46 @@ class Governance:
         self.root: Path = Path(project_root).resolve()
         self.cells_dir: Path = self.root / '.soma' / 'cells'
         self.metrics_dir: Path = self.root / '.soma' / 'metrics'
-        self.scripts_dir: Optional[Path] = self._find_scripts_dir()
-    
-    def _find_scripts_dir(self) -> Optional[Path]:
-        """Locate Soma scripts directory."""
-        candidates = [
-            self.root / 'vendor' / 'soma' / 'enzymes',
-            self.root / 'enzymes',
-            Path(__file__).parent.parent / 'enzymes',
-        ]
-        for c in candidates:
-            if c.is_dir() and (c / 'cell_fitness.py').exists():
-                return c
-        return None
     
     def _run_script(self, script_name: str, *args: str, json_output: bool = True) -> dict[str, Any] | str:
         """Run a Soma enzyme script and return parsed output."""
-        if not self.scripts_dir:
-            raise RuntimeError('Soma enzymes directory not found')
+        import importlib.resources
+        from contextlib import ExitStack
         
-        script = self.scripts_dir / script_name
-        if not script.exists():
-            raise FileNotFoundError(f'Script not found: {script_name}')
-        
-        if script.suffix == '.sh':
-            cmd = ['bash', str(script)] + list(args)
-        else:
-            cmd = [sys.executable, str(script)] + list(args)
-        if json_output:
-            cmd.append('--json')
-        
-        result = subprocess.run(cmd, capture_output=True, text=True, cwd=str(self.root))
-        if result.returncode != 0:
-            err_msg = result.stderr.strip() or result.stdout.strip()
-            if json_output:
-                return {'error': f'Command failed with exit code {result.returncode}', 'details': err_msg}
-            else:
-                raise RuntimeError(f'Command failed with exit code {result.returncode}: {err_msg}')
-                
-        if json_output and result.stdout.strip():
+        with ExitStack() as stack:
             try:
-                return json.loads(result.stdout)
-            except json.JSONDecodeError:
-                return {'raw': result.stdout, 'error': 'JSON parse failed'}
-        return result.stdout
+                # Use importlib.resources to locate the script in the packaged 'enzymes' module
+                ref = importlib.resources.files('enzymes').joinpath(script_name)
+                script_path = stack.enter_context(importlib.resources.as_file(ref))
+            except Exception as e:
+                raise RuntimeError(f'Soma enzyme script not found or failed to load: {script_name} ({e})')
+            
+            if not script_path.exists():
+                raise FileNotFoundError(f'Script not found: {script_name}')
+            
+            if script_path.suffix == '.sh':
+                cmd = ['bash', str(script_path)] + list(args)
+            else:
+                cmd = [sys.executable, str(script_path)] + list(args)
+            
+            if json_output:
+                cmd.append('--json')
+            
+            result = subprocess.run(cmd, capture_output=True, text=True, cwd=str(self.root))
+            
+            if result.returncode != 0:
+                err_msg = result.stderr.strip() or result.stdout.strip()
+                if json_output:
+                    return {'error': f'Command failed with exit code {result.returncode}', 'details': err_msg}
+                else:
+                    raise RuntimeError(f'Command failed with exit code {result.returncode}: {err_msg}')
+                    
+            if json_output and result.stdout.strip():
+                try:
+                    return json.loads(result.stdout)
+                except json.JSONDecodeError:
+                    return {'raw': result.stdout, 'error': 'JSON parse failed'}
+            return result.stdout
     
     # === Cell Management ===
     

@@ -10,6 +10,7 @@ except ImportError:
     fcntl = None  # Windows: no flock; appends are unlocked
 import json
 import os
+import hashlib
 from datetime import datetime, timezone
 
 VALID_SIGNAL_TYPES = frozenset({'tp', 'fp', 'fn', 'trigger'})
@@ -17,7 +18,7 @@ VALID_SOURCES = frozenset({'ci', 'session', 'mcp', 'manual'})
 SIGNALS_FILENAME = 'signals.jsonl'
 
 
-def append_signal(workspace, cell_name, signal_type, source, metadata=None):
+def append_signal(workspace, cell_name, signal_type, source, metadata=None, principal="unknown", idempotency_scope="global", idempotency_key=""):
     """Append a fitness signal to the canonical evidence log.
 
     Args:
@@ -26,6 +27,10 @@ def append_signal(workspace, cell_name, signal_type, source, metadata=None):
         signal_type: One of 'tp', 'fp', 'fn', 'trigger'
         source: One of 'ci', 'session', 'mcp', 'manual'
         metadata: Optional dict with extra context (commit_sha, changed_files, etc.)
+        principal: Identity of the caller (e.g., 'mcp-server', 'cli-user')
+        idempotency_scope: Context scope (e.g., 'run-123')
+        idempotency_key: Unique operation key within the scope
+
 
     Raises:
         ValueError: If signal_type or source is not in the allowed set.
@@ -41,12 +46,20 @@ def append_signal(workspace, cell_name, signal_type, source, metadata=None):
             f'got {source!r}'
         )
 
+    if os.path.exists(os.path.join(workspace, ".soma", "migration.lock")):
+        raise RuntimeError("migration in progress")
+
     record = {
         'timestamp': datetime.now(timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ'),
         'cell': cell_name,
         'signal': signal_type,
         'source': source,
     }
+    
+    if idempotency_key:
+        identity_string = f"{principal}:{idempotency_scope}:{idempotency_key}"
+        record['event_id'] = hashlib.sha256(identity_string.encode('utf-8')).hexdigest()
+        
     if metadata:
         record['metadata'] = metadata
 

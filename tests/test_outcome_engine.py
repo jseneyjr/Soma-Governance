@@ -156,7 +156,8 @@ class TestUpdateCellFitness:
                      'reasons': ['test passed'], 'verified': True}]
         update_cell_fitness(ws, signals)
         fm, _ = parse_cell_file(path)
-        assert int(fm['fitness']['true_positives']) >= 4
+        from fractions import Fraction
+        assert Fraction(str(fm['fitness']['true_positives'])) >= 4
 
     def test_negative_signal_increments_false_positives(self, tmp_path):
         from enzymes.outcome_engine import update_cell_fitness
@@ -168,7 +169,8 @@ class TestUpdateCellFitness:
                      'reasons': ['test failed'], 'verified': True}]
         update_cell_fitness(ws, signals)
         fm, _ = parse_cell_file(path)
-        assert int(fm['fitness']['false_positives']) >= 2
+        from fractions import Fraction
+        assert Fraction(str(fm['fitness']['false_positives'])) >= 2
 
     def test_triggers_always_incremented(self, tmp_path):
         from enzymes.outcome_engine import update_cell_fitness
@@ -219,3 +221,19 @@ class TestUpdateCellFitness:
         fm, _ = parse_cell_file(path)
         assert 'fitness' in fm
         assert int(fm['fitness'].get('triggers', 0)) >= 1
+
+    def test_fractional_credit_deterministic(self, tmp_path):
+        from enzymes.outcome_engine import update_cell_fitness
+        ws = str(tmp_path)
+        path = _make_cell(ws, 'cell-frac', ['src/*.py'],
+                          fitness={'triggers': 1, 'true_positives': "1/3",
+                                   'false_positives': 0, 'score': 0.33})
+        signals = [{'cell': 'cell-frac', '_path': path, 'signal': 1.0,
+                     'reasons': ['test'], 'verified': True, 'credit_weight': 1.0/3.0}]
+        update_cell_fitness(ws, signals)
+        
+        # Another update
+        update_cell_fitness(ws, signals)
+        
+        fm, _ = parse_cell_file(path)
+        assert fm['fitness']['true_positives'] in ["1.0", "1", "1/1"] or str(fm['fitness']['true_positives']) in ["1.0", "1", "1/1"]

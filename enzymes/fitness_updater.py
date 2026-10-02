@@ -243,8 +243,8 @@ def update_fitness(triggered_cells, transcript_id, evidence_dir):
     evidence_dir = Path(evidence_dir)
     evidence_dir.mkdir(parents=True, exist_ok=True)
 
-    ledger_path = evidence_dir / "sessions_processed.jsonl"
-    fitness_path = evidence_dir / "fitness.jsonl"
+    ledger_path = evidence_dir / "signals.jsonl"
+
     lock_path = evidence_dir / ".fitness.lock"
 
     # Unified lock: protects idempotency check + both file writes
@@ -262,7 +262,9 @@ def update_fitness(triggered_cells, transcript_id, evidence_dir):
                     continue
                 try:
                     record = json.loads(line)
-                    if record.get("transcript_id") == transcript_id:
+                    # Deduplicate based on transcript_id in metadata
+                    metadata = record.get("metadata", {})
+                    if metadata.get("transcript_id") == transcript_id:
                         return  # Already processed
                 except (json.JSONDecodeError, ValueError):
                     continue
@@ -284,28 +286,12 @@ def update_fitness(triggered_cells, transcript_id, evidence_dir):
                             'transcript_id': transcript_id,
                             'matched_files': cell.get("matched_files", []),
                         },
+                        principal="fitness_updater",
+                        idempotency_scope="transcript",
+                        idempotency_key=transcript_id,
                     )
             except ImportError:
-                # Fallback: write directly if telemetry module unavailable
-                fitness_path = evidence_dir / "fitness.jsonl"
-                with open(fitness_path, "a", encoding="utf-8") as f:
-                    for cell in triggered_cells:
-                        record = {
-                            "cell_id": cell["cell_id"],
-                            "transcript_id": transcript_id,
-                            "triggered_at": now,
-                            "matched_files": cell.get("matched_files", []),
-                        }
-                        f.write(json.dumps(record) + "\n")
-
-        # Record session as processed (same lock scope as fitness write)
-        with open(ledger_path, "a", encoding="utf-8") as f:
-            ledger_record = {
-                "transcript_id": transcript_id,
-                "processed_at": now,
-                "cells_triggered": len(triggered_cells),
-            }
-            f.write(json.dumps(ledger_record) + "\n")
+                print("Failed to import soma_sdk.telemetry. Unified evidence write skipped.")
 
     finally:
         if fcntl is not None:
@@ -347,7 +333,7 @@ def main():
         print(f"    - {t['cell_id']} ({len(t['matched_files'])} files)")
 
     update_fitness(triggered, transcript_id, evidence_dir)
-    print(f"  Fitness updated: {evidence_dir / 'fitness.jsonl'}")
+    print(f"  Fitness updated: {evidence_dir / 'signals.jsonl'}")
 
     # Sync JSONL evidence → cell frontmatter
     try:

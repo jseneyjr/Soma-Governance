@@ -277,15 +277,21 @@ def capture_git_signals(workspace):
 
 def capture_mcp_outcomes(workspace):
     """Read any soma_report_outcome calls from this session."""
-    outcomes_file = os.path.join(workspace, '.soma', 'evidence', 'outcomes.jsonl')
+    signals_file = os.path.join(workspace, '.soma', 'evidence', 'signals.jsonl')
     outcomes = []
-    if not os.path.isfile(outcomes_file):
+    if not os.path.isfile(signals_file):
         return outcomes
     try:
-        with open(outcomes_file, 'r', encoding='utf-8') as f:
+        with open(signals_file, 'r', encoding='utf-8') as f:
             for line in f:
                 if line.strip():
-                    outcomes.append(json.loads(line))
+                    record = json.loads(line)
+                    # Filter for outcomes (either legacy outcome field or new signal field)
+                    if record.get('outcome') or record.get('signal') in ('tp', 'fp', 'success', 'failure'):
+                        # Map signal back to outcome for backward compatibility in compute_fitness_signals
+                        if 'signal' in record and 'outcome' not in record:
+                            record['outcome'] = record['signal']
+                        outcomes.append(record)
     except Exception:
         pass
     return outcomes
@@ -315,15 +321,9 @@ def capture_human_insight_signals(workspace):
     if not os.path.isfile(insights_file):
         return []
 
-    # Read cursor — byte offset of last processed position
-    cursor_file = os.path.join(workspace, '.soma', 'insight_cursor')
+    # We no longer use a cursor. We derive processed state from event identity.
+    # We will compute an idempotency key for each insight and check if it's already in the cell.
     cursor_offset = 0
-    if os.path.isfile(cursor_file):
-        try:
-            with open(cursor_file, 'r', encoding='utf-8') as f:
-                cursor_offset = int(f.read().strip())
-        except (ValueError, OSError):
-            cursor_offset = 0
 
     # Read configurable weight
     weight = 0.5
@@ -362,6 +362,8 @@ def capture_human_insight_signals(workspace):
                     for cell_name in record.get('covering_cells', []):
                         cell_path = cell_paths.get(cell_name)
                         if cell_path:
+                            import hashlib
+                            insight_hash = hashlib.sha256(line.encode('utf-8')).hexdigest()
                             signals.append({
                                 'cell': cell_name,
                                 '_path': cell_path,
@@ -371,6 +373,7 @@ def capture_human_insight_signals(workspace):
                                 'signal_type': 'human_insight',
                                 'weight': weight,
                                 'files': record.get('context_files', []),
+                                'idempotency_key': insight_hash
                             })
                 else:
                     # Uncovered insight — governance blind spot
@@ -384,17 +387,11 @@ def capture_human_insight_signals(workspace):
                         'weight': weight,
                         'files': record.get('context_files', []),
                     })
-            new_offset = f.tell()
     except Exception:
         pass
 
-    # Advance cursor so these insights aren't reprocessed
-    if new_offset > cursor_offset:
-        try:
-            with open(cursor_file, 'w', encoding='utf-8') as f:
-                f.write(str(new_offset))
-        except OSError:
-            pass
+    # No cursor saving.
+
 
     return signals
 
@@ -488,22 +485,15 @@ def match_cells_to_changes(workspace, changed_files):
 
 # ── Fitness Signal Computation (ACE Reflector) ───────────────────────
 
-def prob_round(credit):
-    """Probabilistic rounding: convert fractional credit to 0 or 1.
-
-    Preserves expected value: prob_round(0.3) returns 1 with probability 0.3,
-    0 with probability 0.7. Over many calls, sum(prob_round(c)) ≈ N*c.
-
-    This is how fractional credit (e.g., 3 cells share a file → each gets 1/3)
-    gets converted to the integer tp/fp counters without systematic bias.
-    """
-    import random
+def to_fraction(credit):
+    """Convert credit float to a string Fraction (e.g., '1/3') for deterministic storage."""
+    from fractions import Fraction
+    if isinstance(credit, str) and '/' in credit:
+        return credit # Already a fraction
     credit = max(0.0, min(1.0, float(credit)))
-    if credit >= 1.0:
-        return 1
-    if credit <= 0.0:
-        return 0
-    return 1 if random.random() < credit else 0
+    f = Fraction(credit).limit_denominator(1000)
+    return f"{f.numerator}/{f.denominator}"
+
 
 
 def compute_credit_weights(triggered_cells, changed_files):
@@ -704,14 +694,27 @@ def update_cell_fitness(workspace, fitness_signals):
             fitness['triggers'] = _as_int(fitness.get('triggers', 0)) + 1
             fitness.setdefault('true_positives', 0)
             fitness.setdefault('false_positives', 0)
-            fitness['true_positives'] = _as_int(fitness['true_positives'])
-            fitness['false_positives'] = _as_int(fitness['false_positives'])
+            # We no longer truncate to int to preserve fractional exactness
             if signal > 0:
                 credit_weight = sig.get('credit_weight', 1.0)
-                fitness['true_positives'] += prob_round(credit_weight)
+                from fractions import Fraction
+                current = Fraction(str(fitness['true_positives'])) if '/' in str(fitness['true_positives']) or '.' in str(fitness['true_positives']) else Fraction(int(fitness['true_positives']))
+                new_val = current + Fraction(to_fraction(credit_weight))
+                fitness['true_positives'] = f"{new_val.numerator}/{new_val.denominator}"
             elif signal < 0:
                 credit_weight = sig.get('credit_weight', 1.0)
-                fitness['false_positives'] += prob_round(credit_weight)
+                from fractions import Fraction
+                current = Fraction(str(fitness['false_positives'])) if '/' in str(fitness['false_positives']) or '.' in str(fitness['false_positives']) else Fraction(int(fitness['false_positives']))
+                new_val = current + Fraction(to_fraction(credit_weight))
+                fitness['false_positives'] = f"{new_val.numerator}/{new_val.denominator}"
+                
+            # Event identity deduplication
+            event_id = sig.get('idempotency_key')
+            if event_id:
+                processed = fitness.setdefault('processed_events', [])
+                if event_id in processed:
+                    continue  # Already applied this insight
+                processed.append(event_id)
 
             fitness['last_trigger_date'] = datetime.now(timezone.utc).strftime(
                 '%Y-%m-%dT%H:%M:%SZ'

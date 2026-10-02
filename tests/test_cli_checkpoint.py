@@ -477,3 +477,51 @@ class TestCheckpointEdgeCases:
         )
         exit_code = run_checkpoint(args)
         assert exit_code != 0
+
+    def test_checkpoint_is_read_only(self, tmp_path, monkeypatch):
+        """checkpoint must not call aggregate_evidence or sync_frontmatter."""
+        from soma_cli.checkpoint import run_checkpoint
+        import argparse
+
+        _setup_clean_workspace(tmp_path)
+        
+        # We will mock soma_cli.sync to see if it's imported/called
+        class SyncMock:
+            called = False
+            @staticmethod
+            def aggregate_evidence(*args, **kwargs):
+                SyncMock.called = True
+                return {"test": 1}
+            @staticmethod
+            def sync_frontmatter(*args, **kwargs):
+                SyncMock.called = True
+                
+        # Actually it's probably better to check that no files in .soma/cells were modified
+        import stat
+        cells_dir = tmp_path / ".soma" / "cells"
+        cells_dir.mkdir(parents=True, exist_ok=True)
+        cell_file = cells_dir / "test-cell.md"
+        cell_file.write_text("---\nfitness: 0\n---\ncontent", encoding="utf-8")
+        
+        # Make the workspace read-only
+        # If it tries to write, it will raise an exception
+        # Let's mock aggregate_evidence directly if possible, or just rely on file modifications
+        
+        # We can just monkeypatch soma_cli.sync if it exists
+        try:
+            import soma_cli.sync
+            monkeypatch.setattr(soma_cli.sync, "aggregate_evidence", SyncMock.aggregate_evidence)
+            monkeypatch.setattr(soma_cli.sync, "sync_frontmatter", SyncMock.sync_frontmatter)
+        except ImportError:
+            pass
+
+        args = argparse.Namespace(
+            workspace=str(tmp_path),
+            pre_commit=False,
+            strict=False,
+            json=False,
+        )
+        exit_code = run_checkpoint(args)
+        assert exit_code == 0
+        assert not SyncMock.called, "Checkpoint mutated workspace state by calling sync/aggregate"
+

@@ -174,3 +174,38 @@ class TestVerifyRealRegistry:
         """The actual BUG_REGISTRY.json has at least the 5 backfilled bugs."""
         registry = load_registry(REPO_ROOT)
         assert len(registry['bugs']) >= 5
+
+class TestRegressionTestExecution:
+    """Regression tests must actually be run, not just collected."""
+    
+    def test_regression_test_failure_is_caught(self, tmp_path):
+        # Create a dummy failing test
+        test_file = tmp_path / "test_failing.py"
+        test_file.write_text("def test_fail():\n    assert False\n", encoding="utf-8")
+        
+        bug = {
+            "id": "BUG-002", "title": "Failing test", "discovered_in": "v1",
+            "fixed_in": "v2", "root_cause": "path_error", "severity": "critical",
+            "affected_files": ["foo.py"], "regression_test": "test_failing.py::test_fail",
+            "changelog_ref": "v2"
+        }
+        registry = _make_registry(tmp_path, [bug])
+        
+        errors = verify_regression_tests(registry, str(tmp_path))
+        assert any("regression test failed" in str(e).lower() for e in errors), "Should report failure when test fails"
+        
+    def test_regression_test_pass_is_accepted(self, tmp_path):
+        # Create a dummy passing test
+        test_file = tmp_path / "test_passing.py"
+        test_file.write_text("def test_pass():\n    assert True\n", encoding="utf-8")
+        
+        bug = {
+            "id": "BUG-003", "title": "Passing test", "discovered_in": "v1",
+            "fixed_in": "v2", "root_cause": "path_error", "severity": "critical",
+            "affected_files": ["foo.py"], "regression_test": "test_passing.py::test_pass",
+            "changelog_ref": "v2"
+        }
+        registry = _make_registry(tmp_path, [bug])
+        
+        errors = verify_regression_tests(registry, str(tmp_path))
+        assert len(errors) == 0, "Should accept passing tests"
