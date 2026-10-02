@@ -693,6 +693,22 @@
         "immune_system/verification/runner.py"
       ],
       "pattern": "Relying on the platform default encoding instead of an explicit utf-8"
+    },
+    {
+      "id": "BUG-039",
+      "status": "fixed",
+      "title": "mutation_tester counted comparison, boolean, statement and return mutations but never applied them",
+      "discovered_in": "v0.89.0",
+      "fixed_in": "Unreleased",
+      "root_cause": "silent_failure",
+      "severity": "critical",
+      "description": "_apply_mutation_by_index() first built a target list holding only binary-operator, unary-operator and constant mutations and returned None when the index was past it. _collect_mutations() also collects comparison, and/or, statement-deletion and return-value mutations, so those were counted in the total but skipped by check(): neither killed nor survived. A test that never checks a comparison passed: `def eq(a, b): return a == b` with a test that calls eq(1, 2) without asserting got verdict=True, '0/2 survived'. The incomplete first pass is removed; the complete, order-matched target list now decides every mutation. Applying every kind exposed two equivalent mutants that no test can kill (deleting a docstring, and `return None` -> `return None`); both are no longer generated. Found by the independent review of BUG-034.",
+      "affected_files": [
+        "immune_system/verification/mutation_tester.py"
+      ],
+      "regression_test": "tests/test_verification/test_mutation_tester.py::TestMutationTesterAppliesEveryCollectedMutation::test_unchecked_comparison_survives",
+      "pattern": "Collected mutations silently skipped instead of being evaluated",
+      "changelog_ref": "Unreleased"
     }
   ]
 }
