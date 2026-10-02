@@ -3,7 +3,7 @@
 # NOTE: Hooks require bash (Git Bash, WSL, or MSYS2) and cannot run via native PowerShell.
 #
 # Usage:
-#   .\install.ps1 [-Platform <gemini|kiro|copilot>] [-Mode <global|project>] [-DryRun]
+#   .\install.ps1 [-Platform <gemini|kiro|copilot|claude|mcp>] [-Mode <global|project>] [-DryRun]
 # Examples:
 #   .\install.ps1
 #   .\install.ps1 -Platform kiro
@@ -25,10 +25,10 @@ param (
 
 if ($Help) {
     Write-Host "Soma - Windows PowerShell Installer"
-    Write-Host "Usage: .\install.ps1 [[-Platform] <gemini|kiro|copilot>] [[-Mode] <global|project>] [-DryRun]"
+    Write-Host "Usage: .\install.ps1 [[-Platform] <gemini|kiro|copilot|claude|mcp>] [[-Mode] <global|project>] [-DryRun]"
     Write-Host ""
     Write-Host "Parameters:"
-    Write-Host "  -Platform   Target platform: gemini (default), kiro, copilot, or claude"
+    Write-Host "  -Platform   Target platform: gemini (default), kiro, copilot, claude, or mcp"
     Write-Host "  -Mode       Copilot/Claude mode: global (default) or project/local"
     Write-Host "  -DryRun     Preview changes without copying or modifying files"
     Write-Host "  -Help       Show this help message"
@@ -160,7 +160,7 @@ Assert-Enum -Name "TEAM_SIZE" -Value $Config["TEAM_SIZE"] -Allowed @("solo", "sm
 Assert-Enum -Name "GIT_STRATEGY" -Value $Config["GIT_STRATEGY"] -Allowed @("trunk", "feature-branch", "gitflow")
 Assert-Enum -Name "APPROVAL_CHAIN" -Value $Config["APPROVAL_CHAIN"] -Allowed @("none", "peer", "lead")
 Assert-Enum -Name "RULES_SUBSET" -Value $Config["RULES_SUBSET"] -Allowed @("all", "core", "minimal")
-Assert-Enum -Name "SOMA_PLATFORM" -Value $Platform -Allowed @("gemini", "kiro", "copilot", "claude")
+Assert-Enum -Name "SOMA_PLATFORM" -Value $Platform -Allowed @("gemini", "kiro", "copilot", "claude", "mcp")
 Assert-Enum -Name "MODE" -Value $Mode -Allowed @("global", "project", "local")
 
 # ── Subset Resolution ─────────────────────────────────────────────
@@ -625,7 +625,10 @@ switch ($Platform) {
                 Write-LogInfo "[dry-run] would create/update .mcp.json at $mcpFile"
             } else {
                 Backup-FileItem -FilePath $mcpFile
-                Set-Content -Path $mcpFile -Value '{"mcpServers": {"soma": {"command": "python3", "args": ["-m", "soma_mcp"]}}}' -Encoding UTF8
+                $repoDirJson = $RepoDir.Replace('\', '/')
+                $targetDirJson = $targetDir.Replace('\', '/')
+                $mcpJson = '{"mcpServers": {"soma": {"command": "python3", "args": ["-m", "soma_mcp"], "cwd": "' + $repoDirJson + '", "env": {"SOMA_ROOT": "' + $targetDirJson + '"}}}}'
+                Set-Content -Path $mcpFile -Value $mcpJson -Encoding UTF8
                 Write-LogInfo "created .mcp.json"
             }
         }
@@ -644,6 +647,23 @@ switch ($Platform) {
         }
         if ($skippedCount -gt 0) {
             Write-Host "  ($skippedCount rules skipped - not in $Subset subset)"
+        }
+    }
+
+    "mcp" {
+        $targetDir = (Get-Location).Path
+        $mcpFile = Join-Path $targetDir ".mcp.json"
+        
+        Write-Host "  Target: $mcpFile"
+        if ($DryRun) {
+            Write-LogInfo "[dry-run] would create/update .mcp.json at $mcpFile"
+        } else {
+            Backup-FileItem -FilePath $mcpFile
+            $repoDirJson = $RepoDir.Replace('\', '/')
+            $targetDirJson = $targetDir.Replace('\', '/')
+            $mcpJson = '{"mcpServers": {"soma": {"command": "python3", "args": ["-m", "soma_mcp"], "cwd": "' + $repoDirJson + '", "env": {"SOMA_ROOT": "' + $targetDirJson + '"}}}}'
+            Set-Content -Path $mcpFile -Value $mcpJson -Encoding UTF8
+            Write-LogInfo "created .mcp.json"
         }
     }
 }

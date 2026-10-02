@@ -2,7 +2,7 @@
 # Removes steering rules and skills deployed by install.ps1 / install.sh.
 #
 # Usage:
-#   .\uninstall.ps1 [-Platform <gemini|kiro|copilot|claude>] [-DryRun] [-Force] [-KeepConfig] [-NoRestore]
+#   .\uninstall.ps1 [-Platform <gemini|kiro|copilot|claude|mcp>] [-DryRun] [-Force] [-KeepConfig] [-NoRestore]
 # Examples:
 #   .\uninstall.ps1
 #   .\uninstall.ps1 kiro -DryRun
@@ -31,10 +31,10 @@ param (
 
 if ($Help) {
     Write-Host "Soma - Windows PowerShell Uninstaller"
-    Write-Host "Usage: .\uninstall.ps1 [[-Platform] <gemini|kiro|copilot|claude>] [-DryRun] [-Force] [-KeepConfig] [-NoRestore]"
+    Write-Host "Usage: .\uninstall.ps1 [[-Platform] <gemini|kiro|copilot|claude|mcp>] [-DryRun] [-Force] [-KeepConfig] [-NoRestore]"
     Write-Host ""
     Write-Host "Parameters:"
-    Write-Host "  -Platform    Target platform: gemini (default), kiro, copilot, or claude"
+    Write-Host "  -Platform    Target platform: gemini (default), kiro, copilot, claude, or mcp"
     Write-Host "  -DryRun      Print the removal plan without deleting anything"
     Write-Host "  -Force       Skip the deletion confirmation prompt (the restore offer is still made)"
     Write-Host "  -KeepConfig  Never remove soma.conf, even if the manifest lists it"
@@ -131,7 +131,7 @@ if ($Platform) { $ResolvedPlatform = $Platform }
 $Platform = $ResolvedPlatform.Trim().ToLower()
 
 # Allowed platforms must match what install.ps1 supports.
-$AllowedPlatforms = @("gemini", "kiro", "copilot", "claude")
+$AllowedPlatforms = @("gemini", "kiro", "copilot", "claude", "mcp")
 if ($AllowedPlatforms -notcontains $Platform) {
     Write-LogError "Invalid Platform: '$Platform' (allowed: $($AllowedPlatforms -join ' '))"
     exit 1
@@ -501,6 +501,10 @@ if ($Manifest) {
             $localMcp = Join-Path $WorkDir ".mcp.json"
             if (Test-SomaMcpFile -Path $localMcp) { Add-FileTarget $localMcp }
         }
+        "mcp" {
+            $localMcp = Join-Path $WorkDir ".mcp.json"
+            if (Test-SomaMcpFile -Path $localMcp) { Add-FileTarget $localMcp }
+        }
     }
 
     if (-not $KeepConfig -and (Test-Path -LiteralPath $ConfigFile -PathType Leaf)) {
@@ -727,6 +731,9 @@ function Get-ConsolidatedRestoreMap {
             } else {
                 $map += [PSCustomObject]@{ Source = (Join-Path $BackupDir "CLAUDE.md"); Destination = (Join-Path $UserHome ".claude\CLAUDE.md"); IsDir = $false }
             }
+            $map += [PSCustomObject]@{ Source = (Join-Path $BackupDir ".mcp.json"); Destination = (Join-Path $WorkDir ".mcp.json"); IsDir = $false }
+        }
+        "mcp" {
             $map += [PSCustomObject]@{ Source = (Join-Path $BackupDir ".mcp.json"); Destination = (Join-Path $WorkDir ".mcp.json"); IsDir = $false }
         }
     }

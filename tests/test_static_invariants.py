@@ -306,6 +306,19 @@ def test_powershell_scripts_with_non_ascii_have_utf8_bom():
     assert not offenders, f"non-ASCII PowerShell scripts missing UTF-8 BOM: {offenders}"
 
 
+def test_powershell_mcp_platform_parity():
+    """install.ps1 must support the mcp platform and correctly configure
+    the claude .mcp.json file with cwd and env properties."""
+    ps1 = os.path.join(REPO_ROOT, "install", "install.ps1")
+    if not os.path.exists(ps1):
+        pytest.skip("install.ps1 not present")
+        
+    with open(ps1, "r", encoding="utf-8") as f:
+        content = f.read()
+        
+    assert '"mcp" {' in content, "install.ps1 is missing the 'mcp' platform switch case"
+    assert '"cwd":' in content, "install.ps1 .mcp.json generation is missing 'cwd'"
+    assert '"SOMA_ROOT":' in content, "install.ps1 .mcp.json generation is missing 'SOMA_ROOT'"
 def test_rule_basenames_are_unique_when_flattened():
     """install.sh flattens genome/**/*.md into one directory, so a duplicate
     basename would silently overwrite, last write winning."""
