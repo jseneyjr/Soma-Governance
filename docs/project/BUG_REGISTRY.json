@@ -140,6 +140,8 @@
       "discovered_in": "v0.88.2",
       "root_cause": "schema_drift",
       "severity": "critical",
+      "fixed_in": "v0.89.0",
+      "changelog_ref": "v0.89.0",
       "description": "Since v0.86 the server returns a per-process random token only as serverInfo._sessionToken and requires it as a tool argument for the 3 write tools and 6 execute tools. MCP hosts handle `initialize` themselves and don't pass serverInfo to the model, and the tool schemas don't declare the argument. So only the 5 read tools are usable, outcomes can't be reported, and fitness never evolves. Not platform-specific.",
       "affected_files": [
         "soma_mcp/server.py"
