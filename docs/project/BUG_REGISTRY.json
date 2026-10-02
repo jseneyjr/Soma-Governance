@@ -715,17 +715,20 @@
     {
       "id": "BUG-040",
       "issue_url": "https://github.com/nseney1/Soma-Governance/issues/70",
-      "status": "open",
+      "status": "fixed",
       "title": "Recording an outcome leaves .soma/evidence/.signals.lock as an untracked file",
       "discovered_in": "v0.89.0",
+      "fixed_in": "Unreleased",
       "root_cause": "path_error",
       "severity": "low",
-      "description": "soma_sdk.telemetry.evidence_lock() creates .soma/evidence/.signals.lock (open with 'a+b') the first time any signal is appended, including a soma_report_outcome call that records nothing (cells_used=[]). Neither the root .gitignore nor .soma/evidence/.gitignore covers it, so after one MCP outcome report the repository has an untracked .soma/evidence/.signals.lock, which `git add -A` would commit. Seen live on 2026-10-02 during the BUG-009/BUG-035 receipt check through the MCP server; not Windows-specific. Related: .soma/evidence/.fitness.lock is a committed, empty file that no current code creates or reads.",
+      "description": "soma_sdk.telemetry.evidence_lock() creates .soma/evidence/.signals.lock (open with 'a+b') the first time any signal is appended, including a soma_report_outcome call that records nothing (cells_used=[]). Neither the root .gitignore nor .soma/evidence/.gitignore covers it, so after one MCP outcome report the repository has an untracked .soma/evidence/.signals.lock, which `git add -A` would commit. Seen live on 2026-10-02 during the BUG-009/BUG-035 receipt check through the MCP server; not Windows-specific. Related: .soma/evidence/.fitness.lock is a committed, empty file that no current code creates or reads. Fixed by adding .signals.lock to .soma/evidence/.gitignore; the lock file itself is kept, since deleting it after use could race with another process taking the lock. This covers the Soma repository only: soma init writes no .soma/evidence/.gitignore into other workspaces, and that is unchanged.",
       "affected_files": [
         "soma_sdk/telemetry.py",
         ".soma/evidence/.gitignore"
       ],
-      "pattern": "Runtime lock file written inside the working tree without an ignore rule"
+      "regression_test": "tests/test_telemetry.py::TestEvidenceLockIgnoredByGit::test_lock_file_is_ignored",
+      "pattern": "Runtime lock file written inside the working tree without an ignore rule",
+      "changelog_ref": "Unreleased"
     }
   ]
 }
