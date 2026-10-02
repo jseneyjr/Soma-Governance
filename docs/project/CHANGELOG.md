@@ -12,6 +12,9 @@ This project uses [Semantic Versioning](https://semver.org/).
 - **BUG-013 root cause** recorded in the Bug Registry and `docs/KNOWN_ISSUES_WINDOWS.md`: generated verification tests embed unescaped Windows paths and fail with a `unicodeescape` `SyntaxError`.
 - **BUG-015** now links to #57, and **BUG-014** to its own issue #59 (split from #48, which the v0.89.0 BOM fix closed). **BUG-032** is listed in `docs/KNOWN_ISSUES_WINDOWS.md`.
 
+### Fixed
+- **Windows: cell inventory rejected any cell edited after creation** (BUG-035, #61): `soma_core/cell_inventory.py` compared `os.stat` and `os.fstat` signatures that included `st_ctime_ns`, which Windows reports as creation time from one and change time from the other. `soma_scan` and `soma_list_cells` failed, and `soma_request_receipt` returned `Internal error`, so no write or execute MCP tool could run on Windows. `st_ctime_ns` is now left out of the signature on Windows, and cells are opened with `O_BINARY` so the snapshot holds the exact on-disk bytes. Regression tests: `test_receipt_flow_works_after_cell_edited_since_creation`, `test_cell_edited_after_creation_is_inventoried`. The `O_BINARY` change also fixes `test_inventory_is_stable_and_captures_exact_bytes` on Windows. The stale-receipt tests now match the exact verifier message, because their `"receipt"` substring check also accepted unrelated errors such as the missing-receipt error.
+
 ## [0.89.0] — 2026-10-02 — "MCP Execution Security"
 
 ### Added

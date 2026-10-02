@@ -596,6 +596,23 @@
         "immune_system/verification/mutation_tester.py"
       ],
       "pattern": "Verifier treats 'could not run' as 'passed' (fail-open)"
+    },
+    {
+      "id": "BUG-035",
+      "issue_url": "https://github.com/nseney1/Soma-Governance/issues/61",
+      "status": "fixed",
+      "title": "Windows: cell inventory rejected edited cells, breaking soma_scan, list_cells and every receipt",
+      "discovered_in": "v0.89.0",
+      "fixed_in": "Unreleased",
+      "root_cause": "platform_compat",
+      "severity": "critical",
+      "description": "_read_stable_file() compared an os.stat(path) signature against os.fstat(fd), and the signature included st_ctime_ns. On Windows os.stat reports st_ctime as the creation time and os.fstat as the last-change time, so any cell written after creation raised CellInventoryError 'file changed before it was opened'. soma_scan and soma_list_cells failed and soma_request_receipt returned 'Internal error', so no write or execute MCP tool could run on Windows. The same function opened cells without O_BINARY, so Windows text mode turned CRLF into LF and the snapshot bytes differed from disk. st_ctime_ns is now left out of the signature on Windows (st_ino, st_size and st_mtime_ns still detect changes), and cells are opened with O_BINARY.",
+      "affected_files": [
+        "soma_core/cell_inventory.py"
+      ],
+      "regression_test": "tests/test_mcp_receipt_binding.py::test_receipt_flow_works_after_cell_edited_since_creation",
+      "pattern": "Stat signatures compared across os.stat and os.fstat assume both report the same timestamps",
+      "changelog_ref": "Unreleased"
     }
   ]
 }

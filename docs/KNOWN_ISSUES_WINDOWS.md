@@ -10,12 +10,18 @@ Open Windows issues as of v0.89.0 were observed on Windows 11 with Windows Power
 |---|---|---|
 | `python -m soma_mcp` | Startup fixed in v0.89.0 | BUG-008 |
 | MCP write/execute tools | Fixed in v0.89.0; request a state-bound receipt first | BUG-009 |
+| MCP cell reads and receipts (`soma_scan`, `soma_list_cells`, `soma_request_receipt`) | v0.89.0 fails once any cell has been edited; fixed after v0.89.0 | BUG-035 |
 | `install.ps1` parsing under Windows PowerShell 5.1 | Parse failure fixed in v0.89.0, but generated rules can contain mojibake and hooks are skipped | BUG-011, BUG-014, BUG-032 |
 | `install.ps1` under PowerShell 7 (`pwsh`) | Not fully verified; avoids the known PS 5.1 decoding issue, but the PowerShell installer still skips hooks | BUG-014, BUG-032 |
 | Hooks under Git Bash with a python.org install | Open: `python3` may resolve to the Windows Store stub | BUG-010 |
 | `soma status` on a cp1252 console | Open: can crash unless `PYTHONIOENCODING=utf-8` | BUG-012 |
 | `soma_list_cells` / `Governance.list_cells` | Open: non-ASCII text can be garbled and some cells can be dropped | BUG-012 |
 | Windows-only tests | Open: verification-contract failures root-caused (unescaped Windows paths in generated tests); path-separator failures remain | BUG-013 |
+
+## Fixed after v0.89.0 (unreleased)
+
+### BUG-035: Cell inventory rejected edited cells ([#61](https://github.com/nseney1/Soma-Governance/issues/61))
+On v0.89.0, `soma_scan` and `soma_list_cells` fail with `file changed before it was opened`, and `soma_request_receipt` returns `Internal error`, so no write or execute tool can run. Cause: `os.stat` and `os.fstat` report different `st_ctime` values on Windows. The inventory now leaves `st_ctime` out of its change check on Windows and reads cells in binary mode.
 
 ## Fixed in v0.89.0
 
