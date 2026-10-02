@@ -273,6 +273,18 @@ def check(
     total = len(mutations)
     survived: list[int] = []
 
+    # A mutant counts as killed whenever the tests fail, so tests that can't
+    # pass against the original code (syntax/import error, wrong assertion)
+    # would "kill" every mutant and pass (BUG-034). Fail closed instead.
+    if mutations and not _run_tests(test_file):
+        return ToolEvidence(
+            tool="mutation_tester",
+            target=f"{target_file}::{target_function}",
+            verdict=False,
+            detail="Baseline tests fail against the unmutated code; cannot assess mutations",
+            lines=[-1],
+        )
+
     for i, mutation in enumerate(mutations):
         mutated_source = _apply_mutation_by_index(source, target_function, i)
         if mutated_source is None:

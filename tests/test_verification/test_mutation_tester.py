@@ -210,3 +210,51 @@ class TestMutationTesterBudget:
         assert match, f"Could not parse mutation count from: {result.detail}"
         total = int(match.group(2)) if match.lastindex >= 2 else int(match.group(1))
         assert total <= 3, f"Expected <= 3 mutations attempted, got {total}"
+
+
+class TestMutationTesterFailsClosed:
+    """BUG-034: tests that cannot pass against the unmutated code used to
+    count as killing every mutant, so check() reported verdict=True."""
+
+    def _target(self, tmp_path):
+        src = tmp_path / "target.py"
+        src.write_text(textwrap.dedent("""\
+            def add(a, b):
+                return a + b
+        """))
+        return src
+
+    def test_unrunnable_test_file_fails_closed(self, tmp_path):
+        from immune_system.verification import mutation_tester
+
+        src = self._target(tmp_path)
+        test = tmp_path / "test_target.py"
+        test.write_text(textwrap.dedent(f"""\
+            import sys
+            sys.path.insert(0, {str(tmp_path)!r})
+            from target import add
+            def test_add(:
+                assert add(1, 2) == 3
+        """))
+
+        result = mutation_tester.check(str(src), "add", str(test))
+        assert result.verdict is False
+        assert "baseline" in result.detail.lower()
+        assert result.lines == [-1]
+
+    def test_baseline_assertion_failure_fails_closed(self, tmp_path):
+        from immune_system.verification import mutation_tester
+
+        src = self._target(tmp_path)
+        test = tmp_path / "test_target.py"
+        test.write_text(textwrap.dedent(f"""\
+            import sys
+            sys.path.insert(0, {str(tmp_path)!r})
+            from target import add
+            def test_add():
+                assert add(1, 2) == 4
+        """))
+
+        result = mutation_tester.check(str(src), "add", str(test))
+        assert result.verdict is False
+        assert "baseline" in result.detail.lower()

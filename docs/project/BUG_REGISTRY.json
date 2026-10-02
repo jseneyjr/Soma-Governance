@@ -600,16 +600,19 @@
     {
       "id": "BUG-034",
       "issue_url": "https://github.com/nseney1/Soma-Governance/issues/54",
-      "status": "open",
+      "status": "fixed",
       "title": "mutation_tester fails open: unrunnable tests count as killing every mutant",
       "discovered_in": "v0.88.2",
+      "fixed_in": "Unreleased",
       "root_cause": "silent_failure",
       "severity": "critical",
-      "description": "check() never runs the tests against the unmutated source first, and _run_tests() treats any non-zero pytest exit (collection error, import error, timeout, exception) as a killed mutant. Reproduced on v0.89.0: for `add(a, b)` with a test file containing a syntax error, check() returns verdict=True, '0/2 survived'. The verdict feeds the arbiter's TAUTOLOGICAL_TEST signal, so broken tests are rated as strong. It also masks BUG-013 on Windows.",
+      "description": "check() never runs the tests against the unmutated source first, and _run_tests() treats any non-zero pytest exit (collection error, import error, timeout, exception) as a killed mutant. Reproduced on v0.89.0: for `add(a, b)` with a test file containing a syntax error, check() returns verdict=True, '0/2 survived'. The verdict feeds the arbiter's TAUTOLOGICAL_TEST signal, so broken tests are rated as strong. It also masks BUG-013 on Windows. Fixed: check() now runs the tests against the unmutated source first; if they fail it returns verdict=False, lines=[-1] and a 'Baseline tests fail' detail, matching branch_coverage's fail-closed convention. A mutant that times out or errors after a passing baseline still counts as killed.",
       "affected_files": [
         "immune_system/verification/mutation_tester.py"
       ],
-      "pattern": "Verifier treats 'could not run' as 'passed' (fail-open)"
+      "regression_test": "tests/test_verification/test_mutation_tester.py::TestMutationTesterFailsClosed::test_unrunnable_test_file_fails_closed",
+      "pattern": "Verifier treats 'could not run' as 'passed' (fail-open)",
+      "changelog_ref": "Unreleased"
     },
     {
       "id": "BUG-035",
