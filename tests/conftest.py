@@ -38,6 +38,10 @@ def run(cmd, cwd=REPO_ROOT, env=None, stdin=subprocess.DEVNULL, timeout=120):
     full_env = dict(os.environ)
     if env:
         full_env.update(env)
+        # Under Git Bash resolve_home() prefers USERPROFILE, so a HOME-only
+        # override would still point the installer at the real profile (BUG-010).
+        if "HOME" in env and "USERPROFILE" not in env:
+            full_env["USERPROFILE"] = env["HOME"]
     return subprocess.run(
         cmd, cwd=cwd, env=full_env, stdin=stdin,
         capture_output=True, text=True, timeout=timeout,

@@ -153,19 +153,20 @@
     {
       "id": "BUG-010",
       "issue_url": "https://github.com/nseney1/Soma-Governance/issues/47",
-      "status": "open",
-      "title": "Windows Git Bash python3 stub and lifecycle isolation require native verification",
+      "status": "fixed",
+      "title": "Windows: installer tests wrote to the real user profile",
       "discovered_in": "v0.52.0",
+      "fixed_in": "Unreleased",
       "root_cause": "path_error",
       "severity": "critical",
-      "description": "Running pytest on Windows (Git Bash) rewrote ~/.claude/CLAUDE.md, created ~/.kiro (128 files), and overwrote ~/.soma/manifest.json and ~/.soma/backup in the real profile. Likely cause, not confirmed: install.sh resolves RESOLVED_HOME to the real profile instead of the test's temporary HOME. Knock-on: 10 test_install_lifecycle and 5 test_status failures. Not re-run on v0.88.2, because re-running would modify the real profile again. Related, confirmed on Windows: a python.org install has no python3.exe, so in Git Bash `python3` resolves to the App Installer stub. `command -v python3` succeeds, but running it exits 49 with no output. enzymes/common.sh install_hooks() therefore renders an empty hooks.json and skips hooks, and the other python3 calls in install/ and enzymes/*.sh fail. This does not cause the missing manifest: install_hooks runs inside an `if`, so set -e doesn't abort. The patched test helpers now set both HOME and USERPROFILE, and generated MCP configs probe importability, but native Windows/Git Bash execution has not been rerun and hook scripts still assume a usable python3 command. Keep open until native lifecycle tests pass without profile writes.",
+      "description": "Running pytest on Windows rewrote ~/.claude/CLAUDE.md, created ~/.kiro (128 files), and overwrote ~/.soma/manifest.json and ~/.soma/backup in the real profile. Cause, confirmed: under Git Bash enzymes/common.sh resolve_home() prefers USERPROFILE over HOME, and six install/uninstall calls in tests/test_install_lifecycle.py overrode only HOME, so install.sh and uninstall.sh ran against the real Windows profile. The shared tests/conftest.py run() helper now sets USERPROFILE to HOME whenever a caller overrides HOME alone. Verified on Windows 11 with HOME and USERPROFILE pointed at a scratch directory around the whole suite: before the fix the lifecycle tests wrote .claude/CLAUDE.md, .soma/manifest.json and backups into it; after, it stays empty and the real profile is unchanged. Five lifecycle tests still fail on Windows because of BUG-036 (#62). The Git Bash python3 stub, previously tracked here, is now BUG-037.",
       "affected_files": [
-        "install/install.sh",
-        "tests/test_install_lifecycle.py",
-        "tests/test_status.py",
-        "enzymes/common.sh"
+        "tests/conftest.py",
+        "tests/test_install_lifecycle.py"
       ],
-      "pattern": "Test isolation relies on HOME overrides that the code under test does not honor"
+      "regression_test": "tests/test_home_isolation.py::test_home_only_override_isolates_installer_home",
+      "pattern": "Test isolation relies on HOME overrides that the code under test does not honor",
+      "changelog_ref": "Unreleased"
     },
     {
       "id": "BUG-011",
@@ -613,6 +614,37 @@
       "regression_test": "tests/test_mcp_receipt_binding.py::test_receipt_flow_works_after_cell_edited_since_creation",
       "pattern": "Stat signatures compared across os.stat and os.fstat assume both report the same timestamps",
       "changelog_ref": "Unreleased"
+    },
+    {
+      "id": "BUG-036",
+      "issue_url": "https://github.com/nseney1/Soma-Governance/issues/62",
+      "status": "open",
+      "title": "uninstall.sh under Git Bash rejects every path as 'not an absolute path'",
+      "discovered_in": "v0.89.0",
+      "root_cause": "platform_compat",
+      "severity": "moderate",
+      "description": "Under Git Bash, resolve_home returns `cygpath -u \"$USERPROFILE\"`, so RESOLVED_HOME, the allowed roots and every removal-plan entry are MSYS paths (/c/Users/..., /tmp/...). uninstall.sh's embedded Python check() runs in native Windows Python, where os.path.isabs() rejects them, so uninstall refuses every entry and removes nothing (fails closed). Git for Windows ships no Python, so python3 there is normally a native build. On Windows this fails the BUG-031 regression tests and five tests in tests/test_install_lifecycle.py.",
+      "affected_files": [
+        "install/uninstall.sh",
+        "enzymes/common.sh"
+      ],
+      "pattern": "POSIX-form paths handed to a native Windows interpreter"
+    },
+    {
+      "id": "BUG-037",
+      "issue_url": "https://github.com/nseney1/Soma-Governance/issues/47#issuecomment-5943767333",
+      "status": "open",
+      "title": "Git Bash: python3 can resolve to the Windows Store stub, so hooks and shell-script Python calls fail",
+      "discovered_in": "v0.88.2",
+      "root_cause": "platform_compat",
+      "severity": "moderate",
+      "description": "A python.org install provides python.exe but no python3.exe, so in Git Bash `python3` resolves to the App Installer stub. `command -v python3` succeeds, but running it exits 49 with no output. enzymes/common.sh install_hooks() therefore renders an empty hooks.json and skips hooks, and the other python3 calls in install/ and enzymes/*.sh fail the same way. Workaround: disable the python3 App execution alias and put a real python3 on PATH. Split out of BUG-010 when its home-isolation half was fixed. Suggested fix: resolve one working interpreter (python3, python, py -3), accepting a candidate only if it runs `-c 'import sys'`, and use it everywhere.",
+      "affected_files": [
+        "enzymes/common.sh",
+        "install/install.sh",
+        "install/uninstall.sh"
+      ],
+      "pattern": "Interpreter presence checked with command -v instead of by running it"
     }
   ]
 }
