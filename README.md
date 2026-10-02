@@ -79,6 +79,8 @@ Add Soma as an MCP server in your AI agent's config — **zero API key needed**.
 
 Works with Gemini Antigravity, Claude Code, Cursor, and any MCP-compatible agent. Tools exposed: `soma_create_cell`, `soma_scan`, `soma_grade`, `soma_coverage`, `soma_fitness`, `soma_list_cells`, `soma_report_outcome`, `soma_propose_change`, `soma_audit_security`, `soma_audit_performance`, `soma_verify_changes`, `soma_checkpoint`.
 
+> **⚠ Known issues (open):** On native Windows the server exits at startup with `ModuleNotFoundError: fcntl` ([BUG-008](docs/project/BUG_REGISTRY.json), [#45](https://github.com/nseney1/Soma-Governance/issues/45)). On every platform, the write/execute tools (`soma_report_outcome`, `soma_propose_change`, …) require a `_sessionToken` that MCP hosts don't pass to the agent, so only the read tools are usable ([BUG-009](docs/project/BUG_REGISTRY.json), [#46](https://github.com/nseney1/Soma-Governance/issues/46)).
+
 ### SDK
 
 ```bash
@@ -286,8 +288,10 @@ Copy [`soma.conf.example`](install/soma.conf.example) → `soma.conf` to customi
 | **Linux** | Bash | `make install` | `bash install/uninstall.sh` | ✅ | ✅ | ✅ |
 | **macOS** | Zsh / Bash | `make install` | `bash install/uninstall.sh` | ✅ | ✅ | ✅ |
 | **WSL** | Bash | `make install` | `bash install/uninstall.sh` | ✅ | ✅ | ✅ |
-| **Windows (Git Bash)** | Bash | `make install` | `bash install/uninstall.sh` | ✅ | ✅ | ✅ |
-| **Windows (PowerShell)** | PowerShell | `.\install.ps1` | `.\install\uninstall.ps1` | ✅ | ✅ | ❌ |
+| **Windows (Git Bash)** | Bash | `make install` | `bash install/uninstall.sh` | ✅ | ✅ | ⚠️ |
+| **Windows (PowerShell)** | PowerShell | `.\install.ps1` | `.\install\uninstall.ps1` | ⚠️ | ⚠️ | ❌ |
+
+> **⚠ Windows known issues (open):** Under Windows PowerShell 5.1, the default for `.\install.ps1`, the installer fails to parse ([BUG-011](docs/project/BUG_REGISTRY.json)). Once parsed, it writes mojibake into the generated rules ([BUG-014](docs/project/BUG_REGISTRY.json)). CI only exercises `pwsh` 7, which is why it passes there. Under Git Bash, hooks are not installed when the only `python3` on PATH is the Windows Store stub, which is the default with a python.org install. On Windows, the test suite also writes to the real home directory, including `tests/test_install_lifecycle.py`, the required test for the cross-platform claim ([BUG-010](docs/project/BUG_REGISTRY.json), [#47](https://github.com/nseney1/Soma-Governance/issues/47)). Details and workarounds: [Known Issues — Windows](docs/KNOWN_ISSUES_WINDOWS.md).
 
 ---
 
@@ -334,6 +338,8 @@ Features that are planned but not yet shipped are listed in [ROADMAP.md](docs/pr
 |:---------|:---------|:------------|
 | [**Blog Post**](https://dev.to/nseney1/rules-that-cant-prove-themselves-die-adaptive-governance-for-ai-coding-agents-25bn) | Everyone | "Rules That Can't Prove Themselves Die" — full introduction |
 | [CHANGELOG](docs/project/CHANGELOG.md) | Users | Release history |
+| [Bug Registry](docs/project/BUG_REGISTRY.json) | Contributors, agents | Every known bug, fixed and open, with root cause and regression test |
+| [Known Issues — Windows](docs/KNOWN_ISSUES_WINDOWS.md) | Windows users | Open Windows bugs, workarounds, and impact |
 | [ROADMAP](docs/project/ROADMAP.md) | Users | Planned features and their tracking status |
 | [PHYLOGENY](docs/architecture/phylogeny.md) | Contributors | Phase-by-phase evolutionary narrative |
 | [MECHANISM_DESIGN](docs/architecture/mechanism_design.md) | Contributors | Formal mechanism design mapping |
