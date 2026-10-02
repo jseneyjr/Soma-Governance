@@ -79,7 +79,7 @@ Add Soma as an MCP server in your AI agent's config — **zero API key needed**.
 
 Works with Gemini Antigravity, Claude Code, Cursor, and any MCP-compatible agent. Tools exposed: `soma_create_cell`, `soma_scan`, `soma_grade`, `soma_coverage`, `soma_fitness`, `soma_list_cells`, `soma_report_outcome`, `soma_propose_change`, `soma_audit_security`, `soma_audit_performance`, `soma_verify_changes`, `soma_checkpoint`.
 
-> **⚠ Known issues (open):** On native Windows the server exits at startup with `ModuleNotFoundError: fcntl` ([BUG-008](docs/project/BUG_REGISTRY.json), [#45](https://github.com/nseney1/Soma-Governance/issues/45)). On every platform, the write/execute tools (`soma_report_outcome`, `soma_propose_change`, …) require a `_sessionToken` that MCP hosts don't pass to the agent, so only the read tools are usable ([BUG-009](docs/project/BUG_REGISTRY.json), [#46](https://github.com/nseney1/Soma-Governance/issues/46)).
+> **⚠ Known issues (open):** On every platform, the write/execute tools (`soma_report_outcome`, `soma_propose_change`, …) require a `_sessionToken` that MCP hosts don't pass to the agent, so only the read tools are usable ([BUG-009](docs/project/BUG_REGISTRY.json), [#46](https://github.com/nseney1/Soma-Governance/issues/46)).
 
 ### SDK
 

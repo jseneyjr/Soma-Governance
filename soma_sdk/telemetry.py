@@ -4,7 +4,10 @@ All fitness signal producers (CI reporter, outcome engine, MCP tools,
 cell_signal.sh, fitness_updater) should call append_signal() to write
 to the canonical evidence log at .soma/evidence/signals.jsonl.
 """
-import fcntl
+try:
+    import fcntl
+except ImportError:
+    fcntl = None  # Windows: no flock; appends are unlocked
 import json
 import os
 from datetime import datetime, timezone
@@ -55,12 +58,14 @@ def append_signal(workspace, cell_name, signal_type, source, metadata=None):
 
     # File-locked append for concurrent safety
     with open(log_path, 'a', encoding='utf-8') as f:
-        fcntl.flock(f.fileno(), fcntl.LOCK_EX)
+        if fcntl is not None:
+            fcntl.flock(f.fileno(), fcntl.LOCK_EX)
         try:
             f.write(line)
             f.flush()
         finally:
-            fcntl.flock(f.fileno(), fcntl.LOCK_UN)
+            if fcntl is not None:
+                fcntl.flock(f.fileno(), fcntl.LOCK_UN)
 
 
 if __name__ == '__main__':

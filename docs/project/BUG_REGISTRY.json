@@ -100,15 +100,17 @@
     {
       "id": "BUG-008",
       "issue_url": "https://github.com/nseney1/Soma-Governance/issues/45",
-      "status": "open",
+      "status": "fixed",
       "title": "MCP server crashes on Windows: unconditional `import fcntl`",
       "discovered_in": "v0.88.2",
       "root_cause": "platform_compat",
       "severity": "critical",
-      "description": "soma_mcp/tools.py (since v0.60) and soma_sdk/telemetry.py import fcntl unconditionally, so `python -m soma_mcp` exits with ModuleNotFoundError on Windows and MCP hosts get no Soma tools. v0.52 fixed this only in enzymes/fitness_updater.py.",
+      "description": "soma_mcp/tools.py (since v0.60) and soma_sdk/telemetry.py import fcntl unconditionally, so `python -m soma_mcp` exits with ModuleNotFoundError on Windows and MCP hosts get no Soma tools. v0.52 fixed this only in enzymes/fitness_updater.py. Fixed by guarding both imports with try/except ImportError and skipping flock when fcntl is None, matching fitness_updater.py. Appends are unlocked on Windows.",
       "affected_files": ["soma_mcp/tools.py", "soma_sdk/telemetry.py"],
       "pattern": "Fix applied to one call site of a shared pattern, not to all of them",
-      "candidate_regression_test": "tests/test_static_invariants.py::test_mcp_server_answers_jsonrpc_without_pyyaml"
+      "fixed_in": "Unreleased",
+      "regression_test": "tests/test_fcntl_optional.py::test_mcp_server_modules_import_without_fcntl",
+      "changelog_ref": "Unreleased"
     },
     {
       "id": "BUG-009",
