@@ -10,12 +10,12 @@ Open Windows issues as of v0.89.0 were observed on Windows 11 with Windows Power
 |---|---|---|
 | `python -m soma_mcp` | Startup fixed in v0.89.0 | BUG-008 |
 | MCP write/execute tools | Fixed in v0.89.0; request a state-bound receipt first | BUG-009 |
-| `install.ps1` parsing under Windows PowerShell 5.1 | Parse failure fixed in v0.89.0, but generated rules can contain mojibake and hooks are skipped | BUG-011, BUG-014 |
-| `install.ps1` under PowerShell 7 (`pwsh`) | Not fully verified; avoids the known PS 5.1 decoding issue, but the PowerShell installer still skips hooks | BUG-014 |
+| `install.ps1` parsing under Windows PowerShell 5.1 | Parse failure fixed in v0.89.0, but generated rules can contain mojibake and hooks are skipped | BUG-011, BUG-014, BUG-032 |
+| `install.ps1` under PowerShell 7 (`pwsh`) | Not fully verified; avoids the known PS 5.1 decoding issue, but the PowerShell installer still skips hooks | BUG-014, BUG-032 |
 | Hooks under Git Bash with a python.org install | Open: `python3` may resolve to the Windows Store stub | BUG-010 |
 | `soma status` on a cp1252 console | Open: can crash unless `PYTHONIOENCODING=utf-8` | BUG-012 |
 | `soma_list_cells` / `Governance.list_cells` | Open: non-ASCII text can be garbled and some cells can be dropped | BUG-012 |
-| Windows-only tests | Open: path-separator and verification-contract failures remain undiagnosed | BUG-013 |
+| Windows-only tests | Open: verification-contract failures root-caused (unescaped Windows paths in generated tests); path-separator failures remain | BUG-013 |
 
 ## Fixed in v0.89.0
 
@@ -42,8 +42,16 @@ The install-lifecycle tests run `install/install.sh` through Git Bash. The insta
 - `soma_sdk/governance.py` has locale-dependent cell reads; decoding failures can be swallowed and cells omitted.
 
 ### BUG-013: Windows-only test failures ([#50](https://github.com/nseney1/Soma-Governance/issues/50))
-- `tests/test_init.py` compares Windows paths against POSIX separators.
-- Mutation-tester and branch-coverage contract tests fail on Windows; the cause remains undiagnosed.
+- `tests/test_verification/test_branch_coverage.py` and `test_mutation_tester.py` write `sys.path.insert(0, '{tmp_path}')` into generated test files. A Windows path contains `\U` (`C:\Users\...`), so the generated file fails with a `unicodeescape` `SyntaxError`. The mutation tester counts the uncompilable test as killing every mutant and reports `verdict=True` (`0/3 survived`), so the tautological-test contract test fails (BUG-034, [#54](https://github.com/nseney1/Soma-Governance/issues/54)).
+- `tests/test_init.py` compares Windows paths against POSIX separators, and its symlink test needs Developer Mode (WinError 1314).
+- The `bash` fixture in `tests/conftest.py` returns `None` instead of skipping when bash is missing.
+
+CI does not yet run the test suite on Windows ([#56](https://github.com/nseney1/Soma-Governance/issues/56)), so these failures are not caught upstream.
+
+### BUG-032: PowerShell installer does not install lifecycle hooks
+`install.ps1` skips hooks because they require Bash, so post-session fitness updates never run after a native PowerShell install.
+
+**Workaround:** install through Git Bash with `install/install.sh`, with a real `python3` on `PATH` (see BUG-010).
 
 ### BUG-014: PowerShell installer writes mojibake ([#48](https://github.com/nseney1/Soma-Governance/issues/48))
 Windows PowerShell 5.1 decodes UTF-8 rule files using its locale default when `Get-Content` has no explicit encoding, so generated rules can contain mojibake. The PowerShell installer also skips hooks.

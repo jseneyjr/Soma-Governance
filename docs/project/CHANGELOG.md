@@ -3,6 +3,15 @@
 All notable changes to Soma are documented here.
 This project uses [Semantic Versioning](https://semver.org/).
 
+## [Unreleased]
+
+### Added
+- **Open bugs BUG-033 and BUG-034** in the Bug Registry: `soma status` miscounts installed core rules (#55), and `mutation_tester` fails open when tests cannot run (#54). Both were reproduced on v0.89.0.
+
+### Changed
+- **BUG-013 root cause** recorded in the Bug Registry and `docs/KNOWN_ISSUES_WINDOWS.md`: generated verification tests embed unescaped Windows paths and fail with a `unicodeescape` `SyntaxError`.
+- **BUG-015** now links to #57. **BUG-032** is listed in `docs/KNOWN_ISSUES_WINDOWS.md`.
+
 ## [0.89.0] — 2026-10-02 — "MCP Execution Security"
 
 ### Added

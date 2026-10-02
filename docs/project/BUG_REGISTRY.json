@@ -211,11 +211,12 @@
       "discovered_in": "v0.52.0",
       "root_cause": "platform_compat",
       "severity": "low",
-      "description": "3 tests in tests/test_init.py compare str(WindowsPath) against POSIX separators. test_mutation_tester::test_catches_tautological_test reports 0/2 survived on Windows, and 2 test_branch_coverage contract tests fail; cause not diagnosed. Not re-run on v0.88.2 because of BUG-010.",
+      "description": "Root cause of the verification failures: tests/test_verification/test_branch_coverage.py and test_mutation_tester.py interpolate `sys.path.insert(0, '{tmp_path}')` into generated test files. On Windows the path contains `\\U` (C:\\Users\\...), so the generated file fails to compile with a unicodeescape SyntaxError (fix: `{str(tmp_path)!r}`). On v0.89.0 this fails 4 test_branch_coverage contract tests and test_mutation_tester::test_catches_tautological_test, which reports 0/3 survived because the mutation tester counts the uncompilable test as killing every mutant (BUG-034). Separately, 3 tests in tests/test_init.py compare str(WindowsPath) against POSIX separators, the conftest `bash` fixture returns None instead of skipping when bash is missing, and the symlink test in test_init.py needs a Windows privilege (WinError 1314); these were observed on v0.88.2 and not re-run on v0.89.0 because of BUG-010.",
       "affected_files": [
-        "tests/test_init.py",
+        "tests/test_verification/test_branch_coverage.py",
         "tests/test_verification/test_mutation_tester.py",
-        "tests/test_verification/test_branch_coverage.py"
+        "tests/test_init.py",
+        "tests/conftest.py"
       ],
       "pattern": "Tests assert on OS-specific string forms"
     },
@@ -235,6 +236,7 @@
     },
     {
       "id": "BUG-015",
+      "issue_url": "https://github.com/nseney1/Soma-Governance/issues/57",
       "status": "fixed",
       "title": "`soma checkpoint` / `soma sync` wipe cell fitness on a fresh clone (triggers\u21920, score\u2192null)",
       "discovered_in": "v0.88.2",
@@ -566,6 +568,34 @@
         ".github/workflows/validate.yml"
       ],
       "pattern": "Cross-platform support claimed while one platform omits a lifecycle subsystem"
+    },
+    {
+      "id": "BUG-033",
+      "issue_url": "https://github.com/nseney1/Soma-Governance/issues/55",
+      "status": "open",
+      "title": "`soma status` reports the wrong core-rule count for installer-based Claude setups",
+      "discovered_in": "v0.88.2",
+      "root_cause": "path_error",
+      "severity": "low",
+      "description": "install.sh/install.ps1 merge all rules into ~/.claude/CLAUDE.md, but soma_cli/status.py globs the rules directory for *.md excluding CLAUDE.md, and with no loose files it falls back to the package's own genome/. Reproduced on v0.89.0 with an isolated HOME: a 1-rule CLAUDE.md reports '19 active' (the genome/ count); the same CLAUDE.md plus 2 loose .md files reports '2 active'.",
+      "affected_files": [
+        "soma_cli/status.py"
+      ],
+      "pattern": "Status reads a different artifact than the installer writes"
+    },
+    {
+      "id": "BUG-034",
+      "issue_url": "https://github.com/nseney1/Soma-Governance/issues/54",
+      "status": "open",
+      "title": "mutation_tester fails open: unrunnable tests count as killing every mutant",
+      "discovered_in": "v0.88.2",
+      "root_cause": "silent_failure",
+      "severity": "critical",
+      "description": "check() never runs the tests against the unmutated source first, and _run_tests() treats any non-zero pytest exit (collection error, import error, timeout, exception) as a killed mutant. Reproduced on v0.89.0: for `add(a, b)` with a test file containing a syntax error, check() returns verdict=True, '0/2 survived'. The verdict feeds the arbiter's TAUTOLOGICAL_TEST signal, so broken tests are rated as strong. It also masks BUG-013 on Windows.",
+      "affected_files": [
+        "immune_system/verification/mutation_tester.py"
+      ],
+      "pattern": "Verifier treats 'could not run' as 'passed' (fail-open)"
     }
   ]
 }
