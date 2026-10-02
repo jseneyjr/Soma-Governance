@@ -211,19 +211,28 @@
     {
       "id": "BUG-013",
       "issue_url": "https://github.com/nseney1/Soma-Governance/issues/50",
-      "status": "open",
-      "title": "Windows-only test failures: path-separator assertions and verification contract tests",
+      "status": "fixed",
+      "title": "Windows-only test failures: unescaped paths, separators, CRLF, bash and symlink assumptions",
       "discovered_in": "v0.52.0",
+      "fixed_in": "Unreleased",
       "root_cause": "platform_compat",
       "severity": "low",
-      "description": "Root cause of the verification failures: tests/test_verification/test_branch_coverage.py and test_mutation_tester.py interpolate `sys.path.insert(0, '{tmp_path}')` into generated test files. On Windows the path contains `\\U` (C:\\Users\\...), so the generated file fails to compile with a unicodeescape SyntaxError (fix: `{str(tmp_path)!r}`). On v0.89.0 this fails 4 test_branch_coverage contract tests and test_mutation_tester::test_catches_tautological_test, which reports 0/3 survived because the mutation tester counts the uncompilable test as killing every mutant (BUG-034). Separately, 3 tests in tests/test_init.py compare str(WindowsPath) against POSIX separators, the conftest `bash` fixture returns None instead of skipping when bash is missing, and the symlink test in test_init.py needs a Windows privilege (WinError 1314); these were observed on v0.88.2 and not re-run on v0.89.0 because of BUG-010.",
+      "description": "Test-only Windows failures, all fixed in the tests: (1) test_branch_coverage.py and test_mutation_tester.py wrote `sys.path.insert(0, '{tmp_path}')` into generated test files; a Windows path contains `\\U`, so the file failed with a unicodeescape SyntaxError. They now use `{str(tmp_path)!r}`. (2) test_init.py compared str(WindowsPath) against POSIX separators; it now compares Path.parts. test_packaging_install_correctness.py compared the C:/... paths written under Git Bash against backslash paths; it now normalizes both. (3) test_enforce_hooks.py wrote the bash hook in text mode (CRLF, locale encoding) and test_outcome_engine_insights.py wrote JSONL with CRLF while asserting a byte offset; both now write UTF-8 with LF. (4) The conftest `bash` fixture returned None when bash was missing, and test_uninstall_confinement.py and test_v089_review_followups.py hard-coded /bin/bash (WinError 2); a conftest require_bash() helper now resolves bash or skips. (5) Symlink tests skip when symlinks need a privilege (WinError 1314), and the POSIX execute-bit test skips on Windows. Verified on Windows 11 / Python 3.14: the full suite went from 49 to 12 failures, all BUG-036 or BUG-038. Note: with coverage missing from the environment, branch_coverage fails closed (lines [-1]); coverage is a declared dev dependency.",
       "affected_files": [
+        "tests/conftest.py",
         "tests/test_verification/test_branch_coverage.py",
         "tests/test_verification/test_mutation_tester.py",
         "tests/test_init.py",
-        "tests/conftest.py"
+        "tests/test_init_hooks.py",
+        "tests/test_enforce_hooks.py",
+        "tests/test_outcome_engine_insights.py",
+        "tests/test_packaging_install_correctness.py",
+        "tests/test_uninstall_confinement.py",
+        "tests/test_v089_review_followups.py"
       ],
-      "pattern": "Tests assert on OS-specific string forms"
+      "regression_test": "tests/test_verification/test_branch_coverage.py::TestBranchCoverageContract::test_dead_branch_detected",
+      "pattern": "Tests assert on OS-specific string forms",
+      "changelog_ref": "Unreleased"
     },
     {
       "id": "BUG-014",
@@ -627,7 +636,7 @@
       "discovered_in": "v0.89.0",
       "root_cause": "platform_compat",
       "severity": "moderate",
-      "description": "Under Git Bash, resolve_home returns `cygpath -u \"$USERPROFILE\"`, so RESOLVED_HOME, the allowed roots and every removal-plan entry are MSYS paths (/c/Users/..., /tmp/...). uninstall.sh's embedded Python check() runs in native Windows Python, where os.path.isabs() rejects them, so uninstall refuses every entry and removes nothing (fails closed). Git for Windows ships no Python, so python3 there is normally a native build. On Windows this fails the BUG-031 regression tests and five tests in tests/test_install_lifecycle.py.",
+      "description": "Under Git Bash, resolve_home returns `cygpath -u \"$USERPROFILE\"`, so RESOLVED_HOME, the allowed roots and every removal-plan entry are MSYS paths (/c/Users/..., /tmp/...). uninstall.sh's embedded Python check() runs in native Windows Python, where os.path.isabs() rejects them, so uninstall refuses every entry and removes nothing (fails closed). Git for Windows ships no Python, so python3 there is normally a native build. On Windows this fails the BUG-031 regression tests and five tests in tests/test_install_lifecycle.py. Until it is fixed, the refusal tests in tests/test_uninstall_confinement.py pass on Windows only because every entry is refused, so they don't discriminate there.",
       "affected_files": [
         "install/uninstall.sh",
         "enzymes/common.sh"

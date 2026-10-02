@@ -38,7 +38,9 @@ def _create_git_repo_with_hook(hook_script: str) -> str:
     
     # Install hook
     hook_path = os.path.join(repo, '.git', 'hooks', 'pre-commit')
-    with open(hook_path, 'w') as f:
+    # LF and UTF-8: Windows text mode would write CRLF (which bash rejects)
+    # and encode with the locale codec.
+    with open(hook_path, 'w', encoding='utf-8', newline='\n') as f:
         f.write(hook_script)
     os.chmod(hook_path, os.stat(hook_path).st_mode | stat.S_IEXEC)
     

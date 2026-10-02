@@ -34,7 +34,7 @@ class TestMutationTesterContract:
         test = tmp_path / "test_target.py"
         test.write_text(textwrap.dedent(f"""\
             import sys
-            sys.path.insert(0, '{tmp_path}')
+            sys.path.insert(0, {str(tmp_path)!r})
             from target import add
             def test_add():
                 assert add(2, 3) == 5
@@ -65,7 +65,7 @@ class TestMutationTesterContract:
         test = tmp_path / "test_target.py"
         test.write_text(textwrap.dedent(f"""\
             import sys
-            sys.path.insert(0, '{tmp_path}')
+            sys.path.insert(0, {str(tmp_path)!r})
             from target import compute
             def test_compute():
                 result = compute(5)
@@ -95,7 +95,7 @@ class TestMutationTesterContract:
         test = tmp_path / "test_target.py"
         test.write_text(textwrap.dedent(f"""\
             import sys
-            sys.path.insert(0, '{tmp_path}')
+            sys.path.insert(0, {str(tmp_path)!r})
             from target import multiply
             def test_multiply_basic():
                 assert multiply(3, 4) == 12
@@ -128,7 +128,7 @@ class TestMutationTesterContract:
         test = tmp_path / "test_target.py"
         test.write_text(textwrap.dedent(f"""\
             import sys
-            sys.path.insert(0, '{tmp_path}')
+            sys.path.insert(0, {str(tmp_path)!r})
             from target import negate
             def test_negate():
                 assert negate(5) == -5
@@ -156,7 +156,7 @@ class TestMutationTesterContract:
         test = tmp_path / "test_target.py"
         test.write_text(textwrap.dedent(f"""\
             import sys
-            sys.path.insert(0, '{tmp_path}')
+            sys.path.insert(0, {str(tmp_path)!r})
             from target import noop
             def test_noop():
                 assert noop() is None
@@ -190,7 +190,7 @@ class TestMutationTesterBudget:
         test = tmp_path / "test_target.py"
         test.write_text(textwrap.dedent(f"""\
             import sys
-            sys.path.insert(0, '{tmp_path}')
+            sys.path.insert(0, {str(tmp_path)!r})
             from target import big_function
             def test_basic():
                 result = big_function(2, 3, 4, 1)

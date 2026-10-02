@@ -18,11 +18,32 @@ def repo_root():
     return REPO_ROOT
 
 
+def require_bash():
+    """Path to bash, or skip. Prefers /bin/bash: on macOS that is 3.2, the
+    oldest supported shell and the one that surfaced SOMA-C03. Windows has
+    no /bin/bash for native processes; Git Bash is found on PATH."""
+    path = "/bin/bash" if os.path.exists("/bin/bash") else shutil.which("bash")
+    if not path:
+        pytest.skip("bash is not available")
+    return path
+
+
 @pytest.fixture(scope="session")
 def bash():
-    """Path to bash. Prefers /bin/bash: on macOS that is 3.2, the oldest
-    supported shell and the one that surfaced SOMA-C03."""
-    return "/bin/bash" if os.path.exists("/bin/bash") else shutil.which("bash")
+    return require_bash()
+
+
+def symlink_or_skip(target, link):
+    """Create a symlink, or skip: Windows needs Developer Mode or admin
+    rights (WinError 1314)."""
+    try:
+        os.symlink(str(target), str(link))
+    except (OSError, NotImplementedError):
+        # On POSIX a failure here is a test bug; don't let it hide the
+        # symlink-escape security tests behind a skip.
+        if os.name != "nt":
+            raise
+        pytest.skip("symlinks are unavailable")
 
 
 @pytest.fixture
