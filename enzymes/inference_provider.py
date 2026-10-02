@@ -46,15 +46,6 @@ def read_config_key(workspace, key):
                 if line.startswith(f"{key}=") and not line.startswith('#'):
                     return line.split('=', 1)[1].strip().strip('"').strip("'")
     
-    # Check .soma/credentials.conf
-    creds_path = os.path.join(workspace, '.soma', 'credentials.conf')
-    if os.path.exists(creds_path):
-        with open(creds_path, encoding='utf-8') as f:
-            for line in f:
-                line = line.strip()
-                if line.startswith(f"{key}=") and not line.startswith('#'):
-                    return line.split('=', 1)[1].strip().strip('"').strip("'")
-    
     return None
 
 def resolve_key(workspace, env_keys):
@@ -69,9 +60,10 @@ def resolve_key(workspace, env_keys):
                     return val
             except Exception:
                 pass
-        val = read_config_key(workspace, key)
-        if val:
-            return val
+        if "API_KEY" not in key:
+            val = read_config_key(workspace, key)
+            if val:
+                return val
     return None
 
 class InferenceProvider(ABC):
@@ -165,8 +157,8 @@ class PromptOnlyProvider(InferenceProvider):
                 "the prompt-only fallback cannot be used here (reading stdin "
                 "would consume the MCP JSON-RPC request stream and hang the "
                 "server). Configure a provider via GEMINI_API_KEY, "
-                "ANTHROPIC_API_KEY or OPENAI_API_KEY in the environment, "
-                "soma.conf, or .soma/credentials.conf."
+                "ANTHROPIC_API_KEY or OPENAI_API_KEY in the environment "
+                "or system keyring."
             )
 
         # stderr only: stdout may be a JSON-RPC transport.
