@@ -711,6 +711,20 @@
       "regression_test": "tests/test_verification/test_mutation_tester.py::TestMutationTesterAppliesEveryCollectedMutation::test_unchecked_comparison_survives",
       "pattern": "Collected mutations silently skipped instead of being evaluated",
       "changelog_ref": "Unreleased"
+    },
+    {
+      "id": "BUG-040",
+      "status": "open",
+      "title": "Recording an outcome leaves .soma/evidence/.signals.lock as an untracked file",
+      "discovered_in": "v0.89.0",
+      "root_cause": "path_error",
+      "severity": "low",
+      "description": "soma_sdk.telemetry.evidence_lock() creates .soma/evidence/.signals.lock (open with 'a+b') the first time any signal is appended, including a soma_report_outcome call that records nothing (cells_used=[]). Neither the root .gitignore nor .soma/evidence/.gitignore covers it, so after one MCP outcome report the repository has an untracked .soma/evidence/.signals.lock, which `git add -A` would commit. Seen live on 2026-10-02 during the BUG-009/BUG-035 receipt check through the MCP server; not Windows-specific. Related: .soma/evidence/.fitness.lock is a committed, empty file that no current code creates or reads.",
+      "affected_files": [
+        "soma_sdk/telemetry.py",
+        ".soma/evidence/.gitignore"
+      ],
+      "pattern": "Runtime lock file written inside the working tree without an ignore rule"
     }
   ]
 }
