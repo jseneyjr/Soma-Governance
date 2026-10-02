@@ -82,10 +82,9 @@ except ImportError:
 # Canonical source: enzymes/soma_resolve.py — keep in sync manually
 def resolve_workspace(args=None):
     """Find the project root containing .soma/cells/."""
-    if args and args.get("workspace"):
-        ws = args.get("workspace")
-        if os.path.isdir(os.path.join(ws, ".soma", "cells")):
-            return os.path.abspath(ws)
+    # We do NOT trust args["workspace"] from client input unverified.
+    # Write and Execute tools use args["workspace"] strictly because the MCP server safely injects _canonical_workspace over whatever the client provided.
+    # Read tools and background execution must rely on SOMA_WORKSPACE to prevent cross-workspace reading attacks.
 
     soma_ws = os.environ.get("SOMA_WORKSPACE")
     if soma_ws:

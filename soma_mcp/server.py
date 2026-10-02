@@ -19,10 +19,10 @@ _execution_enabled = False
 
 _READ_TOOLS = frozenset({
     "soma_scan", "soma_list_cells", "soma_grade", "soma_coverage", "soma_fitness",
+    "soma_request_receipt"
 })
 _WRITE_TOOLS = frozenset({
-    "soma_report_outcome", "soma_capture_insight", "soma_create_cell",
-    "soma_request_receipt"
+    "soma_report_outcome", "soma_capture_insight", "soma_create_cell"
 })
 _EXECUTE_TOOLS = frozenset({
     "soma_propose_change", "soma_verify_changes", "soma_checkpoint",
@@ -266,7 +266,7 @@ def handle_request(request: Dict[str, Any]) -> Dict[str, Any]:
                 }
 
             # Safely override workspace *after* verification if required
-            if name in _EXECUTE_TOOLS:
+            if name in _EXECUTE_TOOLS or name in _WRITE_TOOLS:
                 args["workspace"] = _canonical_workspace
 
         # Rate limit check
