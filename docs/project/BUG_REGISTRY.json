@@ -648,7 +648,7 @@
     },
     {
       "id": "BUG-037",
-      "issue_url": "https://github.com/nseney1/Soma-Governance/issues/47#issuecomment-5943767333",
+      "issue_url": "https://github.com/nseney1/Soma-Governance/issues/64",
       "status": "open",
       "title": "Git Bash: python3 can resolve to the Windows Store stub, so hooks and shell-script Python calls fail",
       "discovered_in": "v0.88.2",
@@ -664,12 +664,13 @@
     },
     {
       "id": "BUG-038",
+      "issue_url": "https://github.com/nseney1/Soma-Governance/issues/65",
       "status": "open",
       "title": "Windows: enzyme scripts crash on a cp1252 stdout when printing non-ASCII",
       "discovered_in": "v0.89.0",
       "root_cause": "platform_compat",
       "severity": "moderate",
-      "description": "Nineteen standalone enzyme scripts and immune_system/verification/runner.py print emoji, arrows or other non-ASCII characters from their __main__ entry points without reconfiguring stdout. With stdout on cp1252 (Windows, redirected or captured, including hook runs under Git Bash) they raise UnicodeEncodeError and exit 1. Seen on Windows in tests/test_crossover_structured.py: enzymes/cell_crossover.py fails at its 'Crossover: a x b -> c' line (U+2192). Same class as BUG-012, which fixed the `soma` CLI and verify_bug_registry.py only. No GitHub issue yet.",
+      "description": "Nineteen standalone enzyme scripts and immune_system/verification/runner.py print emoji, arrows or other non-ASCII characters from their __main__ entry points without reconfiguring stdout. With stdout on cp1252 (Windows, redirected or captured, including hook runs under Git Bash) they raise UnicodeEncodeError and exit 1. Seen on Windows in tests/test_crossover_structured.py: enzymes/cell_crossover.py fails at its 'Crossover: a x b -> c' line (U+2192). Same class as BUG-012, which fixed the `soma` CLI and verify_bug_registry.py only.",
       "affected_files": [
         "enzymes/cell_coverage.py",
         "enzymes/cell_create_nl.py",
@@ -696,6 +697,7 @@
     },
     {
       "id": "BUG-039",
+      "issue_url": "https://github.com/nseney1/Soma-Governance/issues/66",
       "status": "fixed",
       "title": "mutation_tester counted comparison, boolean, statement and return mutations but never applied them",
       "discovered_in": "v0.89.0",

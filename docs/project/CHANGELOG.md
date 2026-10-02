@@ -7,7 +7,7 @@ This project uses [Semantic Versioning](https://semver.org/).
 
 ### Added
 - **Open bugs BUG-033 and BUG-034** in the Bug Registry: `soma status` miscounts installed core rules (#55), and `mutation_tester` fails open when tests cannot run (#54). Both were reproduced on v0.89.0.
-- **Open bugs BUG-036, BUG-037 and BUG-038**: `uninstall.sh` under Git Bash rejects every path (#62), the Git Bash `python3` Store stub (split out of BUG-010), and enzyme scripts crashing on a cp1252 stdout.
+- **Open bugs BUG-036, BUG-037 and BUG-038**: `uninstall.sh` under Git Bash rejects every path (#62), the Git Bash `python3` Store stub (#64, split out of BUG-010), and enzyme scripts crashing on a cp1252 stdout (#65).
 
 ### Changed
 - **BUG-013 root cause** recorded in the Bug Registry and `docs/KNOWN_ISSUES_WINDOWS.md`: generated verification tests embed unescaped Windows paths and fail with a `unicodeescape` `SyntaxError`.
@@ -19,7 +19,7 @@ This project uses [Semantic Versioning](https://semver.org/).
 - **Windows: `soma status` crashed on a cp1252 stdout** (BUG-012, #49): printing an emoji raised `UnicodeEncodeError` and the command exited 1. `soma` and `enzymes/verify_bug_registry.py` now reconfigure stdout with `errors="replace"`; standalone enzyme scripts are still affected (open BUG-038). `tests/test_rule_metadata.py` reads rule files as UTF-8. Regression tests: `tests/test_cli.py::TestNonUtf8Console`, `tests/test_bug_registry.py::test_error_report_survives_cp1252_stdout`.
 - **Windows-only test failures** (BUG-013, #50): generated tests now escape `tmp_path` (`{str(tmp_path)!r}`); path assertions compare `Path.parts` or normalized paths; byte-sensitive files are written as UTF-8 with LF; `tests/conftest.py` gains `require_bash()` (replacing hard-coded `/bin/bash`) and `symlink_or_skip()`; the execute-bit test skips on Windows. On Windows the suite goes from 49 to 12 failures (BUG-036, BUG-038).
 - **`mutation_tester` failed open when tests couldn't run** (BUG-034, #54): `check()` counted any test failure as a killed mutant, so a test file with a syntax error, import error or wrong assertion reported `verdict=True`. It now runs the tests against the unmutated source first and returns `verdict=False` (`lines=[-1]`) when that baseline fails. Regression tests: `tests/test_verification/test_mutation_tester.py::TestMutationTesterFailsClosed`.
-- **`mutation_tester` skipped most mutation kinds** (BUG-039): comparison, `and`/`or`, statement-deletion and return-value mutations were counted but never applied, so a test that never checked a comparison reported `verdict=True`. Every collected mutation is now applied; docstring deletion and `return None` are no longer generated, since they are equivalent mutants no test can kill. Regression tests: `tests/test_verification/test_mutation_tester.py::TestMutationTesterAppliesEveryCollectedMutation`.
+- **`mutation_tester` skipped most mutation kinds** (BUG-039, #66): comparison, `and`/`or`, statement-deletion and return-value mutations were counted but never applied, so a test that never checked a comparison reported `verdict=True`. Every collected mutation is now applied; docstring deletion and `return None` are no longer generated, since they are equivalent mutants no test can kill. Regression tests: `tests/test_verification/test_mutation_tester.py::TestMutationTesterAppliesEveryCollectedMutation`.
 
 ## [0.89.0] — 2026-10-02 — "MCP Execution Security"
 

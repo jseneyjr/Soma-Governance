@@ -50,10 +50,10 @@ The PowerShell scripts now carry a UTF-8 BOM, and CI dry-runs the installer unde
 ### BUG-036: `uninstall.sh` under Git Bash rejects every path ([#62](https://github.com/nseney1/Soma-Governance/issues/62))
 Under Git Bash the removal plan holds MSYS paths (`/c/Users/...`, `/tmp/...`), and the confinement check runs in native Windows Python, where `os.path.isabs()` rejects them. Uninstall refuses every entry and removes nothing. **Workaround:** remove Soma's files by hand.
 
-### BUG-038: Enzyme scripts crash on a cp1252 stdout
+### BUG-038: Enzyme scripts crash on a cp1252 stdout ([#65](https://github.com/nseney1/Soma-Governance/issues/65))
 About 20 standalone scripts under `enzymes/` print non-ASCII characters. With stdout on cp1252 (redirected or captured output) they exit 1 with `UnicodeEncodeError`; `tests/test_crossover_structured.py` fails on Windows for this reason. **Workaround:** `$env:PYTHONIOENCODING = "utf-8"` (PowerShell) or `export PYTHONIOENCODING=utf-8` (Git Bash).
 
-### BUG-037: Git Bash `python3` may be the Windows Store stub ([#47 comment](https://github.com/nseney1/Soma-Governance/issues/47#issuecomment-5943767333))
+### BUG-037: Git Bash `python3` may be the Windows Store stub ([#64](https://github.com/nseney1/Soma-Governance/issues/64))
 A python.org install may not provide `python3.exe`, so `python3` resolves to the App Installer stub. `command -v python3` succeeds but execution fails, preventing hook generation and other shell-script Python calls.
 
 **Workaround:** disable the `python3.exe` App execution alias and put a real `python3` on `PATH`, such as a shim that invokes `python.exe`.
