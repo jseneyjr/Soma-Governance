@@ -10,7 +10,7 @@ This project uses [Semantic Versioning](https://semver.org/).
 
 ### Changed
 - **BUG-013 root cause** recorded in the Bug Registry and `docs/KNOWN_ISSUES_WINDOWS.md`: generated verification tests embed unescaped Windows paths and fail with a `unicodeescape` `SyntaxError`.
-- **BUG-015** now links to #57. **BUG-032** is listed in `docs/KNOWN_ISSUES_WINDOWS.md`.
+- **BUG-015** now links to #57, and **BUG-014** to its own issue #59 (split from #48, which the v0.89.0 BOM fix closed). **BUG-032** is listed in `docs/KNOWN_ISSUES_WINDOWS.md`.
 
 ## [0.89.0] — 2026-10-02 — "MCP Execution Security"
 

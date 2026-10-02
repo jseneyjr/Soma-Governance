@@ -222,7 +222,7 @@
     },
     {
       "id": "BUG-014",
-      "issue_url": "https://github.com/nseney1/Soma-Governance/issues/48",
+      "issue_url": "https://github.com/nseney1/Soma-Governance/issues/59",
       "status": "open",
       "title": "PowerShell installer writes mojibake into generated rule files",
       "discovered_in": "v0.51.0",

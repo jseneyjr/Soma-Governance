@@ -53,7 +53,7 @@ CI does not yet run the test suite on Windows ([#56](https://github.com/nseney1/
 
 **Workaround:** install through Git Bash with `install/install.sh`, with a real `python3` on `PATH` (see BUG-010).
 
-### BUG-014: PowerShell installer writes mojibake ([#48](https://github.com/nseney1/Soma-Governance/issues/48))
+### BUG-014: PowerShell installer writes mojibake ([#59](https://github.com/nseney1/Soma-Governance/issues/59), split from [#48](https://github.com/nseney1/Soma-Governance/issues/48))
 Windows PowerShell 5.1 decodes UTF-8 rule files using its locale default when `Get-Content` has no explicit encoding, so generated rules can contain mojibake. The PowerShell installer also skips hooks.
 
 **Workaround:** use `pwsh` to avoid the known PS 5.1 decoding problem, while recognizing that PowerShell installer hook parity is still unavailable.
