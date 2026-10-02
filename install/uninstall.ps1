@@ -1,4 +1,4 @@
-# Soma — Native Windows PowerShell Uninstaller
+﻿# Soma — Native Windows PowerShell Uninstaller
 # Removes steering rules and skills deployed by install.ps1 / install.sh.
 #
 # Usage:

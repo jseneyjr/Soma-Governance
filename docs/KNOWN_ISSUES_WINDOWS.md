@@ -9,7 +9,7 @@ Each issue is tracked in [`BUG_REGISTRY.json`](project/BUG_REGISTRY.json) with `
 
 | Area | Works on Windows? | Bug |
 |---|---|---|
-| `.\install.ps1` under Windows PowerShell 5.1 | **No**: parse errors; once parsed, generated rules contain mojibake | BUG-011, BUG-014 |
+| `.\install.ps1` under Windows PowerShell 5.1 | Installs (parse failure fixed in Unreleased), but generated rules contain mojibake | BUG-011, BUG-014 |
 | `install.ps1` under PowerShell 7 (`pwsh`) | Yes | — |
 | MCP server (`python -m soma_mcp`) | Yes (fixed in Unreleased) | BUG-008 |
 | MCP write/execute tools from an MCP host | **No** (all platforms): `_sessionToken` not reachable | BUG-009 |
@@ -31,9 +31,8 @@ The install-lifecycle tests run `install/install.sh` through Git Bash. The insta
 **Related (Git Bash):** a python.org install has no `python3.exe`, so `python3` resolves to the App Installer stub (`WindowsApps\python3.exe`). `command -v python3` succeeds, but running it exits 49 with no output. `install_hooks()` in `enzymes/common.sh` then renders an empty `hooks.json` and skips hooks, and the other `python3` calls in the shell scripts fail.
 **Workaround:** turn off the `python3.exe` App execution alias, and put a real `python3` on PATH, e.g. a `~/bin/python3` shim that runs `python.exe "$@"`.
 
-### BUG-011: `install.ps1` doesn't parse under Windows PowerShell 5.1 ([#48](https://github.com/nseney1/Soma-Governance/issues/48))
-The `.ps1` files are UTF-8 without a BOM, so PS 5.1 reads them as cp1252 and the em-dash's 0x94 byte ends a string early. CI runs `pwsh` 7, which defaults to UTF-8, so it doesn't catch this.
-**Workaround:** run the installer with `pwsh`, or save the `.ps1` files as UTF-8 with BOM.
+### BUG-011: `install.ps1` doesn't parse under Windows PowerShell 5.1 ([#48](https://github.com/nseney1/Soma-Governance/issues/48)) — fixed (Unreleased)
+The `.ps1` files were UTF-8 without a BOM, so PS 5.1 read them as cp1252 and the em-dash's 0x94 byte ended a string early. They now carry a BOM, and CI dry-runs the installer under Windows PowerShell 5.1 as well as `pwsh` 7.
 
 ### BUG-014: The PowerShell installer writes mojibake ([#48](https://github.com/nseney1/Soma-Governance/issues/48))
 `Get-Content` without `-Encoding` decodes the UTF-8 rule files as cp1252 under PS 5.1, so sequences like `â€”` appear in generated rules. The PowerShell installer also skips hooks.

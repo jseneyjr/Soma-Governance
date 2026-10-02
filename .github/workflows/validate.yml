@@ -121,3 +121,15 @@ jobs:
             Write-Error "PowerShell dry-run reported 0 rules — SOMA-C11 regression"
             exit 1
           }
+
+      # `.\install.ps1` on stock Windows runs Windows PowerShell 5.1, which reads
+      # BOM-less scripts as cp1252; pwsh 7 defaults to UTF-8 and hides that (BUG-011).
+      - name: Dry-run under Windows PowerShell 5.1
+        shell: powershell
+        run: |
+          $result = & powershell -NoProfile -ExecutionPolicy Bypass -File install/install.ps1 -DryRun 2>&1 | Out-String
+          Write-Host $result
+          if ($result -notmatch 'Dry-run complete') {
+            Write-Error "install.ps1 dry-run failed under Windows PowerShell 5.1 - BUG-011 regression"
+            exit 1
+          }

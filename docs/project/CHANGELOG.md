@@ -14,6 +14,7 @@ This project uses [Semantic Versioning](https://semver.org/).
 - **README**: known-issue notes for the MCP server and Windows; the Windows rows of the platform table are now ⚠️ where open bugs apply.
 
 ### Fixed
+- **`install.ps1` failed to parse under Windows PowerShell 5.1** (BUG-011, #48): the installers were UTF-8 without a BOM, so PS 5.1 read them as cp1252. They are now saved with a UTF-8 BOM. Regression test: `test_powershell_scripts_with_non_ascii_have_utf8_bom`. CI: new Windows PowerShell 5.1 dry-run step in `validate.yml`.
 - **MCP server crashed on Windows at startup** (BUG-008, #45): `soma_mcp/tools.py` and `soma_sdk/telemetry.py` imported `fcntl` unconditionally. Both now fall back to unlocked appends when `fcntl` is unavailable, matching `enzymes/fitness_updater.py`. Regression tests: `tests/test_fcntl_optional.py`.
 - `tests/test_diagnose_hot_zones.py`: the "Insufficient data" snapshot test assumed fewer than 10 registry entries; it now asserts the warning tracks the registry size.
 

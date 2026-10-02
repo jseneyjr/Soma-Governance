@@ -139,14 +139,17 @@
     {
       "id": "BUG-011",
       "issue_url": "https://github.com/nseney1/Soma-Governance/issues/48",
-      "status": "open",
+      "status": "fixed",
       "title": "Windows PowerShell 5.1 cannot parse the PowerShell installers (no UTF-8 BOM)",
       "discovered_in": "v0.51.0",
       "root_cause": "platform_compat",
       "severity": "moderate",
-      "description": "install.ps1, install/install.ps1 and install/uninstall.ps1 are UTF-8 without a BOM. Windows PowerShell 5.1, which `.\\install.ps1` runs on stock Windows, decodes them as cp1252. The em-dash's trailing 0x94 byte becomes a closing quote, so parsing fails and nothing is installed. CI misses this because validate.yml runs pwsh 7, which defaults to UTF-8.",
+      "description": "install.ps1, install/install.ps1 and install/uninstall.ps1 are UTF-8 without a BOM. Windows PowerShell 5.1, which `.\\install.ps1` runs on stock Windows, decodes them as cp1252. The em-dash's trailing 0x94 byte becomes a closing quote, so parsing fails and nothing is installed. CI misses this because validate.yml runs pwsh 7, which defaults to UTF-8. Fixed by saving the three .ps1 files as UTF-8 with BOM. A static test now requires a BOM on every non-ASCII .ps1, and the Windows CI job dry-runs the installer under Windows PowerShell 5.1.",
       "affected_files": ["install.ps1", "install/install.ps1", "install/uninstall.ps1", ".github/workflows/validate.yml"],
-      "pattern": "CI tests a different runtime (pwsh 7) than the one users run (Windows PowerShell 5.1)"
+      "pattern": "CI tests a different runtime (pwsh 7) than the one users run (Windows PowerShell 5.1)",
+      "fixed_in": "Unreleased",
+      "changelog_ref": "Unreleased",
+      "regression_test": "tests/test_static_invariants.py::test_powershell_scripts_with_non_ascii_have_utf8_bom"
     },
     {
       "id": "BUG-012",
