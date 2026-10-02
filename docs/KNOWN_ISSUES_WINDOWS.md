@@ -11,7 +11,7 @@ Each issue is tracked in [`BUG_REGISTRY.json`](project/BUG_REGISTRY.json) with `
 |---|---|---|
 | `.\install.ps1` under Windows PowerShell 5.1 | **No**: parse errors; once parsed, generated rules contain mojibake | BUG-011, BUG-014 |
 | `install.ps1` under PowerShell 7 (`pwsh`) | Yes | — |
-| MCP server (`python -m soma_mcp`) | **No**: `ModuleNotFoundError: fcntl` at startup | BUG-008 |
+| MCP server (`python -m soma_mcp`) | Yes (fixed in Unreleased) | BUG-008 |
 | MCP write/execute tools from an MCP host | **No** (all platforms): `_sessionToken` not reachable | BUG-009 |
 | Hooks under Git Bash with a python.org install | **No**: `python3` is the Windows Store stub | BUG-010 |
 | `soma status` on a cp1252 console | Crashes unless `PYTHONIOENCODING=utf-8` | BUG-012 |
@@ -19,9 +19,8 @@ Each issue is tracked in [`BUG_REGISTRY.json`](project/BUG_REGISTRY.json) with `
 
 ## Issues
 
-### BUG-008: MCP server crashes at startup ([#45](https://github.com/nseney1/Soma-Governance/issues/45))
-`soma_mcp/tools.py` and `soma_sdk/telemetry.py` import `fcntl` unconditionally. `enzymes/fitness_updater.py` already falls back when it's missing.
-**Workaround:** guard the import with `try/except ImportError` and skip `flock` when `fcntl is None`.
+### BUG-008: MCP server crashes at startup ([#45](https://github.com/nseney1/Soma-Governance/issues/45)) — fixed (Unreleased)
+`soma_mcp/tools.py` and `soma_sdk/telemetry.py` imported `fcntl` unconditionally. Both now fall back to unlocked appends, as `enzymes/fitness_updater.py` already did.
 
 ### BUG-009: Write/execute MCP tools need a token hosts can't supply ([#46](https://github.com/nseney1/Soma-Governance/issues/46))
 The token is generated per process on `initialize` and returned only in `serverInfo._sessionToken`. MCP hosts don't pass `serverInfo` to the model, so `soma_report_outcome` and the other write/execute tools return JSON-RPC `-32600`. Outcomes can't be reported, so fitness doesn't evolve.

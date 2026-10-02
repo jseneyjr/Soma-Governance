@@ -1,4 +1,7 @@
-import fcntl
+try:
+    import fcntl
+except ImportError:
+    fcntl = None  # Windows: no flock; appends are unlocked
 import glob
 import importlib
 import json
@@ -637,12 +640,14 @@ def execute_tool(name: str, args: dict):
             }
             records.append(record)
         with open(outcomes_file, 'a', encoding="utf-8") as f:
-            fcntl.flock(f, fcntl.LOCK_EX)
+            if fcntl is not None:
+                fcntl.flock(f, fcntl.LOCK_EX)
             try:
                 for record in records:
                     f.write(json.dumps(record) + '\n')
             finally:
-                fcntl.flock(f, fcntl.LOCK_UN)
+                if fcntl is not None:
+                    fcntl.flock(f, fcntl.LOCK_UN)
         # Also write to unified telemetry log
         try:
             from soma_sdk.telemetry import append_signal
