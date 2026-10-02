@@ -3,6 +3,21 @@
 All notable changes to Soma are documented here.
 This project uses [Semantic Versioning](https://semver.org/).
 
+## [0.88.2] — 2026-10-01 — "Documentation Updates"
+
+### Documentation
+- Removed deprecated API Key fields from `README.md` configuration table.
+
+---
+
+## [0.88.1] — 2026-10-01 — "Credential Hardening"
+
+### Security
+- **Deprecated Plaintext API Keys**: Removed `GEMINI_API_KEY`, `ANTHROPIC_API_KEY`, and `OPENAI_API_KEY` from configuration files (`soma.conf`, `.soma/credentials.conf`).
+- **Enforced Secure Storage**: `inference_provider.py` now exclusively resolves credentials via environment variables or the system `keyring`, mitigating the risk of accidentally committing secrets.
+
+---
+
 ## [0.88.0] — 2026-10-01 — "Key Management"
 
 ### Added
