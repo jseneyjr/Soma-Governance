@@ -11,6 +11,7 @@ if REPO_ROOT not in sys.path:
 
 from enzymes.verify_bug_registry import (
     load_registry,
+    verify_regression_tests,
     verify_schema,
     verify_unique_ids,
 )
@@ -76,6 +77,59 @@ class TestVerifySchema:
         registry = _make_registry(tmp_path, bugs)
         errors = verify_schema(registry)
         assert any("unknown severity" in e for e in errors)
+
+
+def _open_bug(**overrides):
+    bug = {
+        "id": "BUG-010", "title": "Open bug", "status": "open",
+        "discovered_in": "v0.3", "root_cause": "path_error",
+        "severity": "moderate", "affected_files": ["foo.py"],
+    }
+    bug.update(overrides)
+    return bug
+
+
+class TestOpenBugs:
+    """Open bugs are tracked before a fix exists, so fix fields are not required."""
+
+    def test_open_bug_without_fix_fields_passes(self, tmp_path):
+        registry = _make_registry(tmp_path, [_open_bug()])
+        assert verify_schema(registry) == []
+
+    def test_open_bug_still_requires_core_fields(self, tmp_path):
+        bug = _open_bug()
+        del bug["affected_files"]
+        registry = _make_registry(tmp_path, [bug])
+        errors = verify_schema(registry)
+        assert any("BUG-010: missing required field 'affected_files'" == e for e in errors)
+
+    def test_open_bug_claiming_a_fix_is_flagged(self, tmp_path):
+        registry = _make_registry(tmp_path, [_open_bug(fixed_in="v0.4")])
+        errors = verify_schema(registry)
+        assert any("BUG-010" in e and "open" in e and "fixed_in" in e for e in errors)
+
+    def test_invalid_status_flagged(self, tmp_path):
+        registry = _make_registry(tmp_path, [_open_bug(status="wontfix")])
+        errors = verify_schema(registry)
+        assert any("unknown status 'wontfix'" in e for e in errors)
+
+    def test_explicit_fixed_status_still_requires_fix_fields(self, tmp_path):
+        bug = _open_bug(status="fixed")
+        registry = _make_registry(tmp_path, [bug])
+        errors = verify_schema(registry)
+        for field in ("fixed_in", "regression_test", "changelog_ref"):
+            assert f"BUG-010: missing required field '{field}'" in errors
+
+    def test_regression_check_skips_open_bugs(self, tmp_path):
+        registry = _make_registry(tmp_path, [_open_bug()])
+        assert verify_regression_tests(registry, str(tmp_path)) == []
+
+    def test_regression_check_still_applies_to_fixed_bugs(self, tmp_path):
+        bug = _open_bug(status="fixed", fixed_in="v0.4", changelog_ref="v0.4",
+                        regression_test="tests/test_missing.py::test_x")
+        registry = _make_registry(tmp_path, [bug])
+        errors = verify_regression_tests(registry, str(tmp_path))
+        assert errors == ["BUG-010: regression test file not found: tests/test_missing.py"]
 
 
 class TestVerifyUniqueIds:

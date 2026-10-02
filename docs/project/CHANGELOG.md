@@ -3,6 +3,19 @@
 All notable changes to Soma are documented here.
 This project uses [Semantic Versioning](https://semver.org/).
 
+## [Unreleased]
+
+### Added
+- **Open-bug tracking in the Bug Registry**: entries take `status: open|fixed` (default `fixed` for existing entries). `enzymes/verify_bug_registry.py` requires only the core fields for open bugs, rejects open bugs that set fix fields, and skips regression-test collection for them.
+- **`platform_compat` root-cause category** and open bugs BUG-008–BUG-014 (Windows and MCP issues; GitHub issues #45–#50) and BUG-015 (`soma checkpoint`/`soma sync` wipe cell fitness on a fresh clone).
+- **`docs/KNOWN_ISSUES_WINDOWS.md`**: open Windows issues, workarounds, and impact.
+
+### Changed
+- **README**: known-issue notes for the MCP server and Windows; the Windows rows of the platform table are now ⚠️ where open bugs apply.
+
+### Fixed
+- `tests/test_diagnose_hot_zones.py`: the "Insufficient data" snapshot test assumed fewer than 10 registry entries; it now asserts the warning tracks the registry size.
+
 ## [0.88.0] — 2026-10-01 — "Key Management"
 
 ### Added
