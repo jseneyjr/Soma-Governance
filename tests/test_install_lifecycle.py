@@ -17,11 +17,13 @@ UNINSTALL = os.path.join(REPO_ROOT, "install", "uninstall.sh")
 
 
 def install(home, platform="kiro", *args, bash="/bin/bash"):
-    return run([bash, INSTALL, platform, *args], env={"HOME": str(home)})
+    env = {"HOME": str(home), "USERPROFILE": str(home)}
+    return run([bash, INSTALL, platform, *args], env=env)
 
 
 def uninstall(home, platform="kiro", *args, bash="/bin/bash"):
-    return run([bash, UNINSTALL, platform, *args], env={"HOME": str(home)})
+    env = {"HOME": str(home), "USERPROFILE": str(home)}
+    return run([bash, UNINSTALL, platform, *args], env=env)
 
 
 def manifest_of(home):

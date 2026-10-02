@@ -85,8 +85,8 @@ Update ROADMAP and README to match shipped state.
 ## Phase 4.7 — v0.83 ✅ Shipped
 
 ### JIT Cell Cache
-**Status**: ✅ Shipped (v0.83)  
-mtime-based in-memory cache for MCP hot path. Eliminates redundant disk I/O.
+**Status**: ✅ Shipped (v0.83; hardened in v0.89)  
+Content-fingerprinted in-memory cache for the MCP hot path. The canonical inventory captures exact bytes, rejects symlinked cell trees, detects concurrent changes, and invalidates even when an edit restores a file's mtime.
 
 ## Phase 4.8 — v0.84 ✅ Shipped
 

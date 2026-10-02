@@ -11,7 +11,14 @@ from typing import Any, Dict
 
 from .tools import TOOL_DEFINITIONS, execute_tool
 from .security import confine_workspace
-from soma_core.receipts import issue_receipt, verify_receipt
+from soma_core.receipts import (
+    issue_receipt,
+    verify_receipt,
+    strip_server_owned,
+    target_paths,
+    compute_file_digest,
+    compute_cell_digest,
+)
 
 _session_token = None
 _canonical_workspace = None
@@ -111,6 +118,19 @@ def _is_error_result(result: Any) -> bool:
             return True
     return False
 
+def _error(req_id: Any, code: int, message: str) -> Dict[str, Any]:
+    return {"jsonrpc": "2.0", "id": req_id, "error": {"code": code, "message": message}}
+
+
+def _state_digests(args: Dict[str, Any]):
+    """(file_digest, cell_digest) for the canonical workspace and the
+    target paths named in args. Raises ValueError on a path escape."""
+    return (
+        compute_file_digest(_canonical_workspace, target_paths(args)),
+        compute_cell_digest(_canonical_workspace),
+    )
+
+
 def send_error(id: Any, code: int, message: str):
     send_response({
         "jsonrpc": "2.0",
@@ -180,36 +200,36 @@ def handle_request(request: Dict[str, Any]) -> Dict[str, Any]:
         name = params.get("name")
         args = params.get("arguments", {})
 
+        if not isinstance(args, dict):
+            return _error(req_id, -32602, "Tool arguments must be an object.")
+
         if name == "soma_request_receipt":
             operation = args.get("operation")
             if operation not in _EXECUTE_TOOLS and operation not in _WRITE_TOOLS:
-                return {
-                    "jsonrpc": "2.0",
-                    "id": req_id,
-                    "error": {
-                        "code": -32602,
-                        "message": f"Tool '{operation}' does not require a receipt or does not exist."
-                    }
-                }
+                return _error(req_id, -32602,
+                              f"Tool '{operation}' does not require a receipt or does not exist.")
             if operation in _EXECUTE_TOOLS and not _execution_enabled:
-                return {
-                    "jsonrpc": "2.0",
-                    "id": req_id,
-                    "error": {
-                        "code": -32600,
-                        "message": "Execution capabilities are disabled."
-                    }
-                }
-            
-            # Issue the receipt using the exact arguments provided by the client.
-            # We don't inject workspace yet, so the hash exactly matches what the client passed.
+                return _error(req_id, -32600, "Execution capabilities are disabled.")
+            if not _canonical_workspace:
+                return _error(req_id, -32600, "Server workspace is not configured.")
+
+            # Bind the receipt to exactly what will be dispatched: the client
+            # arguments minus server-owned keys (workspace is always the
+            # operator-configured one), plus the current content of the target
+            # files and the governance cells. Any change before redemption
+            # makes the receipt stale.
+            op_args = strip_server_owned(args.get("arguments", {}))
+            try:
+                file_digest, cell_digest = _state_digests(op_args)
+            except ValueError as exc:
+                return _error(req_id, -32602, str(exc))
             receipt_id = issue_receipt(
                 session_id=_session_token,
                 workspace=_canonical_workspace,
                 operation=operation,
-                args=args.get("arguments", {}),
-                file_digest="",
-                cell_digest="",
+                args=op_args,
+                file_digest=file_digest,
+                cell_digest=cell_digest,
                 ttl_seconds=300
             )
             return {
@@ -221,8 +241,10 @@ def handle_request(request: Dict[str, Any]) -> Dict[str, Any]:
                 }
             }
 
-            if name in _EXECUTE_TOOLS or name in _WRITE_TOOLS:
-                args["workspace"] = _canonical_workspace
+        # The client never chooses the workspace, for read tools included:
+        # strip whatever it sent and dispatch against the canonical one.
+        receipt = args.get("receipt")
+        args = strip_server_owned(args)
 
         # Rate limit check BEFORE consuming receipt
         if not _check_rate_limit(name):
@@ -239,46 +261,34 @@ def handle_request(request: Dict[str, Any]) -> Dict[str, Any]:
         # Both EXECUTE and WRITE tools require a valid receipt
         if name in _EXECUTE_TOOLS or name in _WRITE_TOOLS:
             if name in _EXECUTE_TOOLS and not _execution_enabled:
-                return {
-                    "jsonrpc": "2.0",
-                    "id": req_id,
-                    "error": {
-                        "code": -32600,
-                        "message": "Execution capabilities are disabled."
-                    }
-                }
-                
-            receipt = args.pop("receipt", None)
+                return _error(req_id, -32600, "Execution capabilities are disabled.")
+            if not _canonical_workspace:
+                return _error(req_id, -32600, "Server workspace is not configured.")
             if not receipt or not isinstance(receipt, str):
-                return {
-                    "jsonrpc": "2.0",
-                    "id": req_id,
-                    "error": {
-                        "code": -32600,
-                        "message": f"Tool '{name}' requires a valid 'receipt'."
-                    }
-                }
-                
-            # Verify the receipt *before* injecting workspace or modifying args
-            # so the hash matches the state at issuance
+                return _error(req_id, -32600, f"Tool '{name}' requires a valid 'receipt'.")
+
+            # Recompute the state digests now; a target file or cell edited
+            # since issuance no longer matches and the receipt is consumed.
+            try:
+                file_digest, cell_digest = _state_digests(args)
+            except ValueError as exc:
+                return _error(req_id, -32602, str(exc))
             if not verify_receipt(
                 receipt_id=receipt,
                 session_id=_session_token,
                 workspace=_canonical_workspace,
                 operation=name,
                 args=args,
-                file_digest="",
-                cell_digest="",
+                file_digest=file_digest,
+                cell_digest=cell_digest,
                 consume=True
             ):
-                return {
-                    "jsonrpc": "2.0",
-                    "id": req_id,
-                    "error": {
-                        "code": -32600,
-                        "message": "Invalid, expired, or mismatched receipt."
-                    }
-                }
+                return _error(req_id, -32600, "Invalid, expired, or mismatched receipt.")
+
+        # Inject the operator-configured workspace only after verification, so
+        # the hashed arguments match issuance and dispatch cannot be redirected.
+        if _canonical_workspace:
+            args["workspace"] = _canonical_workspace
 
         try:
             # Tool implementations (and the enzymes they call) may print progress

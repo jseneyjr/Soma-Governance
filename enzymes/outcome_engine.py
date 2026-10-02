@@ -22,6 +22,8 @@ import json
 import re
 import glob
 import fnmatch
+import hashlib
+import tempfile
 import yaml
 from datetime import datetime, timezone
 from pathlib import Path
@@ -297,14 +299,71 @@ def capture_mcp_outcomes(workspace):
     return outcomes
 
 
+def _insight_cursor_path(workspace):
+    return os.path.join(workspace, '.soma', 'insight_cursor')
+
+
+def _read_insight_cursor(workspace):
+    """Return the committed byte offset into human_insights.jsonl (0 if none/invalid)."""
+    try:
+        with open(_insight_cursor_path(workspace), 'r', encoding='utf-8') as cf:
+            value = int(cf.read().strip())
+    except (OSError, ValueError):
+        return 0
+    return value if value >= 0 else 0
+
+
+def commit_insight_cursor(workspace, offset):
+    """Atomically persist the insight cursor (temp file + os.replace).
+
+    Returns True on success (or when the cursor is already at ``offset``).
+    """
+    if offset is None:
+        return True
+    cursor_file = _insight_cursor_path(workspace)
+    if os.path.isfile(cursor_file) and _read_insight_cursor(workspace) == offset:
+        return True
+    cursor_dir = os.path.dirname(cursor_file)
+    tmp_path = None
+    try:
+        os.makedirs(cursor_dir, exist_ok=True)
+        fd, tmp_path = tempfile.mkstemp(dir=cursor_dir, prefix='.insight_cursor.', suffix='.tmp')
+        with os.fdopen(fd, 'w', encoding='utf-8') as cf:
+            cf.write(str(int(offset)))
+            cf.flush()
+            os.fsync(cf.fileno())
+        os.replace(tmp_path, cursor_file)
+        return True
+    except (OSError, ValueError, TypeError) as e:
+        print(f"    ! failed to commit insight cursor: {e}", file=sys.stderr)
+        if tmp_path is not None:
+            try:
+                os.unlink(tmp_path)
+            except OSError:
+                pass
+        return False
+
+
 def capture_human_insight_signals(workspace):
+    """Backward-compatible wrapper: read NEW insights and commit the cursor.
+
+    Prefer read_human_insight_signals() + commit_insight_cursor() so the
+    cursor only advances after the derived evidence is durably persisted.
+    """
+    signals, new_offset = read_human_insight_signals(workspace)
+    commit_insight_cursor(workspace, new_offset)
+    return signals
+
+
+def read_human_insight_signals(workspace):
     """Read NEW human insight annotations and produce fitness signals.
 
-    Uses a byte-offset cursor (.soma/insight_cursor) to only process
-    insights added since the last run, preventing runaway fitness
-    inflation from re-applying historical insights.
+    Never writes the cursor. Uses the committed byte-offset cursor
+    (.soma/insight_cursor) to only process insights added since the last
+    commit, and only advances over complete newline-terminated lines: a
+    trailing partial line (writer mid-append) is re-read next time.
 
-    Returns signals compatible with update_cell_fitness() schema:
+    Returns ``(signals, new_offset)``. signals are compatible with update_cell_fitness() schema:
       - _path: absolute path to cell file
       - signal: float (positive = boost)
       - cell: cell name
@@ -318,21 +377,13 @@ def capture_human_insight_signals(workspace):
     excluded from update_cell_fitness but included for reporting.
     """
     insights_file = os.path.join(workspace, '.soma', 'human_insights.jsonl')
+    cursor_offset = _read_insight_cursor(workspace)
     if not os.path.isfile(insights_file):
-        return []
-
-    cursor_file = os.path.join(workspace, '.soma', 'insight_cursor')
-    cursor_offset = 0
-    if os.path.isfile(cursor_file):
-        try:
-            with open(cursor_file, 'r', encoding='utf-8') as cf:
-                cursor_offset = int(cf.read().strip())
-        except Exception:
-            cursor_offset = 0
+        return [], cursor_offset
 
     file_size = os.path.getsize(insights_file)
-    if cursor_offset > file_size or cursor_offset < 0:
-        cursor_offset = 0
+    if cursor_offset > file_size:
+        cursor_offset = 0  # file was truncated/rotated: start over
 
     # Read configurable weight
     weight = 0.5
@@ -353,59 +404,67 @@ def capture_human_insight_signals(workspace):
             name = os.path.splitext(os.path.basename(cell_file))[0]
             cell_paths[name] = cell_file
 
-    signals = []
-    new_offset = cursor_offset
     try:
-        with open(insights_file, 'r', encoding='utf-8') as f:
+        with open(insights_file, 'rb') as f:
             f.seek(cursor_offset)
-            for line in f:
-                if not line.strip():
-                    continue
-                try:
-                    record = json.loads(line)
-                except json.JSONDecodeError:
-                    continue
+            data = f.read()
+    except OSError:
+        return [], cursor_offset
 
-                if record.get('was_covered'):
-                    # Covered insight — boost matching cells
-                    for cell_name in record.get('covering_cells', []):
-                        cell_path = cell_paths.get(cell_name)
-                        if cell_path:
-                            signals.append({
-                                'cell': cell_name,
-                                '_path': cell_path,
-                                'signal': weight,
-                                'reasons': [f"human insight: {record.get('insight', '')[:80]}"],
-                                'verified': True,
-                                'signal_type': 'human_insight',
-                                'weight': weight,
-                                'files': record.get('context_files', []),
-                            })
-                else:
-                    # Uncovered insight — governance blind spot
+    # Only consume complete, newline-terminated lines.
+    last_newline = data.rfind(b'\n')
+    if last_newline == -1:
+        return [], cursor_offset
+    complete = data[:last_newline + 1]
+    new_offset = cursor_offset + len(complete)
+
+    signals = []
+    line_offset = cursor_offset
+    for raw_line in complete.split(b'\n'):
+        this_offset = line_offset
+        line_offset += len(raw_line) + 1
+        if not raw_line.strip():
+            continue
+        try:
+            record = json.loads(raw_line.decode('utf-8'))
+        except (UnicodeDecodeError, json.JSONDecodeError):
+            continue  # complete but malformed: skip permanently
+        if not isinstance(record, dict):
+            continue
+        # Stable identity for this insight line: retries after a failed
+        # persist append the same evidence event instead of a duplicate.
+        insight_id = f"{this_offset}:{hashlib.sha256(raw_line).hexdigest()}"
+
+        if record.get('was_covered'):
+            # Covered insight — boost matching cells
+            for cell_name in record.get('covering_cells', []):
+                cell_path = cell_paths.get(cell_name)
+                if cell_path:
                     signals.append({
-                        'cell': None,
-                        '_path': None,
-                        'signal': 0.0,
-                        'reasons': [f"blind spot: {record.get('insight', '')[:80]}"],
+                        'cell': cell_name,
+                        '_path': cell_path,
+                        'signal': weight,
+                        'reasons': [f"human insight: {record.get('insight', '')[:80]}"],
                         'verified': True,
-                        'signal_type': 'blind_spot',
+                        'signal_type': 'human_insight',
+                        'insight_id': insight_id,
                         'weight': weight,
                         'files': record.get('context_files', []),
                     })
-            new_offset = f.tell()
-    except Exception:
-        pass
+        else:
+            # Uncovered insight — governance blind spot
+            signals.append({
+                'cell': None,
+                '_path': None,
+                'signal': 0.0,
+                'reasons': [f"blind spot: {record.get('insight', '')[:80]}"],
+                'verified': True,
+                'signal_type': 'blind_spot',
+                'weight': weight,
+                'files': record.get('context_files', []),
+            })
 
-    if new_offset > cursor_offset:
-        try:
-            with open(cursor_file, 'w', encoding='utf-8') as cf:
-                cf.write(str(new_offset))
-        except Exception:
-            pass
-
-
-    return signals
+    return signals, new_offset
 
 # ── Frontmatter Parser ────────────────────────────────────────────────
 
@@ -753,17 +812,32 @@ def update_cell_fitness(workspace, fitness_signals):
             print(f"    ! failed to update fitness for {fpath}: {e}", file=sys.stderr)
 
 
-def append_fitness_log(workspace, fitness_signals, outcomes):
-    """Append fitness signals to the unified evidence log via append_signal().
+INSIGHT_PRINCIPAL = 'outcome_engine'
+INSIGHT_SCOPE = 'human_insight'
 
-    Migrated from .soma/cells/fitness.jsonl (dead-end) to
-    .soma/evidence/signals.jsonl via soma_sdk.telemetry (Bug 5 fix).
+
+def append_fitness_log(workspace, fitness_signals, outcomes, expected_generation=None,
+                       idempotency_prefix=None):
+    """Atomically append one outcome-engine batch to canonical evidence.
+
+    Human insights retain their stable ``insight_id`` identities. Ordinary
+    session signals share one per-run idempotency prefix; ``append_signals``
+    adds cell identity when deriving each event id.
     """
+    if not fitness_signals:
+        return True
     try:
-        from soma_sdk.telemetry import append_signal
+        from soma_sdk.telemetry import append_signals
     except ImportError:
-        return  # Graceful degradation if telemetry module unavailable
+        return False
 
+    if idempotency_prefix is None:
+        # Compatibility for direct callers; production main supplies this once
+        # per run before constructing the batch.
+        import secrets
+        idempotency_prefix = secrets.token_hex(16)
+
+    events = []
     for sig in fitness_signals:
         signal_val = sig.get('signal', 0)
         if signal_val > 0:
@@ -791,21 +865,39 @@ def append_fitness_log(workspace, fitness_signals, outcomes):
                 },
                 'git': {
                     'reverts': outcomes.get('git', {}).get('reverts', 0),
-                    'rework_count': len(outcomes.get('git', {}).get('rework_files', []))
-                }
-            }
+                    'rework_count': len(outcomes.get('git', {}).get('rework_files', [])),
+                },
+            },
         }
 
-        try:
-            append_signal(
-                workspace=workspace,
-                cell_name=sig['cell'],
-                signal_type=signal_type,
-                source='session',
-                metadata=metadata,
-            )
-        except Exception:
-            pass
+        insight_id = sig.get('insight_id')
+        if insight_id:
+            metadata['insight_id'] = insight_id
+            principal = INSIGHT_PRINCIPAL
+            scope = INSIGHT_SCOPE
+            key = insight_id
+        else:
+            principal = 'outcome_engine'
+            scope = 'run'
+            key = idempotency_prefix
+
+        events.append({
+            'cell_name': sig['cell'],
+            'signal_type': signal_type,
+            'source': 'session',
+            'metadata': metadata,
+            'principal': principal,
+            'idempotency_scope': scope,
+            'idempotency_key': key,
+        })
+
+    try:
+        append_signals(
+            workspace, events, expected_generation=expected_generation)
+    except Exception as exc:  # noqa: BLE001 - must not crash the session
+        print(f"    ! failed to log fitness signal batch: {exc}", file=sys.stderr)
+        return False
+    return True
 
 
 # ── Main ─────────────────────────────────────────────────────────────
@@ -817,6 +909,13 @@ def main():
         return  # Graceful no-op
 
     print("  Running outcome engine (ACE reflector)...")
+
+    # Epoch generation this run observes; evidence appends are fenced on it.
+    try:
+        from soma_sdk.telemetry import read_generation
+        generation = read_generation(workspace)
+    except ImportError:
+        generation = None
 
     # 1. Capture verifiable outcomes
     outcomes = {}
@@ -842,8 +941,9 @@ def main():
     if mcp:
         outcomes['mcp'] = mcp
 
-    # Human insight signals (verified ground truth from user annotations)
-    insight_signals = capture_human_insight_signals(workspace)
+    # Human insight signals (verified ground truth from user annotations).
+    # Read only — the cursor is committed after the evidence is persisted.
+    insight_signals, insight_offset = read_human_insight_signals(workspace)
     blind_spots = [s for s in insight_signals if s.get('signal_type') == 'blind_spot']
     cell_boosts = [s for s in insight_signals if s.get('_path') is not None]
 
@@ -856,6 +956,8 @@ def main():
 
     if not triggered and not cell_boosts:
         print("    No cells matched changed files.")
+        # No insight-derived evidence to persist (blind spots are report-only).
+        commit_insight_cursor(workspace, insight_offset)
         return
 
     # 3. Compute fitness signals (ACE reflector step)
@@ -868,10 +970,27 @@ def main():
             signals.append(boost)
             existing_paths.add(boost['_path'])
 
-    # 4. Update cells and log with full provenance
+    # 4. Evidence first, then the cursor, then derived state. signals.jsonl is
+    # canonical and insight events are idempotent, so a failed run retries
+    # without duplicating evidence; frontmatter is only touched after the
+    # cursor commits, so a retry can never apply an insight boost twice (a
+    # crash right after the commit can at worst miss one frontmatter update,
+    # which `soma sync` rebuilds from the ledger). A migration since this run
+    # started fails the appends (stale generation) and the run retries later.
     if signals:
-        update_cell_fitness(workspace, signals)
-        append_fitness_log(workspace, signals, outcomes)
+        import secrets
+        run_idempotency_prefix = secrets.token_hex(16)
+        if append_fitness_log(
+                workspace, signals, outcomes,
+                expected_generation=generation,
+                idempotency_prefix=run_idempotency_prefix):
+            commit_insight_cursor(workspace, insight_offset)
+            update_cell_fitness(workspace, signals)
+        else:
+            print("    ! evidence log incomplete; cells and insight cursor left unchanged "
+                  "(will retry)", file=sys.stderr)
+    else:
+        commit_insight_cursor(workspace, insight_offset)
 
     # 5. Print summary
     verified_count = sum(1 for s in signals if s.get('verified'))

@@ -6,12 +6,11 @@ and an ASCII bar chart proportional to max fires.
 from __future__ import annotations
 
 import argparse
-import json
 from datetime import datetime, timedelta, timezone
-from pathlib import Path
 
 from soma_cli import resolve_root, sanitize_display
 from soma_cli.init import STARTER_RULES
+from soma_core.evidence import aggregate_signals
 
 BASE_RULES = list(STARTER_RULES)
 
@@ -39,24 +38,20 @@ def run_report(args: argparse.Namespace) -> int:
     """Session report card."""
     root = resolve_root(args)
 
-    evidence_path = root / ".soma" / "evidence" / "fitness.jsonl"
-    if not evidence_path.is_file() or evidence_path.stat().st_size == 0:
-        print("No session data yet. Run a governed session first.")
-        return 0
-
+    aggregation = aggregate_signals(str(root / ".soma" / "evidence"))
     events: list[dict] = []
-    with open(evidence_path, "r", encoding="utf-8") as f:
-        for line in f:
-            line = line.strip()
-            if not line:
-                continue
-            try:
-                record = json.loads(line)
-                if isinstance(record, dict) and isinstance(record.get("cell_id"), str) and record["cell_id"] and isinstance(record.get("triggered_at"), str):
-                    _parse_timestamp(record["triggered_at"])
-                    events.append(record)
-            except (json.JSONDecodeError, ValueError, KeyError, AttributeError, TypeError, RecursionError):
-                continue
+    for event in aggregation.trigger_events:
+        if not isinstance(event, dict):
+            continue
+        cell = event.get("cell")
+        timestamp = event.get("timestamp")
+        if not isinstance(cell, str) or not cell or not isinstance(timestamp, str):
+            continue
+        try:
+            _parse_timestamp(timestamp)
+        except (ValueError, AttributeError, TypeError):
+            continue
+        events.append({"cell": cell, "timestamp": timestamp})
 
     if len(events) > MAX_EVENTS:
         print(f"Warning: truncating to last {MAX_EVENTS:,} of {len(events):,} events")
@@ -67,7 +62,7 @@ def run_report(args: argparse.Namespace) -> int:
         return 0
 
     # Sort events chronologically
-    events.sort(key=lambda e: _parse_timestamp(e["triggered_at"]))
+    events.sort(key=lambda e: _parse_timestamp(e["timestamp"]))
 
     # Group into sessions: >30 min gap starts a new session
     sessions: list[list[dict]] = []
@@ -75,7 +70,7 @@ def run_report(args: argparse.Namespace) -> int:
     prev_time: datetime | None = None
 
     for event in events:
-        event_time = _parse_timestamp(event["triggered_at"])
+        event_time = _parse_timestamp(event["timestamp"])
         if prev_time is not None and (event_time - prev_time) > timedelta(minutes=30):
             sessions.append(current_session)
             current_session = []
@@ -99,7 +94,7 @@ def run_report(args: argparse.Namespace) -> int:
     # Count trigger events in selected session
     session_counts: dict[str, int] = {}
     for event in selected_session:
-        cid = sanitize_display(event["cell_id"])
+        cid = sanitize_display(event["cell"])
         session_counts[cid] = session_counts.get(cid, 0) + 1
 
     base_set = set(BASE_RULES)

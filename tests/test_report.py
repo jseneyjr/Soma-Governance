@@ -13,23 +13,18 @@ from datetime import datetime, timedelta, timezone
 from soma_cli.report import run_report
 
 
-def _create_event(
-    cell_id: str,
-    triggered_at: datetime,
-    matched_files: list[str] | None = None,
-) -> dict:
-    """Helper to create a fitness.jsonl record dictionary."""
+def _create_event(cell: str, triggered_at: datetime) -> dict:
+    """Helper to create a canonical signals.jsonl trigger record."""
     return {
-        "cell_id": cell_id,
-        "transcript_id": "test-transcript",
-        "triggered_at": triggered_at.isoformat(),
-        "matched_files": matched_files or ["src/main.py"],
+        "cell": cell,
+        "signal": "trigger",
+        "timestamp": triggered_at.isoformat(),
     }
 
 
 def _write_ledger(tmp_path, events: list[dict]) -> None:
-    """Helper to write events into <tmp_path>/.soma/evidence/fitness.jsonl."""
-    ledger = tmp_path / ".soma" / "evidence" / "fitness.jsonl"
+    """Helper to write events into <tmp_path>/.soma/evidence/signals.jsonl."""
+    ledger = tmp_path / ".soma" / "evidence" / "signals.jsonl"
     ledger.parent.mkdir(parents=True, exist_ok=True)
     with open(ledger, "w", encoding="utf-8") as f:
         f.writelines(json.dumps(ev) + "\n" for ev in events)
@@ -48,7 +43,7 @@ class TestReportEmpty:
 
     def test_report_empty_file(self, tmp_path, capsys):
         """Empty file → prints 'No session data', returns 0."""
-        ledger = tmp_path / ".soma" / "evidence" / "fitness.jsonl"
+        ledger = tmp_path / ".soma" / "evidence" / "signals.jsonl"
         ledger.parent.mkdir(parents=True, exist_ok=True)
         ledger.write_text("")
 
@@ -63,7 +58,7 @@ class TestReportSingleSession:
     """Verify single session parsing, counting, and box display."""
 
     def test_report_single_session(self, tmp_path, capsys):
-        """Write 5 events (3 unique cell_ids) → verify trigger counts in output."""
+        """Write 5 events (3 unique cells) → verify trigger counts in output."""
         base_time = datetime(2026, 9, 30, 14, 0, 0, tzinfo=timezone.utc)
         events = [
             _create_event("providence", base_time),
@@ -221,13 +216,13 @@ class TestReportEdgeCases:
 
     def test_report_corrupted_lines_skipped(self, tmp_path, capsys):
         """Corrupted or malformed lines are safely skipped."""
-        ledger = tmp_path / ".soma" / "evidence" / "fitness.jsonl"
+        ledger = tmp_path / ".soma" / "evidence" / "signals.jsonl"
         ledger.parent.mkdir(parents=True, exist_ok=True)
         ledger.write_text(
             "\n"
             "not-valid-json\n"
             '{"incomplete": true}\n'
-            '{"cell_id": "providence", "triggered_at": "2026-09-30T12:00:00Z", "matched_files": []}\n'
+            '{"cell": "providence", "signal": "trigger", "timestamp": "2026-09-30T12:00:00Z"}\n'
         )
 
         args = argparse.Namespace(session=-1, _root=tmp_path)

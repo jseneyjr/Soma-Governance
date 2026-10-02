@@ -19,17 +19,28 @@ jobs:
         with:
           python-version: "3.12"
 
-      - name: Install build tools
+      - name: Install publish tools
         run: pip install twine
 
-      - name: Download wheel artifact
+      # Never rebuild here: download the artifact that the validate jobs
+      # verified, installed and smoke-tested in this same workflow run.
+      - name: Download validated artifact
         uses: actions/download-artifact@v4
         with:
           name: soma-wheel
           path: dist/
 
+      # No pipe: a failed verify must fail this step (a `| tee` would mask the
+      # exit code under the default non-pipefail shell and publish a partial list).
+      - name: Verify artifact digests and contents
+        shell: bash
+        run: |
+          python .github/scripts/verify_dist.py verify dist > publish-files.txt
+          cat publish-files.txt
+
       - name: Publish to PyPI
-        run: twine upload dist/*
+        shell: bash
+        run: twine upload $(cat publish-files.txt)
         env:
           TWINE_USERNAME: __token__
           TWINE_PASSWORD: ${{ secrets.PYPI_API_TOKEN }}

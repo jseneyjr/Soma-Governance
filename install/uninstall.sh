@@ -59,10 +59,204 @@ PLATFORM="${POSITIONAL_ARGS[0]:-${SOMA_PLATFORM:-gemini}}"
 
 DETECTED_OS="$(detect_os)"
 RESOLVED_HOME="$(resolve_home "$DETECTED_OS")"
+WORK_DIR="$(pwd)"
 MANIFEST_PATH="$RESOLVED_HOME/.soma/manifest.json"
-if [ -f "$(pwd)/.soma/manifest.json" ]; then
-  MANIFEST_PATH="$(pwd)/.soma/manifest.json"
+MANIFEST_IS_LOCAL=false
+if [ -f "$WORK_DIR/.soma/manifest.json" ]; then
+  MANIFEST_PATH="$WORK_DIR/.soma/manifest.json"
+  MANIFEST_IS_LOCAL=true
 fi
+
+# ── Path Confinement ──────────────────────────────────────────────
+# Allowed roots mirror where install.sh writes:
+#  - a project-local manifest ($(pwd)/.soma/manifest.json) only ever records
+#    paths under the project directory;
+#  - the home manifest records $RESOLVED_HOME paths, plus project paths for
+#    installs that write into $(pwd) while keeping global scope (kiro --local
+#    mcp.json, the git pre-commit hook).
+#  - backup_dir is always $RESOLVED_HOME/.soma/backup/<stamp>, for both
+#    manifest kinds, so the restore source is confined to that directory.
+# The old check was a lexical prefix match: `$HOME/x/../../etc/y` and
+# `$HOME/link/y` (link -> outside) both passed, offenders were skipped
+# silently, and backup_dir was never checked at all.
+if [ "$MANIFEST_IS_LOCAL" = "true" ]; then
+  ALLOWED_ROOTS=("$WORK_DIR")
+else
+  ALLOWED_ROOTS=("$RESOLVED_HOME" "$WORK_DIR")
+fi
+BACKUP_ROOTS=("$RESOLVED_HOME/.soma/backup")
+# The sink re-check additionally admits the repo itself: --purge-data and
+# soma.conf removal target $REPO_DIR, which is script-derived, not manifest data.
+SINK_ROOTS=("${ALLOWED_ROOTS[@]}" "$REPO_DIR")
+
+# Safe = absolute; no `.`/`..` segments; under an allowed root (canonicalised)
+# by commonpath; no component between the root and the target is a symlink;
+# canonical parent inside the root; not the root itself; the root is not `/`.
+# A final-component symlink is acceptable for removal (it is unlinked, never
+# followed) but not for a restore source (it would be read through).
+# Paths travel via argv/env, never interpolated into the source.
+PATH_CHECK_PY='
+import json, os, sys
+
+def prep_roots(raw):
+    out = []
+    for r in raw:
+        if not r or not os.path.isabs(r):
+            continue
+        lex = os.path.normpath(r)
+        real = os.path.realpath(lex)
+        if os.path.dirname(real) == real:
+            continue
+        out.append((lex, real))
+    return out
+
+def under(base, p):
+    try:
+        return os.path.commonpath([base, p]) == base
+    except ValueError:
+        return False
+
+def check(target, roots, kind):
+    if not isinstance(target, str):
+        return "not a string"
+    if not target:
+        return "empty path"
+    if any(c in target for c in "\n\r\0"):
+        return "contains a control character"
+    if not os.path.isabs(target):
+        return "not an absolute path"
+    if any(s in (".", "..") for s in target.replace("\\", "/").split("/")):
+        return "contains a . or .. segment"
+    if not roots:
+        return "no usable allowed root"
+    norm = os.path.normpath(target)
+    reasons = []
+    for lex, real in roots:
+        if under(lex, norm):
+            rel = os.path.relpath(norm, lex)
+        elif under(real, norm):
+            rel = os.path.relpath(norm, real)
+        else:
+            continue
+        if rel == os.curdir:
+            reasons.append("is an allowed root itself")
+            continue
+        bad = None
+        cur = real
+        for part in rel.split(os.sep)[:-1]:
+            cur = os.path.join(cur, part)
+            # A symlinked ancestor that stays inside the root (stow-style
+            # ~/.kiro -> ~/dotfiles/.kiro) is fine; one that leaves it is not.
+            if os.path.islink(cur) and not under(real, os.path.realpath(cur)):
+                bad = "intermediate component is a symlink leaving the allowed root: " + cur
+                break
+        if bad is None and not under(real, os.path.realpath(os.path.dirname(norm))):
+            bad = "canonical parent escapes the allowed root"
+        if bad is None and kind == "source" and os.path.islink(norm):
+            bad = "restore source is a symlink"
+        if bad is None:
+            return None
+        reasons.append(bad)
+    return reasons[0] if reasons else "outside the allowed roots"
+
+def env_roots(name):
+    return prep_roots(os.environ.get(name, "").split("\n"))
+
+mode = sys.argv[1]
+if mode == "manifest":
+    try:
+        with open(os.environ["SOMA_MANIFEST"], "r", encoding="utf-8") as fh:
+            data = json.load(fh)
+    except Exception as exc:
+        print("  manifest unreadable: %s" % exc)
+        sys.exit(2)
+    if not isinstance(data, dict):
+        print("  manifest is not a JSON object")
+        sys.exit(2)
+    roots = env_roots("SOMA_ROOTS")
+    bad = []
+    for field in ("files", "organs", "hooks", "mcp_configs"):
+        value = data.get(field)
+        if value is None:
+            continue
+        if not isinstance(value, list):
+            bad.append((field, json.dumps(value), "must be a list"))
+            continue
+        for item in value:
+            if item == "":
+                continue
+            why = check(item, roots, "remove")
+            if why:
+                shown = item if isinstance(item, str) else json.dumps(item)
+                bad.append((field, shown, why))
+    bd = data.get("backup_dir")
+    if bd is not None and bd != "":
+        why = check(bd, env_roots("SOMA_BACKUP_ROOTS"), "source")
+        if why:
+            bad.append(("backup_dir", bd if isinstance(bd, str) else json.dumps(bd), why))
+    for field, item, why in bad:
+        print("  UNSAFE %s entry: %s  (%s)" % (field, item, why))
+    sys.exit(1 if bad else 0)
+elif mode == "plan":
+    roots = env_roots("SOMA_ROOTS")
+    bad = 0
+    for raw in sys.stdin.buffer.read().split(b"\0"):
+        if not raw:
+            continue
+        target = os.fsdecode(raw)
+        why = check(target, roots, "remove")
+        if why:
+            print("  UNSAFE plan entry: %s  (%s)" % (target, why))
+            bad += 1
+    sys.exit(1 if bad else 0)
+elif mode == "path":
+    kind, target = sys.argv[2], sys.argv[3]
+    why = check(target, prep_roots(sys.argv[4:]), kind)
+    if why:
+        print(why)
+        sys.exit(1)
+    sys.exit(0)
+sys.exit(2)
+'
+
+join_lines() { local IFS=$'\n'; printf '%s' "$*"; }
+
+# Lexical-only fallback for the no-manifest branch on hosts without python3.
+# Those paths come from fixed globs, never from manifest data.
+_lexical_confined() {
+  local target="$1" root; shift
+  case "$target" in /*) ;; *) return 1 ;; esac
+  case "/$target/" in */../*|*/./*) return 1 ;; esac
+  for root in "$@"; do
+    if [ -z "$root" ] || [ "$root" = "/" ] || [ "$target" = "$root" ]; then continue; fi
+    case "$target" in "$root"/*) return 0 ;; esac
+  done
+  return 1
+}
+
+# check_confined <remove|source> <target> <root>...
+check_confined() {
+  local kind="$1" target="$2"; shift 2
+  if command -v python3 >/dev/null 2>&1; then
+    CONFINE_REASON="$(python3 -I -S -c "$PATH_CHECK_PY" path "$kind" "$target" "$@" 2>&1)" && return 0
+    return 1
+  fi
+  CONFINE_REASON="outside the allowed roots (lexical check; python3 unavailable)"
+  _lexical_confined "$target" "$@"
+}
+
+# Re-validate at the sink, immediately before rm/sed. Validation and removal
+# are separated by the plan, the prompt and earlier removals; a component can
+# be swapped for a symlink in between. Abort rather than follow it.
+guard_sink() {
+  local kind="$1" target="$2"; shift 2
+  [ $# -gt 0 ] || set -- ${SINK_ROOTS[@]+"${SINK_ROOTS[@]}"}
+  if ! check_confined "$kind" "$target" "$@"; then
+    log_error "Refusing to touch $target: $CONFINE_REASON"
+    log_error "It no longer passes the confinement check. Aborting; remaining items left in place."
+    exit 1
+  fi
+}
 
 MANIFEST_EXISTS=false
 if [ -f "$MANIFEST_PATH" ]; then
@@ -80,6 +274,8 @@ RESTORED_ANY=false
 restore_dir_contents() {
   local src="$1" dst="$2"
   [ -d "$src" ] || return 0
+  guard_sink source "$src" "${BACKUP_ROOTS[@]}"
+  guard_sink remove "$dst"
   mkdir -p "$dst" || return 0
   # Dotfiles included; an empty source is not an error.
   if find "$src" -mindepth 1 -maxdepth 1 -print -quit 2>/dev/null | grep -q .; then
@@ -96,6 +292,8 @@ restore_dir_contents() {
 restore_file() {
   local src="$1" dst="$2"
   [ -f "$src" ] || return 0
+  guard_sink source "$src" "${BACKUP_ROOTS[@]}"
+  guard_sink remove "$dst"
   mkdir -p "$(dirname "$dst")" || return 0
   cp -- "$src" "$dst" 2>/dev/null || {
     log_warn "Could not restore $src -> $dst"
@@ -106,13 +304,106 @@ restore_file() {
   return 0
 }
 
+remove_soma_mcp_server() {
+  local config_file="$1"
+  guard_sink remove "$config_file"
+  SOMA_MCP_FILE="$config_file" python3 - <<'PY'
+import json
+import os
+import stat
+import tempfile
+
+path = os.environ["SOMA_MCP_FILE"]
+with open(path, "r", encoding="utf-8") as handle:
+    data = json.load(handle)
+if not isinstance(data, dict):
+    raise ValueError("MCP configuration root must be a JSON object")
+servers = data.get("mcpServers")
+if not isinstance(servers, dict) or "soma" not in servers:
+    raise ValueError("MCP configuration has no owned mcpServers.soma entry")
+del servers["soma"]
+parent = os.path.dirname(path) or "."
+fd, temp_path = tempfile.mkstemp(prefix=".soma-mcp-", dir=parent, text=True)
+try:
+    with os.fdopen(fd, "w", encoding="utf-8") as handle:
+        json.dump(data, handle, indent=2)
+        handle.write("\n")
+    os.chmod(temp_path, stat.S_IMODE(os.stat(path).st_mode))
+    os.replace(temp_path, path)
+except Exception:
+    try:
+        os.unlink(temp_path)
+    except FileNotFoundError:
+        pass
+    raise
+PY
+  echo "Cleaned soma MCP server from $config_file"
+}
+
 echo "Uninstalling Soma ($PLATFORM)..."
 [ "$DRY_RUN" = "true" ] && echo "Mode: DRY-RUN (no files will be deleted)"
 
 FILES_TO_REMOVE=()
 DIRS_TO_REMOVE=()
 MODIFY_FILES=()
+MCP_CONFIGS_TO_CLEAN=()
 BACKUP_DIR=""
+
+add_known_rule_files() {
+  local target_dir="$1" suffix="${2:-.md}" rule name target
+  while IFS= read -r rule; do
+    [ -n "$rule" ] || continue
+    name="$(basename "$rule" .md)"
+    target="$target_dir/$name$suffix"
+    [ -f "$target" ] && FILES_TO_REMOVE+=("$target")
+  done < <(find "$REPO_DIR/genome" -type f -name "*.md" | sort)
+  return 0
+}
+
+add_known_skill_dirs() {
+  local target_dir="$1" skill name target
+  [ -d "$REPO_DIR/organs" ] || return 0
+  for skill in "$REPO_DIR"/organs/*/; do
+    [ -d "$skill" ] || continue
+    name="$(basename "$skill")"
+    target="$target_dir/$name"
+    [ -d "$target" ] && DIRS_TO_REMOVE+=("$target")
+  done
+  return 0
+}
+
+queue_mcp_config() {
+  local path="$1"
+  [ -f "$path" ] || return 0
+  command -v python3 >/dev/null 2>&1 || return 0
+  if SOMA_MCP_FILE="$path" python3 - <<'PY'
+import json
+import os
+with open(os.environ["SOMA_MCP_FILE"], "r", encoding="utf-8") as handle:
+    data = json.load(handle)
+servers = data.get("mcpServers") if isinstance(data, dict) else None
+raise SystemExit(0 if isinstance(servers, dict) and "soma" in servers else 1)
+PY
+  then
+    MCP_CONFIGS_TO_CLEAN+=("$path")
+  fi
+  return 0
+}
+
+validate_soma_mcp_config() {
+  local path="$1"
+  SOMA_MCP_FILE="$path" python3 - <<'PY'
+import json
+import os
+with open(os.environ["SOMA_MCP_FILE"], "r", encoding="utf-8") as handle:
+    data = json.load(handle)
+if not isinstance(data, dict):
+    raise ValueError("MCP configuration root must be a JSON object")
+servers = data.get("mcpServers")
+if not isinstance(servers, dict) or "soma" not in servers:
+    raise ValueError("MCP configuration has no owned mcpServers.soma entry")
+PY
+}
 
 # Reads one field from the manifest. The path is passed through the environment
 # rather than interpolated into the Python source: a quote in the path used to
@@ -169,83 +460,84 @@ if [ "$MANIFEST_EXISTS" = "true" ]; then
     fi
   fi
 
+  # Validate the WHOLE manifest before building the plan. Any unsafe entry in
+  # files/organs/hooks/backup_dir aborts with nothing touched; the old code
+  # skipped offenders silently and removed the rest.
+  validate_rc=0
+  validate_out="$(SOMA_MANIFEST="$MANIFEST_PATH" \
+    SOMA_ROOTS="$(join_lines "${ALLOWED_ROOTS[@]}")" \
+    SOMA_BACKUP_ROOTS="$(join_lines "${BACKUP_ROOTS[@]}")" \
+    python3 -I -S -c "$PATH_CHECK_PY" manifest 2>&1)" || validate_rc=$?
+  if [ "$validate_rc" -ne 0 ]; then
+    log_error "Manifest at $MANIFEST_PATH contains unsafe entries:"
+    printf '%s\n' "$validate_out" >&2
+    log_error "Allowed roots: ${ALLOWED_ROOTS[*]} (backup_dir: ${BACKUP_ROOTS[*]})"
+    log_error "Refusing to continue. Nothing was removed and the manifest was kept."
+    exit 1
+  fi
+
   BACKUP_DIR="$(read_manifest_field backup_dir)"
   MANIFEST_SCOPE="$(read_manifest_field scope)"
 
-  is_safe_removal_path() {
-    local target="$1"
-    [ -z "$target" ] && return 1
-    [ "$target" = "/" ] && return 1
-    [ "$target" = "$RESOLVED_HOME" ] && return 1
-    [ "$target" = "$(pwd)" ] && return 1
-    case "$target" in
-      "$RESOLVED_HOME"/*|"$(pwd)"/*) return 0 ;;
-      *) return 1 ;;
-    esac
-  }
-
   while IFS= read -r f; do
-    if is_safe_removal_path "$f"; then
-      if [[ "$f" == *"/copilot-instructions.md" ]] || [[ "$f" == *"/CLAUDE.md" ]]; then
-        MODIFY_FILES+=("$f")
-      elif [ -n "$f" ]; then
-        FILES_TO_REMOVE+=("$f")
-      fi
+    [ -n "$f" ] || continue
+    if [[ "$f" == *"/copilot-instructions.md" ]] || [[ "$f" == *"/CLAUDE.md" ]]; then
+      MODIFY_FILES+=("$f")
+    else
+      FILES_TO_REMOVE+=("$f")
     fi
   done <<< "$(read_manifest_field files)"
 
   while IFS= read -r d; do
-    [ -n "$d" ] && is_safe_removal_path "$d" && DIRS_TO_REMOVE+=("$d")
+    [ -n "$d" ] && DIRS_TO_REMOVE+=("$d")
   done <<< "$(read_manifest_field organs)"
 
   while IFS= read -r h; do
-    [ -n "$h" ] && is_safe_removal_path "$h" && FILES_TO_REMOVE+=("$h")
+    [ -n "$h" ] && FILES_TO_REMOVE+=("$h")
   done <<< "$(read_manifest_field hooks)"
 
-  FILES_TO_REMOVE+=("$MANIFEST_PATH")
+  while IFS= read -r mcp_config; do
+    [ -n "$mcp_config" ] && MCP_CONFIGS_TO_CLEAN+=("$mcp_config")
+  done <<< "$(read_manifest_field mcp_configs)"
 else
-  echo "No manifest found. Falling back to known patterns..."
+  echo "No manifest found. Falling back to source-owned names..."
   case "$PLATFORM" in
     gemini)
-      # install.sh writes config/rules and config/skills. These globs used to
-      # say config/genome and config/organs, so the fallback matched nothing and
-      # removed nothing.
-      for f in "$RESOLVED_HOME"/.gemini/config/rules/*.md; do
-        [ -f "$f" ] && FILES_TO_REMOVE+=("$f")
-      done
-      for d in "$RESOLVED_HOME"/.gemini/config/skills/*; do
-        [ -d "$d" ] && DIRS_TO_REMOVE+=("$d")
-      done
-      [ -d "$RESOLVED_HOME/.gemini/config/plugins/governance" ] && DIRS_TO_REMOVE+=("$RESOLVED_HOME/.gemini/config/plugins/governance")
-      [ -d "$RESOLVED_HOME/.gemini/config/plugins/immune_system" ] && DIRS_TO_REMOVE+=("$RESOLVED_HOME/.gemini/config/plugins/immune_system")
+      add_known_rule_files "$RESOLVED_HOME/.gemini/config/rules"
+      add_known_skill_dirs "$RESOLVED_HOME/.gemini/config/skills"
+      add_known_rule_files "$WORK_DIR/.soma/rules"
+      add_known_skill_dirs "$WORK_DIR/.soma/skills"
+      [ -f "$RESOLVED_HOME/.gemini/config/plugins/governance/hooks.json" ] && \
+        FILES_TO_REMOVE+=("$RESOLVED_HOME/.gemini/config/plugins/governance/hooks.json")
+      [ -f "$WORK_DIR/.soma/plugins/governance/hooks.json" ] && \
+        FILES_TO_REMOVE+=("$WORK_DIR/.soma/plugins/governance/hooks.json")
+      true
       ;;
     kiro)
-      for f in "$RESOLVED_HOME"/.kiro/steering/*.md; do
-        [ -f "$f" ] && FILES_TO_REMOVE+=("$f")
-      done
-      for d in "$RESOLVED_HOME"/.kiro/skills/*; do
-        [ -d "$d" ] && DIRS_TO_REMOVE+=("$d")
-      done
-      [ -d "$RESOLVED_HOME/.kiro/hooks" ] && DIRS_TO_REMOVE+=("$RESOLVED_HOME/.kiro/hooks")
-      [ -f "$RESOLVED_HOME/.kiro/settings/mcp.json" ] && FILES_TO_REMOVE+=("$RESOLVED_HOME/.kiro/settings/mcp.json")
+      add_known_rule_files "$RESOLVED_HOME/.kiro/steering"
+      add_known_skill_dirs "$RESOLVED_HOME/.kiro/skills"
+      [ -f "$RESOLVED_HOME/.kiro/hooks/hooks.json" ] && \
+        FILES_TO_REMOVE+=("$RESOLVED_HOME/.kiro/hooks/hooks.json")
+      queue_mcp_config "$RESOLVED_HOME/.kiro/settings/mcp.json"
+      queue_mcp_config "$WORK_DIR/.kiro/settings/mcp.json"
       ;;
     copilot)
-      [ -d "$REPO_DIR/.github/instructions" ] && DIRS_TO_REMOVE+=("$REPO_DIR/.github/instructions")
+      add_known_rule_files "$WORK_DIR/.github/instructions" ".instructions.md"
       if [ -f "$RESOLVED_HOME/copilot-instructions.md" ]; then
         MODIFY_FILES+=("$RESOLVED_HOME/copilot-instructions.md")
       fi
       ;;
     claude)
-      if [ -f "$(pwd)/CLAUDE.md" ]; then
-        MODIFY_FILES+=("$(pwd)/CLAUDE.md")
+      if [ -f "$WORK_DIR/CLAUDE.md" ]; then
+        MODIFY_FILES+=("$WORK_DIR/CLAUDE.md")
       fi
       if [ -f "$RESOLVED_HOME/.claude/CLAUDE.md" ]; then
         MODIFY_FILES+=("$RESOLVED_HOME/.claude/CLAUDE.md")
       fi
-      [ -f "$(pwd)/.mcp.json" ] && FILES_TO_REMOVE+=("$(pwd)/.mcp.json")
+      queue_mcp_config "$WORK_DIR/.mcp.json"
       ;;
     mcp)
-      [ -f "$(pwd)/.mcp.json" ] && FILES_TO_REMOVE+=("$(pwd)/.mcp.json")
+      queue_mcp_config "$WORK_DIR/.mcp.json"
       ;;
   esac
 fi
@@ -302,14 +594,55 @@ for m in ${MODIFY_FILES[@]+"${MODIFY_FILES[@]}"}; do
 done
 MODIFY_FILES=(${REAL_MOD[@]+"${REAL_MOD[@]}"})
 
+REAL_MCP=()
+for mcp_config in ${MCP_CONFIGS_TO_CLEAN[@]+"${MCP_CONFIGS_TO_CLEAN[@]}"}; do
+  [ -f "$mcp_config" ] && REAL_MCP+=("$mcp_config")
+done
+MCP_CONFIGS_TO_CLEAN=(${REAL_MCP[@]+"${REAL_MCP[@]}"})
+
+# Parse every owned MCP config before deleting anything. If it was corrupted or
+# concurrently replaced, retain all installed files and the ownership manifest
+# so the uninstall can be retried safely.
+for mcp_config in ${MCP_CONFIGS_TO_CLEAN[@]+"${MCP_CONFIGS_TO_CLEAN[@]}"}; do
+  if ! validate_soma_mcp_config "$mcp_config"; then
+    log_error "MCP configuration is invalid or no longer contains the owned soma server: $mcp_config"
+    log_error "Refusing to continue. Nothing was removed and the manifest was kept."
+    exit 1
+  fi
+done
+
+# Confine the complete plan (manifest, fallback and --purge-data entries alike)
+# before anything is touched, so a refusal never leaves a half-removed install.
+# The manifest file itself is confined to its own directory at the sink.
+if command -v python3 >/dev/null 2>&1; then
+  plan_rc=0
+  plan_out="$(
+    for p in ${FILES_TO_REMOVE[@]+"${FILES_TO_REMOVE[@]}"} ${DIRS_TO_REMOVE[@]+"${DIRS_TO_REMOVE[@]}"} \
+             ${MODIFY_FILES[@]+"${MODIFY_FILES[@]}"} ${MCP_CONFIGS_TO_CLEAN[@]+"${MCP_CONFIGS_TO_CLEAN[@]}"} \
+             ${CONFIG_TO_REMOVE[@]+"${CONFIG_TO_REMOVE[@]}"}; do
+      [ "$p" = "$MANIFEST_PATH" ] || printf '%s\0' "$p"
+    done | SOMA_ROOTS="$(join_lines "${SINK_ROOTS[@]}")" python3 -I -S -c "$PATH_CHECK_PY" plan 2>&1
+  )" || plan_rc=$?
+  if [ "$plan_rc" -ne 0 ]; then
+    log_error "The removal plan contains paths outside the allowed roots:"
+    printf '%s\n' "$plan_out" >&2
+    log_error "Refusing to continue. Nothing was removed."
+    exit 1
+  fi
+fi
+
 echo ""
 echo "The following will be removed/modified:"
+if [ "$MANIFEST_EXISTS" = "true" ]; then echo "  - [MANIFEST] $MANIFEST_PATH"; fi
 for f in ${FILES_TO_REMOVE[@]+"${FILES_TO_REMOVE[@]}"}; do echo "  - [FILE] $f"; done
 for d in ${DIRS_TO_REMOVE[@]+"${DIRS_TO_REMOVE[@]}"}; do echo "  - [DIR]  $d"; done
 for m in ${MODIFY_FILES[@]+"${MODIFY_FILES[@]}"}; do echo "  - [MOD]  $m (remove soma sections, keep the rest)"; done
+for mcp_config in ${MCP_CONFIGS_TO_CLEAN[@]+"${MCP_CONFIGS_TO_CLEAN[@]}"}; do echo "  - [MCP]  $mcp_config (remove mcpServers.soma, keep the rest)"; done
 for c in ${CONFIG_TO_REMOVE[@]+"${CONFIG_TO_REMOVE[@]}"}; do echo "  - [USER CONFIG] $c (pass --keep-config to keep it)"; done
 
-PLAN_COUNT=$(( ${#FILES_TO_REMOVE[@]} + ${#DIRS_TO_REMOVE[@]} + ${#MODIFY_FILES[@]} + ${#CONFIG_TO_REMOVE[@]} ))
+MANIFEST_COUNT=0
+[ "$MANIFEST_EXISTS" != "true" ] || MANIFEST_COUNT=1
+PLAN_COUNT=$(( MANIFEST_COUNT + ${#FILES_TO_REMOVE[@]} + ${#DIRS_TO_REMOVE[@]} + ${#MODIFY_FILES[@]} + ${#MCP_CONFIGS_TO_CLEAN[@]} + ${#CONFIG_TO_REMOVE[@]} ))
 if [ "$PLAN_COUNT" -eq 0 ]; then
   echo "Nothing to remove."
   exit 0
@@ -346,9 +679,15 @@ if [ "$DRY_RUN" = "true" ]; then
     echo "Would offer to restore from: $BACKUP_DIR"
     case "$PLATFORM" in
       gemini)
-        echo "  $BACKUP_DIR/genome     -> $RESOLVED_HOME/.gemini/config/rules"
-        echo "  $BACKUP_DIR/organs     -> $RESOLVED_HOME/.gemini/config/skills"
-        echo "  $BACKUP_DIR/governance -> $RESOLVED_HOME/.gemini/config/plugins/governance"
+        if [ "$MANIFEST_SCOPE" = "local" ]; then
+          echo "  $BACKUP_DIR/genome     -> $WORK_DIR/.soma/rules"
+          echo "  $BACKUP_DIR/organs     -> $WORK_DIR/.soma/skills"
+          echo "  $BACKUP_DIR/governance -> $WORK_DIR/.soma/plugins/governance"
+        else
+          echo "  $BACKUP_DIR/genome     -> $RESOLVED_HOME/.gemini/config/rules"
+          echo "  $BACKUP_DIR/organs     -> $RESOLVED_HOME/.gemini/config/skills"
+          echo "  $BACKUP_DIR/governance -> $RESOLVED_HOME/.gemini/config/plugins/governance"
+        fi
         ;;
       kiro)
         echo "  $BACKUP_DIR/genome -> $RESOLVED_HOME/.kiro/steering"
@@ -380,6 +719,13 @@ fi
 # writes a fresh .bak containing Soma content, and the parent of a removed file
 # may disappear.
 for f in ${FILES_TO_REMOVE[@]+"${FILES_TO_REMOVE[@]}"}; do
+  # The manifest itself is script-derived; confine it to its own directory so
+  # a symlinked ~/.soma does not block removing it.
+  if [ "$f" = "$MANIFEST_PATH" ]; then
+    guard_sink remove "$f" "$(dirname "$MANIFEST_PATH")"
+  else
+    guard_sink remove "$f"
+  fi
   if [ -L "$f" ]; then
     rm -f "$f" && echo "Removed symlink $f"
   elif [ -f "$f" ]; then
@@ -387,6 +733,7 @@ for f in ${FILES_TO_REMOVE[@]+"${FILES_TO_REMOVE[@]}"}; do
   fi
 done
 for d in ${DIRS_TO_REMOVE[@]+"${DIRS_TO_REMOVE[@]}"}; do
+  guard_sink remove "$d"
   if [ -L "$d" ]; then
     rm -f "$d" && echo "Removed directory symlink $d"
   elif [ -d "$d" ]; then
@@ -395,6 +742,12 @@ for d in ${DIRS_TO_REMOVE[@]+"${DIRS_TO_REMOVE[@]}"}; do
 done
 
 for m in ${MODIFY_FILES[@]+"${MODIFY_FILES[@]}"}; do
+  guard_sink remove "$m"
+  if [ -L "$m" ]; then
+    # sed -i would read through the link and replace it with a regular file.
+    log_warn "Not modifying $m: it is a symlink. Remove the Soma section by hand."
+    continue
+  fi
   if [ -f "$m" ]; then
     sed -i.bak '/^# Copilot Global Instructions/,$d' "$m" && rm -f "$m.bak"
     sed -i.bak '/^# Soma Governance Rules/,$d' "$m" && rm -f "$m.bak"
@@ -409,8 +762,17 @@ for m in ${MODIFY_FILES[@]+"${MODIFY_FILES[@]}"}; do
   fi
 done
 
+for mcp_config in ${MCP_CONFIGS_TO_CLEAN[@]+"${MCP_CONFIGS_TO_CLEAN[@]}"}; do
+  if [ -f "$mcp_config" ]; then
+    remove_soma_mcp_server "$mcp_config"
+  fi
+done
+
 for c in ${CONFIG_TO_REMOVE[@]+"${CONFIG_TO_REMOVE[@]}"}; do
-  [ -f "$c" ] && rm -f "$c" && echo "Removed user config $c"
+  guard_sink remove "$c"
+  if [ -f "$c" ]; then
+    rm -f "$c" && echo "Removed user config $c"
+  fi
 done
 
 # Clean soma hooks from claude settings.json, but only when one is actually
@@ -432,9 +794,14 @@ for settings_file in "$(pwd)/.claude/settings.json" "$RESOLVED_HOME/.claude/sett
 done
 
 # If manifest file exists and wasn't caught by the array (e.g. empty)
-[ -f "$MANIFEST_PATH" ] && rm -f "$MANIFEST_PATH"
+if [ -f "$MANIFEST_PATH" ]; then
+  guard_sink remove "$MANIFEST_PATH" "$(dirname "$MANIFEST_PATH")"
+  rm -f "$MANIFEST_PATH"
+fi
 
 if [ -n "$BACKUP_DIR" ] && [ -d "$BACKUP_DIR" ]; then
+  # Restore source: re-check right before it is read from.
+  guard_sink source "$BACKUP_DIR" "${BACKUP_ROOTS[@]}"
   echo ""
   if [ "$NO_RESTORE" = "true" ]; then
     echo "Skipping restore (--no-restore). Backup left at $BACKUP_DIR"
@@ -450,12 +817,15 @@ if [ -n "$BACKUP_DIR" ] && [ -d "$BACKUP_DIR" ]; then
         echo "Restoring from $BACKUP_DIR..."
         case "$PLATFORM" in
           gemini)
-            # install.sh creates $BACKUP_DIR/{genome,organs,governance}. This
-            # block used to read rules/ and skills/, which never exist, so
-            # restore silently did nothing and still printed "Restore complete."
-            restore_dir_contents "$BACKUP_DIR/genome" "$RESOLVED_HOME/.gemini/config/rules"
-            restore_dir_contents "$BACKUP_DIR/organs" "$RESOLVED_HOME/.gemini/config/skills"
-            restore_dir_contents "$BACKUP_DIR/governance" "$RESOLVED_HOME/.gemini/config/plugins/governance"
+            if [ "$MANIFEST_SCOPE" = "local" ]; then
+              restore_dir_contents "$BACKUP_DIR/genome" "$WORK_DIR/.soma/rules"
+              restore_dir_contents "$BACKUP_DIR/organs" "$WORK_DIR/.soma/skills"
+              restore_dir_contents "$BACKUP_DIR/governance" "$WORK_DIR/.soma/plugins/governance"
+            else
+              restore_dir_contents "$BACKUP_DIR/genome" "$RESOLVED_HOME/.gemini/config/rules"
+              restore_dir_contents "$BACKUP_DIR/organs" "$RESOLVED_HOME/.gemini/config/skills"
+              restore_dir_contents "$BACKUP_DIR/governance" "$RESOLVED_HOME/.gemini/config/plugins/governance"
+            fi
             ;;
           kiro)
             restore_dir_contents "$BACKUP_DIR/genome" "$RESOLVED_HOME/.kiro/steering"

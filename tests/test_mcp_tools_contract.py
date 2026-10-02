@@ -89,6 +89,7 @@ class TestSomaReportOutcome:
             'outcome': 'success',
             'cells_used': ['test-cell'],
             'tests_passed': True,
+            'idempotency_key': 'test-report-1',
         })
         assert isinstance(result, dict)
         assert result.get('status') in ('recorded', 'FAIL')

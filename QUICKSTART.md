@@ -2,83 +2,115 @@
 
 ## What Soma Does
 
-Soma is a governance framework for AI coding agents that makes them trustworthy, grounded, and cost-effective. It actively enforces rules against hallucinations, unverified claims, and wasteful rework loops during coding sessions. By validating agent actions against real evidence, Soma keeps development safe, predictable, and verifiable.
-
-## Prerequisites
-
-- Python 3.9+
-- git
+Soma is a governance framework for AI coding agents. It installs governance rules, provides a CLI and MCP server, and records evidence for adaptive rule management.
 
 ## Installation
 
-Choose one of three install options:
+Choose the option that matches your environment.
+
+### Option 1: Install the CLI from PyPI
+
+**Requires:** Python 3.9+ and `pip`.
 
 ```bash
-# Option 1: PyPI
 pip install soma-governance
-
-# Option 2: Clone and editable install
-git clone https://github.com/nseney1/Soma-Governance.git && cd Soma-Governance
-pip install -e .
-
-# Option 3: Clone and make install
-git clone https://github.com/nseney1/Soma-Governance.git && cd Soma-Governance
-make install
 ```
 
-> **PEP 668 (externally managed Python)?** Add `--user` or `--break-system-packages` to pip commands.
+### Option 2: Editable source install
 
-## First Run
+**Requires:** Git, Python 3.9+, and `pip`.
 
 ```bash
-soma init --yes        # Detects your platform, installs 5 starter rules
-soma status            # See what's active
+git clone https://github.com/nseney1/Soma-Governance.git
+cd Soma-Governance
+pip install -e .
+```
+
+### Option 3: Install CLI and agent integration with Make
+
+**Requires:** Git, Python 3.9+, `pip`, Bash, and GNU Make.
+
+```bash
+git clone https://github.com/nseney1/Soma-Governance.git
+cd Soma-Governance
+make install SOMA_PLATFORM=gemini
+```
+
+> **PEP 668 (externally managed Python)?** Use an isolated virtual environment. If that is not possible, `pip install --user soma-governance` may be appropriate for your system.
+
+## First Run with `soma init`
+
+`soma init` detects Gemini, Claude Code, Cursor, and Copilot markers. If detection is ambiguous, select one of those platforms explicitly.
+
+```bash
+soma init --platform gemini --yes
+soma status
 # ... do a coding session ...
-soma report            # Session report card
+soma report
+```
+
+Useful setup flags verified by `soma --help`:
+
+```bash
+soma init --dry-run
+soma init --rules minimal --platform claude
+soma init --rules standard --mcp --platform cursor --yes
+soma init --rules full --platform copilot --force --yes
+```
+
+## Kiro and Generic MCP Installation
+
+Kiro is supported by the Bash installer; it is not auto-detected by `soma init`.
+
+```bash
+bash install/install.sh kiro --dry-run
+bash install/install.sh kiro
+```
+
+For any MCP-compatible agent, generate a project-local `.mcp.json` with the Bash installer:
+
+```bash
+bash install/install.sh mcp --dry-run
+bash install/install.sh mcp
 ```
 
 ## CLI Commands
 
 ```bash
 # Governance lifecycle
-soma init              # Set up governance (auto-detects platform)
-soma status            # Show active rules and fitness stats
-soma report            # Session report card
-soma doctor            # Verify installation integrity
+soma init --help        # Set up governance for a supported detected/selected platform
+soma status             # Show active rules and fitness stats
+soma report             # Session report card
+soma doctor             # Verify installation integrity
 
 # Quality gates
-soma checkpoint        # Deterministic quality checks (--pre-commit for hooks)
-soma verify            # Layer 1 verification on changed files
+soma checkpoint         # Deterministic quality checks
+soma checkpoint --pre-commit --strict
+soma verify --layer1-only
 
 # Evidence pipeline
-soma sync              # Reconcile JSONL evidence with cell frontmatter
-soma sync --dry-run    # Preview without writing
+soma sync               # Reconcile JSONL evidence with cell frontmatter
+soma sync --dry-run --json
 
 # Cell lifecycle
-soma genesis           # Scan architecture and generate cell candidates
-soma genesis --dry-run # Preview candidates without writing
-soma oracle --json     # Cell health classification
-soma promote --dry-run # See promotion candidates
-soma demote --dry-run  # See demotion candidates
+soma genesis --dry-run
+soma oracle --json
+soma promote --dry-run
+soma demote --dry-run
 ```
 
-## What the 5 Starter Rules Do
+## Make Targets
 
-- `providence`: Grounds claims in evidence, prevents hallucination
-- `destructive-ops`: Requires dry-runs before dangerous operations
-- `testing`: Enforces behavioral tests, sad paths, minimal mocks
-- `cost-optimization`: Minimizes wasted tokens and compute
-- `git-workflow`: Enforces consistent commit practices
+The repository Makefile provides `help`, `info`, `install`, `install-gemini`, `install-kiro`, `install-copilot`, `install-claude`, `install-mcp`, `install-windows`, `uninstall`, `doctor`, `validate`, `update`, `status`, and `test`. Run `make help` for descriptions.
 
-## Supported Platforms
+## What the Standard Starter Rules Do
 
-- Gemini / Antigravity (auto-detected)
-- Claude Code (auto-detected)
-- Cursor (auto-detected)
-- Copilot (auto-detected)
-- Kiro (auto-detected)
-- Any MCP-compatible agent
+- `providence`: grounds claims in evidence and requires read-before-write.
+- `destructive-ops`: requires safety gates for dangerous operations.
+- `testing`: requires behavioral tests and meaningful failure coverage.
+- `cost-optimization`: limits wasted tokens and compute without sacrificing correctness.
+- `git-workflow`: defines safe, consistent Git practices.
 
 ## Next Steps
 
-For advanced configuration, rule customization, and automated verification details, see the full [README.md](README.md).
+See [README.md](README.md) for MCP configuration, receipt usage, SDK examples, and architecture details.

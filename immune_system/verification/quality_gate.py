@@ -88,7 +88,8 @@ def _is_docstring_node(node: ast.stmt) -> bool:
     """Return True if *node* is a standalone string-expression (docstring)."""
     return (
         isinstance(node, ast.Expr)
-        and isinstance(node.value, (ast.Constant, ast.Str))
+        # ast.Str was removed in Python 3.14; ast.Constant covers it since 3.8.
+        and isinstance(node.value, ast.Constant)
         and isinstance(getattr(node.value, "value", None), str)
     )
 

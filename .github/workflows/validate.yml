@@ -18,8 +18,20 @@ jobs:
           python-version: '3.11'
       - name: Install build tools
         run: pip install build
-      - name: Build wheel
+      - name: Build wheel and sdist (the only build of this release)
         run: python -m build
+      - name: Record artifact digests
+        run: python .github/scripts/verify_dist.py record dist
+      # The sdist is published too, so it is installed and smoke-tested here
+      # rather than shipped untested.
+      - name: Smoke-test sdist (source hidden)
+        run: |
+          SMOKE="$PWD/.github/scripts/wheel_smoke.py"
+          SDIST="$(ls "$PWD"/dist/*.tar.gz)"
+          VENV="$RUNNER_TEMP/sdist-venv"
+          python -m venv "$VENV"
+          "$VENV/bin/pip" install "$SDIST"
+          cd "$RUNNER_TEMP" && env -u PYTHONPATH "$VENV/bin/python" -I "$SMOKE"
       - name: Upload wheel artifact
         uses: actions/upload-artifact@v4
         with:
@@ -49,11 +61,23 @@ jobs:
           name: soma-wheel
           path: dist/
       
+      - name: Verify artifact digests
+        run: python .github/scripts/verify_dist.py verify dist
+
       - name: Install test dependencies
         run: |
           pip install pytest ruff hypothesis coverage pyyaml
-          WHEEL_FILE=$(ls dist/*.whl | head -n 1)
-          pip install "${WHEEL_FILE}"
+          pip install dist/*.whl
+
+      # The unit suite below runs from the checkout (pythonpath = ["."]), so on
+      # its own it cannot prove the wheel works. This step runs the installed
+      # wheel from outside the repo, in isolated mode, and asserts every Soma
+      # module resolves from site-packages.
+      - name: Smoke-test installed wheel (source hidden)
+        shell: bash
+        run: |
+          SMOKE="$PWD/.github/scripts/wheel_smoke.py"
+          cd "$RUNNER_TEMP" && env -u PYTHONPATH python -I "$SMOKE"
 
       - name: Run validation
         run: make validate

@@ -5,6 +5,7 @@ Takes a plain English description and generates a governance cell with
 proper YAML frontmatter, hypothesis, prediction, and falsification.
 """
 import os, sys, argparse, json, subprocess
+from soma_core.evidence import aggregate_signals
 from soma_resolve import resolve_workspace
 from inference_provider import resolve_provider
 
@@ -128,24 +129,13 @@ def create_cell_from_insight_cluster(cluster: dict, workspace: str) -> str:
 
     filepath = os.path.join(target_dir, filename)
 
-    # Collision safety: check fitness.jsonl for existing trigger data
+    # Collision safety: preserve cells with canonical trigger evidence.
     if os.path.isfile(filepath):
         evidence_dir = os.path.join(workspace, '.soma', 'evidence')
-        fitness_file = os.path.join(evidence_dir, 'fitness.jsonl')
-        if os.path.isfile(fitness_file):
-            try:
-                cell_id = frontmatter.get('id', '')
-                with open(fitness_file, 'r', encoding='utf-8') as f:
-                    for line in f:
-                        try:
-                            record = json.loads(line)
-                            if record.get('cell_id') == cell_id:
-                                # Cell has fitness evidence — don't overwrite
-                                return filepath
-                        except (json.JSONDecodeError, ValueError):
-                            continue
-            except Exception:
-                pass
+        signal_counts = aggregate_signals(evidence_dir).counts
+        cell_id = frontmatter.get('id', '')
+        if signal_counts.get(cell_id, {}).get('has_triggers', False):
+            return filepath
 
     with open(filepath, "w", encoding="utf-8") as f:
         f.write(cell_content)

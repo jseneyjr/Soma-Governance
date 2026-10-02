@@ -55,23 +55,24 @@ def _setup_clean_workspace(root):
         encoding="utf-8",
     )
 
-    # Healthy evidence directory
+    # Healthy canonical signal evidence
     evidence = root / ".soma" / "evidence"
     evidence.mkdir(parents=True, exist_ok=True)
-    fitness_record = {
-        "cell_id": "math-rule",
-        "triggered_at": "2026-09-30T12:00:00Z",
-        "matched_files": ["src/math_utils.py"],
-    }
-    outcome_record = {
-        "cell_id": "math-rule",
-        "outcome": "tp",
-    }
-    (evidence / "fitness.jsonl").write_text(
-        json.dumps(fitness_record) + "\n", encoding="utf-8"
-    )
-    (evidence / "outcomes.jsonl").write_text(
-        json.dumps(outcome_record) + "\n", encoding="utf-8"
+    signal_records = [
+        {
+            "cell": "math-rule",
+            "signal": "trigger",
+            "timestamp": "2026-09-30T12:00:00Z",
+        },
+        {
+            "cell": "math-rule",
+            "signal": "tp",
+            "timestamp": "2026-09-30T12:00:00Z",
+        },
+    ]
+    (evidence / "signals.jsonl").write_text(
+        "\n".join(json.dumps(record) for record in signal_records) + "\n",
+        encoding="utf-8",
     )
     return root
 
@@ -354,23 +355,29 @@ class TestCheckpointDeterministicQualityChecks:
         _setup_clean_workspace(tmp_path)
         evidence = tmp_path / ".soma" / "evidence"
         evidence.mkdir(parents=True, exist_ok=True)
-        # Record with heavy false positive outcomes
-        fitness_records = [
-            {"cell_id": "noisy-rule", "triggered_at": "2026-09-30T10:00:00Z", "matched_files": ["src/math_utils.py"]},
-            {"cell_id": "noisy-rule", "triggered_at": "2026-09-30T10:05:00Z", "matched_files": ["src/math_utils.py"]},
-            {"cell_id": "noisy-rule", "triggered_at": "2026-09-30T10:10:00Z", "matched_files": ["src/math_utils.py"]},
+        # Canonical signals mark the cell unhealthy.
+        signal_records = [
+            {
+                "cell": "noisy-rule",
+                "signal": signal,
+                "timestamp": f"2026-09-30T10:{index:02d}:00Z",
+            }
+            for index, signal in enumerate(
+                ("trigger", "trigger", "trigger", "fp", "fp", "fp")
+            )
         ]
-        outcome_records = [
-            {"cell_id": "noisy-rule", "outcome": "fp"},
-            {"cell_id": "noisy-rule", "outcome": "fp"},
-            {"cell_id": "noisy-rule", "outcome": "fp"},
-        ]
-        (evidence / "fitness.jsonl").write_text(
-            "\n".join(json.dumps(r) for r in fitness_records) + "\n",
+        (evidence / "signals.jsonl").write_text(
+            "\n".join(json.dumps(record) for record in signal_records) + "\n",
             encoding="utf-8",
         )
+        # Contradictory legacy outcomes would make the FP rate exactly 50% if
+        # consumed; checkpoint must ignore them in favor of canonical signals.
+        legacy_outcomes = [
+            {"cell_id": "noisy-rule", "outcome": "tp"}
+            for _ in range(3)
+        ]
         (evidence / "outcomes.jsonl").write_text(
-            "\n".join(json.dumps(r) for r in outcome_records) + "\n",
+            "\n".join(json.dumps(record) for record in legacy_outcomes) + "\n",
             encoding="utf-8",
         )
 

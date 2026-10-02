@@ -1,7 +1,7 @@
 """TDD Gate 1 tests for the cell lifecycle engine.
 
 The lifecycle engine provides deterministic promotion/demotion decisions
-based on JSONL evidence data (fitness.jsonl + outcomes.jsonl):
+based on canonical signals.jsonl evidence:
 
 Lifecycle path: vacuole (hypothesis) → wall (proven gate) → genome (universal law)
 
@@ -22,7 +22,27 @@ import yaml
 REPO_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, REPO_ROOT)
 
-from tests.helpers_cell import make_cell, write_evidence
+from tests.helpers_cell import make_cell
+
+
+def write_evidence(evidence_dir, cell_id, triggers=0, tp=0, fp=0):
+    """Write canonical trigger and outcome rows to signals.jsonl."""
+    signal_file = os.path.join(str(evidence_dir), "signals.jsonl")
+    timestamp = datetime.now().isoformat()
+    with open(signal_file, "a", encoding="utf-8") as stream:
+        for _ in range(triggers):
+            stream.write(json.dumps({
+                "cell": cell_id,
+                "signal": "trigger",
+                "timestamp": timestamp,
+            }) + "\n")
+        for signal, count in (("tp", tp), ("fp", fp)):
+            for _ in range(count):
+                stream.write(json.dumps({
+                    "cell": cell_id,
+                    "signal": signal,
+                    "timestamp": timestamp,
+                }) + "\n")
 
 
 class TestLifecycleImport:

@@ -8,10 +8,8 @@ import re
 from pathlib import Path
 from typing import Any, Optional
 
-try:
-    import yaml
-except ImportError:
-    yaml = None
+from soma_core.cell_inventory import CellInventoryError, inventory_cells
+from soma_mcp.jit_engine import parse_frontmatter
 
 
 class Governance:
@@ -75,20 +73,51 @@ class Governance:
     # === Cell Management ===
     
     def list_cells(self) -> list[dict[str, Any]]:
-        """List all immune cells."""
+        """List all immune cells from one canonical byte snapshot.
+
+        Invalid cell contents remain visible as diagnostic records. Unsafe or
+        unreadable inventory trees fail closed because callers cannot safely
+        distinguish an empty tree from an incomplete one.
+        """
+        try:
+            inventory = inventory_cells(str(self.root))
+        except CellInventoryError as exc:
+            raise RuntimeError(str(exc)) from exc
+
         cells = []
-        if not self.cells_dir.exists():
-            return cells
-        for cell_file in self.cells_dir.rglob('*.md'):
-            if cell_file.name == 'README.md': continue
+        for entry in inventory.entries:
+            relative_path = entry.relative_path
+            cell_name = Path(relative_path).stem
+            if Path(relative_path).name == 'README.md':
+                continue
             try:
-                content = cell_file.read_text()
-                if not content.startswith('---'): continue
-                fm = yaml.safe_load(content[3:content.find('---', 3)])
-                fm['_name'] = cell_file.stem
-                fm['_path'] = str(cell_file.relative_to(self.root))
-                cells.append(fm)
-            except Exception: pass
+                content = entry.content.decode('utf-8')
+            except UnicodeDecodeError as exc:
+                cells.append({
+                    '_name': cell_name,
+                    '_path': relative_path,
+                    '_error': f'invalid UTF-8: {exc}',
+                })
+                continue
+
+            frontmatter = parse_frontmatter(content)
+            if frontmatter is None:
+                cells.append({
+                    '_name': cell_name,
+                    '_path': relative_path,
+                    '_error': 'malformed YAML frontmatter',
+                })
+                continue
+            if not frontmatter:
+                cells.append({
+                    '_name': cell_name,
+                    '_path': relative_path,
+                    '_error': 'no frontmatter metadata',
+                })
+                continue
+            frontmatter['_name'] = cell_name
+            frontmatter['_path'] = relative_path
+            cells.append(frontmatter)
         return cells
     
     def create_cell(

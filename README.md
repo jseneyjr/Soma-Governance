@@ -1,9 +1,9 @@
 # Soma
 
 [![License: Apache 2.0](https://img.shields.io/badge/License-Apache_2.0-blue?style=flat-square)](LICENSE)
-[![Core Rules](https://img.shields.io/badge/Core_Rules-15-green?style=flat-square)](#-core-rules)
+[![Core Rules](https://img.shields.io/badge/Core_Rules-18-green?style=flat-square)](#-core-rules)
 [![Agent Skills](https://img.shields.io/badge/Agent_Skills-15-purple?style=flat-square)](#-agent-skills)
-[![Automation Scripts](https://img.shields.io/badge/Automation_Scripts-57-red?style=flat-square)](#%EF%B8%8F-automation-scripts)
+[![Automation Scripts](https://img.shields.io/badge/Automation_Scripts-61-red?style=flat-square)](#%EF%B8%8F-automation-scripts)
 [![Adaptive Rules](https://img.shields.io/badge/Adaptive_Rules-5_Types-orange?style=flat-square)](#-adaptive-rules)
 [![Version](https://img.shields.io/badge/Version-0.89.0-informational?style=flat-square)](docs/project/CHANGELOG.md)
 [![Blog Post](https://img.shields.io/badge/Blog-dev.to-black?style=flat-square&logo=devdotto)](https://dev.to/nseney1/rules-that-cant-prove-themselves-die-adaptive-governance-for-ai-coding-agents-25bn)
@@ -37,7 +37,7 @@ pip install -e .
 # Or install from PyPI
 pip install soma-governance
 
-# Set up governance (auto-detects your platform)
+# Set up governance (auto-detects Gemini, Claude Code, Cursor, or Copilot)
 soma init --yes
 
 # See what's active
@@ -63,7 +63,7 @@ bash install/install.sh mcp        # Any MCP-compatible agent
 
 ### MCP Server (Recommended)
 
-Add Soma as an MCP server in your AI agent's config — **zero API key needed**. The agent *is* the LLM.
+Add Soma as an MCP server in your AI agent's config. Set `SOMA_WORKSPACE` to the governed project (the directory containing `.soma/cells/`). No API key is needed because the host agent supplies the model.
 
 ```json
 {
@@ -72,17 +72,30 @@ Add Soma as an MCP server in your AI agent's config — **zero API key needed**.
       "command": "python3",
       "args": ["-m", "soma_mcp"],
       "env": {
+        "SOMA_WORKSPACE": "/path/to/your/project",
         "SOMA_EXECUTION_ENABLED": "1"
-      },
-      "cwd": "/path/to/your/project"
+      }
     }
   }
 }
 ```
 
-Works with Gemini Antigravity, Claude Code, Cursor, and any MCP-compatible agent. 
+Works with Gemini Antigravity, Claude Code, Cursor, and any MCP-compatible agent.
 
-> **Execution Security:** For security, execution tools (like `soma_propose_change` and `soma_verify_changes`) are **disabled by default**. You must set the `SOMA_EXECUTION_ENABLED=1` environment variable in your MCP config to enable them. If omitted, the agent will only have access to read/write tools.
+**Capabilities:** With `SOMA_EXECUTION_ENABLED` omitted, the server exposes six read tools and three write tools. Write tools are discoverable but require a receipt. Setting `SOMA_EXECUTION_ENABLED=1` additionally exposes six execute tools, which also require receipts.
+
+| Tier | Available tools |
+|:-----|:----------------|
+| Read (default) | `soma_request_receipt`, `soma_scan`, `soma_list_cells`, `soma_grade`, `soma_coverage`, `soma_fitness` |
+| Write (default; receipt required) | `soma_report_outcome`, `soma_capture_insight`, `soma_create_cell` |
+| Execute (opt-in; receipt required) | `soma_propose_change`, `soma_verify_changes`, `soma_checkpoint`, `soma_audit_security`, `soma_audit_performance`, `soma_generate_manifest` |
+
+**Receipt flow for write and execute tools:**
+
+1. Call `soma_request_receipt` with the intended tool name in `operation` and the exact tool arguments in `arguments`. For `soma_report_outcome`, those arguments must include a non-empty, retry-stable `idempotency_key`.
+2. Call that tool with the same arguments plus the returned `receipt`.
+
+Receipts expire after 300 seconds and are single-use. They are bound to the current MCP session, canonical workspace, operation, exact arguments, target-file state, and governance-cell state. If a target file or any cell changes before redemption, request a new receipt. Receipts authorize a specific state-bound operation; they do not authenticate a person. Reusing the same `soma_report_outcome` idempotency key with the same payload is a no-op; changing the payload for that key fails closed.
 
 ### SDK
 
@@ -116,7 +129,7 @@ All governance workflows are available via the `soma` CLI:
 
 | Command | Description |
 |:--------|:------------|
-| `soma init` | Set up governance — auto-detects platform, installs rules + pre-commit hook |
+| `soma init` | Set up governance for Gemini, Claude Code, Cursor, or Copilot; use the Bash installer for Kiro |
 | `soma genesis` | Scan codebase architecture, generate governance cells |
 | `soma status` | Show active rules, cell counts, and fitness stats |
 | `soma report` | Session report card with compliance metrics |
@@ -150,9 +163,9 @@ Soma models governance as a layered system of rules, skills, and automation. Eve
 
 ```text
 ┌──────────────────────────────────────────────────────────────────────┐
-│  📐 CORE RULES (genome/)          15 Rules — inherited defaults      │
+│  📐 CORE RULES (genome/)          18 Rules — inherited defaults      │
 │  🔧 AGENT SKILLS (organs/)       15 Skills — complex behaviors       │
-│  ⚙️  AUTOMATION (enzymes/)        57 Scripts — task automation        │
+│  ⚙️  AUTOMATION (enzymes/)        61 Scripts — task automation        │
 ├──────────────────────────────────────────────────────────────────────┤
 │  🛡️ VERIFICATION                  AST analysis tools                  │
 │     Layer 1: AST-based checks (import guards, complexity, coverage)  │
@@ -164,9 +177,9 @@ Soma models governance as a layered system of rules, skills, and automation. Eve
 
 | Layer | Directory | What It Contains |
 |:------|:----------|:-----------------|
-| **Core Rules** | `genome/` | 15 rules — inherited behavioral defaults, rarely changed. |
+| **Core Rules** | `genome/` | 18 rules — inherited behavioral defaults, rarely changed. |
 | **Agent Skills** | `organs/` | 15 skills — complex multi-step behaviors like adaptive-reviewer, genesis, security-audit. |
-| **Automation Scripts** | `enzymes/` | 57 scripts — task-specific automation (fitness scoring, rule creation, evidence pipeline). |
+| **Automation Scripts** | `enzymes/` | 61 scripts — task-specific automation (fitness scoring, rule creation, evidence pipeline). |
 | **Verification** | `immune_system/` | AST analysis tools for code checking. |
 | **Adaptive Rules** | `.soma/cells/` | Per-repo adaptive invariants. Generated, tested, evolved, or retired. |
 
@@ -174,7 +187,7 @@ Soma models governance as a layered system of rules, skills, and automation. Eve
 
 ## 📐 Core Rules
 
-The system's foundational rules — 15 rules that define inherited behavior. Always-on rules are loaded every session; conditional rules activate on demand.
+The system's foundational rules — 18 rules that define inherited behavior. Always-on rules are loaded every session; conditional rules activate on demand.
 
 | Rule | Trigger | Purpose |
 |:-----|:--------|:--------|
@@ -193,6 +206,9 @@ The system's foundational rules — 15 rules that define inherited behavior. Alw
 | [tdd-protocol](genome/.oracles/tdd-protocol.md) | model_decision | Test-driven development with sequential phase gates |
 | [optional-import-guard](genome/.oracles/optional-import-guard.md) | model_decision | try/except guards on optional dependencies |
 | [hgt-resource-consolidation](genome/hgt-resource-consolidation-hgt.md) | model_decision | Cross-project rule sharing governance |
+| [ci-green-before-release](genome/ci-green-before-release.md) | model_decision | Requires green CI before release or deployment |
+| [gitflow-review-gate](genome/gitflow-review-gate.md) | model_decision | Enforces reviewed Gitflow branch transitions |
+| [no-pre-existing-excuse](genome/no-pre-existing-excuse.md) | model_decision | Requires fixing relevant pre-existing failures instead of dismissing them |
 
 ---
 
@@ -244,9 +260,9 @@ Generate → Score (Confidence Decay) → Adapt → Differentiate → Prune / Re
 
 **Lifecycle operators**: Differentiation (vacuoles harden into walls), Confidence Decay (confidence decays unless reinforced), Retirement (immediate eviction on excess false positives), Horizontal Transfer (cross-project sharing with probation), Version History (provenance tracking).
 
-**Fitness scoring**: Wilson-bounded fitness scoring with credible intervals — cells are scored by true positive rate using Wilson score intervals for statistically rigorous confidence bounds. Laplace smoothing `(tp + 1) / (triggers + 2)` provides the point estimate; Wilson bounds determine promotion and pruning thresholds. All tools use a single canonical cell parser (`parse_cell_file`) for consistent frontmatter extraction.
+**Fitness scoring**: Wilson-bounded fitness scoring with credible intervals — cells are scored by true positive rate using Wilson score intervals for statistically rigorous confidence bounds. Laplace smoothing `(tp + 1) / (triggers + 2)` provides the point estimate; Wilson bounds determine promotion and pruning thresholds. The Python SDK and enzymes use the canonical `parse_cell_file` parser; the dependency-light MCP path uses its documented standard-library frontmatter parser.
 
-**Credit assignment**: Scope-narrowed credit assignment with per-file conservation — when multiple cells match the same changed file, each cell's fitness signal is weighted by `1/N` (where N = matching cells for that file). Probabilistic rounding (`prob_round`) converts fractional credit to integer tp/fp counters while preserving expected value over many observations. Signal provenance is tracked in JSONL with `credit_weight` and `signal_method` fields.
+**Credit assignment**: Scope-narrowed credit assignment with per-file conservation — when multiple cells match the same changed file, each cell's fitness signal is weighted by `1/N` (where N = matching cells for that file). Fractional credit is stored deterministically rather than randomly rounded. Canonical events are recorded in `.soma/evidence/signals.jsonl` with credit and provenance metadata.
 
 **Structured crossover**: Structured field-level rule merging — two high-fitness cells can be crossed to produce offspring with combined hypotheses, max impact weight, merged target paths (union), and reset fitness counters. Lineage tracking records parent IDs, generation number, and creation method.
 
@@ -264,7 +280,7 @@ Generate → Score (Confidence Decay) → Adapt → Differentiate → Prune / Re
 
 ## ⚙️ Automation Scripts
 
-Soma includes 57 task-specific scripts driving rule lifecycles, verification, and evidence pipelines. See [SCRIPTS.md](docs/architecture/scripts.md) for full documentation.
+Soma includes 61 task-specific scripts driving rule lifecycles, verification, and evidence pipelines. See [SCRIPTS.md](docs/architecture/scripts.md) for full documentation.
 
 ---
 
@@ -368,7 +384,7 @@ pwsh install\uninstall.ps1 -Platform gemini
 pwsh install\uninstall.ps1 -Platform gemini -DryRun
 ```
 
-Existing `.prism/` directories are auto-migrated to `.soma/` on install.
+The Bash installer auto-migrates existing `.prism/` directories to `.soma/`. `soma init` and the PowerShell installer do not perform this migration.
 
 ## License
 

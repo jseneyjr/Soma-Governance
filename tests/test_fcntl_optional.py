@@ -76,16 +76,18 @@ def test_append_signal_writes_record_without_fcntl(tmp_path):
     assert (record["cell"], record["signal"], record["source"]) == ("trap-example", "tp", "mcp")
 
 
-def test_report_outcome_writes_outcomes_without_fcntl(tmp_path):
+def test_report_outcome_writes_canonical_signal_without_fcntl(tmp_path):
     workspace = _make_workspace(tmp_path)
     proc = _run_without_fcntl("""
         import json
         from soma_mcp.tools import execute_tool
         result = execute_tool("soma_report_outcome",
-                              {"outcome": "success", "cells_used": ["trap-example"]})
+                              {"outcome": "success", "cells_used": ["trap-example"],
+                               "idempotency_key": "no-fcntl-report"})
         print(json.dumps(result))
     """, env_extra={"SOMA_ROOT": str(workspace)})
     assert proc.returncode == 0, proc.stderr
-    outcomes = (workspace / ".soma" / "evidence" / "outcomes.jsonl").read_text(
+    signals = (workspace / ".soma" / "evidence" / "signals.jsonl").read_text(
         encoding="utf-8").splitlines()
-    assert [json.loads(line)["cell_id"] for line in outcomes] == ["trap-example"]
+    assert [json.loads(line)["cell"] for line in signals] == ["trap-example"]
+    assert not (workspace / ".soma" / "evidence" / "outcomes.jsonl").exists()

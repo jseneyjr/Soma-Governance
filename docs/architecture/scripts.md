@@ -1,6 +1,10 @@
 # Scripts Reference
 
-This document catalogs the 96 executable scripts, tools, and SDK modules that power the Soma governance framework.
+This document catalogs 114 executable scripts, command modules, SDK modules, and MCP/core modules in the Soma governance framework.
+
+## Counting Method
+
+Counts are generated from the v0.89.0 source tree with mutually exclusive categories: package initializers (`__init__.py`, `__main__.py`) are excluded; the six lifecycle enzymes plus `install/hooks/pre-commit` are counted only as lifecycle scripts; all remaining top-level `enzymes/*.py` and `enzymes/*.sh` files are utilities; installer wrappers are counted separately; and all non-initializer `soma_core/*.py` modules are grouped with the MCP modules. This produces 114 unique paths with no double counting.
 
 ## Summary by Category
 
@@ -8,11 +12,12 @@ This document catalogs the 96 executable scripts, tools, and SDK modules that po
 |:---------|:----------------------------|:------|:------------|
 | [Lifecycle Scripts (Hooks)](#lifecycle-scripts-hooks--bash) | bash (`enzymes/`, `install/hooks/`) | 7 | Environment, agent execution, and pre-commit lifecycle hooks |
 | [Verification Scripts](#verification-scripts--python) | Python (`immune_system/verification/`) | 13 | Deterministic AST checkers, coverage tools, and adversarial verification |
-| [CLI Commands](#cli-commands--python-soma_cli) | Python & bash (`soma_cli/`, root) | 15 | User-facing commands and binary wrapper for the `soma` CLI |
-| [Install Scripts](#install-scripts--bash) | bash (`install/`, root) | 3 | Multi-platform installers, uninstaller, and root wrapper |
-| [Utility Scripts](#utility-scripts) | Python & bash (`enzymes/`, root) | 53 | Cell genetics, runtime engines, telemetry, and shared utilities |
-| [SDK Modules](#sdk-modules--python-soma_sdk) | Python (`soma_sdk/`) | 5 | Canonical library for scoring, cell parsing, errors, and governance API |
-| **Total** | | **96** | |
+| [CLI Commands](#cli-commands--python-soma_cli) | Python and bash (`soma_cli/`, root) | 16 | CLI launcher and command implementation modules |
+| [Install Scripts](#install-scripts--bash-and-powershell) | Bash and PowerShell (`install/`, root) | 6 | Platform installers, uninstallers, and root wrappers |
+| [Utility Scripts](#utility-scripts) | Python and bash (`enzymes/`) | 55 | Cell genetics, runtime engines, evidence, telemetry, and shared utilities |
+| [SDK Modules](#sdk-modules--python-soma_sdk) | Python (`soma_sdk/`) | 8 | Canonical scoring, parsing, telemetry, hot-zone, and governance APIs |
+| [MCP and Core Modules](#mcp-and-core-modules) | Python (`soma_mcp/`, `soma_core/`) | 9 | MCP transport, dispatch, confinement, content inventory, canonical evidence, cache, and receipts |
+| **Total** | | **114** | Unique paths under the method above |
 
 ---
 
@@ -56,7 +61,7 @@ These 13 Python scripts form the deterministic and adversarial verification engi
 
 ## CLI Commands — Python (`soma_cli/`)
 
-These 15 scripts provide the command-line interface for Soma, including the root shell launcher, 12 subcommands in `soma_cli/`, and genesis scanner and generator modules.
+These 16 paths provide the root `soma` launcher and 15 non-initializer Python modules in `soma_cli/`. Eleven modules implement registered subcommands; scanner/generator modules support Genesis, and `migration.py` implements evidence epoch cutover.
 
 | Command / Script | Location | Purpose |
 |:-----------------|:---------|:--------|
@@ -68,31 +73,35 @@ These 15 scripts provide the command-line interface for Soma, including the root
 | **`genesis.py`** | `soma_cli/genesis.py` | `soma genesis`: Analyzes codebase architecture with 8 language-agnostic detectors and generates governance cell candidates. |
 | **`genesis_generator.py`** | `soma_cli/genesis_generator.py` | Generates candidate cell files in `vacuoles/` and architecture map `docs/organelles.md` from scan results. |
 | **`genesis_scanner.py`** | `soma_cli/genesis_scanner.py` | Language-agnostic codebase scanner detecting 8 architectural patterns for governance cell candidate generation. |
-| **`init.py`** | `soma_cli/init.py` | `soma init`: Initializes Soma governance for a project, detecting platform and project type, installing starter rules. |
+| **`init.py`** | `soma_cli/init.py` | `soma init`: Initializes rules for Gemini, Claude Code, Cursor, or Copilot; it does not auto-detect Kiro. |
+| **`migration.py`** | `soma_cli/migration.py` | Generation-fenced evidence cutover: locks writers, reconciles legacy ledgers into canonical `signals.jsonl`, snapshots source bytes with `SHA256SUMS`, atomically publishes converted signals, then advances the epoch. |
 | **`oracle.py`** | `soma_cli/oracle.py` | `soma oracle`: Cell health classification, diagnostics, and pruning recommendations (wraps `oracle_checkpoint.py`). |
 | **`promote.py`** | `soma_cli/promote.py` | `soma promote`: Evaluates and displays high-performing local cells eligible for promotion to forest-floor rules. |
 | **`report.py`** | `soma_cli/report.py` | `soma report`: Session report card showing triggered rules, event counts, and ASCII activity distributions. |
 | **`status.py`** | `soma_cli/status.py` | `soma status`: Displays active rules, cell inventory, operational metrics, and governance status. |
-| **`sync.py`** | `soma_cli/sync.py` | `soma sync`: Reconciles empirical JSONL evidence (`fitness.jsonl`, `outcomes.jsonl`) into cell YAML frontmatter. |
+| **`sync.py`** | `soma_cli/sync.py` | `soma sync`: Rebuilds cell fitness frontmatter from canonical `.soma/evidence/signals.jsonl`. |
 | **`verify.py`** | `soma_cli/verify.py` | `soma verify`: Runs verification on changed files (Layer 1 deterministic tools and Layer 2 adversarial LLM pair). |
 
 ---
 
-## Install Scripts — bash
+## Install Scripts — bash and PowerShell
 
-These 3 bash scripts manage the installation and clean removal of Soma across development environments.
+These 6 scripts provide Bash and PowerShell install/uninstall entrypoints. `install/hooks/pre-commit` is excluded here because it is counted in Lifecycle Scripts.
 
 | Script | Location | Purpose |
 |:-------|:---------|:--------|
-| **`install.sh`** | `install/install.sh` | Unified installer deploying steering rules, skills, and hooks across supported platforms (Gemini, Antigravity, Claude, Copilot, Kiro). |
-| **`uninstall.sh`** | `install/uninstall.sh` | Clean uninstaller that removes Soma files using `~/.soma/manifest.json`, with automated backup and restore capabilities. |
-| **`install.sh`** | `install.sh` | Root-level convenience wrapper delegating directly to `install/install.sh`. |
+| **`install.sh`** | `install/install.sh` | Unified Bash installer for Gemini, Kiro, Copilot, Claude Code, and generic MCP; this is the installer that migrates `.prism/` to `.soma/`. |
+| **`uninstall.sh`** | `install/uninstall.sh` | Bash uninstaller driven by the install manifest, with confinement, backup restoration, and opt-in data purge. |
+| **`install.sh`** | `install.sh` | Root Bash wrapper delegating to `install/install.sh`. |
+| **`install.ps1`** | `install/install.ps1` | PowerShell installer for native Windows; parsing is covered on Windows PowerShell 5.1, but open encoding and hook-parity limitations remain. |
+| **`uninstall.ps1`** | `install/uninstall.ps1` | Native PowerShell uninstaller with manifest path confinement. |
+| **`install.ps1`** | `install.ps1` | Root PowerShell wrapper delegating to `install/install.ps1`. |
 
 ---
 
 ## Utility Scripts
 
-These 53 scripts encompass the master pipeline orchestrator, automation enzymes, runtime verification engines, telemetry scanners, and shared infrastructure libraries.
+These 55 scripts are the top-level `enzymes/*.py` and `enzymes/*.sh` files not already counted as lifecycle hooks. The subsection counts below are exclusive and sum to 55.
 
 ### 1. Master Pipeline Orchestrator (removed)
 
@@ -136,16 +145,19 @@ These 53 scripts encompass the master pipeline orchestrator, automation enzymes,
 | **`resilience_engine.py`** | `enzymes/resilience_engine.py` | Endocrine resilience engine monitoring consecutive agent execution failures (Stress) and intervening before runaway loops. |
 | **`soma_coherence.py`** | `enzymes/soma_coherence.py` | Signal Coherence Layer (Integrity Engine) cross-validating disparate Soma signals and detecting contradictions. |
 | **`soma_interoception.py`** | `enzymes/soma_interoception.py` | Internal state awareness (proprioception) engine reading four internal signals before major actions. |
-| **`evidence_collector.py`** | `enzymes/evidence_collector.py` | Scans session transcripts to correlate rule compliance patterns directly with session outcomes. |
-| **`outcome_engine.py`** | `enzymes/outcome_engine.py` | Verifiable execution feedback engine capturing real outcomes (test exit codes, build status, git reverts). |
+| **`evidence_collector.py`** | `enzymes/evidence_collector.py` | Derives aggregate compliance observations from session transcripts without persisting code or diff content; canonical fitness events are written elsewhere to `signals.jsonl`. |
+| **`outcome_engine.py`** | `enzymes/outcome_engine.py` | Captures test/build/git/MCP/human-insight outcomes, appends generation-fenced and idempotent events to canonical `signals.jsonl`, then updates derived cell state after evidence persistence. |
 | **`immune_replay.py`** | `enzymes/immune_replay.py` | Governance replay tool retrospectively testing current cells against historical commits to verify catch rates. |
 | **`sweep_session.py`** | `enzymes/sweep_session.py` | Lightweight waste signal scanner and session transcript scorer for governance sweeps. |
 
-### 4. Telemetry, Reporting & Analysis (17 scripts)
+### 4. Telemetry, Evidence, Reporting & Analysis (20 scripts)
 
 | Script | Location | Purpose |
 |:-------|:---------|:--------|
 | **`token_census.py`** | `enzymes/token_census.py` | Validates token footprints of active rules and skills via Gemini SDK counting or calibrated fallbacks. |
+| **`ci_outcome_reporter.py`** | `enzymes/ci_outcome_reporter.py` | Read-only CI advisory that matches changed files to cells and reports proposed credit weights/signals without mutating fitness. |
+| **`diagnose_hot_zones.py`** | `enzymes/diagnose_hot_zones.py` | Read-only diagnostic for bug-registry heat thresholds, active file/pattern zones, and threshold calibration. |
+| **`verify_bug_registry.py`** | `enzymes/verify_bug_registry.py` | Validates bug IDs, schema/status fields, categories, and executes every fixed bug's registered regression test; open bugs are exempt from fix fields. |
 | **`metrics_snapshot.sh`** | `enzymes/metrics_snapshot.sh` | Saves automated governance performance baselines and ROI deltas into `METRICS_REPO`. |
 | **`export_logs.sh`** | `enzymes/export_logs.sh` | Prepares conversation logs and transcripts for post-mortem analysis and archiving. |
 | **`immune_sweep.sh`** | `enzymes/immune_sweep.sh` | Performs batch scans across past session transcripts to extract recurring waste patterns. |
@@ -155,7 +167,7 @@ These 53 scripts encompass the master pipeline orchestrator, automation enzymes,
 | **`immune_grade.py`** | `enzymes/immune_grade.py` | Governance report card generator producing single-grade compliance summaries. |
 | **`immune_trends.py`** | `enzymes/immune_trends.py` | Cross-session trend dashboard aggregating metrics over rolling windows with Shannon diversity indices. |
 | **`fitness_landscape.py`** | `enzymes/fitness_landscape.py` | ASCII visualization of governance effectiveness and cell fitness scores. |
-| **`fitness_updater.py`** | `enzymes/fitness_updater.py` | Extracts session evidence from JSONL transcripts and appends fitness update records. |
+| **`fitness_updater.py`** | `enzymes/fitness_updater.py` | Extracts modified files from session transcripts, matches cells, and writes idempotent trigger events through telemetry to canonical `.soma/evidence/signals.jsonl` before syncing derived frontmatter. |
 | **`cell_coverage.py`** | `enzymes/cell_coverage.py` | Generates visual coverage maps showing which workspace files are covered by active cells and highlighting blind spots. |
 | **`cell_deps.py`** | `enzymes/cell_deps.py` | Computes and visualizes cell co-trigger dependencies and interaction networks. |
 | **`cell_escaped_defects.py`** | `enzymes/cell_escaped_defects.py` | Correlates test regressions, crashes, and build failures with files to pinpoint unmonitored blind spots. |
@@ -177,21 +189,36 @@ These 53 scripts encompass the master pipeline orchestrator, automation enzymes,
 
 ## SDK Modules — Python (`soma_sdk/`)
 
-These 5 modules provide the canonical Python library for programmatic governance access, replacing scattered inline implementations across enzymes.
+These 8 non-initializer modules provide the canonical Python APIs used by the CLI, MCP server, and enzymes.
 
 | Module | Location | Purpose |
 |:-------|:---------|:--------|
 | **`errors.py`** | `soma_sdk/errors.py` | Structured error hierarchy for governance operations (parse errors, validation failures, scoring exceptions). |
-| **`scoring.py`** | `soma_sdk/scoring.py` | Wilson interval confidence-bound scoring replacing Laplace-smoothed Bayesian posteriors for improved low-sample accuracy. |
-| **`cells.py`** | `soma_sdk/cells.py` | YAML frontmatter parser and cell file utilities — canonical `parse_cell_file()` used by all enzymes reading cell metadata. |
+| **`scoring.py`** | `soma_sdk/scoring.py` | Wilson interval confidence-bound scoring and related fitness calculations. |
+| **`cells.py`** | `soma_sdk/cells.py` | Canonical YAML frontmatter parser and cell file utilities. |
 | **`governance.py`** | `soma_sdk/governance.py` | Governance state API for querying active rules, cells, and configuration. |
-| **`analysis.py`** | `soma_sdk/analysis.py` | Analytical utilities for fitness landscape computation, trend analysis, and evidence aggregation. |
+| **`analysis.py`** | `soma_sdk/analysis.py` | Analytical utilities for fitness landscapes, trends, and evidence aggregation. |
+| **`hot_zones.py`** | `soma_sdk/hot_zones.py` | Computes file and root-cause heat from the bug registry for antifragile fitness boosts. |
+| **`invariants.py`** | `soma_sdk/invariants.py` | Evaluates the cell invariant DSL and enforcement tiers. |
+| **`telemetry.py`** | `soma_sdk/telemetry.py` | Canonical locked, idempotent, generation-fenced writer for `.soma/evidence/signals.jsonl`. |
 
 ---
 
-## MCP Server
+## MCP and Core Modules
 
-* **`soma-mcp`** (`soma_mcp.server`): The Model Context Protocol server exposing `soma_create_cell`, `soma_scan`, `soma_grade`, `soma_coverage`, and `soma_fitness` to any MCP-compatible agent (Claude Code, Cursor, Antigravity).
+These 9 modules implement the MCP server, state-bound authorization, safe cell inventory, and canonical evidence reading. Package initializers and `soma_mcp/__main__.py` are excluded from the count.
+
+| Module | Location | Purpose |
+|:-------|:---------|:--------|
+| **`server.py`** | `soma_mcp/server.py` | JSON-RPC transport, capability filtering, canonical `SOMA_WORKSPACE` injection, and receipt issuance/redemption. |
+| **`tools.py`** | `soma_mcp/tools.py` | Canonical 15-tool definitions and implementations for read, write, and execute operations. |
+| **`security.py`** | `soma_mcp/security.py` | Workspace/path confinement and cell-name validation. |
+| **`integrity.py`** | `soma_mcp/integrity.py` | Cell manifest generation, signing, and verification. |
+| **`cell_cache.py`** | `soma_mcp/cell_cache.py` | Content-fingerprinted parsed-cell cache using the canonical race-detecting inventory; stale or unsafe trees fail closed. |
+| **`jit_engine.py`** | `soma_mcp/jit_engine.py` | JIT cell matching, frontmatter parsing, and governance expression. |
+| **`receipts.py`** | `soma_core/receipts.py` | In-memory single-use receipts bound to session, workspace, operation, exact arguments, target-file digest, canonical cell fingerprint, and expiry. |
+| **`cell_inventory.py`** | `soma_core/cell_inventory.py` | Captures stable cell bytes and content fingerprints without following symlinks; detects concurrent changes and unsafe trees. |
+| **`evidence.py`** | `soma_core/evidence.py` | Standard-library canonical reader for weighted `signals.jsonl` evidence, independent trigger/outcome dimensions, and structured parse errors. |
 
 ---
 

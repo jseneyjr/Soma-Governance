@@ -2,12 +2,11 @@
 from __future__ import annotations
 
 import argparse
-from collections import defaultdict
 from datetime import date, datetime
-import json
 from pathlib import Path
 
 from soma_cli import resolve_root, sanitize_display
+from soma_core.evidence import aggregate_signals
 
 from soma_sdk.cells import parse_cell_file
 
@@ -80,30 +79,18 @@ def _format_adaptive_expiry(created_val, expiry_days_val) -> str:
     return f"{remaining_days}d"
 
 
-def _read_trigger_counts(fitness_file: Path) -> dict[str, int]:
-    """Read trigger counts per cell_id from fitness.jsonl."""
-    counts: dict[str, int] = defaultdict(int)
-    if not fitness_file.is_file():
-        return counts
-
+def _read_trigger_counts(evidence_dir: Path) -> dict[str, int]:
+    """Read the canonical trigger count dimension per cell."""
     try:
-        with open(fitness_file, "r", encoding="utf-8") as f:
-            for line in f:
-                line = line.strip()
-                if not line:
-                    continue
-                try:
-                    data = json.loads(line)
-                    if isinstance(data, dict):
-                        cid = data.get("cell_id")
-                        if cid:
-                            counts[str(cid)] += 1
-                except (json.JSONDecodeError, ValueError):
-                    continue
+        aggregation = aggregate_signals(str(evidence_dir))
     except Exception:
-        pass
+        return {}
 
-    return counts
+    return {
+        str(cell_id): int(entry["triggers"])
+        for cell_id, entry in aggregation.counts.items()
+        if isinstance(entry, dict) and entry.get("has_triggers")
+    }
 
 
 def run_status(args: argparse.Namespace) -> int:
@@ -153,9 +140,9 @@ def run_status(args: argparse.Namespace) -> int:
             if p.is_file() and p.name.lower() != "readme.md":
                 adaptive_files.append(p)
 
-    # 3. Read trigger counts from .soma/evidence/fitness.jsonl
-    fitness_file = proj / ".soma" / "evidence" / "fitness.jsonl"
-    trigger_counts = _read_trigger_counts(fitness_file)
+    # 3. Read canonical trigger counts from .soma/evidence/signals.jsonl
+    evidence_dir = proj / ".soma" / "evidence"
+    trigger_counts = _read_trigger_counts(evidence_dir)
 
     # 4. Process all rules and calculate character overhead
     total_chars = 0

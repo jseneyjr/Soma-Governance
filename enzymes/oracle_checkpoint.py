@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 """Oracle Checkpoint — Mid-Session Fitness Feedback.
 
-Reads cell metadata and fitness evidence to produce an actionable health
-report. Integrates cell_expiry for staleness detection and fitness.jsonl
-for behavioral scoring.
+Reads cell metadata and canonical signal evidence to produce an actionable health
+report. Integrates cell_expiry for staleness detection and signals.jsonl for
+behavioral scoring.
 
 Usage:
     python3 enzymes/oracle_checkpoint.py [workspace]
@@ -17,64 +17,20 @@ import os
 import sys
 from datetime import datetime
 
+from soma_core.evidence import aggregate_signals
 from soma_resolve import resolve_workspace
 from soma_sdk.cells import parse_cell_file
 from cell_expiry import audit_expiry
 
 
 def _load_fitness_evidence(workspace):
-    """Load fitness.jsonl and aggregate per cell_id.
+    """Load canonical signal evidence aggregated per cell id.
 
     Returns:
-        Dict mapping cell_id -> {'triggers': int, 'tp': int, 'fp': int}
+        Dict mapping cell_id to canonical trigger and outcome dimensions.
     """
-    fitness_file = os.path.join(workspace, '.soma', 'evidence', 'fitness.jsonl')
-    outcomes_file = os.path.join(workspace, '.soma', 'evidence', 'outcomes.jsonl')
-    evidence = collections.defaultdict(lambda: {'triggers': 0, 'tp': 0, 'fp': 0})
-
-    # Read trigger events from fitness.jsonl
-    # Schema: {"cell_id": "...", "triggered_at": "...", "matched_files": [...]}
-    # Every record IS a trigger event (presence = triggered)
-    if os.path.isfile(fitness_file):
-        try:
-            with open(fitness_file, 'r', encoding='utf-8') as f:
-                for line in f:
-                    line = line.strip()
-                    if not line:
-                        continue
-                    try:
-                        record = json.loads(line)
-                        cell_id = record.get('cell_id', '')
-                        if cell_id:
-                            evidence[cell_id]['triggers'] += 1
-                    except (json.JSONDecodeError, ValueError):
-                        continue
-        except Exception:
-            pass
-
-    # Read outcome signals from outcomes.jsonl (if available)
-    # Schema: {"cell_id": "...", "outcome": "tp"|"fp", ...}
-    if os.path.isfile(outcomes_file):
-        try:
-            with open(outcomes_file, 'r', encoding='utf-8') as f:
-                for line in f:
-                    line = line.strip()
-                    if not line:
-                        continue
-                    try:
-                        record = json.loads(line)
-                        cell_id = record.get('cell_id', '')
-                        outcome = record.get('outcome', '')
-                        if cell_id and outcome in ('tp', 'true_positive'):
-                            evidence[cell_id]['tp'] += 1
-                        elif cell_id and outcome in ('fp', 'false_positive'):
-                            evidence[cell_id]['fp'] += 1
-                    except (json.JSONDecodeError, ValueError):
-                        continue
-        except Exception:
-            pass
-
-    return evidence
+    evidence_dir = os.path.join(workspace, '.soma', 'evidence')
+    return aggregate_signals(evidence_dir).counts
 
 
 def _load_cells(workspace):
@@ -119,7 +75,7 @@ def _classify_cell(cell, evidence, expired_ids):
     triggers = ev['triggers']
     tp = ev['tp']
     fp = ev['fp']
-    has_outcomes = (tp + fp) > 0
+    has_outcomes = ev['has_outcomes']
 
     if has_outcomes:
         # We have outcome data — classify by precision

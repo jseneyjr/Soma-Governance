@@ -1,0 +1,232 @@
+"""Cross-reader contract tests for canonical signal evidence."""
+from __future__ import annotations
+
+import argparse
+import importlib
+import json
+import os
+import sys
+from datetime import datetime, timedelta
+from pathlib import Path
+
+import yaml
+
+ROOT = Path(__file__).resolve().parents[1]
+ENZYMES = ROOT / "enzymes"
+if str(ENZYMES) not in sys.path:
+    sys.path.insert(0, str(ENZYMES))
+
+
+def _write_jsonl(path: Path, records: list[dict]) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text("".join(json.dumps(record) + "\n" for record in records), encoding="utf-8")
+
+
+def _signal(cell: str, signal: str, timestamp: str = "2026-01-01T00:00:00Z", weight=None) -> dict:
+    record = {"cell": cell, "signal": signal, "timestamp": timestamp}
+    if weight is not None:
+        record["metadata"] = {"credit_weight": weight}
+    return record
+
+
+def _cell(path: Path, cell_id: str, cell_type: str = "vacuole", age_days: int = 45) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    created = (datetime.now() - timedelta(days=age_days)).strftime("%Y-%m-%d")
+    metadata = {
+        "id": cell_id,
+        "domain": "testing",
+        "type": cell_type,
+        "enforcement": "gate" if cell_type == "wall" else "advisory",
+        "created": created,
+        "expiry_days": 365,
+        "expiry_sessions": 365,
+    }
+    path.write_text(f"---\n{yaml.safe_dump(metadata, sort_keys=False)}---\n# {cell_id}\n", encoding="utf-8")
+
+
+def test_aggregate_signals_reports_errors_preserves_dimensions_and_weights(tmp_path):
+    from soma_core.evidence import aggregate_signals
+
+    evidence = tmp_path / ".soma" / "evidence"
+    evidence.mkdir(parents=True)
+    (evidence / "signals.jsonl").write_text(
+        json.dumps(_signal("outcome-only", "tp", weight="0.25")) + "\n"
+        + json.dumps(_signal("outcome-only", "fp", weight="0.5")) + "\n"
+        + json.dumps(_signal("triggered", "trigger")) + "\n"
+        + "{malformed}\n",
+        encoding="utf-8",
+    )
+    _write_jsonl(evidence / "fitness.jsonl", [{"cell_id": "legacy", "triggered_at": "x"}])
+    _write_jsonl(evidence / "outcomes.jsonl", [{"cell_id": "legacy", "outcome": "tp"}])
+
+    result = aggregate_signals(str(evidence))
+    assert result.counts["outcome-only"] == {
+        "triggers": 0,
+        "tp": 0.25,
+        "fp": 0.5,
+        "last_trigger": None,
+        "has_triggers": False,
+        "has_outcomes": True,
+    }
+    assert result.counts["triggered"]["has_triggers"] is True
+    assert "legacy" not in result.counts
+    assert result.errors and result.errors[0]["line"] == 4
+
+
+def test_sync_fails_on_malformed_complete_signal_row(tmp_path, monkeypatch, capsys):
+    import soma_cli.sync as sync
+
+    evidence = tmp_path / ".soma" / "evidence"
+    evidence.mkdir(parents=True)
+    (tmp_path / ".soma" / "cells").mkdir(parents=True)
+    (evidence / "signals.jsonl").write_text("{bad}\n", encoding="utf-8")
+    monkeypatch.setattr(sync, "resolve_root", lambda _args: tmp_path)
+
+    assert sync.run_sync(argparse.Namespace(dry_run=False, json=True)) == 1
+    output = json.loads(capsys.readouterr().out)
+    assert output["status"] == "error"
+    assert output["errors"][0]["line"] == 1
+
+
+def test_report_and_status_use_canonical_triggers_not_legacy(tmp_path, capsys):
+    from soma_cli.report import run_report
+    from soma_cli.status import run_status
+
+    (tmp_path / "genome").mkdir()
+    (tmp_path / "genome" / "canonical.md").write_text("# canonical\n", encoding="utf-8")
+    evidence = tmp_path / ".soma" / "evidence"
+    _write_jsonl(evidence / "signals.jsonl", [
+        _signal("canonical", "trigger", "2026-01-01T00:00:00Z"),
+        _signal("canonical", "trigger", "2026-01-01T00:01:00Z"),
+    ])
+    _write_jsonl(evidence / "fitness.jsonl", [{"cell_id": "legacy", "triggered_at": "2026-01-01T00:00:00Z"}])
+
+    assert run_report(argparse.Namespace(session=-1, _root=tmp_path)) == 0
+    report_output = capsys.readouterr().out
+    assert "canonical" in report_output and "2 fires" in report_output
+    assert "legacy" not in report_output
+
+    assert run_status(argparse.Namespace(_root=tmp_path)) == 0
+    status_output = capsys.readouterr().out
+    canonical_line = next(line for line in status_output.splitlines() if "canonical" in line)
+    assert canonical_line.split()[1] == "2"
+
+
+def test_oracle_and_lifecycle_use_weighted_canonical_signals(tmp_path):
+    from oracle_checkpoint import generate_checkpoint
+    from immune_system.verification.lifecycle import evaluate_promotions
+
+    cells = tmp_path / ".soma" / "cells" / "vacuoles"
+    _cell(cells / "canonical.md", "canonical")
+    evidence = tmp_path / ".soma" / "evidence"
+    signals = [_signal("canonical", "trigger", f"2026-01-01T00:{index:02d}:00Z") for index in range(20)]
+    signals += [_signal("canonical", "tp", weight="0.5") for _ in range(34)]
+    _write_jsonl(evidence / "signals.jsonl", signals)
+    _write_jsonl(evidence / "outcomes.jsonl", [{"cell_id": "canonical", "outcome": "fp"}] * 100)
+
+    report = generate_checkpoint(str(tmp_path))
+    assert "healthy" in report["classifications"]
+    candidates = evaluate_promotions(str(tmp_path))
+    assert candidates[0]["cell_id"] == "canonical"
+    assert candidates[0]["tp_rate"] == 0.85
+
+
+def test_checkpoint_fails_closed_and_uses_weighted_outcomes(tmp_path):
+    from immune_system.verification.checkpoint_checks import check_cell_fitness
+
+    evidence = tmp_path / ".soma" / "evidence"
+    evidence.mkdir(parents=True)
+    (evidence / "signals.jsonl").write_text(
+        json.dumps(_signal("weighted", "tp", weight="0.5")) + "\n"
+        + json.dumps(_signal("weighted", "fp", weight="1.5")) + "\n"
+        + "not-json\n",
+        encoding="utf-8",
+    )
+    _write_jsonl(evidence / "outcomes.jsonl", [{"cell_id": "weighted", "outcome": "tp"}] * 10)
+
+    issues = check_cell_fitness(tmp_path)
+    assert any("parse" in issue["message"].lower() for issue in issues)
+    assert any(issue.get("cell_id") == "weighted" and "75%" in issue["message"] for issue in issues)
+
+
+def test_cell_collision_and_resolver_use_canonical_signal_path(tmp_path, monkeypatch):
+    import cell_create_nl
+    import soma_resolve
+
+    target = tmp_path / ".soma" / "cells" / "vacuoles" / "vacuole-security.md"
+    target.parent.mkdir(parents=True)
+    target.write_text("preserve me", encoding="utf-8")
+    _write_jsonl(tmp_path / ".soma" / "evidence" / "signals.jsonl", [_signal("vacuole-security", "trigger")])
+    monkeypatch.setattr(cell_create_nl, "resolve_workspace", lambda *_args: str(tmp_path))
+
+    cluster = {"common_category": "security", "common_files": ["src/**"], "confidence": 0.9}
+    assert cell_create_nl.create_cell_from_insight_cluster(cluster, str(tmp_path)) == str(target)
+    assert target.read_text(encoding="utf-8") == "preserve me"
+    expected = str(tmp_path / ".soma" / "evidence" / "signals.jsonl")
+    assert soma_resolve.get_signals_file(str(tmp_path)) == expected
+    assert soma_resolve.get_outcomes_file(str(tmp_path)) == expected
+
+
+def test_owned_production_has_no_active_legacy_evidence_paths():
+    production = [
+        ROOT / "soma_cli" / "sync.py", ROOT / "soma_cli" / "report.py", ROOT / "soma_cli" / "status.py",
+        ROOT / "enzymes" / "oracle_checkpoint.py", ROOT / "enzymes" / "session_close.sh",
+        ROOT / "enzymes" / "cell_create_nl.py", ROOT / "enzymes" / "soma_resolve.py",
+        ROOT / "enzymes" / "fitness_updater.py", ROOT / "immune_system" / "verification" / "checkpoint_checks.py",
+        ROOT / "immune_system" / "verification" / "lifecycle.py",
+    ]
+    forbidden = (".soma/evidence/fitness.jsonl", ".soma/evidence/outcomes.jsonl", ".soma/evidence/sessions_processed.jsonl")
+    offenders = {
+        path.relative_to(ROOT).as_posix(): needle
+        for path in production
+        for needle in forbidden
+        if needle in path.read_text(encoding="utf-8").replace("', 'evidence', '", "/evidence/").replace('\", \"evidence\", \"', "/evidence/")
+    }
+    assert offenders == {}
+    session_close = (ROOT / "enzymes" / "session_close.sh").read_text(encoding="utf-8")
+    assert session_close.count("signals.jsonl") >= 3
+
+
+def test_sync_malformed_ledger_does_not_apply_partial_counts(tmp_path, monkeypatch, capsys):
+    import soma_cli.sync as sync
+
+    cell = tmp_path / ".soma" / "cells" / "vacuoles" / "mixed.md"
+    _cell(cell, "mixed")
+    original = cell.read_bytes()
+    evidence = tmp_path / ".soma" / "evidence"
+    evidence.mkdir(parents=True)
+    (evidence / "signals.jsonl").write_text(
+        json.dumps(_signal("mixed", "trigger")) + "\n{bad}\n",
+        encoding="utf-8",
+    )
+    monkeypatch.setattr(sync, "resolve_root", lambda _args: tmp_path)
+
+    assert sync.run_sync(argparse.Namespace(dry_run=False, json=True)) == 1
+    assert cell.read_bytes() == original
+    assert json.loads(capsys.readouterr().out)["errors"]
+
+
+def test_lifecycle_does_not_infer_zero_triggers_from_outcome_only_data(tmp_path):
+    from immune_system.verification.lifecycle import evaluate_demotions
+
+    cell = tmp_path / ".soma" / "cells" / "walls" / "outcome-only.md"
+    _cell(cell, "outcome-only", cell_type="wall", age_days=120)
+    _write_jsonl(
+        tmp_path / ".soma" / "evidence" / "signals.jsonl",
+        [_signal("outcome-only", "tp", weight="0.5")],
+    )
+
+    assert evaluate_demotions(str(tmp_path)) == []
+
+
+def test_invalid_present_credit_weight_is_a_structured_error(tmp_path):
+    from soma_core.evidence import aggregate_signals
+
+    evidence = tmp_path / ".soma" / "evidence"
+    _write_jsonl(evidence / "signals.jsonl", [_signal("bad-weight", "tp", weight="NaN")])
+
+    result = aggregate_signals(str(evidence))
+    assert result.counts["bad-weight"]["tp"] == 0
+    assert result.counts["bad-weight"]["has_outcomes"] is True
+    assert result.errors[0]["line"] == 1
+    assert "credit_weight" in result.errors[0]["error"]

@@ -1,12 +1,11 @@
-"""Tests for soma sync — evidence JSONL → cell frontmatter reconciliation.
+"""Tests for soma sync — canonical signals → cell frontmatter reconciliation.
 
 Covers:
-- aggregate_evidence reads fitness.jsonl + outcomes.jsonl correctly
+- aggregate_evidence reads signals.jsonl correctly
 - sync_frontmatter updates cell YAML frontmatter from aggregated counts
 - Idempotency: running sync twice produces no additional changes
 - Dry-run mode: reports changes without writing
 - CLI entrypoint: soma sync works end-to-end
-- Checkpoint integration: sync runs before quality checks
 """
 import argparse
 import json
@@ -87,7 +86,7 @@ class TestAggregateEvidence:
         assert counts["cell-a"]["triggers"] == 3
 
     def test_counts_outcomes(self, tmp_path):
-        """TP and FP outcomes are counted from outcomes.jsonl."""
+        """TP and FP outcomes are counted from canonical signal rows."""
         evidence_dir, _ = _setup_workspace(
             tmp_path, ["cell-a"],
             fitness_records=[

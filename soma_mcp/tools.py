@@ -1,14 +1,12 @@
-try:
-    import fcntl
-except ImportError:
-    fcntl = None  # Windows: no flock; appends are unlocked
-import glob
 import importlib
 import json
 import os
 import re
+import secrets
 import sys
 from datetime import datetime, timezone
+
+from soma_core.cell_inventory import CellInventoryError, inventory_cells
 
 # pyyaml is an OPTIONAL dependency of soma_mcp. The server must start on a bare
 # interpreter (see .soma/cells/walls/wall-mcp-zero-deps.md), so we only use
@@ -70,7 +68,7 @@ try:
 except ImportError:
     soma_propose_change = None
 
-# Try importing Governance SDK (requires pyyaml); fall back to stdlib-only impl
+# Try importing Governance SDK; its cell parser also has a stdlib fallback.
 try:
     from soma_sdk.governance import Governance
     _HAS_SDK = True
@@ -140,31 +138,49 @@ def _parse_frontmatter(content):
     return parse_frontmatter(content)
 
 
+def _cell_diagnostic(relative_path, message):
+    """Return a JSON-safe diagnostic without discarding the cell path."""
+    return {
+        '_name': os.path.splitext(os.path.basename(relative_path))[0],
+        '_path': relative_path,
+        '_error': message,
+    }
+
+
 def _list_cells_stdlib(workspace):
-    """List cells using only stdlib (no pyyaml)."""
+    """List cells from one canonical byte snapshot using the shared parser."""
+    try:
+        inventory = inventory_cells(workspace)
+    except CellInventoryError as exc:
+        return {'status': _STATUS_FAIL, 'error': str(exc)}
+
     cells = []
-    cells_dir = os.path.join(workspace, '.soma', 'cells')
-    if not os.path.isdir(cells_dir):
-        return cells
-    for cell_file in glob.glob(os.path.join(cells_dir, '**', '*.md'), recursive=True):
-        if os.path.basename(cell_file) == 'README.md':
+    for entry in inventory.entries:
+        rel = entry.relative_path
+        if os.path.basename(rel) == 'README.md':
             continue
-        rel = os.path.relpath(cell_file, workspace)
         try:
-            with open(cell_file, encoding="utf-8") as f:
-                content = f.read()
-            fm = _parse_frontmatter(content)
-            if fm is None:
-                warn(f'skipped cell {rel}: malformed YAML frontmatter')
-                continue
-            if not fm:
-                warn(f'skipped cell {rel}: no frontmatter metadata')
-                continue
-            fm['_name'] = os.path.splitext(os.path.basename(cell_file))[0]
-            fm['_path'] = rel
-            cells.append(fm)
-        except Exception as e:
-            warn(f'skipped cell {rel}: {e.__class__.__name__}: {e}')
+            content = entry.content.decode('utf-8')
+        except UnicodeDecodeError as exc:
+            message = f'invalid UTF-8: {exc}'
+            warn(f'skipped cell {rel}: {message}')
+            cells.append(_cell_diagnostic(rel, message))
+            continue
+
+        fm = _parse_frontmatter(content)
+        if fm is None:
+            message = 'malformed YAML frontmatter'
+            warn(f'skipped cell {rel}: {message}')
+            cells.append(_cell_diagnostic(rel, message))
+            continue
+        if not fm:
+            message = 'no frontmatter metadata'
+            warn(f'skipped cell {rel}: {message}')
+            cells.append(_cell_diagnostic(rel, message))
+            continue
+        fm['_name'] = os.path.splitext(os.path.basename(rel))[0]
+        fm['_path'] = rel
+        cells.append(fm)
     return cells
 
 
@@ -222,16 +238,18 @@ def build_cell_create_prompt(description: str, domain_hint: str = None, cell_typ
     workspace = confine_workspace(args.get('workspace') or resolve_workspace(args))
     
     examples = []
-    cells_dir = os.path.join(workspace, '.soma', 'cells')
-    if os.path.isdir(cells_dir):
-        for cell_file in glob.glob(os.path.join(cells_dir, '**', '*.md'), recursive=True):
-            if os.path.basename(cell_file) == 'README.md': continue
-            try:
-                with open(cell_file, encoding="utf-8") as f:
-                    content = f.read()
-                if content.startswith('---'):
-                    examples.append(content[:500])
-            except Exception: pass
+    inventory = inventory_cells(workspace)
+    for entry in inventory.entries:
+        rel = entry.relative_path
+        if os.path.basename(rel) == 'README.md':
+            continue
+        try:
+            content = entry.content.decode('utf-8')
+        except UnicodeDecodeError as exc:
+            warn(f'skipped cell example {rel}: invalid UTF-8: {exc}')
+            continue
+        if content.startswith('---'):
+            examples.append(content[:500])
             
     example_text = '\n---\n'.join(examples[:3]) if examples else 'No existing cells found.'
     domain_context = f'\nDomain hint: {domain_hint}' if domain_hint else ''
@@ -339,9 +357,14 @@ TOOL_DEFINITIONS = [
                 "tests_passed": {"type": "boolean", "description": "Did tests pass?"},
                 "rework_count": {"type": "integer", "description": "How many times you redid work"},
                 "notes": {"type": "string", "description": "Optional notes on what helped or didn't"},
+                "idempotency_key": {
+                    "type": "string",
+                    "minLength": 1,
+                    "description": "Caller-supplied key making the complete report retry-safe"
+                },
                 "receipt": {"type": "string", "description": "Execution receipt ID obtained from soma_request_receipt"}
             },
-            "required": ["outcome"]
+            "required": ["outcome", "idempotency_key"]
         }
     },
     {
@@ -512,10 +535,19 @@ def execute_tool(name: str, args: dict):
         return {"prompt": prompt, "instruction": "Process this prompt and return the cell YAML. Then use a file-writing tool to save it to the appropriate .soma/cells/ directory."}
     
     elif name == "soma_list_cells":
-        # list_cells works without pyyaml via stdlib fallback
+        # Both SDK and stdlib paths use the same fail-closed canonical inventory.
         if gov:
-            return gov.list_cells()
-        return _list_cells_stdlib(resolve_workspace(args))
+            try:
+                return gov.list_cells()
+            except RuntimeError as exc:
+                return {'status': _STATUS_FAIL, 'error': str(exc)}
+        try:
+            workspace = confine_workspace(
+                args.get('workspace') or resolve_workspace(args)
+            )
+        except ValueError as exc:
+            return {'status': _STATUS_FAIL, 'error': str(exc)}
+        return _list_cells_stdlib(workspace)
 
     elif name == "soma_propose_change":
         if not soma_propose_change:
@@ -652,7 +684,12 @@ def execute_tool(name: str, args: dict):
                 ),
                 "status": _STATUS_FAIL,
             }
-        timestamp = datetime.now(timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ')
+        idempotency_key = args.get('idempotency_key')
+        if not isinstance(idempotency_key, str) or not idempotency_key:
+            return {
+                "error": "'idempotency_key' must be a nonempty string.",
+                "status": _STATUS_FAIL,
+            }
         cells_used = args.get('cells_used', [])
         # Validate cell names against actual inventory
         if cells_used:
@@ -665,44 +702,35 @@ def execute_tool(name: str, args: dict):
         tests_passed = args.get('tests_passed')
         rework_count = args.get('rework_count', 0)
         notes = args.get('notes', '')
-        outcomes_file = os.path.join(workspace, '.soma', 'evidence', 'outcomes.jsonl')
-        os.makedirs(os.path.dirname(outcomes_file), exist_ok=True)
-        records = []
-        for cell_id in cells_used:
-            record = {
-                'cell_id': cell_id,
-                'outcome': outcome_value,
-                'timestamp': timestamp,
-                'tests_passed': tests_passed,
-                'rework_count': rework_count,
-                'notes': notes,
+        signal_map = {'success': 'tp', 'tp': 'tp', 'failure': 'fp',
+                      'fp': 'fp', 'partial': 'trigger'}
+        metadata = {
+            'notes': notes,
+            'tests_passed': tests_passed,
+            'rework_count': rework_count,
+        }
+        events = [
+            {
+                'cell_name': cell_id,
+                'signal_type': signal_map.get(outcome_value, 'trigger'),
+                'source': 'mcp',
+                'metadata': metadata,
+                'principal': 'mcp',
+                'idempotency_scope': 'report_outcome',
+                'idempotency_key': idempotency_key,
             }
-            records.append(record)
-        with open(outcomes_file, 'a', encoding="utf-8") as f:
-            if fcntl is not None:
-                fcntl.flock(f, fcntl.LOCK_EX)
-            try:
-                for record in records:
-                    f.write(json.dumps(record) + '\n')
-            finally:
-                if fcntl is not None:
-                    fcntl.flock(f, fcntl.LOCK_UN)
-        # Also write to unified telemetry log
+            for cell_id in cells_used
+        ]
         try:
-            from soma_sdk.telemetry import append_signal
-            signal_map = {'success': 'tp', 'tp': 'tp', 'failure': 'fp',
-                          'fp': 'fp', 'partial': 'trigger'}
-            for cell_id in cells_used:
-                append_signal(
-                    workspace=workspace,
-                    cell_name=cell_id,
-                    signal_type=signal_map.get(outcome_value, 'trigger'),
-                    source='mcp',
-                    metadata={'notes': notes, 'tests_passed': tests_passed,
-                              'rework_count': rework_count},
-                )
-        except ImportError:
-            pass  # Graceful degradation
+            from soma_sdk.telemetry import append_signals, read_generation
+            generation = read_generation(workspace)
+            records = append_signals(
+                workspace, events, expected_generation=generation)
+        except Exception as exc:  # fail closed: the canonical batch was not committed
+            return {
+                'status': _STATUS_FAIL,
+                'error': f'Failed to record outcome: {exc}',
+            }
         return {'status': 'recorded', 'records': records}
 
     elif name == "soma_capture_insight":

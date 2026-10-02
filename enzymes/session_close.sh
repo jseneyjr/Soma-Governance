@@ -74,19 +74,18 @@ bash "$SCRIPTS_DIR/cell_selection.sh" --execute 2>/dev/null || true
 CROSSOVER_CANDIDATES=$(python3 -c "
 import os, glob
 import yaml
+from soma_core.evidence import aggregate_signals
+
 cells = glob.glob(os.path.join(os.getcwd(), '.soma', 'cells', '**', '*.md'), recursive=True)
 high_fitness = []
-evidence_file = os.path.join(os.getcwd(), '.soma', 'evidence', 'fitness.jsonl')
-cell_triggers = {}
-if os.path.isfile(evidence_file):
-    with open(evidence_file) as ef:
-        for line in ef:
-            try:
-                rec = json.loads(line.strip())
-                cid = rec.get('cell_id', '')
-                if cid:
-                    cell_triggers[cid] = cell_triggers.get(cid, 0) + 1
-            except Exception: pass
+evidence_dir = os.path.join(os.getcwd(), '.soma', 'evidence')
+# Canonical aggregation reads signals.jsonl; only its trigger dimension applies here.
+signal_counts = aggregate_signals(evidence_dir).counts
+cell_triggers = {
+    cell_id: counts['triggers']
+    for cell_id, counts in signal_counts.items()
+    if counts['has_triggers']
+}
 for cid, count in cell_triggers.items():
     if count >= 5:
         high_fitness.append(cid)
@@ -108,18 +107,17 @@ fi
 python3 -c "
 import os, glob
 import yaml
+from soma_core.evidence import aggregate_signals
+
 cells = glob.glob(os.path.join(os.getcwd(), '.soma', 'cells', '**', '*.md'), recursive=True)
-evidence_file = os.path.join(os.getcwd(), '.soma', 'evidence', 'fitness.jsonl')
-cell_triggers = {}
-if os.path.isfile(evidence_file):
-    with open(evidence_file) as ef:
-        for line in ef:
-            try:
-                rec = json.loads(line.strip())
-                cid = rec.get('cell_id', '')
-                if cid:
-                    cell_triggers[cid] = cell_triggers.get(cid, 0) + 1
-            except Exception: pass
+evidence_dir = os.path.join(os.getcwd(), '.soma', 'evidence')
+# Canonical aggregation reads signals.jsonl; only its trigger dimension applies here.
+signal_counts = aggregate_signals(evidence_dir).counts
+cell_triggers = {
+    cell_id: counts['triggers']
+    for cell_id, counts in signal_counts.items()
+    if counts['has_triggers']
+}
 for f in cells:
     if os.path.basename(f) == 'README.md': continue
     try:
@@ -159,24 +157,22 @@ fi
 
 # === Session Dashboard ===
 python3 -c "
-import os, glob, json
+import os, glob
 import yaml
+from soma_core.evidence import aggregate_signals
 
 cells_dir = os.path.join(os.getcwd(), '.soma', 'cells')
 if not os.path.isdir(cells_dir):
     exit(0)
 
-evidence_file = os.path.join(os.getcwd(), '.soma', 'evidence', 'fitness.jsonl')
-cell_triggers = {}
-if os.path.isfile(evidence_file):
-    with open(evidence_file) as ef:
-        for line in ef:
-            try:
-                rec = json.loads(line.strip())
-                cid = rec.get('cell_id', '')
-                if cid:
-                    cell_triggers[cid] = cell_triggers.get(cid, 0) + 1
-            except Exception: pass
+evidence_dir = os.path.join(os.getcwd(), '.soma', 'evidence')
+# Canonical aggregation reads signals.jsonl; only its trigger dimension applies here.
+signal_counts = aggregate_signals(evidence_dir).counts
+cell_triggers = {
+    cell_id: counts['triggers']
+    for cell_id, counts in signal_counts.items()
+    if counts['has_triggers']
+}
 
 cells = glob.glob(os.path.join(cells_dir, '**', '*.md'), recursive=True)
 active = extinct = 0

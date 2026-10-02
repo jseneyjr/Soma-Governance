@@ -1,34 +1,21 @@
-"""Shared checkpoint checks — canonical implementations for CLI and MCP.
-
-These are stdlib-only functions that verify workspace quality. Both
-``soma_cli.checkpoint`` and ``soma_mcp.tools`` import from here to
-avoid copy-paste divergence.
-
-All checks follow the same contract:
-    def check_*(root: Path) -> list[dict]:
-        '''Return a list of issue dicts with 'check' and 'message' keys.'''
-"""
+"""Shared, deterministic, read-only checkpoint checks for CLI and MCP."""
 from __future__ import annotations
 
-import glob
 import json
 import os
 import re
+import stat
 from pathlib import Path
+from typing import Callable, List, Optional, Tuple
+
+from soma_core.evidence import aggregate_signals
 
 
-# ── Constants ─────────────────────────────────────────────────────────
-
-HARDCODED_PATH_RE = re.compile(
-    r'''(?:"|')(/home/|/Users/|/tmp/)'''
-)
-
+HARDCODED_PATH_RE = re.compile(r'''(?:"|')(/home/|/Users/|/tmp/)''')
 SKIP_DIRS = {
     "__pycache__", ".git", ".soma", "node_modules", ".venv", "venv",
     ".tox", ".mypy_cache", ".pytest_cache", "dist", "build", "egg-info",
 }
-
-# Known cell directory names → expected frontmatter type
 DIR_TO_TYPE = {
     "vacuoles": "vacuole",
     "walls": "wall",
@@ -38,94 +25,226 @@ DIR_TO_TYPE = {
 }
 
 
-# ── Utilities ─────────────────────────────────────────────────────────
+def _relative(root: Path, path: Path) -> str:
+    try:
+        return path.relative_to(root).as_posix()
+    except (ValueError, OSError):
+        return str(path)
+
+
+def _failure(
+    check: str,
+    root: Path,
+    path: Path,
+    operation: str,
+    exc: BaseException,
+) -> dict:
+    rel = _relative(root, path)
+    return {
+        "check": check,
+        "file": rel,
+        "message": f"{rel}: {operation} failed: {exc}",
+    }
+
+
+def _is_regular_file(
+    check: str,
+    root: Path,
+    path: Path,
+    issues: list[dict],
+) -> bool:
+    """Validate a checked input without following a symlink."""
+    try:
+        info = os.stat(path, follow_symlinks=False)
+    except FileNotFoundError as exc:
+        issues.append(_failure(check, root, path, "stat", exc))
+        return False
+    except (OSError, UnicodeError) as exc:
+        issues.append(_failure(check, root, path, "stat", exc))
+        return False
+    if stat.S_ISLNK(info.st_mode):
+        issues.append({
+            "check": check,
+            "file": _relative(root, path),
+            "message": f"{_relative(root, path)}: symlinked file is not allowed",
+        })
+        return False
+    if not stat.S_ISREG(info.st_mode):
+        issues.append({
+            "check": check,
+            "file": _relative(root, path),
+            "message": f"{_relative(root, path)}: expected a regular file",
+        })
+        return False
+    return True
 
 
 def find_python_files(root: Path, subdir: str) -> list[Path]:
-    """Find all .py files under root/subdir, skipping hidden/build dirs."""
+    """Find source files without following symlinked directories."""
     target = root / subdir
-    if not target.is_dir():
-        return []
-    result: list[Path] = []
-    for dirpath, dirnames, filenames in os.walk(target):
-        dirnames[:] = [d for d in dirnames if d not in SKIP_DIRS]
-        for f in filenames:
-            if f.endswith(".py") and not f.startswith("__"):
-                result.append(Path(dirpath) / f)
+    result = []  # type: List[Path]
+    try:
+        target_info = os.stat(target, follow_symlinks=False)
+    except FileNotFoundError:
+        return result
+    if not stat.S_ISDIR(target_info.st_mode):
+        return result
+
+    def walk_error(exc: OSError) -> None:
+        raise exc
+
+    for dirpath, dirnames, filenames in os.walk(
+        target, topdown=True, followlinks=False, onerror=walk_error
+    ):
+        dirnames[:] = sorted(d for d in dirnames if d not in SKIP_DIRS)
+        for filename in sorted(filenames):
+            if filename.endswith(".py") and not filename.startswith("__"):
+                result.append(Path(dirpath) / filename)
     return result
 
 
-# ── Checks ────────────────────────────────────────────────────────────
+def _source_dirs(root: Path, check: str, issues: list[dict]) -> list[str]:
+    try:
+        candidates = sorted(root.iterdir())
+    except (OSError, UnicodeError) as exc:
+        issues.append(_failure(check, root, root, "list", exc))
+        return []
 
-
-def check_test_coverage(root: Path) -> list[dict]:
-    """Check that every src/*.py has a corresponding tests/test_*.py."""
-    issues: list[dict] = []
-    # Auto-detect source directories (support src/, lib/, and package-named dirs)
-    src_dirs: list[str] = []
-    for candidate in sorted(root.iterdir()):
-        if not candidate.is_dir():
-            continue
+    names = []
+    for candidate in candidates:
         name = candidate.name
         if name.startswith(".") or name in SKIP_DIRS or name == "tests":
             continue
-        # Include if it contains at least one .py file at any depth
-        if any(candidate.rglob("*.py")):
-            src_dirs.append(name)
-    src_files: list[Path] = []
-    for sd in src_dirs:
-        src_files.extend(find_python_files(root, sd))
+        try:
+            info = os.stat(candidate, follow_symlinks=False)
+        except FileNotFoundError as exc:
+            issues.append(_failure(check, root, candidate, "stat", exc))
+            continue
+        except (OSError, UnicodeError) as exc:
+            issues.append(_failure(check, root, candidate, "stat", exc))
+            continue
+        if stat.S_ISLNK(info.st_mode):
+            issues.append({
+                "check": check,
+                "file": _relative(root, candidate),
+                "message": (
+                    f"{_relative(root, candidate)}: "
+                    "symlinked source directory is not allowed"
+                ),
+            })
+            continue
+        if not stat.S_ISDIR(info.st_mode):
+            continue
+        try:
+            if find_python_files(root, name):
+                names.append(name)
+        except (OSError, UnicodeError) as exc:
+            issues.append(_failure(check, root, candidate, "list", exc))
+    return names
+
+
+def check_test_coverage(root: Path) -> list[dict]:
+    issues = []  # type: List[dict]
+    source_files = []  # type: List[Path]
+    for source_dir in _source_dirs(root, "test_coverage", issues):
+        try:
+            source_files.extend(find_python_files(root, source_dir))
+        except (OSError, UnicodeError) as exc:
+            issues.append(_failure(
+                "test_coverage", root, root / source_dir, "list", exc
+            ))
+
     test_dir = root / "tests"
-    for src_file in src_files:
-        stem = src_file.stem
-        expected_test = test_dir / f"test_{stem}.py"
-        if not expected_test.exists():
+    for source_file in source_files:
+        if not _is_regular_file(
+            "test_coverage", root, source_file, issues
+        ):
+            continue
+        expected = test_dir / f"test_{source_file.stem}.py"
+        try:
+            expected_info = os.stat(expected, follow_symlinks=False)
+        except FileNotFoundError:
             issues.append({
                 "check": "test_coverage",
-                "file": str(src_file.relative_to(root)),
-                "message": f"Missing test file for {src_file.name}: expected tests/test_{stem}.py",
+                "file": _relative(root, source_file),
+                "message": (
+                    f"Missing test file for {source_file.name}: "
+                    f"expected tests/test_{source_file.stem}.py"
+                ),
             })
+        except (OSError, UnicodeError) as exc:
+            issues.append(_failure("test_coverage", root, expected, "stat", exc))
+        else:
+            if stat.S_ISLNK(expected_info.st_mode) or not stat.S_ISREG(expected_info.st_mode):
+                kind = "symlinked" if stat.S_ISLNK(expected_info.st_mode) else "non-regular"
+                issues.append({
+                    "check": "test_coverage",
+                    "file": _relative(root, expected),
+                    "message": (
+                        f"{_relative(root, expected)}: {kind} test file "
+                        "does not satisfy coverage"
+                    ),
+                })
     return issues
 
 
 def check_hardcoded_paths(root: Path) -> list[dict]:
-    """Scan source .py files for hardcoded absolute paths."""
-    issues: list[dict] = []
-    # Auto-detect source directories (same logic as check_test_coverage)
-    for candidate in sorted(root.iterdir()):
-        if not candidate.is_dir():
+    issues = []  # type: List[dict]
+    for source_dir in _source_dirs(root, "hardcoded_paths", issues):
+        try:
+            files = find_python_files(root, source_dir)
+        except (OSError, UnicodeError) as exc:
+            issues.append(_failure(
+                "hardcoded_paths", root, root / source_dir, "list", exc
+            ))
             continue
-        name = candidate.name
-        if name.startswith(".") or name in SKIP_DIRS or name == "tests":
-            continue
-        for py_file in find_python_files(root, name):
+        for py_file in files:
+            if not _is_regular_file(
+                "hardcoded_paths", root, py_file, issues
+            ):
+                continue
             try:
-                content = py_file.read_text(encoding="utf-8", errors="replace")
-            except OSError:
+                content = py_file.read_text(encoding="utf-8")
+            except (OSError, UnicodeError) as exc:
+                issues.append(_failure(
+                    "hardcoded_paths", root, py_file, "read", exc
+                ))
                 continue
             for line_no, line in enumerate(content.splitlines(), 1):
                 if HARDCODED_PATH_RE.search(line):
                     issues.append({
                         "check": "hardcoded_paths",
-                        "file": str(py_file.relative_to(root)),
+                        "file": _relative(root, py_file),
                         "line": line_no,
-                        "message": f"Hardcoded absolute path found in {py_file.name}:{line_no}",
+                        "message": (
+                            f"Hardcoded absolute path found in "
+                            f"{py_file.name}:{line_no}"
+                        ),
                     })
     return issues
 
 
 def check_assertion_density(root: Path) -> list[dict]:
-    """Flag test files that contain zero assert statements."""
-    issues: list[dict] = []
-    test_files = find_python_files(root, "tests")
-    for tf in test_files:
-        if not tf.name.startswith("test_"):
+    issues = []  # type: List[dict]
+    try:
+        test_files = find_python_files(root, "tests")
+    except (OSError, UnicodeError) as exc:
+        return [_failure("assertion_density", root, root / "tests", "list", exc)]
+
+    for test_file in test_files:
+        if not test_file.name.startswith("test_"):
+            continue
+        if not _is_regular_file(
+            "assertion_density", root, test_file, issues
+        ):
             continue
         try:
-            content = tf.read_text(encoding="utf-8", errors="replace")
-        except OSError:
+            content = test_file.read_text(encoding="utf-8")
+        except (OSError, UnicodeError) as exc:
+            issues.append(_failure(
+                "assertion_density", root, test_file, "read", exc
+            ))
             continue
-        # Check for both pytest-style and unittest-style assertions
         has_assertion = (
             "assert " in content
             or "assert(" in content
@@ -134,236 +253,265 @@ def check_assertion_density(root: Path) -> list[dict]:
             or "self.assert" in content
         )
         if not has_assertion:
-            # Try AST-based detection as fallback
             try:
                 from immune_system.verification.quality_gate import (
-                    check_assertion_density as _ast_check,
+                    check_assertion_density as ast_check,
                 )
-                evidence = _ast_check(str(tf))
+                evidence = ast_check(str(test_file))
                 if evidence.verdict:
-                    continue  # AST found assertions
-            except Exception:
+                    continue
+            except (OSError, UnicodeError, ValueError, SyntaxError) as exc:
+                issues.append(_failure(
+                    "assertion_density", root, test_file, "parse", exc
+                ))
+                continue
+            except ImportError:
                 pass
             issues.append({
                 "check": "assertion_density",
-                "file": str(tf.relative_to(root)),
-                "message": f"Low assertion density in {tf.name}: no assert statements found",
+                "file": _relative(root, test_file),
+                "message": (
+                    f"Low assertion density in {test_file.name}: "
+                    "no assert statements found"
+                ),
             })
     return issues
 
 
 def check_cell_fitness(root: Path) -> list[dict]:
-    """Check .soma/evidence for cells with high false-positive rates."""
-    issues: list[dict] = []
+    issues = []  # type: List[dict]
     evidence_dir = root / ".soma" / "evidence"
-    outcomes_file = evidence_dir / "outcomes.jsonl"
-    if not outcomes_file.exists():
-        return issues
+    aggregation = aggregate_signals(evidence_dir)
 
-    cell_outcomes: dict[str, dict[str, int]] = {}
-    try:
-        lines = outcomes_file.read_text(encoding="utf-8").strip().splitlines()
-    except OSError:
-        return issues
+    for error in aggregation.errors:
+        error_path = Path(error.get("file") or evidence_dir / "signals.jsonl")
+        rel = _relative(root, error_path)
+        line = error.get("line")
+        location = f" line {line}" if line is not None else ""
+        issues.append({
+            "check": "cell_fitness",
+            "file": rel,
+            "message": f"{rel}:{location} {error.get('error', 'signal aggregation failed')}",
+        })
 
-    for line in lines:
-        if not line.strip():
-            continue
-        try:
-            record = json.loads(line)
-        except json.JSONDecodeError:
-            continue  # Skip corrupted lines
-        cid = record.get("cell_id", "unknown")
-        outcome = record.get("outcome", "")
-        if cid not in cell_outcomes:
-            cell_outcomes[cid] = {"tp": 0, "fp": 0, "total": 0}
-        cell_outcomes[cid]["total"] += 1
-        if outcome in ("fp", "failure"):
-            cell_outcomes[cid]["fp"] += 1
-        elif outcome in ("tp", "success"):
-            cell_outcomes[cid]["tp"] += 1
-
-    # Flag cells with fp rate > 50%
-    for cid, counts in cell_outcomes.items():
-        if counts["total"] >= 2 and counts["fp"] / counts["total"] > 0.5:
-            fp_rate = counts["fp"] / counts["total"]
+    for cell_id, counts in aggregation.counts.items():
+        tp = counts["tp"]
+        fp = counts["fp"]
+        total = tp + fp
+        if total >= 2 and fp / total > 0.5:
+            rate = fp / total
             issues.append({
                 "check": "cell_fitness",
-                "cell_id": cid,
+                "cell_id": cell_id,
                 "message": (
-                    f"Cell '{cid}' has unhealthy fitness: "
-                    f"{counts['fp']}/{counts['total']} false positives "
-                    f"({fp_rate:.0%} FP rate)"
+                    f"Cell '{cell_id}' has unhealthy fitness: "
+                    f"{fp}/{total} false positives "
+                    f"({rate:.0%} FP rate)"
                 ),
             })
     return issues
 
 
 def check_cell_conventions(root: Path) -> list[dict]:
-    """Check that cell files follow project conventions.
-
-    Catches:
-    - Walls must have enforcement: gate
-    - Frontmatter 'type' must match the directory
-    - Required fields: id, domain, type, enforcement
-    - Frontmatter 'id' must match filename stem
-    """
-    issues: list[dict] = []
-    cells_dir = root / ".soma" / "cells"
-    if not cells_dir.is_dir():
-        return issues
+    issues = []  # type: List[dict]
+    from soma_core.cell_inventory import CellInventoryError, inventory_cells
 
     try:
-        import yaml
-    except ImportError:
-        issues.append({
-            "check": "cell_conventions",
-            "message": "pyyaml not installed — cell convention checks skipped",
-        })
+        inventory = inventory_cells(str(root))
+    except CellInventoryError as exc:
+        path = Path(exc.path)
+        issues.append(_failure(
+            "cell_conventions", root, path, exc.operation, exc
+        ))
         return issues
 
-    for type_dir_name, expected_type in DIR_TO_TYPE.items():
-        type_dir = cells_dir / type_dir_name
-        if not type_dir.is_dir():
+    from soma_mcp.jit_engine import parse_frontmatter
+
+    for entry in inventory.entries:
+        if os.path.basename(entry.relative_path) == "README.md":
             continue
-        for cell_file in sorted(type_dir.glob("*.md")):
-            if cell_file.name == "README.md":
-                continue
-            try:
-                content = cell_file.read_text(encoding="utf-8")
-            except OSError:
-                continue
-            if not content.startswith("---"):
-                continue
-            end = content.find("---", 3)
-            if end < 0:
-                continue
+        parts = entry.relative_path.split("/")
+        if len(parts) < 4 or parts[:2] != [".soma", "cells"]:
+            continue
+        type_dir_name = parts[2]
+        expected_type = DIR_TO_TYPE.get(type_dir_name)
+        if expected_type is None:
+            continue
+        rel = entry.relative_path
+        try:
+            content = entry.content.decode("utf-8")
+        except UnicodeDecodeError as exc:
+            issues.append(_failure(
+                "cell_conventions", root, Path(entry.absolute_path), "decode", exc
+            ))
+            continue
+        if not content.startswith("---"):
+            issues.append({
+                "check": "cell_conventions",
+                "file": rel,
+                "message": f"{rel}: missing YAML frontmatter",
+            })
+            continue
+        lines = content.splitlines()
+        closing = next(
+            (index for index, line in enumerate(lines[1:], 1) if line.strip() == "---"),
+            None,
+        )
+        if closing is None:
+            issues.append({
+                "check": "cell_conventions",
+                "file": rel,
+                "message": f"{rel}: unterminated YAML frontmatter",
+            })
+            continue
+        try:
+            meta = parse_frontmatter(content)
+        except Exception as exc:
+            issues.append(_failure(
+                "cell_conventions", root, Path(entry.absolute_path), "parse", exc
+            ))
+            continue
+        if meta is None:
+            frontmatter_lines = [line.strip() for line in lines[1:closing] if line.strip()]
+            if frontmatter_lines and frontmatter_lines[0].startswith("-"):
+                message = f"{rel}: cell frontmatter must be a mapping"
+            else:
+                message = f"{rel}: malformed YAML frontmatter"
+            issues.append({
+                "check": "cell_conventions", "file": rel, "message": message,
+            })
+            continue
+        if not isinstance(meta, dict) or not meta:
+            issues.append({
+                "check": "cell_conventions",
+                "file": rel,
+                "message": f"{rel}: cell frontmatter must be a non-empty mapping",
+            })
+            continue
 
-            rel = f".soma/cells/{type_dir_name}/{cell_file.name}"
-
-            try:
-                meta = yaml.safe_load(content[3:end])
-            except Exception as exc:
+        required = ["id", "domain", "type"]
+        if expected_type in ("wall", "vacuole"):
+            required.append("enforcement")
+        for field in required:
+            if field not in meta:
                 issues.append({
                     "check": "cell_conventions",
-                    "message": f"{rel}: malformed YAML frontmatter: {exc}",
+                    "file": rel,
+                    "message": f"{rel}: missing required field '{field}'",
                 })
-                continue
-            if not isinstance(meta, dict):
-                continue
-
-            # Check required fields — enforcement only required for walls/vacuoles
-            required = ["id", "domain", "type"]
-            if expected_type in ("wall", "vacuole"):
-                required.append("enforcement")
-            for field in required:
-                if field not in meta:
-                    issues.append({
-                        "check": "cell_conventions",
-                        "message": f"{rel}: missing required field '{field}'",
-                    })
-
-            # Check type matches directory
-            cell_type = meta.get("type", "")
-            if cell_type != expected_type:
-                issues.append({
-                    "check": "cell_conventions",
-                    "message": (
-                        f"{rel}: type '{cell_type}' doesn't match directory "
-                        f"'{type_dir_name}' (expected '{expected_type}')"
-                    ),
-                })
-
-            # Check enforcement convention for walls
-            if expected_type == "wall" and meta.get("enforcement") != "gate":
-                issues.append({
-                    "check": "cell_conventions",
-                    "message": (
-                        f"{rel}: wall enforcement is '{meta.get('enforcement')}' "
-                        f"but walls must use 'gate'"
-                    ),
-                })
-
-            # Check id matches filename
-            if meta.get("id") != cell_file.stem:
-                issues.append({
-                    "check": "cell_conventions",
-                    "message": (
-                        f"{rel}: frontmatter id '{meta.get('id')}' "
-                        f"doesn't match filename '{cell_file.stem}'"
-                    ),
-                })
-
+        cell_type = meta.get("type", "")
+        if cell_type != expected_type:
+            issues.append({
+                "check": "cell_conventions",
+                "file": rel,
+                "message": (
+                    f"{rel}: type '{cell_type}' doesn't match directory "
+                    f"'{type_dir_name}' (expected '{expected_type}')"
+                ),
+            })
+        if expected_type == "wall" and meta.get("enforcement") != "gate":
+            issues.append({
+                "check": "cell_conventions",
+                "file": rel,
+                "message": (
+                    f"{rel}: wall enforcement is '{meta.get('enforcement')}' "
+                    "but walls must use 'gate'"
+                ),
+            })
+        stem = os.path.splitext(os.path.basename(entry.relative_path))[0]
+        if meta.get("id") != stem:
+            issues.append({
+                "check": "cell_conventions",
+                "file": rel,
+                "message": (
+                    f"{rel}: frontmatter id '{meta.get('id')}' "
+                    f"doesn't match filename '{stem}'"
+                ),
+            })
     return issues
 
 
 def check_arbitration_evidence(root: Path) -> list[dict]:
-    """Check that review arbitration evidence exists and verdict is SHIP.
-
-    Un-bypassable gate: if any arbitration_cycle_*.json exists with a
-    non-SHIP verdict, checkpoint fails.
-    """
-    issues: list[dict] = []
+    issues = []  # type: List[dict]
     evidence_dir = root / ".soma" / "evidence"
-    if not evidence_dir.is_dir():
-        return issues
-
-    arb_files = glob.glob(
-        str(evidence_dir / "arbitration_cycle_*.json")
-    )
-    if not arb_files:
-        return issues
-
-    # Sort numerically by cycle number to avoid lex ordering (10 < 9)
-    def _cycle_num(path: str) -> int:
-        m = re.search(r'cycle_(\d+)', path)
-        return int(m.group(1)) if m else 0
-
-    arb_files.sort(key=_cycle_num)
-    latest = arb_files[-1]
     try:
-        with open(latest, encoding="utf-8") as f:
-            record = json.loads(f.read())
-    except (OSError, json.JSONDecodeError):
-        issues.append({
+        info = os.stat(evidence_dir, follow_symlinks=False)
+    except FileNotFoundError:
+        return issues
+    except (OSError, UnicodeError) as exc:
+        return [_failure(
+            "arbitration_evidence", root, evidence_dir, "stat", exc
+        )]
+    if not stat.S_ISDIR(info.st_mode):
+        return [{
             "check": "arbitration_evidence",
-            "message": f"Arbitration evidence file is corrupt: {latest}",
-        })
+            "file": _relative(root, evidence_dir),
+            "message": f"{_relative(root, evidence_dir)}: expected a directory",
+        }]
+    try:
+        files = list(evidence_dir.glob("arbitration_cycle_*.json"))
+    except (OSError, UnicodeError) as exc:
+        return [_failure(
+            "arbitration_evidence", root, evidence_dir, "list", exc
+        )]
+    if not files:
         return issues
 
-    verdict = record.get("verdict", "unknown").lower()
+    def cycle_number(path: Path) -> int:
+        match = re.search(r"cycle_(\d+)", str(path))
+        return int(match.group(1)) if match else 0
+
+    latest = sorted(files, key=cycle_number)[-1]
+    if not _is_regular_file(
+        "arbitration_evidence", root, latest, issues
+    ):
+        return issues
+    try:
+        text = latest.read_text(encoding="utf-8")
+    except (OSError, UnicodeError) as exc:
+        return [_failure(
+            "arbitration_evidence", root, latest, "read", exc
+        )]
+    try:
+        record = json.loads(text)
+    except (json.JSONDecodeError, UnicodeError) as exc:
+        return [_failure(
+            "arbitration_evidence", root, latest, "parse", exc
+        )]
+    if not isinstance(record, dict):
+        return [{
+            "check": "arbitration_evidence",
+            "file": _relative(root, latest),
+            "message": f"{_relative(root, latest)}: evidence must be a JSON object",
+        }]
+
+    verdict = str(record.get("verdict", "unknown")).lower()
     cycle = record.get("cycle", "?")
     divergences = record.get("divergence_count", 0)
-
     if verdict == "block":
-        issues.append({
-            "check": "arbitration_evidence",
-            "message": (
-                f"Arbiter verdict is BLOCK for cycle {cycle} "
-                f"({divergences} divergence(s)). Fix all findings before ship."
-            ),
-        })
+        message = (
+            f"Arbiter verdict is BLOCK for cycle {cycle} "
+            f"({divergences} divergence(s)). Fix all findings before ship."
+        )
     elif verdict == "revise":
-        issues.append({
-            "check": "arbitration_evidence",
-            "message": (
-                f"Arbiter verdict is REVISE for cycle {cycle} "
-                f"({divergences} divergence(s)). Address high-severity findings."
-            ),
-        })
-    elif verdict not in ("ship",):
-        issues.append({
-            "check": "arbitration_evidence",
-            "message": (
-                f"Unknown arbiter verdict '{verdict}' for cycle {cycle}. "
-                f"Only 'ship' passes the gate."
-            ),
-        })
-
+        message = (
+            f"Arbiter verdict is REVISE for cycle {cycle} "
+            f"({divergences} divergence(s)). Address high-severity findings."
+        )
+    elif verdict != "ship":
+        message = (
+            f"Unknown arbiter verdict '{verdict}' for cycle {cycle}. "
+            "Only 'ship' passes the gate."
+        )
+    else:
+        return issues
+    issues.append({
+        "check": "arbitration_evidence",
+        "file": _relative(root, latest),
+        "message": message,
+    })
     return issues
 
-
-# ── Aggregate Runner ──────────────────────────────────────────────────
 
 ALL_CHECKS = [
     check_test_coverage,
@@ -373,7 +521,6 @@ ALL_CHECKS = [
     check_cell_conventions,
     check_arbitration_evidence,
 ]
-
 CHECK_NAMES = [
     "test_coverage",
     "hardcoded_paths",
@@ -385,8 +532,12 @@ CHECK_NAMES = [
 
 
 def run_all_checks(root: Path) -> list[dict]:
-    """Run all checkpoint checks and return combined issues."""
-    all_issues: list[dict] = []
+    """Run every check and convert unexpected check failures into issues."""
+    issues = []  # type: List[dict]
     for check_fn in ALL_CHECKS:
-        all_issues.extend(check_fn(root))
-    return all_issues
+        try:
+            issues.extend(check_fn(root))
+        except Exception as exc:
+            check_name = check_fn.__name__.replace("check_", "", 1)
+            issues.append(_failure(check_name, root, root, "check", exc))
+    return issues

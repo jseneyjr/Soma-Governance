@@ -341,35 +341,49 @@ def install_starter_rules(
 # ── MCP Config ──────────────────────────────────────────────────────────────
 
 def generate_mcp_config(project_root: Path, dry_run: bool = False) -> None:
-    """Create or merge .mcp.json with the soma MCP server config.
+    """Create or merge .mcp.json for the governed project.
 
-    Uses relative paths (cwd='.', SOMA_ROOT='.') so the config is portable.
-    Merges into an existing .mcp.json without clobbering other servers.
-    Idempotent — running twice yields the same result.
+    Existing servers and unrelated keys are preserved. Invalid or structurally
+    incompatible JSON fails before the configuration is modified.
     """
-    mcp_file = Path(project_root) / ".mcp.json"
+    workspace = str(Path(project_root).resolve())
+    mcp_file = Path(workspace) / ".mcp.json"
 
     soma_entry = {
         "command": "python3",
         "args": ["-m", "soma_mcp"],
-        "cwd": ".",
-        "env": {"SOMA_ROOT": "."}
+        "cwd": workspace,
+        "env": {"SOMA_WORKSPACE": workspace},
     }
 
     if dry_run:
         print(f"  Would create/update: {mcp_file}")
         return
 
-    # Load existing or start fresh
     if mcp_file.exists():
         data = json.loads(mcp_file.read_text(encoding="utf-8"))
+        if not isinstance(data, dict):
+            raise ValueError(f"{mcp_file} must contain a JSON object")
     else:
         data = {}
 
-    servers = data.setdefault("mcpServers", {})
+    servers = data.get("mcpServers")
+    if servers is None:
+        servers = {}
+        data["mcpServers"] = servers
+    elif not isinstance(servers, dict):
+        raise ValueError(f"{mcp_file} field 'mcpServers' must be a JSON object")
     servers["soma"] = soma_entry
 
-    mcp_file.write_text(json.dumps(data, indent=2) + "\n", encoding="utf-8")
+    # Write beside the destination and replace only after serialization
+    # succeeds, so a failed update never truncates a valid configuration.
+    temp_file = mcp_file.with_name(f"{mcp_file.name}.soma.tmp")
+    try:
+        temp_file.write_text(json.dumps(data, indent=2) + "\n", encoding="utf-8")
+        temp_file.replace(mcp_file)
+    finally:
+        if temp_file.exists():
+            temp_file.unlink()
     print(f"  📡 MCP config written to {mcp_file}")
 
 

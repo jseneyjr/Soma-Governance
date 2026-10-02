@@ -110,7 +110,7 @@ $Config = @{
 }
 
 if (Test-Path $ConfigFile) {
-    Get-Content -Path $ConfigFile | ForEach-Object {
+    Get-Content -Path $ConfigFile -Encoding UTF8 | ForEach-Object {
         $line = $_.Trim()
         if (-not $line -or $line.StartsWith("#")) { return }
         if ($line -match '^([A-Za-z0-9_]+)\s*=\s*(.*)$') {
@@ -187,6 +187,122 @@ if (-not $UserHome) {
     $UserHome = $HOME
 }
 
+# ── Exact Ownership & MCP Merge ──────────────────────────────────
+$InstalledFiles = [System.Collections.Generic.List[string]]::new()
+$InstalledOrgans = [System.Collections.Generic.List[string]]::new()
+$InstalledHooks = [System.Collections.Generic.List[string]]::new()
+$InstalledMcpConfigs = [System.Collections.Generic.List[string]]::new()
+$BackupDir = $null
+$InstallScope = "global"
+if ($Platform -eq "mcp" -or
+    ($Platform -eq "claude" -and ($Mode -eq "project" -or $Mode -eq "local")) -or
+    ($Platform -eq "copilot" -and $Mode -eq "project")) {
+    $InstallScope = "local"
+}
+
+function Record-InstalledFile { param([string]$Path) if ($Path) { $InstalledFiles.Add($Path) } }
+function Record-InstalledOrgan { param([string]$Path) if ($Path) { $InstalledOrgans.Add($Path) } }
+function Record-InstalledHook { param([string]$Path) if ($Path) { $InstalledHooks.Add($Path) } }
+function Record-McpConfig { param([string]$Path) if ($Path) { $InstalledMcpConfigs.Add($Path) } }
+
+function Write-InstallManifest {
+    if ($DryRun) { return }
+    $manifestBase = $UserHome
+    if ($InstallScope -eq "local") { $manifestBase = (Get-Location).Path }
+    $manifestDir = Join-Path $manifestBase ".soma"
+    if (-not (Test-Path -LiteralPath $manifestDir -PathType Container)) {
+        New-Item -ItemType Directory -Path $manifestDir -Force | Out-Null
+    }
+    $version = "unknown"
+    $versionFile = Join-Path $RepoDir "VERSION"
+    if (Test-Path -LiteralPath $versionFile -PathType Leaf) {
+        $version = (Get-Content -LiteralPath $versionFile -Raw -Encoding UTF8).Trim()
+    }
+    $manifest = [ordered]@{
+        "version" = $version
+        "installed_at" = [DateTime]::UtcNow.ToString("yyyy-MM-ddTHH:mm:ssZ")
+        "platform" = $Platform
+        "scope" = $InstallScope
+        "rules_subset" = $Subset
+        "source_repo" = $RepoDir
+        "backup_dir" = $BackupDir
+        "files" = @($InstalledFiles)
+        "organs" = @($InstalledOrgans)
+        "hooks" = @($InstalledHooks)
+        "mcp_configs" = @($InstalledMcpConfigs)
+    }
+    $manifestPath = Join-Path $manifestDir "manifest.json"
+    Write-Utf8File -Path $manifestPath -Content (($manifest | ConvertTo-Json -Depth 8) + "`n")
+}
+
+function Merge-SomaMcpConfig {
+    param([string]$Path, [string]$Workspace)
+    $data = [PSCustomObject]@{}
+    if (Test-Path -LiteralPath $Path -PathType Leaf) {
+        $raw = Get-Content -LiteralPath $Path -Raw -Encoding UTF8 -ErrorAction Stop
+        try {
+            $data = $raw | ConvertFrom-Json -ErrorAction Stop
+        } catch {
+            throw "Invalid JSON in ${Path}: $($_.Exception.Message)"
+        }
+        if ($null -eq $data -or $data -is [Array] -or $data -is [string] -or $data -is [ValueType]) {
+            throw "MCP configuration root must be a JSON object: $Path"
+        }
+    }
+
+    $serversProperty = $data.PSObject.Properties["mcpServers"]
+    if ($null -eq $serversProperty) {
+        $data | Add-Member -NotePropertyName "mcpServers" -NotePropertyValue ([PSCustomObject]@{})
+    } elseif ($null -eq $serversProperty.Value -or $serversProperty.Value -is [Array] -or
+              $serversProperty.Value -is [string] -or $serversProperty.Value -is [ValueType]) {
+        throw "MCP configuration field 'mcpServers' must be a JSON object: $Path"
+    }
+    $servers = $data.PSObject.Properties["mcpServers"].Value
+
+    # Prefer a normally installed soma_mcp package. A checkout-only install
+    # gets a documented source PYTHONPATH fallback instead of using the
+    # checkout as the governed workspace/cwd.
+    $sourceFallback = $null
+    $savedLocation = (Get-Location).Path
+    try {
+        Set-Location -LiteralPath $Workspace
+        & python3 -c "import soma_mcp" *> $null
+        if ($LASTEXITCODE -ne 0) { $sourceFallback = $RepoDir }
+    } catch {
+        $sourceFallback = $RepoDir
+    } finally {
+        Set-Location -LiteralPath $savedLocation
+    }
+    $serverEnv = [ordered]@{ "SOMA_WORKSPACE" = $Workspace }
+    if ($sourceFallback) { $serverEnv["PYTHONPATH"] = $sourceFallback }
+    $somaEntry = [PSCustomObject][ordered]@{
+        "command" = "python3"
+        "args" = @("-m", "soma_mcp")
+        "cwd" = $Workspace
+        "env" = [PSCustomObject]$serverEnv
+    }
+    $somaProperty = $servers.PSObject.Properties["soma"]
+    if ($null -eq $somaProperty) {
+        $servers | Add-Member -NotePropertyName "soma" -NotePropertyValue $somaEntry
+    } else {
+        $somaProperty.Value = $somaEntry
+    }
+
+    $parent = Split-Path -Parent $Path
+    if ($parent -and -not (Test-Path -LiteralPath $parent -PathType Container)) {
+        New-Item -ItemType Directory -Path $parent -Force | Out-Null
+    }
+    $tempPath = "$Path.soma.$([Guid]::NewGuid().ToString('N')).tmp"
+    try {
+        Write-Utf8File -Path $tempPath -Content (($data | ConvertTo-Json -Depth 12) + "`n")
+        Move-Item -LiteralPath $tempPath -Destination $Path -Force
+    } finally {
+        if (Test-Path -LiteralPath $tempPath -PathType Leaf) {
+            Remove-Item -LiteralPath $tempPath -Force
+        }
+    }
+}
+
 # ── Backup Utilities ──────────────────────────────────────────────
 function Backup-FileItem {
     param([string]$FilePath)
@@ -220,7 +336,7 @@ function Backup-DirItem {
 # ── Frontmatter Stripping ─────────────────────────────────────────
 function Get-ContentWithoutFrontmatter {
     param([string]$FilePath)
-    $lines = Get-Content -Path $FilePath
+    $lines = Get-Content -Path $FilePath -Encoding UTF8
     $inFront = $false
     $found = $false
     $output = [System.Collections.Generic.List[string]]::new()
@@ -256,7 +372,7 @@ function Apply-TeamOverrides {
         if ($DryRun) {
             Write-LogInfo "[dry-run] would apply team branching override to $(Split-Path -Leaf $gitWf)"
         } elseif (Test-Path $gitWf) {
-            $content = Get-Content -Path $gitWf -Raw
+            $content = Get-Content -Path $gitWf -Raw -Encoding UTF8
             if ($content -notmatch "## Team Workflow Overrides") {
                 $override = @"
 
@@ -277,7 +393,7 @@ function Apply-TeamOverrides {
         if ($DryRun) {
             Write-LogInfo "[dry-run] would apply gitflow strategy override to $(Split-Path -Leaf $gitWf)"
         } elseif (Test-Path $gitWf) {
-            $content = Get-Content -Path $gitWf -Raw
+            $content = Get-Content -Path $gitWf -Raw -Encoding UTF8
             if ($content -notmatch "## Gitflow Overrides") {
                 $override = @"
 
@@ -303,7 +419,7 @@ function Apply-TeamOverrides {
         if ($DryRun) {
             Write-LogInfo "[dry-run] would apply $chain approval chain override to $(Split-Path -Leaf $destOps)"
         } elseif (Test-Path $destOps) {
-            $content = Get-Content -Path $destOps -Raw
+            $content = Get-Content -Path $destOps -Raw -Encoding UTF8
             if ($content -notmatch "## Approval Chain Override") {
                 $override = @"
 
@@ -356,6 +472,7 @@ switch ($Platform) {
             } else {
                 Backup-FileItem -FilePath $targetPath
                 Copy-Item -Path $file.FullName -Destination $targetPath -Force
+                Record-InstalledFile -Path $targetPath
                 Write-LogInfo "$name"
             }
             $ruleCount++
@@ -376,6 +493,7 @@ switch ($Platform) {
                         Remove-Item -Path $destSkill -Recurse -Force
                     }
                     Copy-Item -Path $dir.FullName -Destination $destSkill -Recurse -Force
+                    Record-InstalledOrgan -Path $destSkill
                     Write-LogInfo "skill/$skillName"
                 }
                 $skillCount++
@@ -425,12 +543,13 @@ switch ($Platform) {
                 Write-LogInfo "[dry-run] would install $name (converted syntax) -> $targetPath"
             } else {
                 Backup-FileItem -FilePath $targetPath
-                $content = Get-Content -Path $file.FullName
+                $content = Get-Content -Path $file.FullName -Encoding UTF8
                 $converted = $content | ForEach-Object {
                     $_ -replace '^trigger: always_on$', 'inclusion: always' `
                        -replace '^trigger: model_decision$', 'inclusion: manual'
                 }
                 Set-Content -Path $targetPath -Value $converted -Encoding UTF8
+                Record-InstalledFile -Path $targetPath
                 Write-LogInfo "$name"
             }
             $ruleCount++
@@ -451,6 +570,7 @@ switch ($Platform) {
                         Remove-Item -Path $destSkill -Recurse -Force
                     }
                     Copy-Item -Path $dir.FullName -Destination $destSkill -Recurse -Force
+                    Record-InstalledOrgan -Path $destSkill
                     Write-LogInfo "skill/$skillName"
                 }
                 $skillCount++
@@ -459,6 +579,18 @@ switch ($Platform) {
 
         # Team overrides
         Apply-TeamOverrides -RulesDir $targetRules
+
+        # Kiro settings are global, while the server governs this project.
+        $kiroMcpFile = Join-Path $UserHome ".kiro\settings\mcp.json"
+        $workspace = (Get-Location).Path
+        if ($DryRun) {
+            Write-LogInfo "[dry-run] would merge soma into $kiroMcpFile"
+        } else {
+            Backup-FileItem -FilePath $kiroMcpFile
+            Merge-SomaMcpConfig -Path $kiroMcpFile -Workspace $workspace
+            Record-McpConfig -Path $kiroMcpFile
+            Write-LogInfo "merged soma into mcp.json"
+        }
 
         # Hook warning (PowerShell limitation)
         Write-Host ""
@@ -504,6 +636,7 @@ switch ($Platform) {
                     Backup-FileItem -FilePath $targetPath
                     $stripped = Get-ContentWithoutFrontmatter -FilePath $file.FullName
                     Set-Content -Path $targetPath -Value $stripped -Encoding UTF8
+                    Record-InstalledFile -Path $targetPath
                     Write-LogInfo "$instructionFile"
                 }
                 $ruleCount++
@@ -533,6 +666,7 @@ switch ($Platform) {
                 Backup-FileItem -FilePath $targetFile
                 $headerText = "# Copilot Global Instructions`r`n`r`n> Auto-generated from soma. Do not edit directly.`r`n`r`n"
                 Write-Utf8File -Path $targetFile -Content $headerText
+                Record-InstalledFile -Path $targetFile
             }
 
             foreach ($file in $ruleFiles) {
@@ -589,6 +723,7 @@ switch ($Platform) {
                 ""
             )
             Set-Content -Path $targetFile -Value $header -Encoding UTF8
+            Record-InstalledFile -Path $targetFile
         }
 
         $ruleCount = 0
@@ -625,11 +760,9 @@ switch ($Platform) {
                 Write-LogInfo "[dry-run] would create/update .mcp.json at $mcpFile"
             } else {
                 Backup-FileItem -FilePath $mcpFile
-                $repoDirJson = $RepoDir.Replace('\', '/')
-                $targetDirJson = $targetDir.Replace('\', '/')
-                $mcpJson = '{"mcpServers": {"soma": {"command": "python3", "args": ["-m", "soma_mcp"], "cwd": "' + $repoDirJson + '", "env": {"SOMA_ROOT": "' + $targetDirJson + '"}}}}'
-                Set-Content -Path $mcpFile -Value $mcpJson -Encoding UTF8
-                Write-LogInfo "created .mcp.json"
+                Merge-SomaMcpConfig -Path $mcpFile -Workspace $targetDir
+                Record-McpConfig -Path $mcpFile
+                Write-LogInfo "merged soma into .mcp.json"
             }
         }
 
@@ -659,11 +792,13 @@ switch ($Platform) {
             Write-LogInfo "[dry-run] would create/update .mcp.json at $mcpFile"
         } else {
             Backup-FileItem -FilePath $mcpFile
-            $repoDirJson = $RepoDir.Replace('\', '/')
-            $targetDirJson = $targetDir.Replace('\', '/')
-            $mcpJson = '{"mcpServers": {"soma": {"command": "python3", "args": ["-m", "soma_mcp"], "cwd": "' + $repoDirJson + '", "env": {"SOMA_ROOT": "' + $targetDirJson + '"}}}}'
-            Set-Content -Path $mcpFile -Value $mcpJson -Encoding UTF8
-            Write-LogInfo "created .mcp.json"
+            Merge-SomaMcpConfig -Path $mcpFile -Workspace $targetDir
+            Record-McpConfig -Path $mcpFile
+            Write-LogInfo "merged soma into .mcp.json"
         }
     }
+}
+
+if (-not $DryRun) {
+    Write-InstallManifest
 }
