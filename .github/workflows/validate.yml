@@ -50,7 +50,10 @@ jobs:
           path: dist/
       
       - name: Install test dependencies
-        run: pip install dist/*.whl ".[dev]" pyyaml
+        run: |
+          pip install pytest ruff hypothesis coverage pyyaml
+          WHEEL_FILE=$(ls dist/*.whl | head -n 1)
+          pip install "${WHEEL_FILE}"
 
       - name: Run validation
         run: make validate
