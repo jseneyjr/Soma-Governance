@@ -27,8 +27,17 @@ else
     _d="$(dirname "$_d")"
   done
 fi
+# Symlink-safe self-location: a dirname of a symlinked invocation names the
+# link's directory, where soma_python.sh (and the Python helpers) don't exist.
+PRG="${BASH_SOURCE[0]}"
+while [ -h "$PRG" ]; do
+  DIR="$(cd -P "$(dirname "$PRG")" && pwd)"
+  PRG="$(readlink "$PRG")"
+  [[ $PRG != /* ]] && PRG="$DIR/$PRG"
+done
+SCRIPT_DIR="$(cd -P "$(dirname "$PRG")" && pwd)"
 # Nothing here uses common.sh; the Python helper below needs the resolver.
-source "$(dirname "${BASH_SOURCE[0]}")/soma_python.sh"
+source "$SCRIPT_DIR/soma_python.sh"
 soma_resolve_python || true
 
 if [ "$#" -lt 2 ]; then

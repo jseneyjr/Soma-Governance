@@ -34,8 +34,9 @@ NO_ARG_SCRIPTS = [
 def _run(script, workspace, encoding):
     home = workspace / "home"
     home.mkdir(exist_ok=True)
+    pythonpath = REPO_ROOT + (os.pathsep + os.environ["PYTHONPATH"] if "PYTHONPATH" in os.environ else "")
     env = dict(os.environ, PYTHONIOENCODING=encoding,
-               HOME=str(home), USERPROFILE=str(home))
+               HOME=str(home), USERPROFILE=str(home), PYTHONPATH=pythonpath)
     return subprocess.run(
         [sys.executable, os.path.join(REPO_ROOT, "enzymes", f"{script}.py")],
         capture_output=True, encoding=encoding, errors="replace",

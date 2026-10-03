@@ -197,7 +197,7 @@
       "fixed_in": "Unreleased",
       "root_cause": "platform_compat",
       "severity": "moderate",
-      "description": "With stdout on cp1252 (Windows, redirected output), `soma status` printed an emoji, raised UnicodeEncodeError and exited 1; enzymes/verify_bug_registry.py crashed the same way when printing its error report. Both entry points now reconfigure stdout with errors='replace', so unencodable characters print as '?'. The list_cells half (bare read_text() inside `except Exception: pass`, which garbled non-ASCII text and dropped undecodable cells) was fixed in the v0.89.0 pre-release review by the explicit UTF-8 canonical inventory; verified on Windows with a cp1252 locale and a cell containing curly quotes, an em-dash, an emoji and 'Ð' (byte 0x90). tests/test_rule_metadata.py read rule files with bare read_text() and failed 6 cases on genome/subagent-delegation.md; it now reads UTF-8 explicitly.",
+      "description": "With stdout on cp1252 (Windows, redirected output), `soma status` printed an emoji, raised UnicodeEncodeError and exited 1; enzymes/verify_bug_registry.py crashed the same way when printing its error report. Both entry points now reconfigure stdout with errors='replace', so unencodable characters print as '?'. The list_cells half (bare read_text() inside `except Exception: pass`, which garbled non-ASCII text and dropped undecodable cells) was fixed in the v0.89.0 pre-release review by the explicit UTF-8 canonical inventory; verified on Windows with a cp1252 locale and a cell containing curly quotes, an em-dash, an emoji and '\u00d0' (byte 0x90). tests/test_rule_metadata.py read rule files with bare read_text() and failed 6 cases on genome/subagent-delegation.md; it now reads UTF-8 explicitly.",
       "affected_files": [
         "soma_cli/cli.py",
         "enzymes/verify_bug_registry.py",
@@ -655,7 +655,7 @@
     {
       "id": "BUG-037",
       "issue_url": "https://github.com/nseney1/Soma-Governance/issues/64",
-      "status": "open",
+      "status": "fixed",
       "title": "Git Bash: python3 can resolve to the Windows Store stub, so hooks and shell-script Python calls fail",
       "discovered_in": "v0.88.2",
       "root_cause": "platform_compat",
@@ -666,7 +666,10 @@
         "install/install.sh",
         "install/uninstall.sh"
       ],
-      "pattern": "Interpreter presence checked with command -v instead of by running it"
+      "pattern": "Interpreter presence checked with command -v instead of by running it",
+      "fixed_in": "Unreleased",
+      "regression_test": "tests/test_python_resolution.py",
+      "changelog_ref": "Unreleased"
     },
     {
       "id": "BUG-038",
@@ -771,6 +774,90 @@
       ],
       "regression_test": "tests/test_pathcheck.py",
       "pattern": "Installer assumes the user's shell reads the same startup file as bash",
+      "changelog_ref": "Unreleased"
+    },
+    {
+      "id": "BUG-042",
+      "status": "fixed",
+      "title": "immune_sweep.sh aborts with 'RESOLVED_HOME: unbound variable' unless SOMA_DATA_DIR is exported",
+      "discovered_in": "v0.89.0",
+      "fixed_in": "Unreleased",
+      "root_cause": "path_error",
+      "severity": "low",
+      "description": "enzymes/immune_sweep.sh defaults SOMA_DATA_DIR to $RESOLVED_HOME/.gemini/antigravity, but nothing in the script set RESOLVED_HOME. It runs under set -euo pipefail, so with SOMA_DATA_DIR unset the sweep exited 1 at line 28 before doing any work. Fixed: RESOLVED_HOME is set from common.sh's resolve_home.",
+      "affected_files": [
+        "enzymes/immune_sweep.sh"
+      ],
+      "regression_test": "tests/test_v090_hardening.py::test_immune_sweep_runs_without_soma_data_dir",
+      "pattern": "Variable read under set -u that no code path assigns",
+      "changelog_ref": "Unreleased"
+    },
+    {
+      "id": "BUG-043",
+      "status": "fixed",
+      "title": "uninstall.sh without a working Python 3 fell back to a symlink-blind lexical confinement check",
+      "discovered_in": "v0.89.0",
+      "fixed_in": "Unreleased",
+      "root_cause": "silent_failure",
+      "severity": "moderate",
+      "description": "install/uninstall.sh check_confined() used _lexical_confined whenever no working Python 3 was found. Fixed: without a working interpreter check_confined() refuses every target, and non-empty plan is refused before anything is touched.",
+      "affected_files": [
+        "install/uninstall.sh"
+      ],
+      "regression_test": "tests/test_v090_hardening.py::test_manifestless_uninstall_without_python_removes_nothing",
+      "pattern": "Security check degrades to a weaker fallback instead of failing closed",
+      "changelog_ref": "Unreleased"
+    },
+    {
+      "id": "BUG-044",
+      "status": "fixed",
+      "title": "Inline Python in enzymes, install.sh and uninstall.sh imported modules from the current directory",
+      "discovered_in": "v0.89.0",
+      "fixed_in": "Unreleased",
+      "root_cause": "path_error",
+      "severity": "critical",
+      "description": "python -c CODE and python - <<heredoc put current directory at sys.path[0]. Fixed: soma_py strips CWD entry from sys.path[0] for inline code while preserving user site-packages.",
+      "affected_files": [
+        "enzymes/soma_python.sh",
+        "enzymes/session_close.sh",
+        "install/install.sh",
+        "install/uninstall.sh"
+      ],
+      "regression_test": "tests/test_redteam_followups.py::test_install_and_uninstall_ignore_cwd_modules",
+      "pattern": "Inline interpreter code run with the current directory on the import path",
+      "changelog_ref": "Unreleased"
+    },
+    {
+      "id": "BUG-045",
+      "status": "fixed",
+      "title": "uninstall.sh rewrote Claude settings.json outside the confinement guard, plan preview and --dry-run",
+      "discovered_in": "v0.89.0",
+      "fixed_in": "Unreleased",
+      "root_cause": "path_error",
+      "severity": "moderate",
+      "description": "The settings.json cleanup at the end of uninstall.sh ran jq del(.hooks.soma) without guard_sink/check_confined or plan preview. Fixed: settings files carrying hooks.soma are queued during planning, previewed as [MOD], and confined.",
+      "affected_files": [
+        "install/uninstall.sh"
+      ],
+      "regression_test": "tests/test_redteam_followups.py::test_settings_cleanup_refuses_symlinked_claude_dir",
+      "pattern": "File rewrite that bypasses the path confinement guard",
+      "changelog_ref": "Unreleased"
+    },
+    {
+      "id": "BUG-046",
+      "status": "fixed",
+      "title": "enzymes/verify_bug_registry.py timed out on clean Windows installation (#80)",
+      "discovered_in": "v0.89.0",
+      "fixed_in": "Unreleased",
+      "root_cause": "platform_compat",
+      "severity": "low",
+      "description": "Fixed 30s budget for running all bug regression tests was exceeded on Windows. Fixed by dynamic budget math based on number of regression test cases and node matching by pytest summary IDs.",
+      "affected_files": [
+        "enzymes/verify_bug_registry.py",
+        "tests/test_bug_registry.py"
+      ],
+      "regression_test": "tests/test_bug_registry.py::TestRegressionRunBudget::test_budget_grows_with_the_registry",
+      "pattern": "Fixed timeout budget for growing test suite",
       "changelog_ref": "Unreleased"
     }
   ]

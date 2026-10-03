@@ -154,7 +154,8 @@ write_manifest() {
   hooks_arr="$(printf '%s' "$INSTALLED_HOOKS" | _json_array_from_lines)"
   mcp_configs_arr="$(printf '%s' "$INSTALLED_MCP_CONFIGS" | _json_array_from_lines)"
   
-  local ts=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+  local ts
+  ts=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
   local backup_path=${BACKUP_DIR:-null}
   [ "$backup_path" != "null" ] && backup_path="\"$backup_path\""
   
@@ -191,7 +192,13 @@ merge_mcp_config() {
     log_error "A working Python 3.9+ is required to safely merge MCP JSON configuration."
     return 1
   fi
-  if ! (cd "$workspace" && soma_py -c 'import soma_mcp' >/dev/null 2>&1); then
+  # Would `python3 -m soma_mcp`, started in the workspace, find soma_mcp? It
+  # deliberately honours PYTHONPATH, user site-packages and the workspace
+  # itself (a workspace-local soma_mcp counts), but soma_py drops the CWD
+  # entry and the workspace is appended LAST, so stdlib names (json.py,
+  # os.py, ...) in the workspace can't shadow what soma_mcp imports (BUG-044).
+  if ! soma_py -c 'import sys; sys.path.append(sys.argv[1]); import soma_mcp' \
+       "$workspace" </dev/null >/dev/null 2>&1; then
     source_fallback="$REPO_DIR"
   fi
   SOMA_MCP_FILE="$config_file" SOMA_WORKSPACE="$workspace" \
