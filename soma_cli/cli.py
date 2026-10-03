@@ -12,6 +12,14 @@ from pathlib import Path
 
 
 def _version() -> str:
+    version_file = Path(__file__).resolve().parent.parent / "VERSION"
+    if version_file.is_file():
+        try:
+            val = version_file.read_text(encoding="utf-8").strip()
+            if val:
+                return val
+        except OSError:
+            pass
     try:
         from importlib.metadata import PackageNotFoundError, version
         try:
@@ -20,11 +28,7 @@ def _version() -> str:
             pass
     except ImportError:
         pass
-    version_file = Path(__file__).resolve().parent.parent / "VERSION"
-    try:
-        return version_file.read_text(encoding="utf-8").strip()
-    except OSError:
-        return "unknown"
+    return "unknown"
 
 
 def _build_parser() -> argparse.ArgumentParser:
