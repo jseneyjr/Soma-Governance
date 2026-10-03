@@ -3,6 +3,26 @@
 All notable changes to Soma are documented here.
 This project uses [Semantic Versioning](https://semver.org/).
 
+## [Unreleased]
+
+### Added
+- **Open bugs BUG-033 and BUG-034** in the Bug Registry: `soma status` miscounts installed core rules (#55), and `mutation_tester` fails open when tests cannot run (#54). Both were reproduced on v0.89.0.
+- **Open bugs BUG-036, BUG-037 and BUG-038**: `uninstall.sh` under Git Bash rejects every path (#62), the Git Bash `python3` Store stub (#64, split out of BUG-010), and enzyme scripts crashing on a cp1252 stdout (#65).
+- **Open bug BUG-040**: recording an outcome leaves `.soma/evidence/.signals.lock` as an untracked file, because no ignore rule covers it (#70).
+
+### Changed
+- **BUG-013 root cause** recorded in the Bug Registry and `docs/KNOWN_ISSUES_WINDOWS.md`: generated verification tests embed unescaped Windows paths and fail with a `unicodeescape` `SyntaxError`.
+- **BUG-015** now links to #57, and **BUG-014** to its own issue #59 (split from #48, which the v0.89.0 BOM fix closed). **BUG-032** is listed in `docs/KNOWN_ISSUES_WINDOWS.md`.
+
+### Fixed
+- **Windows: cell inventory rejected any cell edited after creation** (BUG-035, #61): `soma_core/cell_inventory.py` compared `os.stat` and `os.fstat` signatures that included `st_ctime_ns`, which Windows reports as creation time from one and change time from the other. `soma_scan` and `soma_list_cells` failed, and `soma_request_receipt` returned `Internal error`, so no write or execute MCP tool could run on Windows. `st_ctime_ns` is now left out of the signature on Windows, and cells are opened with `O_BINARY` so the snapshot holds the exact on-disk bytes. Regression tests: `test_receipt_flow_works_after_cell_edited_since_creation`, `test_cell_edited_after_creation_is_inventoried`. The `O_BINARY` change also fixes `test_inventory_is_stable_and_captures_exact_bytes` on Windows. The stale-receipt tests now match the exact verifier message, because their `"receipt"` substring check also accepted unrelated errors such as the missing-receipt error.
+- **Windows: installer tests wrote to the real user profile** (BUG-010, #47): under Git Bash `resolve_home()` prefers `USERPROFILE`, and six `tests/test_install_lifecycle.py` calls overrode only `HOME`. The shared `run()` helper in `tests/conftest.py` now sets `USERPROFILE` to `HOME` when a test overrides `HOME` alone. Regression test: `tests/test_home_isolation.py`.
+- **Windows: `soma status` crashed on a cp1252 stdout** (BUG-012, #49): printing an emoji raised `UnicodeEncodeError` and the command exited 1. `soma` and `enzymes/verify_bug_registry.py` now reconfigure stdout with `errors="replace"`; standalone enzyme scripts are still affected (open BUG-038). `tests/test_rule_metadata.py` reads rule files as UTF-8. Regression tests: `tests/test_cli.py::TestNonUtf8Console`, `tests/test_bug_registry.py::test_error_report_survives_cp1252_stdout`.
+- **Windows-only test failures** (BUG-013, #50): generated tests now escape `tmp_path` (`{str(tmp_path)!r}`); path assertions compare `Path.parts` or normalized paths; byte-sensitive files are written as UTF-8 with LF; `tests/conftest.py` gains `require_bash()` (replacing hard-coded `/bin/bash`) and `symlink_or_skip()`; the execute-bit test skips on Windows. On Windows the suite goes from 49 to 12 failures (BUG-036, BUG-038).
+- **`mutation_tester` failed open when tests couldn't run** (BUG-034, #54): `check()` counted any test failure as a killed mutant, so a test file with a syntax error, import error or wrong assertion reported `verdict=True`. It now runs the tests against the unmutated source first and returns `verdict=False` (`lines=[-1]`) when that baseline fails. Regression tests: `tests/test_verification/test_mutation_tester.py::TestMutationTesterFailsClosed`.
+- **`mutation_tester` skipped most mutation kinds** (BUG-039, #66): comparison, `and`/`or`, statement-deletion and return-value mutations were counted but never applied, so a test that never checked a comparison reported `verdict=True`. Every collected mutation is now applied; docstring deletion and `return None` are no longer generated, since they are equivalent mutants no test can kill. Regression tests: `tests/test_verification/test_mutation_tester.py::TestMutationTesterAppliesEveryCollectedMutation`.
+- **Recording an outcome left `.soma/evidence/.signals.lock` untracked** (BUG-040, #70): `evidence_lock()` keeps its lock file, and no ignore rule covered it, so `git add -A` would commit it. `.soma/evidence/.gitignore` now lists it. Regression tests: `tests/test_telemetry.py::TestEvidenceLockIgnoredByGit`, which also checks that the committed evidence files are still not ignored.
+
 ## [0.89.0] — 2026-10-02 — "MCP Execution Security"
 
 ### Added

@@ -89,6 +89,23 @@ def _open_bug(**overrides):
     return bug
 
 
+def test_error_report_survives_cp1252_stdout(tmp_path):
+    """BUG-012: printing the error report on a cp1252 stdout raised
+    UnicodeEncodeError instead of listing the errors."""
+    import subprocess
+
+    _make_registry(tmp_path, [_open_bug(), _open_bug()])
+    proc = subprocess.run(
+        [sys.executable, os.path.join(REPO_ROOT, "enzymes", "verify_bug_registry.py"),
+         "--workspace", str(tmp_path)],
+        capture_output=True, encoding="cp1252", errors="replace", timeout=60,
+        env=dict(os.environ, PYTHONIOENCODING="cp1252"),
+    )
+    assert "UnicodeEncodeError" not in proc.stderr, proc.stderr
+    assert proc.returncode == 1
+    assert "Duplicate bug ID: BUG-010" in proc.stdout
+
+
 class TestOpenBugs:
     """Open bugs are tracked before a fix exists, so fix fields are not required."""
 

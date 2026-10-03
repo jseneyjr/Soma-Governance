@@ -17,7 +17,7 @@ import re
 
 import pytest
 
-from conftest import REPO_ROOT, read, run
+from conftest import REPO_ROOT, read, require_bash, run, symlink_or_skip
 
 UNINSTALL_SH = os.path.join(REPO_ROOT, "install", "uninstall.sh")
 UNINSTALL_PS1 = os.path.join(REPO_ROOT, "install", "uninstall.ps1")
@@ -82,7 +82,7 @@ def home_manifest(layout, **kw):
 
 def uninstall(layout, platform="kiro", *extra):
     return run(
-        ["/bin/bash", UNINSTALL_SH, platform, "--force", "--no-restore",
+        [require_bash(), UNINSTALL_SH, platform, "--force", "--no-restore",
          "--keep-config", *extra],
         cwd=str(layout["project"]),
         env={"HOME": str(layout["home"]), "USERPROFILE": str(layout["home"])},
@@ -148,7 +148,7 @@ def test_outside_dir_in_organs_is_refused(layout):
 
 def test_intermediate_symlink_escape_is_refused(layout):
     link = layout["home"] / "link"
-    os.symlink(str(layout["outside"]), str(link))
+    symlink_or_skip(str(layout["outside"]), str(link))
     hostile_file = f"{link}/victim"
     hostile_dir = f"{link}/victim-dir"
     manifest = home_manifest(layout, files=[layout["legit_file"], hostile_file],
@@ -161,7 +161,7 @@ def test_intermediate_symlink_escape_is_refused(layout):
 
 def test_symlinked_hook_parent_is_refused(layout):
     link = layout["home"] / ".git-link"
-    os.symlink(str(layout["outside"]), str(link))
+    symlink_or_skip(str(layout["outside"]), str(link))
     hostile = f"{link}/victim"
     manifest = home_manifest(layout, files=[layout["legit_file"]],
                              organs=[layout["legit_skill"]], hooks=[hostile])
@@ -265,9 +265,9 @@ def test_legitimate_project_manifest_is_removed(layout):
 def test_final_component_symlink_is_unlinked_not_followed(layout):
     """A symlink as the final component is removed itself; its target survives."""
     link = layout["home"] / ".kiro" / "steering" / "linked.md"
-    os.symlink(str(layout["victim"]), str(link))
+    symlink_or_skip(str(layout["victim"]), str(link))
     dir_link = layout["home"] / ".kiro" / "skills" / "linked-skill"
-    os.symlink(str(layout["victim_dir"]), str(dir_link))
+    symlink_or_skip(str(layout["victim_dir"]), str(dir_link))
     manifest = home_manifest(layout, files=[link], organs=[dir_link])
     before = snapshot_outside(layout)
     proc = uninstall(layout)
@@ -299,14 +299,14 @@ def test_sink_check_rejects_component_swapped_for_symlink(layout):
     assert _path_check("remove", str(target), layout["home"]).returncode == 0
     steering = layout["home"] / ".kiro" / "steering"
     os.rename(str(steering), str(layout["home"] / "steering-moved"))
-    os.symlink(str(layout["outside"]), str(steering))
+    symlink_or_skip(str(layout["outside"]), str(steering))
     proc = _path_check("remove", str(target), layout["home"])
     assert proc.returncode == 1 and "symlink" in proc.stdout
 
 
 def test_sink_check_rejects_backup_source_symlink(layout):
     link = layout["home"] / ".soma" / "backup" / "evil"
-    os.symlink(str(layout["outside"]), str(link))
+    symlink_or_skip(str(layout["outside"]), str(link))
     proc = _path_check("source", str(link), layout["home"] / ".soma" / "backup")
     assert proc.returncode == 1, "restore source symlink was accepted"
     assert _path_check("source", str(layout["backup_dir"]),

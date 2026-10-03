@@ -202,6 +202,11 @@ COMMANDS = {
 
 
 def main(argv: list[str] | None = None) -> int:
+    # Output uses emoji. On a cp1252 stdout (Windows, redirected) printing
+    # one raised UnicodeEncodeError and the command exited 1 (BUG-012).
+    # stderr already defaults to errors="backslashreplace".
+    if hasattr(sys.stdout, "reconfigure"):
+        sys.stdout.reconfigure(errors="replace")
     parser = _build_parser()
     args = parser.parse_args(argv)
 
