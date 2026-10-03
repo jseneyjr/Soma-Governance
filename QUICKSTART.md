@@ -121,6 +121,18 @@ soma promote --dry-run
 soma demote --dry-run
 ```
 
+## Shell completion
+
+`soma completion <shell>` prints a completion script for `bash`, `zsh` or `fish`. It is generated from the CLI's own argument parser each time, so it always matches your installed version. Soma never edits your dotfiles: add the line yourself, then open a new terminal.
+
+| Shell | Add to | Line |
+|:--|:--|:--|
+| zsh | `~/.zshrc` (after `compinit`; oh-my-zsh runs it for you) | `eval "$(soma completion zsh)"` |
+| bash | `~/.bashrc` | `eval "$(soma completion bash)"` |
+| fish | `~/.config/fish/config.fish` | `soma completion fish \| source` |
+
+Without oh-my-zsh, put `autoload -Uz compinit && compinit` before the zsh line. To avoid running `soma` at every shell start, save the script once instead, e.g. `soma completion zsh > ~/.zfunc/_soma` (with `~/.zfunc` on your `fpath`) or `soma completion fish > ~/.config/fish/completions/soma.fish`, and re-run it after upgrading Soma.
+
 ## Make Targets
 
 The repository Makefile provides `help`, `info`, `install`, `install-gemini`, `install-kiro`, `install-copilot`, `install-claude`, `install-mcp`, `install-windows`, `uninstall`, `doctor`, `validate`, `update`, `status`, and `test`. Run `make help` for descriptions.

@@ -586,16 +586,19 @@
     {
       "id": "BUG-033",
       "issue_url": "https://github.com/nseney1/Soma-Governance/issues/55",
-      "status": "open",
+      "status": "fixed",
       "title": "`soma status` reports the wrong core-rule count for installer-based Claude setups",
       "discovered_in": "v0.88.2",
+      "fixed_in": "Unreleased",
       "root_cause": "path_error",
       "severity": "low",
-      "description": "install.sh/install.ps1 merge all rules into ~/.claude/CLAUDE.md, but soma_cli/status.py globs the rules directory for *.md excluding CLAUDE.md, and with no loose files it falls back to the package's own genome/. Reproduced on v0.89.0 with an isolated HOME: a 1-rule CLAUDE.md reports '19 active' (the genome/ count); the same CLAUDE.md plus 2 loose .md files reports '2 active'.",
+      "description": "install.sh/install.ps1 merge all rules into ~/.claude/CLAUDE.md, but soma_cli/status.py globs the rules directory for *.md excluding CLAUDE.md, and with no loose files it falls back to the package's own genome/. Reproduced on v0.89.0 with an isolated HOME: a 1-rule CLAUDE.md reports '19 active' (the genome/ count); the same CLAUDE.md plus 2 loose .md files reports '2 active'. Fixed: status now parses the Soma sections of CLAUDE.md in both formats that write it (the installers' '# Soma Governance Rules' header with '---' + H1 per rule, and soma init's SOMA:START/END block with '## <stem>' sections), adds loose rule files, drops merged sections that duplicate a loose file by stem, frontmatter id or H1, and no longer falls back to genome/ when CLAUDE.md holds Soma content. Merged installer sections are named by mapping their H1 back to the packaged rule id, so trigger counts still match.",
       "affected_files": [
         "soma_cli/status.py"
       ],
-      "pattern": "Status reads a different artifact than the installer writes"
+      "regression_test": "tests/test_status_claude_md.py",
+      "pattern": "Status reads a different artifact than the installer writes",
+      "changelog_ref": "Unreleased"
     },
     {
       "id": "BUG-034",

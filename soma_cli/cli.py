@@ -136,6 +136,12 @@ def _build_parser() -> argparse.ArgumentParser:
     p_genesis.add_argument("--project-root", default=None,
                            help="Override project root path")
 
+    # soma completion
+    from soma_cli.completion import SHELLS
+    p_completion = sub.add_parser("completion", help="Print a shell completion script")
+    p_completion.add_argument("shell", choices=list(SHELLS),
+                              help="Target shell")
+
     return parser
 
 
@@ -205,6 +211,12 @@ def cmd_genesis(args: argparse.Namespace) -> int:
     return run_genesis(args)
 
 
+def cmd_completion(args: argparse.Namespace) -> int:
+    """Print a shell completion script."""
+    from soma_cli.completion import run_completion
+    return run_completion(args)
+
+
 COMMANDS = {
     "init": cmd_init,
     "status": cmd_status,
@@ -217,6 +229,7 @@ COMMANDS = {
     "promote": cmd_promote,
     "demote": cmd_demote,
     "genesis": cmd_genesis,
+    "completion": cmd_completion,
 }
 
 
