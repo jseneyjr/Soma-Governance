@@ -255,6 +255,79 @@ def test_build_hint_which_searches_env_path(tmp_path):
     assert seen["path"] == "/only/this"
 
 
+def test_build_hint_venv_path_with_spaces_is_quoted(tmp_path):
+    venv = tmp_path / "my venv"
+    bindir = venv / "bin"
+    bindir.mkdir(parents=True)
+    (bindir / "soma").write_text("#!/bin/sh\n")
+    env = {"SHELL": "/usr/bin/zsh", "PATH": "/usr/bin", "HOME": str(tmp_path)}
+    text = build_hint(env=env, candidates=[str(bindir)], which=lambda *_a, **_k: None,
+                      home=str(tmp_path), platform="linux", os_name="posix",
+                      venv_prefix=str(venv))
+    assert f"source '{venv}/bin/activate'" in text
+
+
+def test_build_hint_pwsh_venv_activate_is_quoted_call(tmp_path):
+    venv = tmp_path / "my venv"
+    scripts = venv / "Scripts"
+    scripts.mkdir(parents=True)
+    (scripts / "soma.exe").write_bytes(b"MZ")
+    text = build_hint(env={"PATH": "C:\\Windows"}, candidates=[str(scripts)],
+                      which=lambda *_a, **_k: None, home="C:\\Users\\U",
+                      platform="win32", os_name="nt", shell="pwsh",
+                      venv_prefix=str(venv))
+    assert f"& '{venv}\\Scripts\\Activate.ps1'" in text
+
+
+def _venv_hint(tmp_path, name, bin_name, **kw):
+    venv = tmp_path / name
+    bindir = venv / bin_name
+    bindir.mkdir(parents=True)
+    (bindir / "soma").write_text("#!/bin/sh\n")
+    text = build_hint(env={"PATH": "/usr/bin"}, candidates=[str(bindir)],
+                      which=lambda *_a, **_k: None, home="/nonexistent",
+                      venv_prefix=str(venv), **kw)
+    return venv, text
+
+
+def test_build_hint_pwsh_venv_single_quote_is_doubled(tmp_path):
+    venv, text = _venv_hint(tmp_path, "O'Neil env", "Scripts",
+                            platform="win32", os_name="nt", shell="pwsh")
+    escaped = f"{venv}\\Scripts\\Activate.ps1".replace("'", "''")
+    assert f"& '{escaped}'" in text
+
+
+def test_build_hint_pwsh_on_posix_venv_uses_activate_ps1(tmp_path):
+    # pwsh has no `source`; the venv ships bin/Activate.ps1 on POSIX.
+    venv, text = _venv_hint(tmp_path, "my venv", "bin",
+                            platform="linux", os_name="posix", shell="pwsh")
+    assert f"& '{venv}/bin/Activate.ps1'" in text
+    assert "source" not in text
+
+
+def test_build_hint_fish_venv_with_space_is_quoted(tmp_path):
+    venv, text = _venv_hint(tmp_path, "my venv", "bin",
+                            platform="linux", os_name="posix", shell="fish")
+    assert f"source '{venv}/bin/activate.fish'" in text
+
+
+def test_build_hint_git_bash_venv_with_space_is_quoted(tmp_path):
+    venv, text = _venv_hint(tmp_path, "my venv", "Scripts",
+                            platform="win32", os_name="nt", shell="bash")
+    from soma_cli.pathcheck import _msys_path
+    assert f"source '{_msys_path(str(venv))}/Scripts/activate'" in text
+
+
+def test_build_hint_empty_path_reports_install_dir(tmp_path):
+    home, bindir = _bin_with_soma(tmp_path)
+    env = {"SHELL": "/usr/bin/zsh", "PATH": "", "HOME": str(home)}
+    text = build_hint(env=env, candidates=[str(bindir)], which=lambda *_a, **_k: None,
+                      home=str(home), platform="linux", os_name="posix", venv_prefix=None)
+    assert text is not None
+    assert "already on PATH" not in text
+    assert 'export PATH="$HOME/.local/bin:$PATH"' in text
+
+
 def test_build_hint_windows_uses_python_not_python3(tmp_path):
     home = tmp_path
     (tmp_path / "soma.exe").write_bytes(b"MZ")

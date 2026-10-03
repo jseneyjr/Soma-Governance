@@ -13,6 +13,7 @@ from __future__ import annotations
 
 import argparse
 import os
+import shlex
 import shutil
 import sys
 import sysconfig
@@ -180,13 +181,16 @@ def build_hint(env: Mapping[str, str] | None = None,
     if venv_prefix and _home_relative(directory, str(venv_prefix),
                                       casefold=os_name == "nt") is not None:
         # Don't tell the user to put a venv's bin/ in a global rc file.
-        if os_name == "nt":
-            activate = (f"{venv_prefix}\\Scripts\\Activate.ps1" if shell == "pwsh"
-                        else f"source {_msys_path(str(venv_prefix))}/Scripts/activate")
+        if shell == "pwsh":
+            # pwsh has no `source`; every venv ships Activate.ps1.
+            ps1 = (f"{venv_prefix}\\Scripts\\Activate.ps1" if os_name == "nt"
+                   else f"{venv_prefix}/bin/Activate.ps1").replace("'", "''")
+            activate = f"& '{ps1}'"
+        elif os_name == "nt":
+            activate = "source " + shlex.quote(f"{_msys_path(str(venv_prefix))}/Scripts/activate")
         else:
-            activate = f"source {venv_prefix}/bin/activate"
-            if shell == "fish":
-                activate += ".fish"
+            script = f"{venv_prefix}/bin/activate" + (".fish" if shell == "fish" else "")
+            activate = "source " + shlex.quote(script)
         return (f"ℹ️  'soma' is installed in the virtual environment {venv_prefix},\n"
                 "    which is not active in this shell. Activate it first:\n"
                 f"      {activate}\n"
