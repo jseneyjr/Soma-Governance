@@ -31,7 +31,8 @@ def _sh_quote(text):
 
 
 def _write_exe(path, text):
-    path.write_text(text, encoding="utf-8", newline="\n")
+    # write_bytes, not write_text(newline=): that keyword needs Python 3.10.
+    path.write_bytes(text.encode("utf-8"))
     path.chmod(0o755)
 
 
