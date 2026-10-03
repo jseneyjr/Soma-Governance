@@ -3,7 +3,7 @@
 All notable changes to Soma are documented here.
 This project uses [Semantic Versioning](https://semver.org/).
 
-## [Unreleased]
+## [0.90.0] — 2026-10-03 — "Security & Hardening"
 
 ### Added
 - **`soma completion {bash,zsh,fish}`**: prints a shell completion script for every subcommand, option and choice value (for example `init --platform`). `soma_cli/completion.py` generates it at runtime from the argparse parser, so it can't drift from the CLI. Soma never edits dotfiles; `QUICKSTART.md` ("Shell completion") gives the line to add, such as `eval "$(soma completion zsh)"`. Tests: `tests/test_completion.py`, which also syntax-checks the output with `bash -n` and `zsh -n` when those shells are installed.

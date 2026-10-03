@@ -44,6 +44,7 @@ develop ──→ release/v0.XX ──→ PR to main ──→ tag v0.XX.0 ─�
 | Phase 4.8 | v0.84.0 ✅ | Bug registry |
 | Phase 4.9 | v0.85.0 ✅ | Antifragile hot zones |
 | Phase 5.0 | v0.89.0 ✅ | MCP execution security and release integrity |
+| Phase 6.0 | v0.90.0 ✅ | Security & Hardening |
 
 ## Pre-Release Checklist
 
