@@ -27,12 +27,9 @@ else
     _d="$(dirname "$_d")"
   done
 fi
-SCRIPT_DIR="$REPO_DIR/scripts"
-
-# Source common utilities if available
-if [ -f "$SCRIPT_DIR/common.sh" ]; then
-  source "$SCRIPT_DIR/common.sh"
-fi
+# Nothing here uses common.sh; the Python helper below needs the resolver.
+source "$(dirname "${BASH_SOURCE[0]}")/soma_python.sh"
+soma_resolve_python || true
 
 if [ "$#" -lt 2 ]; then
   echo "Usage: $0 <cell_id> <tp|fp|fn> [--metric key=value] [--stress]"
@@ -204,4 +201,4 @@ if metric_key:
 EOF
 )
 
-python3 -c "$PYTHON_HELPER" "$TARGET_CELL" "$OUTCOME" "$METRIC_KEY" "$METRIC_VAL" "$METRICS_FILE" "$STRESS"
+soma_py -c "$PYTHON_HELPER" "$TARGET_CELL" "$OUTCOME" "$METRIC_KEY" "$METRIC_VAL" "$METRICS_FILE" "$STRESS"
