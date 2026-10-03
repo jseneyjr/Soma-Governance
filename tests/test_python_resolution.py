@@ -242,13 +242,34 @@ def test_sweep_runs_in_an_empty_home_with_the_store_stub(bash, tmp_path):
     assert proc.returncode == 0, proc.stdout[-1000:] + proc.stderr[-1000:]
 
 
+# Every variable enzymes/inference_provider.py resolve_provider() reads.
+_PROVIDER_ENV = ("SOMA_INFERENCE_PROVIDER", "GEMINI_API_KEY", "GOOGLE_API_KEY",
+                 "ANTHROPIC_API_KEY", "OPENAI_API_KEY", "OPENAI_BASE_URL",
+                 "GOOGLE_APPLICATION_CREDENTIALS")
+
+
+def _offline_provider_env(extra):
+    """metrics_snapshot.sh runs token_census.py, which resolves an inference
+    provider. A test must never reach the developer's real credentials: drop
+    every provider variable, use keyring's null backend and pin the offline
+    prompt-only provider (its count_tokens is a local estimate)."""
+    env = {k: v for k, v in os.environ.items() if k not in _PROVIDER_ENV}
+    env.update(extra)
+    env.update(SOMA_INFERENCE_PROVIDER="prompt-only",
+               PYTHON_KEYRING_BACKEND="keyring.backends.null.Keyring")
+    return env
+
+
 def test_metrics_snapshot_reads_utf8_skill_files(bash, tmp_path):
     """It opened organs/staff-review/SKILL.md in the locale encoding, so on
     Windows (cp1252) it crashed with UnicodeDecodeError."""
     home = tmp_path / "home"
     home.mkdir()
-    proc = run([bash, os.path.join(REPO_ROOT, "enzymes", "metrics_snapshot.sh")],
-               cwd=str(tmp_path), env=_env(_bin(tmp_path), home=home))
+    # Not conftest.run(): that merges os.environ, so it can't remove keys.
+    proc = subprocess.run(
+        [bash, os.path.join(REPO_ROOT, "enzymes", "metrics_snapshot.sh")],
+        cwd=str(tmp_path), stdin=subprocess.DEVNULL, capture_output=True, text=True,
+        timeout=120, env=_offline_provider_env(_env(_bin(tmp_path), home=home)))
     assert "UnicodeDecodeError" not in proc.stderr, proc.stderr[-1000:]
     assert proc.returncode == 0, proc.stderr[-1000:]
 
