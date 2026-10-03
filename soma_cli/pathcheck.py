@@ -5,7 +5,8 @@ not on PATH. zsh in particular never reads ~/.profile, where Debian/Ubuntu add
 ~/.local/bin. This module finds where the script actually is and prints the
 one line the user needs, in their shell's syntax and for the right rc file.
 
-It only reports. It never edits dotfiles.
+It only reports. It never edits dotfiles; `soma doctor --fix-path` is the
+opt-in command that appends this line (soma_cli/doctor.py).
 
 Usage: python3 -m soma_cli.pathcheck --hint [--shell zsh|bash|fish|pwsh]
 """
@@ -53,6 +54,10 @@ def rc_file(shell: str, env: Mapping[str, str] | None = None,
         # macOS Terminal opens login shells, which read ~/.bash_profile.
         return "~/.bash_profile" if platform == "darwin" else "~/.bashrc"
     if shell == "fish":
+        # fish reads $XDG_CONFIG_HOME/fish; the spec ignores relative values.
+        xdg = env.get("XDG_CONFIG_HOME", "")
+        if xdg and os.path.isabs(xdg):
+            return f"{xdg.rstrip('/')}/fish/config.fish"
         return "~/.config/fish/config.fish"
     if shell == "pwsh" and not platform.startswith("win"):
         # Off Windows there is no persistent user Path variable; use the profile.

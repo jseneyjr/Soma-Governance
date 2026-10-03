@@ -239,6 +239,10 @@ def check(target, roots, kind):
             bad = "canonical parent escapes the allowed root"
         if bad is None and kind == "source" and os.path.islink(norm):
             bad = "restore source is a symlink"
+        # A shell rc file is rewritten through a final symlink (dotfile
+        # managers), so its target must stay inside the root too.
+        if bad is None and kind == "rcfile" and not under(real, os.path.realpath(norm)):
+            bad = "symlink target leaves the allowed root"
         if bad is None:
             return None
         reasons.append(bad)
@@ -279,6 +283,30 @@ if mode == "manifest":
         why = check(bd, env_roots("SOMA_BACKUP_ROOTS"), "source")
         if why:
             bad.append(("backup_dir", bd if isinstance(bd, str) else json.dumps(bd), why))
+    # path_lines: shell rc lines appended by `soma doctor --fix-path`. Only
+    # the home manifest may carry them (a project manifest is repository
+    # content), each file must resolve inside HOME, and each line must be a
+    # single line carrying the doctor marker.
+    pl = data.get("path_lines")
+    home_roots = env_roots("SOMA_HOME_ROOTS")
+    if pl is not None and not isinstance(pl, list):
+        bad.append(("path_lines", json.dumps(pl), "must be a list"))
+    elif pl and not home_roots:
+        bad.append(("path_lines", "%d entries" % len(pl),
+                    "only honoured in the home manifest (~/.soma/manifest.json)"))
+    else:
+        for e in pl or []:
+            if not isinstance(e, dict):
+                bad.append(("path_lines", json.dumps(e), "must be an object"))
+                continue
+            f, line = e.get("file"), e.get("line")
+            why = check(f, home_roots, "rcfile")
+            if not why and (not isinstance(line, str) or any(c in line for c in "\n\r\0")):
+                why = "line must be a single-line string"
+            if not why and not line.endswith("# added by soma doctor --fix-path"):
+                why = "line lacks the soma doctor --fix-path marker"
+            if why:
+                bad.append(("path_lines", f if isinstance(f, str) else json.dumps(e), why))
     for field, item, why in bad:
         print("  UNSAFE %s entry: %s  (%s)" % (field, item, why))
     sys.exit(1 if bad else 0)
@@ -423,6 +451,8 @@ DIRS_TO_REMOVE=()
 MODIFY_FILES=()
 MCP_CONFIGS_TO_CLEAN=()
 UNVERIFIED_MCP=()
+# Shell rc files holding a `soma doctor --fix-path` line (path_lines).
+RC_FILES_TO_CLEAN=()
 BACKUP_DIR=""
 
 add_known_rule_files() {
@@ -555,6 +585,96 @@ queue_claude_settings() {
   CLAUDE_SETTINGS_TO_CLEAN+=("$path")
 }
 
+# rc_lines_py list | clean <rc-file>   (soma doctor --fix-path PATH lines)
+#   list:  print each distinct path_lines file of the manifest, one per line.
+#   clean: remove ONLY lines exactly equal to a recorded line (marker
+#          included) from <rc-file>. The file is rewritten through a symlink
+#          only if the target resolves inside HOME, atomically (exclusive
+#          mkstemp in the same directory, original mode, os.replace). Undoes
+#          the newline doctor added before its line, and deletes the file only
+#          if doctor created it and nothing else is left.
+#   exit 0 cleaned, 3 no recorded line present (file untouched), 4 refused.
+rc_lines_py() {
+  SOMA_MANIFEST="$MANIFEST_PATH" SOMA_HOME="$RESOLVED_HOME" soma_python -I -S - "$@" <<'PY'
+import json
+import os
+import stat
+import sys
+import tempfile
+
+sys.stdout.reconfigure(encoding="utf-8", errors="surrogateescape", newline="\n")
+MARK = "# added by soma doctor --fix-path"
+with open(os.environ["SOMA_MANIFEST"], "r", encoding="utf-8") as fh:
+    entries = [e for e in (json.load(fh).get("path_lines") or [])
+               if isinstance(e, dict) and isinstance(e.get("file"), str)]
+if sys.argv[1] == "list":
+    seen = []
+    for e in entries:
+        if e["file"] not in seen:
+            seen.append(e["file"])
+            print(e["file"])
+    sys.exit(0)
+
+path = sys.argv[2]
+want = {}
+for e in entries:
+    line = e.get("line")
+    if e["file"] == path and isinstance(line, str) and line.endswith(MARK):
+        want[line.encode("utf-8", "surrogateescape")] = e
+home = os.path.realpath(os.environ["SOMA_HOME"])
+real = os.path.realpath(path)
+try:
+    inside = real != home and os.path.commonpath([home, real]) == home
+except ValueError:
+    inside = False
+if not inside:
+    print("  refusing %s: it resolves outside %s" % (path, home))
+    sys.exit(4)
+st = os.stat(real)
+if not stat.S_ISREG(st.st_mode):
+    print("  refusing %s: not a regular file" % path)
+    sys.exit(4)
+with open(real, "rb") as fh:
+    lines = fh.read().splitlines(True)
+out, hit, last_removed = [], {}, False
+for raw in lines:
+    body = raw.rstrip(b"\r\n")
+    if body in want:
+        hit[body] = want[body]
+        last_removed = True
+        continue
+    out.append(raw)
+    last_removed = False
+for body, e in want.items():
+    if body not in hit:
+        print("  soma PATH line not found in %s (edited or already removed): %s" % (path, e["line"]))
+if not hit:
+    sys.exit(3)
+if last_removed and out and any(e.get("prefix_newline") is True for e in hit.values()):
+    tail = out[-1]
+    out[-1] = tail[:-2] if tail.endswith(b"\r\n") else tail[:-1] if tail.endswith(b"\n") else tail
+new = b"".join(out)
+if not new and any(e.get("created") is True for e in hit.values()):
+    os.unlink(real)
+    print("Removed %s (created by soma doctor --fix-path, nothing else in it)" % path)
+    sys.exit(0)
+fd, tmp = tempfile.mkstemp(prefix="." + os.path.basename(real) + ".soma-", suffix=".tmp",
+                           dir=os.path.dirname(real))
+try:
+    with os.fdopen(fd, "wb") as fh:
+        fh.write(new)
+    os.chmod(tmp, stat.S_IMODE(st.st_mode))
+    os.replace(tmp, real)
+except BaseException:
+    try:
+        os.unlink(tmp)
+    except FileNotFoundError:
+        pass
+    raise
+print("Removed soma PATH line from %s" % path)
+PY
+}
+
 # Reads one field from the manifest. The path is passed through the environment
 # rather than interpolated into the Python source: a quote in the path used to
 # be a silent SyntaxError (swallowed by 2>/dev/null), and a crafted directory
@@ -617,9 +737,12 @@ if [ "$MANIFEST_EXISTS" = "true" ]; then
   # files/organs/hooks/backup_dir aborts with nothing touched; the old code
   # skipped offenders silently and removed the rest.
   validate_rc=0
+  HOME_ROOTS=""
+  [ "$MANIFEST_IS_LOCAL" = "true" ] || HOME_ROOTS="$RESOLVED_HOME"
   validate_out="$(SOMA_MANIFEST="$MANIFEST_PATH" \
     SOMA_ROOTS="$(join_lines "${ALLOWED_ROOTS[@]}")" \
     SOMA_BACKUP_ROOTS="$(join_lines "${BACKUP_ROOTS[@]}")" \
+    SOMA_HOME_ROOTS="$HOME_ROOTS" \
     soma_py -I -S -c "$PATH_CHECK_PY" manifest 2>&1)" || validate_rc=$?
   if [ "$validate_rc" -ne 0 ]; then
     log_error "Manifest at $MANIFEST_PATH contains unsafe entries:"
@@ -652,6 +775,13 @@ if [ "$MANIFEST_EXISTS" = "true" ]; then
   while IFS= read -r mcp_config; do
     [ -n "$mcp_config" ] && MCP_CONFIGS_TO_CLEAN+=("$mcp_config")
   done <<< "$(read_manifest_field mcp_configs)"
+
+  # Validation above refuses path_lines in a project manifest.
+  if [ "$MANIFEST_IS_LOCAL" = "false" ]; then
+    while IFS= read -r rc_file; do
+      [ -n "$rc_file" ] && RC_FILES_TO_CLEAN+=("$rc_file")
+    done <<< "$(rc_lines_py list)"
+  fi
 else
   echo "No manifest found. Falling back to source-owned names..."
   case "$PLATFORM" in
@@ -753,6 +883,16 @@ for mcp_config in ${MCP_CONFIGS_TO_CLEAN[@]+"${MCP_CONFIGS_TO_CLEAN[@]}"}; do
 done
 MCP_CONFIGS_TO_CLEAN=(${REAL_MCP[@]+"${REAL_MCP[@]}"})
 
+REAL_RC=()
+for rc_file in ${RC_FILES_TO_CLEAN[@]+"${RC_FILES_TO_CLEAN[@]}"}; do
+  if [ -f "$rc_file" ]; then
+    REAL_RC+=("$rc_file")
+  else
+    log_warn "Recorded soma PATH line file is gone, skipping: $rc_file"
+  fi
+done
+RC_FILES_TO_CLEAN=(${REAL_RC[@]+"${REAL_RC[@]}"})
+
 # Parse every owned MCP config before deleting anything. If it was corrupted or
 # concurrently replaced, retain all installed files and the ownership manifest
 # so the uninstall can be retried safely.
@@ -774,7 +914,7 @@ queue_claude_settings "$RESOLVED_HOME/.claude/settings.json"
 # are invisible to a lexical check), so any non-empty plan is refused: fail
 # closed (BUG-043). The manifest branch already exited above in that case.
 if [ -z "${SOMA_PYTHON:-}" ]; then
-  UNCONFINED_COUNT=$(( ${#FILES_TO_REMOVE[@]} + ${#DIRS_TO_REMOVE[@]} + ${#MODIFY_FILES[@]} + ${#MCP_CONFIGS_TO_CLEAN[@]} + ${#CONFIG_TO_REMOVE[@]} + ${#UNVERIFIED_MCP[@]} ))
+  UNCONFINED_COUNT=$(( ${#FILES_TO_REMOVE[@]} + ${#DIRS_TO_REMOVE[@]} + ${#MODIFY_FILES[@]} + ${#MCP_CONFIGS_TO_CLEAN[@]} + ${#CONFIG_TO_REMOVE[@]} + ${#UNVERIFIED_MCP[@]} + ${#RC_FILES_TO_CLEAN[@]} ))
   if [ "$UNCONFINED_COUNT" -gt 0 ]; then
     log_error "soma: no working Python 3.9+ found (tried python3, python, py -3); set SOMA_PYTHON"
     log_error "Cannot verify that the $UNCONFINED_COUNT planned removal(s) stay inside the allowed roots without Python 3.9+."
@@ -786,7 +926,7 @@ else
   plan_out="$(
     for p in ${FILES_TO_REMOVE[@]+"${FILES_TO_REMOVE[@]}"} ${DIRS_TO_REMOVE[@]+"${DIRS_TO_REMOVE[@]}"} \
              ${MODIFY_FILES[@]+"${MODIFY_FILES[@]}"} ${MCP_CONFIGS_TO_CLEAN[@]+"${MCP_CONFIGS_TO_CLEAN[@]}"} \
-             ${CONFIG_TO_REMOVE[@]+"${CONFIG_TO_REMOVE[@]}"}; do
+             ${CONFIG_TO_REMOVE[@]+"${CONFIG_TO_REMOVE[@]}"} ${RC_FILES_TO_CLEAN[@]+"${RC_FILES_TO_CLEAN[@]}"}; do
       [ "$p" = "$MANIFEST_PATH" ] || printf '%s\0' "$p"
     done | SOMA_ROOTS="$(join_lines "${SINK_ROOTS[@]}")" soma_py -I -S -c "$PATH_CHECK_PY" plan 2>&1
   )" || plan_rc=$?
@@ -807,10 +947,11 @@ for m in ${MODIFY_FILES[@]+"${MODIFY_FILES[@]}"}; do echo "  - [MOD]  $m (remove
 for mcp_config in ${MCP_CONFIGS_TO_CLEAN[@]+"${MCP_CONFIGS_TO_CLEAN[@]}"}; do echo "  - [MCP]  $mcp_config (remove mcpServers.soma, keep the rest)"; done
 for c in ${CONFIG_TO_REMOVE[@]+"${CONFIG_TO_REMOVE[@]}"}; do echo "  - [USER CONFIG] $c (pass --keep-config to keep it)"; done
 for s in ${CLAUDE_SETTINGS_TO_CLEAN[@]+"${CLAUDE_SETTINGS_TO_CLEAN[@]}"}; do echo "  - [MOD]  $s (remove hooks.soma, keep the rest)"; done
+for r in ${RC_FILES_TO_CLEAN[@]+"${RC_FILES_TO_CLEAN[@]}"}; do echo "  - [MOD]  $r (remove soma PATH line)"; done
 
 MANIFEST_COUNT=0
 [ "$MANIFEST_EXISTS" != "true" ] || MANIFEST_COUNT=1
-PLAN_COUNT=$(( MANIFEST_COUNT + ${#FILES_TO_REMOVE[@]} + ${#DIRS_TO_REMOVE[@]} + ${#MODIFY_FILES[@]} + ${#MCP_CONFIGS_TO_CLEAN[@]} + ${#CONFIG_TO_REMOVE[@]} + ${#CLAUDE_SETTINGS_TO_CLEAN[@]} ))
+PLAN_COUNT=$(( MANIFEST_COUNT + ${#FILES_TO_REMOVE[@]} + ${#DIRS_TO_REMOVE[@]} + ${#MODIFY_FILES[@]} + ${#MCP_CONFIGS_TO_CLEAN[@]} + ${#CONFIG_TO_REMOVE[@]} + ${#CLAUDE_SETTINGS_TO_CLEAN[@]} + ${#RC_FILES_TO_CLEAN[@]} ))
 if [ "$PLAN_COUNT" -eq 0 ]; then
   echo "Nothing to remove."
   exit 0
@@ -958,8 +1099,26 @@ for settings_file in ${CLAUDE_SETTINGS_TO_CLEAN[@]+"${CLAUDE_SETTINGS_TO_CLEAN[@
   fi
 done
 
+# Remove the PATH lines `soma doctor --fix-path` appended (path_lines; queued,
+# confined and previewed above). Only lines exactly equal to the recorded one
+# go; an edited or missing line leaves the file untouched. On a hard failure
+# the manifest is kept so the record is not lost.
+RC_CLEAN_FAILED=false
+for rc_file in ${RC_FILES_TO_CLEAN[@]+"${RC_FILES_TO_CLEAN[@]}"}; do
+  guard_sink rcfile "$rc_file" "$RESOLVED_HOME"
+  rc_status=0
+  rc_lines_py clean "$rc_file" || rc_status=$?
+  case "$rc_status" in
+    0) ;;
+    3) log_warn "The soma PATH line in $rc_file was edited or removed — left $rc_file untouched." ;;
+    *) log_warn "Could not clean $rc_file — left unchanged."; RC_CLEAN_FAILED=true ;;
+  esac
+done
+
 # If manifest file exists and wasn't caught by the array (e.g. empty)
-if [ -f "$MANIFEST_PATH" ]; then
+if [ -f "$MANIFEST_PATH" ] && [ "$RC_CLEAN_FAILED" = "true" ]; then
+  log_warn "Keeping $MANIFEST_PATH: it still records the soma PATH line(s) above."
+elif [ -f "$MANIFEST_PATH" ]; then
   guard_sink remove "$MANIFEST_PATH" "$MANIFEST_SINK_ROOT"
   rm -f "$MANIFEST_PATH"
 fi

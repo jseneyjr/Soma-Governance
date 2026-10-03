@@ -70,14 +70,14 @@ These 18 paths provide the root `soma` launcher and 17 non-initializer Python mo
 | **`checkpoint.py`** | `soma_cli/checkpoint.py` | `soma checkpoint`: Deterministic quality checks (test coverage, git status, docstring presence) without LLM calls. |
 | **`completion.py`** | `soma_cli/completion.py` | `soma completion {bash,zsh,fish}`: Prints a shell completion script generated at runtime from the argparse parser, so it never drifts from the CLI. Never edits dotfiles. |
 | **`demote.py`** | `soma_cli/demote.py` | `soma demote`: Evaluates and displays cell demotion candidates when false positive rates exceed acceptable bounds. |
-| **`doctor.py`** | `soma_cli/doctor.py` | `soma doctor`: System health check verifying workspace structure, rules, configuration, and dependencies. |
+| **`doctor.py`** | `soma_cli/doctor.py` | `soma doctor`: System health check verifying workspace structure, rules, configuration, and dependencies, the pre-commit hook format (BUG-047) and the MCP `python3` launcher (Windows Store stub). `--fix-path [--yes]` opt-in appends the PATH line to the zsh/bash/fish rc file and records it in `~/.soma/manifest.json` (`path_lines`). |
 | **`genesis.py`** | `soma_cli/genesis.py` | `soma genesis`: Analyzes codebase architecture with 8 language-agnostic detectors and generates governance cell candidates. |
 | **`genesis_generator.py`** | `soma_cli/genesis_generator.py` | Generates candidate cell files in `vacuoles/` and architecture map `docs/organelles.md` from scan results. |
 | **`genesis_scanner.py`** | `soma_cli/genesis_scanner.py` | Language-agnostic codebase scanner detecting 8 architectural patterns for governance cell candidate generation. |
 | **`init.py`** | `soma_cli/init.py` | `soma init`: Initializes rules for Gemini, Claude Code, Cursor, or Copilot; it does not auto-detect Kiro. |
 | **`migration.py`** | `soma_cli/migration.py` | Generation-fenced evidence cutover: locks writers, reconciles legacy ledgers into canonical `signals.jsonl`, snapshots source bytes with `SHA256SUMS`, atomically publishes converted signals, then advances the epoch. |
 | **`oracle.py`** | `soma_cli/oracle.py` | `soma oracle`: Cell health classification, diagnostics, and pruning recommendations (wraps `oracle_checkpoint.py`). |
-| **`pathcheck.py`** | `soma_cli/pathcheck.py` | Shell-aware PATH guidance: finds where pip installed `soma` and prints the line to add for zsh, bash, fish or PowerShell. Used by `soma doctor` and the installers; never edits dotfiles. |
+| **`pathcheck.py`** | `soma_cli/pathcheck.py` | Shell-aware PATH guidance: finds where pip installed `soma` and prints the line to add for zsh, bash, fish or PowerShell. Used by `soma doctor` and the installers; never edits dotfiles itself (`soma doctor --fix-path` does, on request). |
 | **`promote.py`** | `soma_cli/promote.py` | `soma promote`: Evaluates and displays high-performing local cells eligible for promotion to forest-floor rules. |
 | **`report.py`** | `soma_cli/report.py` | `soma report`: Session report card showing triggered rules, event counts, and ASCII activity distributions. |
 | **`status.py`** | `soma_cli/status.py` | `soma status`: Displays active rules, cell inventory, operational metrics, and governance status. Counts rules merged into Claude's `CLAUDE.md` as well as loose rule files. |
@@ -93,7 +93,7 @@ These 6 scripts provide Bash and PowerShell install/uninstall entrypoints. `inst
 | Script | Location | Purpose |
 |:-------|:---------|:--------|
 | **`install.sh`** | `install/install.sh` | Unified Bash installer for Gemini, Kiro, Copilot, Claude Code, and generic MCP; this is the installer that migrates `.prism/` to `.soma/`. |
-| **`uninstall.sh`** | `install/uninstall.sh` | Bash uninstaller driven by the install manifest, with confinement, backup restoration, and opt-in data purge. |
+| **`uninstall.sh`** | `install/uninstall.sh` | Bash uninstaller driven by the install manifest, with confinement, backup restoration, opt-in data purge, and exact removal of `soma doctor --fix-path` rc lines. |
 | **`install.sh`** | `install.sh` | Root Bash wrapper delegating to `install/install.sh`. |
 | **`install.ps1`** | `install/install.ps1` | PowerShell installer for native Windows; parsing is covered on Windows PowerShell 5.1, but open encoding and hook-parity limitations remain. |
 | **`uninstall.ps1`** | `install/uninstall.ps1` | Native PowerShell uninstaller with manifest path confinement. |

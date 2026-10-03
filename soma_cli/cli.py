@@ -61,7 +61,12 @@ def _build_parser() -> argparse.ArgumentParser:
                           help="Session index (default: latest)")
 
     # soma doctor
-    sub.add_parser("doctor", help="System health check")
+    p_doctor = sub.add_parser("doctor", help="System health check")
+    p_doctor.add_argument("--fix-path", action="store_true",
+                          help="Add soma's scripts directory to your shell startup file "
+                               "(dry run unless confirmed or --yes; zsh/bash/fish only)")
+    p_doctor.add_argument("--yes", "-y", action="store_true",
+                          help="With --fix-path: apply without asking")
 
     # soma verify
     p_verify = sub.add_parser("verify", help="Run verification on changed files")

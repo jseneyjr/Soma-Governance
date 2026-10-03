@@ -858,6 +858,20 @@
       ],
       "regression_test": "tests/test_bug_registry.py::TestRegressionRunBudget::test_budget_grows_with_the_registry",
       "pattern": "Fixed timeout budget for growing test suite",
+      "id": "BUG-047",
+      "status": "fixed",
+      "title": "soma init pre-commit hook aborted every commit with 'soma: not found' when soma was not on the hook's PATH",
+      "discovered_in": "v0.89.0",
+      "fixed_in": "Unreleased",
+      "root_cause": "path_error",
+      "severity": "moderate",
+      "description": "The marked block install_hook() writes into .git/hooks/pre-commit ran a bare `soma checkpoint --pre-commit`. Git runs hooks with the PATH of the process that started it, so in zsh or other non-login shells after `pip install --user` (BUG-041), GUI git clients and IDEs, `soma` did not resolve and git aborted the commit with only `soma: not found`. Re-running `soma init` could not repair it, because install_hook() returned early once the marker was present. Fixed: the block (POSIX sh) runs `soma` when it is on PATH, otherwise the interpreter that ran `soma init` (sys.executable, shell-quoted) with `-m soma_cli checkpoint --pre-commit` after checking it can import soma_cli; with neither it prints a message naming `soma doctor` and the PATH fix and exits 1 (still fail-closed). A checkpoint failure now exits the hook explicitly instead of depending on the block being last. Re-running `soma init` replaces an existing marked block in place, keeping user lines outside the markers, and `soma doctor` reports a block without the `soma-hook-format: 2` marker as stale.",
+      "affected_files": [
+        "soma_cli/init.py",
+        "soma_cli/doctor.py"
+      ],
+      "regression_test": "tests/test_precommit_hook_fallback.py::test_falls_back_to_init_interpreter_when_soma_not_on_path",
+      "pattern": "Hook or generated script that depends on the interactive shell's PATH",
       "changelog_ref": "Unreleased"
     }
   ]

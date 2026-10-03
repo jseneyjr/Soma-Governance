@@ -23,6 +23,14 @@ CI now runs the full pytest suite on Windows (`test-windows` in `.github/workflo
 | Enzyme scripts on a cp1252 stdout | v0.89.0 can crash unless `PYTHONIOENCODING=utf-8`; fixed after v0.89.0 | BUG-038 |
 | Windows-only tests | Fixed after v0.89.0 | BUG-013 |
 
+## MCP server does not start: `python3` is the Windows Store stub
+
+MCP configs written by Soma start the server with `"command": "python3"`, `"args": ["-m", "soma_mcp"]`. On many Windows machines `python3` on `PATH` is the Microsoft Store App Installer stub: it exits 49 (or prints a Microsoft Store message) instead of running Python, so the MCP host never gets a server and usually shows no useful error. The config keeps `python3` on purpose; run `soma doctor` (or `python -m soma_cli doctor`) instead, which resolves `python3` from `PATH` the way the host does and reports whether it works, is missing, is the Store stub, or runs but cannot import `soma_mcp`.
+
+Fix for the stub: **Settings > Apps > Advanced app settings > App execution aliases**, turn off `python.exe` and `python3.exe`, then install Python from python.org (or make sure the real `python3` comes first on `PATH`). If doctor says `soma_mcp` is not importable, install it for that interpreter: `python3 -m pip install --user soma-governance`.
+
+`soma doctor --fix-path` does not edit PowerShell profiles; on Windows it prints the `[Environment]::SetEnvironmentVariable(...)` command for the user `Path` instead. Under Git Bash (`SHELL` set to bash) it edits `~/.bashrc` like on Linux, and `install/uninstall.ps1` removes that line again from the home manifest's `path_lines`, keeping a UTF-8 BOM and the line endings. `uninstall.ps1` refuses to rewrite an rc file that is a symlink (warns instead); `uninstall.sh` follows a symlink whose target stays inside your home directory.
+
 ## Fixed after v0.89.0 (unreleased)
 
 ### BUG-035: Cell inventory rejected edited cells ([#61](https://github.com/nseney1/Soma-Governance/issues/61))

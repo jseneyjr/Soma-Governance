@@ -161,7 +161,25 @@ write_manifest() {
   
   local version
   version=$(cat "$REPO_DIR/VERSION" 2>/dev/null || echo "unknown")
-  
+
+  # Carry over the shell rc lines `soma doctor --fix-path` recorded
+  # (path_lines). Rewriting the home manifest without them would leave those
+  # lines in the user's rc file with nothing left to tell uninstall about them.
+  local pl_suffix="" pl_json="[]"
+  if [ "$scope" != "local" ] && [ -f "$target_json" ] && grep -q '"path_lines"' "$target_json"; then
+    if resolve_python && pl_json="$(SOMA_MANIFEST="$target_json" soma_python -I -S -c '
+import json, os
+with open(os.environ["SOMA_MANIFEST"], "r", encoding="utf-8") as fh:
+    pl = json.load(fh).get("path_lines")
+print(json.dumps(pl if isinstance(pl, list) else []))
+' 2>/dev/null)"; then
+      [ "$pl_json" = "[]" ] || pl_suffix=","$'\n'"  \"path_lines\": $pl_json"
+    else
+      log_warn "Could not carry over path_lines from $target_json (no working Python 3 or unreadable JSON)."
+      log_warn "Lines added by 'soma doctor --fix-path' will not be removed by uninstall; remove them by hand."
+    fi
+  fi
+
   cat > "$target_json" <<EOF
 {
   "version": "$version",
@@ -177,7 +195,7 @@ write_manifest() {
   "files": $files_arr,
   "organs": $skills_arr,
   "hooks": $hooks_arr,
-  "mcp_configs": $mcp_configs_arr
+  "mcp_configs": $mcp_configs_arr$pl_suffix
 }
 EOF
 }

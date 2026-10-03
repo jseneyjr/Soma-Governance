@@ -55,10 +55,14 @@ soma doctor
 |:--|:--|:--|
 | zsh | `~/.zshrc` | `export PATH="$HOME/.local/bin:$PATH"` |
 | bash | `~/.bashrc` (macOS: `~/.bash_profile`) | `export PATH="$HOME/.local/bin:$PATH"` |
-| fish | `~/.config/fish/config.fish` | `fish_add_path $HOME/.local/bin` |
+| fish | `~/.config/fish/config.fish` (or `$XDG_CONFIG_HOME/fish/config.fish`) | `fish_add_path $HOME/.local/bin` |
 | PowerShell | user `Path` variable | the `[Environment]::SetEnvironmentVariable(...)` line printed by `soma doctor` |
 
 Open a new terminal afterwards. Until then, `python3 -m soma_cli <command>` works anywhere `soma` would.
+
+Prefer not to edit the file yourself? `python3 -m soma_cli doctor --fix-path` shows the exact file and line it would append (a dry run); add `--yes`, or answer `y` at its prompt, to apply it. It works for zsh, bash and fish only, marks the line `# added by soma doctor --fix-path`, does nothing if the line is already there, and records it so `install/uninstall.sh` removes exactly that line again. The installers themselves never edit your dotfiles, and `--fix-path` never touches a PowerShell `$PROFILE`.
+
+If `git commit` fails with a soma pre-commit message, the hook could not find `soma` either: fix `PATH` as above, then re-run `soma init` to refresh the hook (BUG-047).
 
 ## First Run with `soma init`
 
