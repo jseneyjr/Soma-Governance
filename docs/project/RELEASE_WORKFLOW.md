@@ -22,7 +22,7 @@ develop ──→ release/v0.XX ──→ PR to main ──→ tag v0.XX.0 ─�
    - Run `pytest tests/test_static_invariants.py::test_version_is_single_sourced` and the release-specific checks.
 4. **Push branch**: `git push -u origin release/v0.XX`
 5. **Create PR**: `gh pr create --base main --head release/v0.XX --title "release(v0.XX): <summary>"`
-6. **Wait for CI**: All matrix jobs must pass before merge. CI builds one wheel and one sdist, records `dist/SHA256SUMS`, verifies the digests in downstream jobs, and smoke-tests both distributions from outside the source checkout with `PYTHONPATH` unset and isolated Python mode.
+6. **Wait for CI**: All matrix jobs must pass before merge. CI builds one wheel and one sdist, records `dist/SHA256SUMS`, verifies the digests in downstream jobs, and smoke-tests both distributions from outside the source checkout with `PYTHONPATH` unset and isolated Python mode. The `test-windows` job runs the full pytest suite on `windows-latest` (Python 3.9 and 3.12) under Git Bash, with `HOME` and `USERPROFILE` set to a directory under `runner.temp` (BUG-010) and `PYTHONUTF8=0`, so the cp1252 defaults Windows users hit are exercised. Its failures fail the job. Until contributor PRs #79 (BUG-038) and #81 (BUG-037) merge to `develop`, expect it to be red on the 3 BUG-038 failures in `tests/test_crossover_structured.py`; any other Windows failure is a regression.
 7. **⛔ HUMAN REVIEW GATE**: Stop here. The maintainer reviews the PR and merges via GitHub UI. Agents must not merge directly to `main`.
 8. **Tag release** (after merge): `git checkout main && git pull && git tag -a v0.XX.0 -m "<message>" && git push origin v0.XX.0`
 9. **Back-merge to develop**: `git checkout develop && git merge main -m "sync: merge main back to develop after v0.XX" && git push origin develop`
@@ -59,6 +59,7 @@ Before creating a release PR, verify:
 - [ ] Build provenance attestations were created for the wheel and sdist
 - [ ] Workflows keep top-level `permissions: contents: read`, and every action is SHA-pinned (`tests/test_ci_workflows.py`)
 - [ ] `dependency-audit` (`pip-audit`) passes
+- [ ] `test-windows` passes (the full pytest suite on Windows)
 
 ### Documentation Hygiene (mandatory per release)
 

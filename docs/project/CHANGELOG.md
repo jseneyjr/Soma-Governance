@@ -9,6 +9,7 @@ This project uses [Semantic Versioning](https://semver.org/).
 - **Open bugs BUG-033 and BUG-034** in the Bug Registry: `soma status` miscounts installed core rules (#55), and `mutation_tester` fails open when tests cannot run (#54). Both were reproduced on v0.89.0.
 - **Open bugs BUG-036, BUG-037 and BUG-038**: `uninstall.sh` under Git Bash rejects every path (#62), the Git Bash `python3` Store stub (#64, split out of BUG-010), and enzyme scripts crashing on a cp1252 stdout (#65).
 - **Open bug BUG-040**: recording an outcome leaves `.soma/evidence/.signals.lock` as an untracked file, because no ignore rule covers it (#70).
+- **Windows pytest job in CI** (B3): `validate.yml` gains `test-windows`, which runs the full suite on `windows-latest` (Python 3.9 and 3.12) under Git Bash against the validated wheel. `HOME` and `USERPROFILE` point under `runner.temp` (BUG-010), and `PYTHONUTF8=0` keeps the cp1252 defaults. Failures fail the job; it is expected red on the 3 BUG-038 tests until #79 merges. Regression tests: the `test_windows_test_job_*` tests in `tests/test_ci_workflows.py`.
 
 ### Changed
 - **BUG-013 root cause** recorded in the Bug Registry and `docs/KNOWN_ISSUES_WINDOWS.md`: generated verification tests embed unescaped Windows paths and fail with a `unicodeescape` `SyntaxError`.

@@ -154,3 +154,68 @@ def test_build_and_audit_tools_are_version_pinned():
         assert lines, f"no pip install line for {tool}"
         for line in lines:
             assert re.search(rf"\b{re.escape(tool)}==\d+(\.\d+)+\b", line), line
+
+
+# --- B3: the pytest suite runs on Windows -----------------------------------
+
+def _windows_test_job():
+    jobs = _load("validate.yml")["jobs"]
+    assert "test-windows" in jobs, "validate.yml must run the pytest suite on Windows (B3)"
+    return jobs["test-windows"]
+
+
+def _pytest_steps(job):
+    return [s for s in job.get("steps", [])
+            if re.search(r"^\s*python -m pytest tests/?(\s|$)", s.get("run", ""), re.MULTILINE)]
+
+
+def test_windows_test_job_runs_on_windows_latest():
+    job = _windows_test_job()
+    assert job["runs-on"] == "windows-latest"
+    assert "3.12" in job["strategy"]["matrix"]["python-version"]
+
+
+def test_windows_test_job_runs_the_whole_suite_and_fails_on_failure():
+    job = _windows_test_job()
+    steps = _pytest_steps(job)
+    assert steps, "test-windows must run `python -m pytest tests/`"
+    assert not job.get("continue-on-error"), "Windows failures must fail the job"
+    for step in steps:
+        assert not step.get("continue-on-error")
+        assert "|| true" not in step["run"] and "--deselect" not in step["run"]
+
+
+def test_windows_test_job_installs_like_the_linux_test_job():
+    def install_run(job):
+        return next(s["run"] for s in job["steps"] if s.get("name") == "Install test dependencies")
+    jobs = _load("validate.yml")["jobs"]
+    assert install_run(_windows_test_job()) == install_run(jobs["validate"])
+    assert "build-wheel" in str(_windows_test_job().get("needs"))
+
+
+def test_windows_test_job_isolates_home_and_userprofile():
+    """BUG-010: tests must never touch the runner's real profile."""
+    steps = _pytest_steps(_windows_test_job())
+    assert steps
+    for step in steps:
+        env = step.get("env") or {}
+        for var in ("HOME", "USERPROFILE"):
+            assert "runner.temp" in str(env.get(var, "")), f"{var} must point under runner.temp"
+        assert env["HOME"] == env["USERPROFILE"]
+
+
+def test_windows_test_job_keeps_the_legacy_console_encoding():
+    """PYTHONUTF8=0 keeps cp1252 stdio/locale defaults exercised (BUG-012, BUG-038)."""
+    steps = _pytest_steps(_windows_test_job())
+    assert steps
+    for step in steps:
+        assert str((step.get("env") or {}).get("PYTHONUTF8")) == "0"
+
+
+def test_windows_test_job_actions_are_pinned_and_credentials_not_persisted():
+    job = _windows_test_job()
+    refs = [s["uses"] for s in job["steps"] if "uses" in s]
+    assert refs and all(SHA_REF.match(r) for r in refs), refs
+    checkouts = _step_using(job, "actions/checkout")
+    assert checkouts, "test-windows must check out the repository"
+    assert all((s.get("with") or {}).get("persist-credentials") is False for s in checkouts)

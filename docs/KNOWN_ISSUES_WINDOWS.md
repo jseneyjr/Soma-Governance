@@ -4,6 +4,8 @@ Open Windows issues as of v0.89.0 were observed on Windows 11 with Windows Power
 
 > **⚠ On v0.89.0, don't run the full test suite on a Windows machine you care about (BUG-010).** It can write to the real home directory. That includes `tests/test_install_lifecycle.py`, which `enzymes/verify_readme_claims.py` may invoke. Fixed after v0.89.0; see below.
 
+CI now runs the full pytest suite on Windows (`test-windows` in `.github/workflows/validate.yml`, with an isolated `HOME`/`USERPROFILE`), so new Windows-only failures show up on every pull request.
+
 ## Impact summary
 
 | Area | v0.89.0 status | Bug |
