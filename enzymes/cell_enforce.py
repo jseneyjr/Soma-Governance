@@ -169,6 +169,7 @@ def generate_gate_assertion(cell, workspace):
 
 import os
 import subprocess
+import sys
 
 
 class Gate_{re.sub(r"[^a-zA-Z0-9]", "_", name)}:
@@ -209,11 +210,11 @@ class Gate_{re.sub(r"[^a-zA-Z0-9]", "_", name)}:
             )
             if os.path.exists(escaped_script) and cls.TARGET_PATHS:
                 subprocess.run(
-                    ['python3', escaped_script, '--event', 'crash',
+                    [sys.executable, escaped_script, '--event', 'crash',
                      '--files'] + cls.TARGET_PATHS + ['--severity', 'critical'],
                     capture_output=True
                 )
-            raise RuntimeError(f"\U0001f6d1 GATE VIOLATION [{cls.CELL_NAME}]: {{msg}}")
+            raise RuntimeError(f"\U0001f6d1 GATE VIOLATION [{{cls.CELL_NAME}}]: {{msg}}")
 '''
     return assertion
 

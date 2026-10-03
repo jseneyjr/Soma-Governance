@@ -2,9 +2,9 @@
 # cell_transfer.sh: Copies a cell to another project with fitness reset.
 # Usage: bash enzymes/cell_transfer.sh <cell_id> --to /path/to/target/project
 
-if [[ -f "enzymes/common.sh" ]]; then
-  source "enzymes/common.sh"
-fi
+# Nothing here uses common.sh; the Python helper below needs the resolver.
+source "$(dirname "${BASH_SOURCE[0]}")/soma_python.sh"
+soma_resolve_python || true
 
 CELL_ID=""
 TARGET_DIR=""
@@ -54,7 +54,7 @@ FILENAME=$(basename "$SOURCE_CELL")
 TARGET_BASENAME=$(basename "$TARGET_DIR")
 SOURCE_BASENAME=$(basename "$PWD")
 
-python3 -c "
+soma_py -c "
 import yaml
 import sys
 import os

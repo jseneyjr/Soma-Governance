@@ -5,6 +5,11 @@
 
 set -euo pipefail
 
+# Resolve a working interpreter once; every script that sources this
+# file calls soma_py (BUG-037).
+source "$(dirname "${BASH_SOURCE[0]}")/soma_python.sh"
+soma_resolve_python || true
+
 # ── Colors & Formatting ──────────────────────────────────────────
 readonly GREEN='\033[0;32m'
 readonly YELLOW='\033[1;33m'
@@ -381,17 +386,19 @@ install_hooks() {
 
   mkdir -p "$target_dir"
 
-  # Thorns fix #4: Use python3 for safe JSON templating instead of sed
-  if command -v python3 &>/dev/null; then
-    python3 -c "
+  # Thorns fix #4: Use Python for safe JSON templating instead of sed
+  if [ -n "${SOMA_PYTHON:-}" ]; then
+    soma_py -c "
 import sys
-template = open(sys.argv[1]).read()
+with open(sys.argv[1], encoding='utf-8') as f:
+    template = f.read()
 rendered = template.replace('{{SCRIPTS_DIR}}', sys.argv[2])
-print(rendered, end='')
-" "$template" "$scripts_dir" > "$target"
+with open(sys.argv[3], 'w', encoding='utf-8', newline='\n') as f:
+    f.write(rendered)
+" "$template" "$scripts_dir" "$target"
 
     # Validate rendered JSON
-    if python3 -m json.tool "$target" > /dev/null 2>&1; then
+    if soma_py -m json.tool "$target" > /dev/null 2>&1; then
       log_info "hooks.json installed to $(basename "$target_dir")/"
     else
       log_error "hooks.json rendering produced invalid JSON"
@@ -399,7 +406,7 @@ print(rendered, end='')
       return 1
     fi
   else
-    log_warn "python3 not found, skipping hooks installation"
+    log_warn "No working Python 3.9+ found, skipping hooks installation"
     return 0
   fi
 }

@@ -2,10 +2,9 @@
 # cell_create.sh: Programmatic Cell Creation for Soma
 # Usage: bash enzymes/cell_create.sh --type <type> --hypothesis <hypothesis> --prediction <prediction> --falsification <falsification> [options]
 
-# Source common.sh if it exists (for compatibility with existing structure)
-if [[ -f "enzymes/common.sh" ]]; then
-  source "enzymes/common.sh"
-fi
+# Nothing here uses common.sh; the Python helper below needs the resolver.
+source "$(dirname "${BASH_SOURCE[0]}")/soma_python.sh"
+soma_resolve_python || true
 
 # Default values
 # Walk up from CWD to find project root with .soma/cells/
@@ -121,7 +120,7 @@ if [ -n "$DESCRIPTION" ]; then
     EXTRA_ARGS=""
     [ -n "$ID_OVERRIDE" ] && EXTRA_ARGS="$EXTRA_ARGS --id $ID_OVERRIDE"
     [ -n "$TYPE" ] && EXTRA_ARGS="$EXTRA_ARGS --type $TYPE"
-    python3 "$SCRIPT_DIR/cell_create_nl.py" "$DESCRIPTION" $EXTRA_ARGS
+    soma_py "$SCRIPT_DIR/cell_create_nl.py" "$DESCRIPTION" $EXTRA_ARGS
     exit $?
 fi
 

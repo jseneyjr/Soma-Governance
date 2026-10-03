@@ -185,17 +185,29 @@ EOF
 # governed workspace is both the server cwd and SOMA_WORKSPACE. A normal
 # installed package is preferred; source-checkout installs add PYTHONPATH only
 # when `python3 -m soma_mcp` is otherwise unavailable from that workspace.
+# The interpreter hosts should launch the MCP server with. Keep the portable
+# python3 when it works; otherwise name the one that does (BUG-037), which
+# pins it until the next install.
+mcp_server_python() {
+  if [ "${SOMA_PYTHON_FOUND_AS:-}" = "python3" ]; then
+    printf '%s' python3
+  else
+    printf '%s' "$SOMA_PYTHON"
+  fi
+}
+
 merge_mcp_config() {
   local config_file="$1" workspace="$2" source_fallback=""
-  if ! command -v python3 >/dev/null 2>&1; then
-    log_error "python3 is required to safely merge MCP JSON configuration."
+  if [ -z "${SOMA_PYTHON:-}" ]; then
+    log_error "A working Python 3.9+ is required to safely merge MCP JSON configuration."
     return 1
   fi
-  if ! (cd "$workspace" && python3 -c 'import soma_mcp' >/dev/null 2>&1); then
+  if ! (cd "$workspace" && soma_py -c 'import soma_mcp' >/dev/null 2>&1); then
     source_fallback="$REPO_DIR"
   fi
   SOMA_MCP_FILE="$config_file" SOMA_WORKSPACE="$workspace" \
-    SOMA_SOURCE_FALLBACK="$source_fallback" python3 - <<'PY'
+    SOMA_SOURCE_FALLBACK="$source_fallback" SOMA_SERVER_PYTHON="$(mcp_server_python)" \
+    soma_py - <<'PY'
 import json
 import os
 import stat
@@ -221,7 +233,7 @@ env = {"SOMA_WORKSPACE": workspace}
 if fallback:
     env["PYTHONPATH"] = fallback
 servers["soma"] = {
-    "command": "python3",
+    "command": os.environ["SOMA_SERVER_PYTHON"],
     "args": ["-m", "soma_mcp"],
     "cwd": workspace,
     "env": env,
@@ -664,7 +676,7 @@ case "$PLATFORM" in
       if [ "$LOCAL_INSTALL" = "true" ]; then
         echo "Created .mcp.json for local MCP server."
       else
-        echo "For global mode, run 'claude mcp add soma python3 -m soma_mcp' manually."
+        echo "For global mode, run 'claude mcp add soma $(mcp_server_python) -m soma_mcp' manually."
         echo "Note: Global hooks must be configured in ~/.claude/settings.json"
       fi
     fi

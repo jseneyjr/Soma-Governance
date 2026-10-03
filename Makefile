@@ -15,6 +15,11 @@ ENABLE_HOOKS      ?= true
 export TEAM_SIZE GIT_STRATEGY APPROVAL_CHAIN
 export RULES_SUBSET ENABLE_HOOKS SOMA_PLATFORM
 
+# A working Python 3.9+ (python3 can be the Windows Store stub, BUG-037).
+# Not exported: install.sh resolves its own, so a working python3 still
+# lands in MCP configs as the portable "python3".
+SOMA_PYTHON_BIN := $(shell bash -c '. enzymes/soma_python.sh && soma_resolve_python && printf %s "$$SOMA_PYTHON"' 2>/dev/null)
+
 .PHONY: help info install install-gemini install-kiro install-copilot \
         install-claude install-mcp install-windows \
         uninstall doctor validate update status test
@@ -80,7 +85,7 @@ doctor: ## Verify installation health & dependencies
 	@echo ""
 	@echo "Dependencies:"
 	@command -v bash >/dev/null 2>&1 && echo "  ✅ bash" || echo "  ❌ bash not found"
-	@command -v python3 >/dev/null 2>&1 && echo "  ✅ python3" || echo "  ⚠️  python3 not found (hooks will not install)"
+	@if [ -n "$(SOMA_PYTHON_BIN)" ]; then echo "  ✅ python ($(SOMA_PYTHON_BIN))"; else echo "  ⚠️  no working Python 3.9+ found (hooks will not install)"; fi
 	@command -v git >/dev/null 2>&1 && echo "  ✅ git" || echo "  ❌ git not found"
 	@command -v sed >/dev/null 2>&1 && echo "  ✅ sed" || echo "  ❌ sed not found"
 	@command -v awk >/dev/null 2>&1 && echo "  ✅ awk" || echo "  ❌ awk not found"
@@ -117,19 +122,19 @@ validate: ## Check script syntax and config values
 	    else echo "  ❌ $$s (syntax error)"; bash -n "$$s" || true; failed=1; fi; \
 	  fi; \
 	done; \
-	if command -v python3 >/dev/null 2>&1; then \
+	if [ -n "$(SOMA_PYTHON_BIN)" ]; then \
 	  for p in enzymes/*.py soma_cli/*.py soma_core/*.py soma_mcp/*.py soma_sdk/*.py immune_system/**/*.py; do \
 	    if [ -f "$$p" ]; then \
-	      if python3 -c "import ast, sys; ast.parse(open(sys.argv[1], encoding='utf-8').read())" "$$p" 2>/dev/null; then :; \
+	      if "$(SOMA_PYTHON_BIN)" -c "import ast, sys; ast.parse(open(sys.argv[1], encoding='utf-8').read())" "$$p" 2>/dev/null; then :; \
 	      else echo "  ❌ $$p (syntax error)"; failed=1; fi; \
 	    fi; \
 	  done; \
 	  echo "  ✅ python syntax"; \
-	  if python3 -m json.tool install/hooks.json.template > /dev/null 2>&1; then \
+	  if "$(SOMA_PYTHON_BIN)" -m json.tool install/hooks.json.template > /dev/null 2>&1; then \
 	    echo "  ✅ install/hooks.json.template (valid JSON)"; \
 	  else echo "  ❌ install/hooks.json.template (invalid JSON)"; failed=1; fi; \
 	else \
-	  echo "  ⚠️  python3 not found — skipping Python syntax and JSON checks"; \
+	  echo "  ⚠️  no working Python 3.9+ found — skipping Python syntax and JSON checks"; \
 	fi; \
 	find . -name '__pycache__' -type d -prune -exec rm -rf {} + 2>/dev/null || true; \
 	if [ "$$failed" -ne 0 ]; then echo "FAILED"; exit 1; fi; \
