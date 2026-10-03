@@ -357,6 +357,7 @@ Features that are planned but not yet shipped are listed in [ROADMAP.md](docs/pr
 | [CHANGELOG](docs/project/CHANGELOG.md) | Users | Release history |
 | [Bug Registry](docs/project/BUG_REGISTRY.json) | Contributors, agents | Every known bug, fixed and open, with root cause and regression test |
 | [Known Issues — Windows](docs/KNOWN_ISSUES_WINDOWS.md) | Windows users | Open Windows bugs, workarounds, and impact |
+| [SECURITY](SECURITY.md) | Security researchers | Supported versions, private vulnerability reporting, scope |
 | [ROADMAP](docs/project/ROADMAP.md) | Users | Planned features and their tracking status |
 | [PHYLOGENY](docs/architecture/phylogeny.md) | Contributors | Phase-by-phase evolutionary narrative |
 | [MECHANISM_DESIGN](docs/architecture/mechanism_design.md) | Contributors | Formal mechanism design mapping |

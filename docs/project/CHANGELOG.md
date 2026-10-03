@@ -8,6 +8,7 @@ This project uses [Semantic Versioning](https://semver.org/).
 ### Added
 - **Open bugs BUG-033 and BUG-034** in the Bug Registry: `soma status` miscounts installed core rules (#55), and `mutation_tester` fails open when tests cannot run (#54). Both were reproduced on v0.89.0.
 - **Open bugs BUG-036, BUG-037 and BUG-038**: `uninstall.sh` under Git Bash rejects every path (#62), the Git Bash `python3` Store stub (#64, split out of BUG-010), and enzyme scripts crashing on a cp1252 stdout (#65).
+- **`SECURITY.md`**: supported versions (current minor line only), private reporting through GitHub private vulnerability reporting, response goals, scope and out-of-scope, and a summary of the security model (MCP receipts and workspace confinement, evidence integrity, installer confinement, release digests). Linked from the README documentation table. Test: `tests/test_security_policy.py`.
 - **Open bug BUG-040**: recording an outcome leaves `.soma/evidence/.signals.lock` as an untracked file, because no ignore rule covers it (#70).
 
 ### Changed
