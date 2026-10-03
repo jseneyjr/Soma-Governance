@@ -237,8 +237,8 @@ def check(target, roots, kind):
                 break
         if bad is None and not under(real, os.path.realpath(os.path.dirname(norm))):
             bad = "canonical parent escapes the allowed root"
-        if bad is None and kind == "source" and os.path.islink(norm):
-            bad = "restore source is a symlink"
+        if bad is None and kind in ("source", "restore_target") and os.path.islink(norm):
+            bad = "restore source or target is a symlink"
         # A shell rc file is rewritten through a final symlink (dotfile
         # managers), so its target must stay inside the root too.
         if bad is None and kind == "rcfile" and not under(real, os.path.realpath(norm)):
@@ -386,10 +386,10 @@ restore_dir_contents() {
   local src="$1" dst="$2"
   [ -d "$src" ] || return 0
   guard_sink source "$src" "${BACKUP_ROOTS[@]}"
-  guard_sink remove "$dst"
+  guard_sink restore_target "$dst"
   mkdir -p "$dst" || return 0
-  # Dotfiles included; an empty source is not an error.
-  if find "$src" -mindepth 1 -maxdepth 1 -print -quit 2>/dev/null | grep -q .; then
+  # Dotfiles included; an empty source is not an error. Portable across BSD (macOS) and GNU find.
+  if [ -n "$(find "$src" -mindepth 1 -maxdepth 1 2>/dev/null | head -n 1)" ]; then
     cp -R "$src"/. "$dst"/ 2>/dev/null || {
       log_warn "Could not fully restore $src -> $dst"
       return 0
@@ -441,12 +441,12 @@ try:
         handle.write("\n")
     os.chmod(temp_path, stat.S_IMODE(os.stat(path).st_mode))
     os.replace(temp_path, path)
-except Exception:
-    try:
-        os.unlink(temp_path)
-    except FileNotFoundError:
-        pass
-    raise
+finally:
+    if os.path.exists(temp_path):
+        try:
+            os.unlink(temp_path)
+        except OSError:
+            pass
 PY
   echo "Cleaned soma MCP server from $config_file"
 }
@@ -766,7 +766,8 @@ if [ "$MANIFEST_EXISTS" = "true" ]; then
 
   while IFS= read -r f; do
     [ -n "$f" ] || continue
-    if [[ "$f" == *"/copilot-instructions.md" ]] || [[ "$f" == *"/CLAUDE.md" ]]; then
+    norm_f="${f//\\//}"
+    if [[ "$norm_f" == *"/copilot-instructions.md" ]] || [[ "$norm_f" == *"/CLAUDE.md" ]]; then
       MODIFY_FILES+=("$f")
     else
       FILES_TO_REMOVE+=("$f")
@@ -1056,8 +1057,8 @@ for f in ${FILES_TO_REMOVE[@]+"${FILES_TO_REMOVE[@]}"}; do
 done
 for d in ${DIRS_TO_REMOVE[@]+"${DIRS_TO_REMOVE[@]}"}; do
   guard_sink remove "$d"
-  if [ -L "$d" ]; then
-    rm -f "$d" && echo "Removed directory symlink $d"
+  if [ -L "$d" ] || soma_py -c "import os, sys; sys.exit(0 if os.path.islink(sys.argv[1]) else 1)" "$d" 2>/dev/null; then
+    rm -f "$d" && echo "Removed directory symlink/junction $d"
   elif [ -d "$d" ]; then
     rm -rf "$d" && echo "Removed $d/"
   fi

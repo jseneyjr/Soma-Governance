@@ -75,8 +75,17 @@ def on_path(directory: str, path_env: str, sep: str = os.pathsep,
             casefold: bool = os.name == "nt") -> bool:
     """True if directory is an exact entry of path_env (not a substring)."""
     target = _norm(directory, casefold)
+    raw_entries = path_env.split(sep)
+    entries = []
+    for e in raw_entries:
+        if sep == ";" and ":" in e and not (len(e) >= 2 and e[1:2] == ":"):
+            entries.extend(e.split(":"))
+        elif sep == ":" and ";" in e:
+            entries.extend(e.split(";"))
+        else:
+            entries.append(e)
     return any(_norm(entry, casefold) == target
-               for entry in path_env.split(sep) if entry)
+               for entry in entries if entry)
 
 
 def _home_relative(directory: str, home: str, casefold: bool = False) -> str | None:
@@ -194,7 +203,8 @@ def build_hint(env: Mapping[str, str] | None = None,
         elif os_name == "nt":
             activate = "source " + shlex.quote(f"{_msys_path(str(venv_prefix))}/Scripts/activate")
         else:
-            script = f"{venv_prefix}/bin/activate" + (".fish" if shell == "fish" else "")
+            vprefix = str(venv_prefix).replace("\\", "/")
+            script = f"{vprefix}/bin/activate" + (".fish" if shell == "fish" else "")
             activate = "source " + shlex.quote(script)
         return (f"ℹ️  'soma' is installed in the virtual environment {venv_prefix},\n"
                 "    which is not active in this shell. Activate it first:\n"

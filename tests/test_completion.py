@@ -114,7 +114,8 @@ def test_unknown_shell_rejected():
 def test_bash_syntax_ok(tmp_path):
     f = tmp_path / "soma.bash"
     f.write_text(_script("bash"), encoding="utf-8")
-    proc = subprocess.run(["bash", "-n", str(f)], capture_output=True, text=True)
+    path_str = str(f).replace("\\", "/")
+    proc = subprocess.run(["bash", "-n", path_str], capture_output=True, text=True)
     assert proc.returncode == 0, proc.stderr
 
 
