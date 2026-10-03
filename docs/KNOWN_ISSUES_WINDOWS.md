@@ -1,8 +1,10 @@
-# Known Issues — Windows (v0.89.0)
+# Known Issues — Windows (v0.90.0)
 
-Open Windows issues as of v0.89.0 were observed on Windows 11 with Windows PowerShell 5.1, Git Bash, and Python 3.14. Each open issue is tracked in [`BUG_REGISTRY.json`](project/BUG_REGISTRY.json) with `"status": "open"`.
+Open Windows issues as of v0.90.0 were observed on Windows 11 with Windows PowerShell 5.1, Git Bash, and Python 3.14. Each open issue is tracked in [`BUG_REGISTRY.json`](project/BUG_REGISTRY.json) with `"status": "open"`.
 
 > **⚠ On v0.89.0, don't run the full test suite on a Windows machine you care about (BUG-010).** It can write to the real home directory. That includes `tests/test_install_lifecycle.py`, which `enzymes/verify_readme_claims.py` may invoke. Fixed after v0.89.0; see below.
+
+CI now runs the full pytest suite on Windows (`test-windows` in `.github/workflows/validate.yml`, with an isolated `HOME`/`USERPROFILE`), so new Windows-only failures show up on every pull request.
 
 ## Impact summary
 
@@ -21,6 +23,14 @@ Open Windows issues as of v0.89.0 were observed on Windows 11 with Windows Power
 | Enzyme scripts on a cp1252 stdout | v0.89.0 can crash unless `PYTHONIOENCODING=utf-8`; fixed after v0.89.0 | BUG-038 |
 | Windows-only tests | Fixed after v0.89.0 | BUG-013 |
 
+## MCP server does not start: `python3` is the Windows Store stub
+
+MCP configs written by Soma start the server with `"command": "python3"`, `"args": ["-m", "soma_mcp"]`. On many Windows machines `python3` on `PATH` is the Microsoft Store App Installer stub: it exits 49 (or prints a Microsoft Store message) instead of running Python, so the MCP host never gets a server and usually shows no useful error. The config keeps `python3` on purpose; run `soma doctor` (or `python -m soma_cli doctor`) instead, which resolves `python3` from `PATH` the way the host does and reports whether it works, is missing, is the Store stub, or runs but cannot import `soma_mcp`.
+
+Fix for the stub: **Settings > Apps > Advanced app settings > App execution aliases**, turn off `python.exe` and `python3.exe`, then install Python from python.org (or make sure the real `python3` comes first on `PATH`). If doctor says `soma_mcp` is not importable, install it for that interpreter: `python3 -m pip install --user soma-governance`.
+
+`soma doctor --fix-path` does not edit PowerShell profiles; on Windows it prints the `[Environment]::SetEnvironmentVariable(...)` command for the user `Path` instead. Under Git Bash (`SHELL` set to bash) it edits `~/.bashrc` like on Linux, and `install/uninstall.ps1` removes that line again from the home manifest's `path_lines`, keeping a UTF-8 BOM and the line endings. `uninstall.ps1` refuses to rewrite an rc file that is a symlink (warns instead); `uninstall.sh` follows a symlink whose target stays inside your home directory.
+
 ## Fixed after v0.89.0 (unreleased)
 
 ### BUG-035: Cell inventory rejected edited cells ([#61](https://github.com/nseney1/Soma-Governance/issues/61))
@@ -38,8 +48,11 @@ Under Git Bash, `resolve_home()` prefers `USERPROFILE` over `HOME`, and six call
 ### BUG-012: Implicit cp1252 encoding ([#49](https://github.com/nseney1/Soma-Governance/issues/49))
 On v0.89.0, `soma status` exits 1 with `UnicodeEncodeError` when stdout is cp1252 (for example, redirected output). **Workaround on v0.89.0:** `$env:PYTHONIOENCODING = "utf-8"`. `soma` and `enzymes/verify_bug_registry.py` now replace characters the console can't encode. Cell listing already reads UTF-8 explicitly since v0.89.0.
 
+### BUG-037: Git Bash `python3` resolved to Windows Store stub ([#64](https://github.com/nseney1/Soma-Governance/issues/64))
+A python.org install provides `python.exe` but no `python3.exe`, so in Git Bash `python3` resolved to the App Installer stub. `command -v python3` succeeded but execution failed, preventing hook generation and shell-script Python calls. `enzymes/soma_python.sh` now resolves a working Python 3.9+ interpreter (`soma_resolve_python` / `soma_py`) by probing `python3`, `python`, and `py -3`.
+
 ### BUG-013: Windows-only test failures ([#50](https://github.com/nseney1/Soma-Governance/issues/50))
-The tests embedded unescaped Windows paths in generated files, compared paths as POSIX strings, wrote CRLF where bytes mattered, hard-coded `/bin/bash`, and required symlink privileges. They now escape paths, compare normalized paths, write LF, resolve bash (or skip), and skip symlink and execute-bit checks Windows can't satisfy. CI does not yet run the test suite on Windows ([#56](https://github.com/nseney1/Soma-Governance/issues/56)).
+The tests embedded unescaped Windows paths in generated files, compared paths as POSIX strings, wrote CRLF where bytes mattered, hard-coded `/bin/bash`, and required symlink privileges. They now escape paths, compare normalized paths, write LF, resolve bash (or skip), and skip symlink and execute-bit checks Windows can't satisfy. CI now runs the suite on Windows (`test-windows`, v0.90; [#56](https://github.com/nseney1/Soma-Governance/issues/56)).
 
 ## Fixed in v0.89.0
 
@@ -53,11 +66,6 @@ Write and execute tools now use single-use receipts obtained from `soma_request_
 The PowerShell scripts now carry a UTF-8 BOM, and CI dry-runs the installer under Windows PowerShell 5.1 as well as PowerShell 7. This fixes parsing, not the separate rule-content decoding problem in BUG-014.
 
 ## Open issues
-
-### BUG-037: Git Bash `python3` may be the Windows Store stub ([#64](https://github.com/nseney1/Soma-Governance/issues/64))
-A python.org install may not provide `python3.exe`, so `python3` resolves to the App Installer stub. `command -v python3` succeeds but execution fails, preventing hook generation and other shell-script Python calls.
-
-**Workaround:** disable the `python3.exe` App execution alias and put a real `python3` on `PATH`, such as a shim that invokes `python.exe`.
 
 ### BUG-032: PowerShell installer does not install lifecycle hooks
 `install.ps1` skips hooks because they require Bash, so post-session fitness updates never run after a native PowerShell install.

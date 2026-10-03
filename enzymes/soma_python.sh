@@ -70,12 +70,40 @@ soma_resolve_python() {
   [ -n "$SOMA_PYTHON" ]
 }
 
+# Prepended to inline code (BUG-044). For `-c` and `-` Python puts the current
+# directory ('') at sys.path[0], and hooks run with the CWD set to the user's
+# project (uninstall runs anywhere), so a json.py there ran inside every
+# snippet. site (and sitecustomize/usercustomize) is imported before that
+# entry is added, so removing it as the snippet's first statement suffices.
+# Not -I: that would also drop user site-packages (a `pip install --user`
+# PyYAML, common on Windows) and PYTHONPATH. Snippets must not use
+# `from __future__` (it has to be the first statement).
+_SOMA_PY_NO_CWD="import sys as _s; _s.path[:] = [_p for _p in _s.path if _p not in ('', '.')]; del _s"
+
 # Runs the resolved interpreter. Scripts call soma_resolve_python first, so
 # this never probes; it only explains a missing interpreter.
+# `soma_py -c CODE args...` and `soma_py - args... <<EOF` run without the CWD
+# on sys.path; sys.argv[1:] is unchanged (sys.argv[0] is '-c' in both cases).
+# Script and -m invocations are passed through unchanged.
 soma_py() {
   if [ -z "${SOMA_PYTHON:-}" ]; then
     echo "soma: no working Python 3.9+ found (tried python3, python, py -3); set SOMA_PYTHON" >&2
     return 127
   fi
-  "$SOMA_PYTHON" "$@"
+  case "${1:-}" in
+    -c)
+      local code="${2-}"
+      shift 2 || shift $#
+      "$SOMA_PYTHON" -c "$_SOMA_PY_NO_CWD
+$code" "$@"
+      ;;
+    -)
+      shift
+      "$SOMA_PYTHON" -c "$_SOMA_PY_NO_CWD
+exec(compile(__import__('sys').stdin.read(), '<stdin>', 'exec'))" "$@"
+      ;;
+    *)
+      "$SOMA_PYTHON" "$@"
+      ;;
+  esac
 }

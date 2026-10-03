@@ -197,7 +197,7 @@
       "fixed_in": "Unreleased",
       "root_cause": "platform_compat",
       "severity": "moderate",
-      "description": "With stdout on cp1252 (Windows, redirected output), `soma status` printed an emoji, raised UnicodeEncodeError and exited 1; enzymes/verify_bug_registry.py crashed the same way when printing its error report. Both entry points now reconfigure stdout with errors='replace', so unencodable characters print as '?'. The list_cells half (bare read_text() inside `except Exception: pass`, which garbled non-ASCII text and dropped undecodable cells) was fixed in the v0.89.0 pre-release review by the explicit UTF-8 canonical inventory; verified on Windows with a cp1252 locale and a cell containing curly quotes, an em-dash, an emoji and 'Ð' (byte 0x90). tests/test_rule_metadata.py read rule files with bare read_text() and failed 6 cases on genome/subagent-delegation.md; it now reads UTF-8 explicitly.",
+      "description": "With stdout on cp1252 (Windows, redirected output), `soma status` printed an emoji, raised UnicodeEncodeError and exited 1; enzymes/verify_bug_registry.py crashed the same way when printing its error report. Both entry points now reconfigure stdout with errors='replace', so unencodable characters print as '?'. The list_cells half (bare read_text() inside `except Exception: pass`, which garbled non-ASCII text and dropped undecodable cells) was fixed in the v0.89.0 pre-release review by the explicit UTF-8 canonical inventory; verified on Windows with a cp1252 locale and a cell containing curly quotes, an em-dash, an emoji and '\u00d0' (byte 0x90). tests/test_rule_metadata.py read rule files with bare read_text() and failed 6 cases on genome/subagent-delegation.md; it now reads UTF-8 explicitly.",
       "affected_files": [
         "soma_cli/cli.py",
         "enzymes/verify_bug_registry.py",
@@ -586,16 +586,19 @@
     {
       "id": "BUG-033",
       "issue_url": "https://github.com/nseney1/Soma-Governance/issues/55",
-      "status": "open",
+      "status": "fixed",
       "title": "`soma status` reports the wrong core-rule count for installer-based Claude setups",
       "discovered_in": "v0.88.2",
+      "fixed_in": "Unreleased",
       "root_cause": "path_error",
       "severity": "low",
-      "description": "install.sh/install.ps1 merge all rules into ~/.claude/CLAUDE.md, but soma_cli/status.py globs the rules directory for *.md excluding CLAUDE.md, and with no loose files it falls back to the package's own genome/. Reproduced on v0.89.0 with an isolated HOME: a 1-rule CLAUDE.md reports '19 active' (the genome/ count); the same CLAUDE.md plus 2 loose .md files reports '2 active'.",
+      "description": "install.sh/install.ps1 merge all rules into ~/.claude/CLAUDE.md, but soma_cli/status.py globs the rules directory for *.md excluding CLAUDE.md, and with no loose files it falls back to the package's own genome/. Reproduced on v0.89.0 with an isolated HOME: a 1-rule CLAUDE.md reports '19 active' (the genome/ count); the same CLAUDE.md plus 2 loose .md files reports '2 active'. Fixed: status now parses the Soma sections of CLAUDE.md in both formats that write it (the installers' '# Soma Governance Rules' header with '---' + H1 per rule, and soma init's SOMA:START/END block with '## <stem>' sections), adds loose rule files, drops merged sections that duplicate a loose file by stem, frontmatter id or H1, and no longer falls back to genome/ when CLAUDE.md holds Soma content. Merged installer sections are named by mapping their H1 back to the packaged rule id, so trigger counts still match.",
       "affected_files": [
         "soma_cli/status.py"
       ],
-      "pattern": "Status reads a different artifact than the installer writes"
+      "regression_test": "tests/test_status_claude_md.py",
+      "pattern": "Status reads a different artifact than the installer writes",
+      "changelog_ref": "Unreleased"
     },
     {
       "id": "BUG-034",
@@ -652,7 +655,7 @@
     {
       "id": "BUG-037",
       "issue_url": "https://github.com/nseney1/Soma-Governance/issues/64",
-      "status": "open",
+      "status": "fixed",
       "title": "Git Bash: python3 can resolve to the Windows Store stub, so hooks and shell-script Python calls fail",
       "discovered_in": "v0.88.2",
       "root_cause": "platform_compat",
@@ -663,7 +666,10 @@
         "install/install.sh",
         "install/uninstall.sh"
       ],
-      "pattern": "Interpreter presence checked with command -v instead of by running it"
+      "pattern": "Interpreter presence checked with command -v instead of by running it",
+      "fixed_in": "Unreleased",
+      "regression_test": "tests/test_python_resolution.py",
+      "changelog_ref": "Unreleased"
     },
     {
       "id": "BUG-038",
@@ -743,6 +749,132 @@
       ],
       "regression_test": "tests/test_telemetry.py::TestEvidenceLockIgnoredByGit::test_lock_file_is_ignored",
       "pattern": "Runtime lock file written inside the working tree without an ignore rule",
+      "changelog_ref": "Unreleased"
+    },
+    {
+      "id": "BUG-041",
+      "issue_url": null,
+      "status": "fixed",
+      "title": "soma CLI not found under zsh after pip install --user, with no guidance",
+      "discovered_in": "v0.89.0",
+      "fixed_in": "Unreleased",
+      "root_cause": "platform_compat",
+      "severity": "moderate",
+      "description": "pip install --user puts the soma console script in the user scripts directory (~/.local/bin on Linux). Debian/Ubuntu add it to PATH only in ~/.profile, which zsh does not read, so on a stock oh-my-zsh setup `soma` is 'command not found'. Seen on 2026-10-03. Nothing said why: the Makefile discarded pip's stderr (hiding pip's own not-on-PATH warning) and its PATH check was a substring grep for $HOME/.local/bin, wrong for venvs, macOS and Windows; soma doctor reported the failure without a remedy; `python3 -m soma_cli` did not work; and the docs never mentioned PATH. Fixed with soma_cli/pathcheck.py, which finds the directory pip used (sysconfig scripts paths), checks exact PATH entries, detects zsh/bash/fish/PowerShell and prints the one line to add and the rc file it belongs in. It never edits dotfiles. soma doctor, the end of install.sh and install.ps1 print it; the Makefile now uses python3 -m pip and shows pip's errors only when every install attempt fails. Also added soma_cli/__main__.py and soma --version, and a troubleshooting section in QUICKSTART.md. MCP was not affected: its config launches python3 -m soma_mcp.",
+      "affected_files": [
+        "soma_cli/pathcheck.py",
+        "soma_cli/doctor.py",
+        "soma_cli/cli.py",
+        "soma_cli/__main__.py",
+        "install/install.sh",
+        "install/install.ps1",
+        "Makefile",
+        "QUICKSTART.md",
+        "README.md"
+      ],
+      "regression_test": "tests/test_pathcheck.py",
+      "pattern": "Installer assumes the user's shell reads the same startup file as bash",
+      "changelog_ref": "Unreleased"
+    },
+    {
+      "id": "BUG-042",
+      "status": "fixed",
+      "title": "immune_sweep.sh aborts with 'RESOLVED_HOME: unbound variable' unless SOMA_DATA_DIR is exported",
+      "discovered_in": "v0.89.0",
+      "fixed_in": "Unreleased",
+      "root_cause": "path_error",
+      "severity": "low",
+      "description": "enzymes/immune_sweep.sh defaults SOMA_DATA_DIR to $RESOLVED_HOME/.gemini/antigravity, but nothing in the script set RESOLVED_HOME. It runs under set -euo pipefail, so with SOMA_DATA_DIR unset the sweep exited 1 at line 28 before doing any work. Fixed: RESOLVED_HOME is set from common.sh's resolve_home.",
+      "affected_files": [
+        "enzymes/immune_sweep.sh"
+      ],
+      "regression_test": "tests/test_v090_hardening.py::test_immune_sweep_runs_without_soma_data_dir",
+      "pattern": "Variable read under set -u that no code path assigns",
+      "changelog_ref": "Unreleased"
+    },
+    {
+      "id": "BUG-043",
+      "status": "fixed",
+      "title": "uninstall.sh without a working Python 3 fell back to a symlink-blind lexical confinement check",
+      "discovered_in": "v0.89.0",
+      "fixed_in": "Unreleased",
+      "root_cause": "silent_failure",
+      "severity": "moderate",
+      "description": "install/uninstall.sh check_confined() used _lexical_confined whenever no working Python 3 was found. Fixed: without a working interpreter check_confined() refuses every target, and non-empty plan is refused before anything is touched.",
+      "affected_files": [
+        "install/uninstall.sh"
+      ],
+      "regression_test": "tests/test_v090_hardening.py::test_manifestless_uninstall_without_python_removes_nothing",
+      "pattern": "Security check degrades to a weaker fallback instead of failing closed",
+      "changelog_ref": "Unreleased"
+    },
+    {
+      "id": "BUG-044",
+      "status": "fixed",
+      "title": "Inline Python in enzymes, install.sh and uninstall.sh imported modules from the current directory",
+      "discovered_in": "v0.89.0",
+      "fixed_in": "Unreleased",
+      "root_cause": "path_error",
+      "severity": "critical",
+      "description": "python -c CODE and python - <<heredoc put current directory at sys.path[0]. Fixed: soma_py strips CWD entry from sys.path[0] for inline code while preserving user site-packages.",
+      "affected_files": [
+        "enzymes/soma_python.sh",
+        "enzymes/session_close.sh",
+        "install/install.sh",
+        "install/uninstall.sh"
+      ],
+      "regression_test": "tests/test_redteam_followups.py::test_install_and_uninstall_ignore_cwd_modules",
+      "pattern": "Inline interpreter code run with the current directory on the import path",
+      "changelog_ref": "Unreleased"
+    },
+    {
+      "id": "BUG-045",
+      "status": "fixed",
+      "title": "uninstall.sh rewrote Claude settings.json outside the confinement guard, plan preview and --dry-run",
+      "discovered_in": "v0.89.0",
+      "fixed_in": "Unreleased",
+      "root_cause": "path_error",
+      "severity": "moderate",
+      "description": "The settings.json cleanup at the end of uninstall.sh ran jq del(.hooks.soma) without guard_sink/check_confined or plan preview. Fixed: settings files carrying hooks.soma are queued during planning, previewed as [MOD], and confined.",
+      "affected_files": [
+        "install/uninstall.sh"
+      ],
+      "regression_test": "tests/test_redteam_followups.py::test_settings_cleanup_refuses_symlinked_claude_dir",
+      "pattern": "File rewrite that bypasses the path confinement guard",
+      "changelog_ref": "Unreleased"
+    },
+    {
+      "id": "BUG-046",
+      "status": "fixed",
+      "title": "enzymes/verify_bug_registry.py timed out on clean Windows installation (#80)",
+      "discovered_in": "v0.89.0",
+      "fixed_in": "Unreleased",
+      "root_cause": "platform_compat",
+      "severity": "low",
+      "description": "Fixed 30s budget for running all bug regression tests was exceeded on Windows. Fixed by dynamic budget math based on number of regression test cases and node matching by pytest summary IDs.",
+      "affected_files": [
+        "enzymes/verify_bug_registry.py",
+        "tests/test_bug_registry.py"
+      ],
+      "regression_test": "tests/test_bug_registry.py::TestRegressionRunBudget::test_budget_grows_with_the_registry",
+      "pattern": "Fixed timeout budget for growing test suite",
+      "changelog_ref": "Unreleased"
+    },
+    {
+      "id": "BUG-047",
+      "status": "fixed",
+      "title": "soma init pre-commit hook aborted every commit with 'soma: not found' when soma was not on the hook's PATH",
+      "discovered_in": "v0.89.0",
+      "fixed_in": "Unreleased",
+      "root_cause": "path_error",
+      "severity": "moderate",
+      "description": "The marked block install_hook() writes into .git/hooks/pre-commit ran a bare `soma checkpoint --pre-commit`. Git runs hooks with the PATH of the process that started it, so in zsh or other non-login shells after `pip install --user` (BUG-041), GUI git clients and IDEs, `soma` did not resolve and git aborted the commit with only `soma: not found`. Re-running `soma init` could not repair it, because install_hook() returned early once the marker was present. Fixed: the block (POSIX sh) runs `soma` when it is on PATH, otherwise the interpreter that ran `soma init` (sys.executable, shell-quoted) with `-m soma_cli checkpoint --pre-commit` after checking it can import soma_cli; with neither it prints a message naming `soma doctor` and the PATH fix and exits 1 (still fail-closed). A checkpoint failure now exits the hook explicitly instead of depending on the block being last. Re-running `soma init` replaces an existing marked block in place, keeping user lines outside the markers, and `soma doctor` reports a block without the `soma-hook-format: 2` marker as stale.",
+      "affected_files": [
+        "soma_cli/init.py",
+        "soma_cli/doctor.py"
+      ],
+      "regression_test": "tests/test_precommit_hook_fallback.py::test_falls_back_to_init_interpreter_when_soma_not_on_path",
+      "pattern": "Hook or generated script that depends on the interactive shell's PATH",
       "changelog_ref": "Unreleased"
     }
   ]

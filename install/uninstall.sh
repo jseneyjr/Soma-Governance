@@ -70,10 +70,33 @@ fi
 export SOMA_CYGPATH
 MANIFEST_PATH="$RESOLVED_HOME/.soma/manifest.json"
 MANIFEST_IS_LOCAL=false
-if [ -f "$WORK_DIR/.soma/manifest.json" ]; then
+# Run from the home directory, ./.soma/manifest.json IS the home manifest.
+# Compare physical paths (cd -P), not strings: either may be reached through
+# a symlink or spelled differently (/c/Users vs C:/Users under Git Bash).
+WORK_DIR_IS_HOME=false
+_work_phys="$(cd -P "$WORK_DIR" 2>/dev/null && pwd)" || _work_phys=""
+_home_phys="$(cd -P "$RESOLVED_HOME" 2>/dev/null && pwd)" || _home_phys=""
+if [ -n "$_work_phys" ] && [ "$_work_phys" = "$_home_phys" ]; then
+  WORK_DIR_IS_HOME=true
+fi
+if [ "$WORK_DIR_IS_HOME" = "false" ] && [ -f "$WORK_DIR/.soma/manifest.json" ]; then
+  # A project-level .soma is repository content, i.e. attacker-controllable:
+  # as a symlink it would point the manifest (and its removal) outside the
+  # project. Refuse it. A symlinked ~/.soma stays allowed: the home directory
+  # is user-controlled (dotfile managers link it).
+  if [ -L "$WORK_DIR/.soma" ]; then
+    log_error "Refusing to use $WORK_DIR/.soma/manifest.json: $WORK_DIR/.soma is a symlink."
+    log_error "A project-level .soma must be a real directory. Nothing was removed."
+    exit 1
+  fi
   MANIFEST_PATH="$WORK_DIR/.soma/manifest.json"
   MANIFEST_IS_LOCAL=true
 fi
+# Root the manifest removal is confined to at the sink: the whole project for
+# a local manifest (so a .soma swapped for a symlink later is caught), its own
+# directory for ~/.soma (which may legitimately be a symlink).
+MANIFEST_SINK_ROOT="$(dirname "$MANIFEST_PATH")"
+[ "$MANIFEST_IS_LOCAL" = "false" ] || MANIFEST_SINK_ROOT="$WORK_DIR"
 
 # ── Path Confinement ──────────────────────────────────────────────
 # Allowed roots mirror where install.sh writes:
@@ -216,6 +239,10 @@ def check(target, roots, kind):
             bad = "canonical parent escapes the allowed root"
         if bad is None and kind == "source" and os.path.islink(norm):
             bad = "restore source is a symlink"
+        # A shell rc file is rewritten through a final symlink (dotfile
+        # managers), so its target must stay inside the root too.
+        if bad is None and kind == "rcfile" and not under(real, os.path.realpath(norm)):
+            bad = "symlink target leaves the allowed root"
         if bad is None:
             return None
         reasons.append(bad)
@@ -256,17 +283,49 @@ if mode == "manifest":
         why = check(bd, env_roots("SOMA_BACKUP_ROOTS"), "source")
         if why:
             bad.append(("backup_dir", bd if isinstance(bd, str) else json.dumps(bd), why))
+    # path_lines: shell rc lines appended by `soma doctor --fix-path`. Only
+    # the home manifest may carry them (a project manifest is repository
+    # content), each file must resolve inside HOME, and each line must be a
+    # single line carrying the doctor marker.
+    pl = data.get("path_lines")
+    home_roots = env_roots("SOMA_HOME_ROOTS")
+    if pl is not None and not isinstance(pl, list):
+        bad.append(("path_lines", json.dumps(pl), "must be a list"))
+    elif pl and not home_roots:
+        bad.append(("path_lines", "%d entries" % len(pl),
+                    "only honoured in the home manifest (~/.soma/manifest.json)"))
+    else:
+        for e in pl or []:
+            if not isinstance(e, dict):
+                bad.append(("path_lines", json.dumps(e), "must be an object"))
+                continue
+            f, line = e.get("file"), e.get("line")
+            why = check(f, home_roots, "rcfile")
+            if not why and (not isinstance(f, str) or os.path.basename(f) not in {".bashrc", ".bash_profile", ".zshrc", "config.fish"}):
+                why = "file basename must be one of .bashrc, .bash_profile, .zshrc, config.fish"
+            if not why and (not isinstance(line, str) or any(c in line for c in "\n\r\0")):
+                why = "line must be a single-line string"
+            if not why and not line.endswith("# added by soma doctor --fix-path"):
+                why = "line lacks the soma doctor --fix-path marker"
+            if why:
+                bad.append(("path_lines", f if isinstance(f, str) else json.dumps(e), why))
     for field, item, why in bad:
         print("  UNSAFE %s entry: %s  (%s)" % (field, item, why))
     sys.exit(1 if bad else 0)
 elif mode == "plan":
     roots = env_roots("SOMA_ROOTS")
+    home_roots = env_roots("SOMA_HOME_ROOTS")
     bad = 0
     for raw in sys.stdin.buffer.read().split(b"\0"):
         if not raw:
             continue
-        target = os.fsdecode(raw)
-        why = check(target, roots, "remove")
+        raw_str = os.fsdecode(raw)
+        if raw_str.startswith("rcfile:"):
+            target = raw_str[7:]
+            why = check(target, home_roots, "rcfile")
+        else:
+            target = raw_str
+            why = check(target, roots, "remove")
         if why:
             print("  UNSAFE plan entry: %s  (%s)" % (target, why))
             bad += 1
@@ -283,28 +342,18 @@ sys.exit(2)
 
 join_lines() { local IFS=$'\n'; printf '%s' "$*"; }
 
-# Lexical-only fallback for the no-manifest branch on hosts without python3.
-# Those paths come from fixed globs, never from manifest data.
-_lexical_confined() {
-  local target="$1" root; shift
-  case "$target" in /*) ;; *) return 1 ;; esac
-  case "/$target/" in */../*|*/./*) return 1 ;; esac
-  for root in "$@"; do
-    if [ -z "$root" ] || [ "$root" = "/" ] || [ "$target" = "$root" ]; then continue; fi
-    case "$target" in "$root"/*) return 0 ;; esac
-  done
-  return 1
-}
-
 # check_confined <remove|source> <target> <root>...
+# Fails closed without a working Python 3.9+ (BUG-043). The old lexical prefix
+# fallback could not see symlinked components, so a manifestless uninstall on
+# such a host followed `$HOME/link/...` out of the allowed roots.
 check_confined() {
   local kind="$1" target="$2"; shift 2
-  if [ -n "${SOMA_PYTHON:-}" ]; then
-    CONFINE_REASON="$(soma_py -I -S -c "$PATH_CHECK_PY" path "$kind" "$target" "$@" 2>&1)" && return 0
+  if [ -z "${SOMA_PYTHON:-}" ]; then
+    CONFINE_REASON="no working Python 3.9+ to verify confinement (install one or set SOMA_PYTHON)"
     return 1
   fi
-  CONFINE_REASON="outside the allowed roots (lexical check; Python unavailable)"
-  _lexical_confined "$target" "$@"
+  CONFINE_REASON="$(soma_py -I -S -c "$PATH_CHECK_PY" path "$kind" "$target" "$@" 2>&1)" && return 0
+  return 1
 }
 
 # Re-validate at the sink, immediately before rm/sed. Validation and removal
@@ -409,6 +458,9 @@ FILES_TO_REMOVE=()
 DIRS_TO_REMOVE=()
 MODIFY_FILES=()
 MCP_CONFIGS_TO_CLEAN=()
+UNVERIFIED_MCP=()
+# Shell rc files holding a `soma doctor --fix-path` line (path_lines).
+RC_FILES_TO_CLEAN=()
 BACKUP_DIR=""
 
 add_known_rule_files() {
@@ -437,7 +489,11 @@ add_known_skill_dirs() {
 queue_mcp_config() {
   local path="$1"
   [ -f "$path" ] || return 0
-  [ -n "${SOMA_PYTHON:-}" ] || return 0
+  if [ -z "${SOMA_PYTHON:-}" ]; then
+    # Cannot tell whether it holds an owned soma server; refused below.
+    UNVERIFIED_MCP+=("$path")
+    return 0
+  fi
   if SOMA_MCP_FILE="$path" soma_py - <<'PY'
 import json
 import os
@@ -464,6 +520,167 @@ if not isinstance(data, dict):
 servers = data.get("mcpServers")
 if not isinstance(servers, dict) or "soma" not in servers:
     raise ValueError("MCP configuration has no owned mcpServers.soma entry")
+PY
+}
+
+# claude_settings_py <check|clean> <settings.json> (BUG-045)
+#   check: exit 0 iff the file holds a hooks.soma entry.
+#   clean: drop hooks.soma; write an exclusive mkstemp temp in the same
+#          directory, give it the original mode, os.replace on success and
+#          unlink it on failure. Refuses (exit 4) a symlink or non-file.
+claude_settings_py() {
+  SOMA_SETTINGS_FILE="$2" soma_py - "$1" <<'PY'
+import json
+import os
+import stat
+import sys
+import tempfile
+
+path = os.environ["SOMA_SETTINGS_FILE"]
+st = os.lstat(path)
+if stat.S_ISLNK(st.st_mode) or not stat.S_ISREG(st.st_mode):
+    sys.exit(4)
+with open(path, "r", encoding="utf-8") as handle:
+    data = json.load(handle)
+hooks = data.get("hooks") if isinstance(data, dict) else None
+if not isinstance(hooks, dict) or "soma" not in hooks:
+    sys.exit(1)
+if sys.argv[1] == "check":
+    sys.exit(0)
+del hooks["soma"]
+fd, temp_path = tempfile.mkstemp(prefix=".settings.json.", suffix=".tmp",
+                                 dir=os.path.dirname(path) or ".")
+try:
+    with os.fdopen(fd, "w", encoding="utf-8") as handle:
+        json.dump(data, handle, indent=2)
+        handle.write("\n")
+    os.chmod(temp_path, stat.S_IMODE(st.st_mode))
+    os.replace(temp_path, path)
+except Exception:
+    try:
+        os.unlink(temp_path)
+    except FileNotFoundError:
+        pass
+    raise
+PY
+}
+
+# Queue a Claude settings.json for hooks.soma removal, or warn and skip it.
+# Symlinks (the file or its .claude parent) are refused outright: rewriting
+# through them edits a file outside the allowed roots. No jq: it used to be
+# required, and without it the cleanup silently didn't happen.
+CLAUDE_SETTINGS_TO_CLEAN=()
+queue_claude_settings() {
+  local path="$1" queued
+  [ -e "$path" ] || [ -L "$path" ] || return 0
+  for queued in ${CLAUDE_SETTINGS_TO_CLEAN[@]+"${CLAUDE_SETTINGS_TO_CLEAN[@]}"}; do
+    [ "$queued" != "$path" ] || return 0
+  done
+  if [ -L "$path" ] || [ -L "$(dirname "$path")" ]; then
+    log_warn "Not modifying $path: it or its .claude directory is a symlink. Remove hooks.soma by hand."
+    return 0
+  fi
+  [ -f "$path" ] || return 0
+  if [ -z "${SOMA_PYTHON:-}" ]; then
+    log_warn "Not inspecting $path: no working Python 3.9+. Remove hooks.soma by hand."
+    return 0
+  fi
+  claude_settings_py check "$path" 2>/dev/null || return 0
+  if ! check_confined remove "$path" "${ALLOWED_ROOTS[@]}"; then
+    log_warn "Not modifying $path: $CONFINE_REASON"
+    return 0
+  fi
+  CLAUDE_SETTINGS_TO_CLEAN+=("$path")
+}
+
+# rc_lines_py list | clean <rc-file>   (soma doctor --fix-path PATH lines)
+#   list:  print each distinct path_lines file of the manifest, one per line.
+#   clean: remove ONLY lines exactly equal to a recorded line (marker
+#          included) from <rc-file>. The file is rewritten through a symlink
+#          only if the target resolves inside HOME, atomically (exclusive
+#          mkstemp in the same directory, original mode, os.replace). Undoes
+#          the newline doctor added before its line, and deletes the file only
+#          if doctor created it and nothing else is left.
+#   exit 0 cleaned, 3 no recorded line present (file untouched), 4 refused.
+rc_lines_py() {
+  SOMA_MANIFEST="$MANIFEST_PATH" SOMA_HOME="$RESOLVED_HOME" soma_py -I -S - "$@" <<'PY'
+import json
+import os
+import stat
+import sys
+import tempfile
+
+sys.stdout.reconfigure(encoding="utf-8", errors="surrogateescape", newline="\n")
+MARK = "# added by soma doctor --fix-path"
+ALLOWED_RC_BASENAMES = {".bashrc", ".bash_profile", ".zshrc", "config.fish"}
+with open(os.environ["SOMA_MANIFEST"], "r", encoding="utf-8") as fh:
+    entries = [e for e in (json.load(fh).get("path_lines") or [])
+               if isinstance(e, dict) and isinstance(e.get("file"), str) and os.path.basename(e["file"]) in ALLOWED_RC_BASENAMES]
+if sys.argv[1] == "list":
+    seen = []
+    for e in entries:
+        if e["file"] not in seen:
+            seen.append(e["file"])
+            print(e["file"])
+    sys.exit(0)
+
+path = sys.argv[2]
+want = {}
+for e in entries:
+    line = e.get("line")
+    if e["file"] == path and isinstance(line, str) and line.endswith(MARK):
+        want[line.encode("utf-8", "surrogateescape")] = e
+home = os.path.realpath(os.environ["SOMA_HOME"])
+real = os.path.realpath(path)
+try:
+    inside = real != home and os.path.commonpath([home, real]) == home
+except ValueError:
+    inside = False
+if not inside:
+    print("  refusing %s: it resolves outside %s" % (path, home))
+    sys.exit(4)
+st = os.stat(real)
+if not stat.S_ISREG(st.st_mode):
+    print("  refusing %s: not a regular file" % path)
+    sys.exit(4)
+with open(real, "rb") as fh:
+    lines = fh.read().splitlines(True)
+out, hit, last_removed = [], {}, False
+for raw in lines:
+    body = raw.rstrip(b"\r\n")
+    if body in want:
+        hit[body] = want[body]
+        last_removed = True
+        continue
+    out.append(raw)
+    last_removed = False
+for body, e in want.items():
+    if body not in hit:
+        print("  soma PATH line not found in %s (edited or already removed): %s" % (path, e["line"]))
+if not hit:
+    sys.exit(3)
+if last_removed and out and any(e.get("prefix_newline") is True for e in hit.values()):
+    tail = out[-1]
+    out[-1] = tail[:-2] if tail.endswith(b"\r\n") else tail[:-1] if tail.endswith(b"\n") else tail
+new = b"".join(out)
+if not new and any(e.get("created") is True for e in hit.values()):
+    os.unlink(real)
+    print("Removed %s (created by soma doctor --fix-path, nothing else in it)" % path)
+    sys.exit(0)
+fd, tmp = tempfile.mkstemp(prefix="." + os.path.basename(real) + ".soma-", suffix=".tmp",
+                           dir=os.path.dirname(real))
+try:
+    with os.fdopen(fd, "wb") as fh:
+        fh.write(new)
+    os.chmod(tmp, stat.S_IMODE(st.st_mode))
+    os.replace(tmp, real)
+except BaseException:
+    try:
+        os.unlink(tmp)
+    except FileNotFoundError:
+        pass
+    raise
+print("Removed soma PATH line from %s" % path)
 PY
 }
 
@@ -529,9 +746,12 @@ if [ "$MANIFEST_EXISTS" = "true" ]; then
   # files/organs/hooks/backup_dir aborts with nothing touched; the old code
   # skipped offenders silently and removed the rest.
   validate_rc=0
+  HOME_ROOTS=""
+  [ "$MANIFEST_IS_LOCAL" = "true" ] || HOME_ROOTS="$RESOLVED_HOME"
   validate_out="$(SOMA_MANIFEST="$MANIFEST_PATH" \
     SOMA_ROOTS="$(join_lines "${ALLOWED_ROOTS[@]}")" \
     SOMA_BACKUP_ROOTS="$(join_lines "${BACKUP_ROOTS[@]}")" \
+    SOMA_HOME_ROOTS="$HOME_ROOTS" \
     soma_py -I -S -c "$PATH_CHECK_PY" manifest 2>&1)" || validate_rc=$?
   if [ "$validate_rc" -ne 0 ]; then
     log_error "Manifest at $MANIFEST_PATH contains unsafe entries:"
@@ -564,6 +784,13 @@ if [ "$MANIFEST_EXISTS" = "true" ]; then
   while IFS= read -r mcp_config; do
     [ -n "$mcp_config" ] && MCP_CONFIGS_TO_CLEAN+=("$mcp_config")
   done <<< "$(read_manifest_field mcp_configs)"
+
+  # Validation above refuses path_lines in a project manifest.
+  if [ "$MANIFEST_IS_LOCAL" = "false" ]; then
+    while IFS= read -r rc_file; do
+      [ -n "$rc_file" ] && RC_FILES_TO_CLEAN+=("$rc_file")
+    done <<< "$(rc_lines_py list)"
+  fi
 else
   echo "No manifest found. Falling back to source-owned names..."
   case "$PLATFORM" in
@@ -665,6 +892,16 @@ for mcp_config in ${MCP_CONFIGS_TO_CLEAN[@]+"${MCP_CONFIGS_TO_CLEAN[@]}"}; do
 done
 MCP_CONFIGS_TO_CLEAN=(${REAL_MCP[@]+"${REAL_MCP[@]}"})
 
+REAL_RC=()
+for rc_file in ${RC_FILES_TO_CLEAN[@]+"${RC_FILES_TO_CLEAN[@]}"}; do
+  if [ -f "$rc_file" ]; then
+    REAL_RC+=("$rc_file")
+  else
+    log_warn "Recorded soma PATH line file is gone, skipping: $rc_file"
+  fi
+done
+RC_FILES_TO_CLEAN=(${REAL_RC[@]+"${REAL_RC[@]}"})
+
 # Parse every owned MCP config before deleting anything. If it was corrupted or
 # concurrently replaced, retain all installed files and the ownership manifest
 # so the uninstall can be retried safely.
@@ -676,17 +913,36 @@ for mcp_config in ${MCP_CONFIGS_TO_CLEAN[@]+"${MCP_CONFIGS_TO_CLEAN[@]}"}; do
   fi
 done
 
+queue_claude_settings "$WORK_DIR/.claude/settings.json"
+queue_claude_settings "$RESOLVED_HOME/.claude/settings.json"
+
 # Confine the complete plan (manifest, fallback and --purge-data entries alike)
 # before anything is touched, so a refusal never leaves a half-removed install.
-# The manifest file itself is confined to its own directory at the sink.
-if [ -n "${SOMA_PYTHON:-}" ]; then
+# The manifest file itself is confined to MANIFEST_SINK_ROOT at the sink.
+# Without a working Python the plan cannot be confined (symlinked components
+# are invisible to a lexical check), so any non-empty plan is refused: fail
+# closed (BUG-043). The manifest branch already exited above in that case.
+if [ -z "${SOMA_PYTHON:-}" ]; then
+  UNCONFINED_COUNT=$(( ${#FILES_TO_REMOVE[@]} + ${#DIRS_TO_REMOVE[@]} + ${#MODIFY_FILES[@]} + ${#MCP_CONFIGS_TO_CLEAN[@]} + ${#CONFIG_TO_REMOVE[@]} + ${#UNVERIFIED_MCP[@]} + ${#RC_FILES_TO_CLEAN[@]} ))
+  if [ "$UNCONFINED_COUNT" -gt 0 ]; then
+    log_error "soma: no working Python 3.9+ found (tried python3, python, py -3); set SOMA_PYTHON"
+    log_error "Cannot verify that the $UNCONFINED_COUNT planned removal(s) stay inside the allowed roots without Python 3.9+."
+    log_error "Refusing to continue. Nothing was removed. Install Python 3.9+ or set SOMA_PYTHON, then re-run."
+    exit 1
+  fi
+else
   plan_rc=0
   plan_out="$(
-    for p in ${FILES_TO_REMOVE[@]+"${FILES_TO_REMOVE[@]}"} ${DIRS_TO_REMOVE[@]+"${DIRS_TO_REMOVE[@]}"} \
-             ${MODIFY_FILES[@]+"${MODIFY_FILES[@]}"} ${MCP_CONFIGS_TO_CLEAN[@]+"${MCP_CONFIGS_TO_CLEAN[@]}"} \
-             ${CONFIG_TO_REMOVE[@]+"${CONFIG_TO_REMOVE[@]}"}; do
-      [ "$p" = "$MANIFEST_PATH" ] || printf '%s\0' "$p"
-    done | SOMA_ROOTS="$(join_lines "${SINK_ROOTS[@]}")" soma_py -I -S -c "$PATH_CHECK_PY" plan 2>&1
+    {
+      for p in ${FILES_TO_REMOVE[@]+"${FILES_TO_REMOVE[@]}"} ${DIRS_TO_REMOVE[@]+"${DIRS_TO_REMOVE[@]}"} \
+               ${MODIFY_FILES[@]+"${MODIFY_FILES[@]}"} ${MCP_CONFIGS_TO_CLEAN[@]+"${MCP_CONFIGS_TO_CLEAN[@]}"} \
+               ${CONFIG_TO_REMOVE[@]+"${CONFIG_TO_REMOVE[@]}"}; do
+        [ "$p" = "$MANIFEST_PATH" ] || printf '%s\0' "$p"
+      done
+      for r in ${RC_FILES_TO_CLEAN[@]+"${RC_FILES_TO_CLEAN[@]}"}; do
+        printf 'rcfile:%s\0' "$r"
+      done
+    } | SOMA_ROOTS="$(join_lines "${SINK_ROOTS[@]}")" SOMA_HOME_ROOTS="$(join_lines "${ALLOWED_ROOTS[@]}")" soma_py -I -S -c "$PATH_CHECK_PY" plan 2>&1
   )" || plan_rc=$?
   if [ "$plan_rc" -ne 0 ]; then
     log_error "The removal plan contains paths outside the allowed roots:"
@@ -704,10 +960,12 @@ for d in ${DIRS_TO_REMOVE[@]+"${DIRS_TO_REMOVE[@]}"}; do echo "  - [DIR]  $d"; d
 for m in ${MODIFY_FILES[@]+"${MODIFY_FILES[@]}"}; do echo "  - [MOD]  $m (remove soma sections, keep the rest)"; done
 for mcp_config in ${MCP_CONFIGS_TO_CLEAN[@]+"${MCP_CONFIGS_TO_CLEAN[@]}"}; do echo "  - [MCP]  $mcp_config (remove mcpServers.soma, keep the rest)"; done
 for c in ${CONFIG_TO_REMOVE[@]+"${CONFIG_TO_REMOVE[@]}"}; do echo "  - [USER CONFIG] $c (pass --keep-config to keep it)"; done
+for s in ${CLAUDE_SETTINGS_TO_CLEAN[@]+"${CLAUDE_SETTINGS_TO_CLEAN[@]}"}; do echo "  - [MOD]  $s (remove hooks.soma, keep the rest)"; done
+for r in ${RC_FILES_TO_CLEAN[@]+"${RC_FILES_TO_CLEAN[@]}"}; do echo "  - [MOD]  $r (remove soma PATH line)"; done
 
 MANIFEST_COUNT=0
 [ "$MANIFEST_EXISTS" != "true" ] || MANIFEST_COUNT=1
-PLAN_COUNT=$(( MANIFEST_COUNT + ${#FILES_TO_REMOVE[@]} + ${#DIRS_TO_REMOVE[@]} + ${#MODIFY_FILES[@]} + ${#MCP_CONFIGS_TO_CLEAN[@]} + ${#CONFIG_TO_REMOVE[@]} ))
+PLAN_COUNT=$(( MANIFEST_COUNT + ${#FILES_TO_REMOVE[@]} + ${#DIRS_TO_REMOVE[@]} + ${#MODIFY_FILES[@]} + ${#MCP_CONFIGS_TO_CLEAN[@]} + ${#CONFIG_TO_REMOVE[@]} + ${#CLAUDE_SETTINGS_TO_CLEAN[@]} + ${#RC_FILES_TO_CLEAN[@]} ))
 if [ "$PLAN_COUNT" -eq 0 ]; then
   echo "Nothing to remove."
   exit 0
@@ -784,10 +1042,9 @@ fi
 # writes a fresh .bak containing Soma content, and the parent of a removed file
 # may disappear.
 for f in ${FILES_TO_REMOVE[@]+"${FILES_TO_REMOVE[@]}"}; do
-  # The manifest itself is script-derived; confine it to its own directory so
-  # a symlinked ~/.soma does not block removing it.
+  # The manifest itself is script-derived; see MANIFEST_SINK_ROOT.
   if [ "$f" = "$MANIFEST_PATH" ]; then
-    guard_sink remove "$f" "$(dirname "$MANIFEST_PATH")"
+    guard_sink remove "$f" "$MANIFEST_SINK_ROOT"
   else
     guard_sink remove "$f"
   fi
@@ -840,27 +1097,43 @@ for c in ${CONFIG_TO_REMOVE[@]+"${CONFIG_TO_REMOVE[@]}"}; do
   fi
 done
 
-# Clean soma hooks from claude settings.json, but only when one is actually
-# present. The previous version rewrote the user's settings.json through jq
-# unconditionally and printed "Cleaned ..." even when nothing matched — and on a
-# jq failure it left a stray .tmp behind while still claiming success.
-for settings_file in "$(pwd)/.claude/settings.json" "$RESOLVED_HOME/.claude/settings.json"; do
-  if [ -f "$settings_file" ] && command -v jq >/dev/null 2>&1; then
-    if jq -e '.hooks.soma? // empty' "$settings_file" >/dev/null 2>&1; then
-      if jq 'del(.hooks.soma)' "$settings_file" > "$settings_file.tmp" 2>/dev/null; then
-        mv "$settings_file.tmp" "$settings_file"
-        echo "Cleaned soma hooks from $settings_file"
-      else
-        rm -f "$settings_file.tmp"
-        log_warn "Could not rewrite $settings_file — left unchanged."
-      fi
-    fi
+# Clean soma hooks from claude settings.json (queued, confined and previewed
+# above; BUG-045). Re-checked at the sink: the symlink test and guard_sink
+# catch a component swapped since planning.
+for settings_file in ${CLAUDE_SETTINGS_TO_CLEAN[@]+"${CLAUDE_SETTINGS_TO_CLEAN[@]}"}; do
+  if [ -L "$settings_file" ] || [ -L "$(dirname "$settings_file")" ]; then
+    log_warn "Not modifying $settings_file: it or its .claude directory became a symlink."
+    continue
+  fi
+  guard_sink remove "$settings_file" "${ALLOWED_ROOTS[@]}"
+  if claude_settings_py clean "$settings_file"; then
+    echo "Cleaned soma hooks from $settings_file"
+  else
+    log_warn "Could not rewrite $settings_file — left unchanged."
   fi
 done
 
+# Remove the PATH lines `soma doctor --fix-path` appended (path_lines; queued,
+# confined and previewed above). Only lines exactly equal to the recorded one
+# go; an edited or missing line leaves the file untouched. On a hard failure
+# the manifest is kept so the record is not lost.
+RC_CLEAN_FAILED=false
+for rc_file in ${RC_FILES_TO_CLEAN[@]+"${RC_FILES_TO_CLEAN[@]}"}; do
+  guard_sink rcfile "$rc_file" "$RESOLVED_HOME"
+  rc_status=0
+  rc_lines_py clean "$rc_file" || rc_status=$?
+  case "$rc_status" in
+    0) ;;
+    3) log_warn "The soma PATH line in $rc_file was edited or removed — left $rc_file untouched." ;;
+    *) log_warn "Could not clean $rc_file — left unchanged."; RC_CLEAN_FAILED=true ;;
+  esac
+done
+
 # If manifest file exists and wasn't caught by the array (e.g. empty)
-if [ -f "$MANIFEST_PATH" ]; then
-  guard_sink remove "$MANIFEST_PATH" "$(dirname "$MANIFEST_PATH")"
+if [ -f "$MANIFEST_PATH" ] && [ "$RC_CLEAN_FAILED" = "true" ]; then
+  log_warn "Keeping $MANIFEST_PATH: it still records the soma PATH line(s) above."
+elif [ -f "$MANIFEST_PATH" ]; then
+  guard_sink remove "$MANIFEST_PATH" "$MANIFEST_SINK_ROOT"
   rm -f "$MANIFEST_PATH"
 fi
 

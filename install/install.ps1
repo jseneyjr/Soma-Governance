@@ -218,6 +218,16 @@ function Write-InstallManifest {
     if (Test-Path -LiteralPath $versionFile -PathType Leaf) {
         $version = (Get-Content -LiteralPath $versionFile -Raw -Encoding UTF8).Trim()
     }
+    $manifestPath = Join-Path $manifestDir "manifest.json"
+    $existingPathLines = $null
+    if ($InstallScope -ne "local" -and (Test-Path -LiteralPath $manifestPath -PathType Leaf)) {
+        try {
+            $rawExisting = Get-Content -LiteralPath $manifestPath -Raw -Encoding UTF8 | ConvertFrom-Json
+            if ($null -ne $rawExisting -and $null -ne $rawExisting.path_lines) {
+                $existingPathLines = $rawExisting.path_lines
+            }
+        } catch {}
+    }
     $manifest = [ordered]@{
         "version" = $version
         "installed_at" = [DateTime]::UtcNow.ToString("yyyy-MM-ddTHH:mm:ssZ")
@@ -231,7 +241,9 @@ function Write-InstallManifest {
         "hooks" = @($InstalledHooks)
         "mcp_configs" = @($InstalledMcpConfigs)
     }
-    $manifestPath = Join-Path $manifestDir "manifest.json"
+    if ($null -ne $existingPathLines) {
+        $manifest["path_lines"] = $existingPathLines
+    }
     Write-Utf8File -Path $manifestPath -Content (($manifest | ConvertTo-Json -Depth 8) + "`n")
 }
 
@@ -801,4 +813,27 @@ switch ($Platform) {
 
 if (-not $DryRun) {
     Write-InstallManifest
+}
+
+# CLI PATH guidance (BUG-041). Advisory only: prints the line to run, never
+# edits the user's environment, and never fails the install. Runs from the
+# Soma checkout so the governed project cannot shadow soma_cli via sys.path[0].
+if (-not $DryRun -and -not (Get-Command soma -ErrorAction SilentlyContinue)) {
+    $savedExitCode = $LASTEXITCODE
+    Push-Location -LiteralPath $RepoDir
+    try {
+        foreach ($py in @("python", "python3")) {
+            if (-not (Get-Command $py -ErrorAction SilentlyContinue)) { continue }
+            try {
+                $hint = & $py -m soma_cli.pathcheck --hint 2>$null
+                if ($LASTEXITCODE -eq 0) {
+                    if ($hint) { Write-Host ""; $hint | ForEach-Object { Write-Host $_ } }
+                    break
+                }
+            } catch { }
+        }
+    } finally {
+        Pop-Location
+        $global:LASTEXITCODE = $savedExitCode
+    }
 }

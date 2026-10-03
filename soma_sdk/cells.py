@@ -154,7 +154,8 @@ def parse_cell_file(filepath: str) -> Tuple[dict, str]:
     if not os.path.isfile(filepath):
         raise CellNotFoundError(f"Cell file not found: {filepath}")
 
-    with open(filepath, encoding='utf-8') as f:
+    # utf-8-sig: PowerShell 5.1 `Set-Content -Encoding UTF8` writes a BOM.
+    with open(filepath, encoding='utf-8-sig') as f:
         content = f.read()
 
     if not content.startswith('---'):

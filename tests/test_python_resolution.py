@@ -428,3 +428,38 @@ def test_generated_gate_assertion_compiles():
         str(REPO_ROOT))
     compile(source, "demo_gate.py", "exec")
     assert "import sys" in source and "sys.executable" in source
+
+
+# ── Install/uninstall round trip (v0.90 lane, ported onto #81) ───────
+
+
+def test_enzyme_without_common_sh_survives_the_store_stub(bash, tmp_path):
+    """liveness_sentinel.sh called python3 directly and exited 49."""
+    home = tmp_path / "home"
+    home.mkdir()
+    payload = json.dumps({"agents": [{"name": "scout", "dispatched": "2026-01-01T00:00:00Z",
+                                      "timeout_seconds": 1}]})
+    proc = run([bash, os.path.join(REPO_ROOT, "enzymes", "liveness_sentinel.sh"),
+                "--check", payload], cwd=str(tmp_path),
+               env=_env(_bin(tmp_path), home=home, SOMA_PYTHON=""))
+    assert proc.returncode == 0, proc.stderr
+    assert "scout" in proc.stdout
+
+
+def test_install_uninstall_round_trip_with_the_store_stub(bash, tmp_path):
+    """install.sh rendered no hooks.json; uninstall.sh's manifest validation
+    ran the stub (exit 49) and refused every entry."""
+    home = tmp_path / "home"
+    home.mkdir()
+    project = tmp_path / "project"
+    project.mkdir()
+    env = _env(_bin(tmp_path), home=home, SOMA_PYTHON="")
+    proc = run([bash, INSTALL_SH, "kiro"], cwd=str(project), env=env)
+    assert proc.returncode == 0, proc.stdout[-800:] + proc.stderr[-800:]
+    hooks = home / ".kiro" / "hooks" / "hooks.json"
+    assert hooks.exists() and hooks.stat().st_size > 0, proc.stdout[-800:]
+    proc = run([bash, os.path.join(REPO_ROOT, "install", "uninstall.sh"), "kiro",
+                "--force", "--no-restore"], cwd=str(project), env=env)
+    assert proc.returncode == 0, proc.stdout[-800:] + proc.stderr[-800:]
+    assert not hooks.exists()
+    assert not (home / ".soma" / "manifest.json").exists()
