@@ -1,6 +1,6 @@
 # Scripts Reference
 
-This document catalogs 114 executable scripts, command modules, SDK modules, and MCP/core modules in the Soma governance framework.
+This document catalogs 115 executable scripts, command modules, SDK modules, and MCP/core modules in the Soma governance framework.
 
 ## Counting Method
 
@@ -14,10 +14,10 @@ Counts are generated from the v0.89.0 source tree with mutually exclusive catego
 | [Verification Scripts](#verification-scripts--python) | Python (`immune_system/verification/`) | 13 | Deterministic AST checkers, coverage tools, and adversarial verification |
 | [CLI Commands](#cli-commands--python-soma_cli) | Python and bash (`soma_cli/`, root) | 16 | CLI launcher and command implementation modules |
 | [Install Scripts](#install-scripts--bash-and-powershell) | Bash and PowerShell (`install/`, root) | 6 | Platform installers, uninstallers, and root wrappers |
-| [Utility Scripts](#utility-scripts) | Python and bash (`enzymes/`) | 55 | Cell genetics, runtime engines, evidence, telemetry, and shared utilities |
+| [Utility Scripts](#utility-scripts) | Python and bash (`enzymes/`) | 56 | Cell genetics, runtime engines, evidence, telemetry, and shared utilities |
 | [SDK Modules](#sdk-modules--python-soma_sdk) | Python (`soma_sdk/`) | 8 | Canonical scoring, parsing, telemetry, hot-zone, and governance APIs |
 | [MCP and Core Modules](#mcp-and-core-modules) | Python (`soma_mcp/`, `soma_core/`) | 9 | MCP transport, dispatch, confinement, content inventory, canonical evidence, cache, and receipts |
-| **Total** | | **114** | Unique paths under the method above |
+| **Total** | | **115** | Unique paths under the method above |
 
 ---
 
@@ -101,7 +101,7 @@ These 6 scripts provide Bash and PowerShell install/uninstall entrypoints. `inst
 
 ## Utility Scripts
 
-These 55 scripts are the top-level `enzymes/*.py` and `enzymes/*.sh` files not already counted as lifecycle hooks. The subsection counts below are exclusive and sum to 55.
+These 56 scripts are the top-level `enzymes/*.py` and `enzymes/*.sh` files not already counted as lifecycle hooks. The subsection counts below are exclusive and sum to 55.
 
 ### 1. Master Pipeline Orchestrator (removed)
 
@@ -180,6 +180,7 @@ These 55 scripts are the top-level `enzymes/*.py` and `enzymes/*.sh` files not a
 | Script | Location | Purpose |
 |:-------|:---------|:--------|
 | **`common.sh`** | `enzymes/common.sh` | Shared bash library providing standardized output, error handling, config loading, and path resolutions. |
+| **`soma_python.sh`** | `enzymes/soma_python.sh` | Resolves a working Python 3.9+ interpreter for the bash scripts (`SOMA_PYTHON`, `soma_py`), skipping the Windows Store `python3` stub. |
 | **`soma_resolve.py`** | `enzymes/soma_resolve.py` | Centralized workspace resolution library (respecting `SOMA_ROOT`, CWD, and parent repository roots). |
 | **`soma_sleep.py`** | `enzymes/soma_sleep.py` | Memory consolidation engine executed at session close for offline evidence distillation and cell decay. |
 | **`escalation_sentinel.py`** | `enzymes/escalation_sentinel.py` | Python engine managing review mode configuration and steering rules for protocol escalation. |

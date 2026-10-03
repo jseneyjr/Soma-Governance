@@ -22,6 +22,8 @@ set -euo pipefail
 # ============================================================================
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "$SCRIPT_DIR/common.sh"
+RESOLVED_HOME=$(resolve_home)
 
 # Configurable data directory — defaults to Antigravity location
 SOMA_DATA_DIR="${SOMA_DATA_DIR:-$RESOLVED_HOME/.gemini/antigravity}"
@@ -32,6 +34,9 @@ SWEEP_LOG="$GOVERNANCE_DIR/sweep_log.jsonl"
 PROPOSALS="$GOVERNANCE_DIR/pending_proposals.md"
 TAXONOMY="$GOVERNANCE_DIR/taxonomy.json"
 SWEEP_SCANNER="$SCRIPT_DIR/sweep_session.py"
+# The sweep log and proposals are appended to; on a fresh home the directory
+# doesn't exist yet.
+mkdir -p "$GOVERNANCE_DIR"
 
 ACTIVE_ONLY="${1:-}"
 TIMESTAMP="$(date -u +"%Y-%m-%dT%H:%M:%SZ")"
@@ -70,7 +75,7 @@ if [ "$ACTIVE_ONLY" != "--active-only" ]; then
     # Only process sessions with >100 steps
     if [ "$step_count" -gt 100 ]; then
       echo "  🔍 $short_id ($step_count steps) — generating metrics..."
-      if python3 "$SWEEP_SCANNER" "$transcript" > "$metrics_file" 2>/dev/null; then
+      if soma_py "$SWEEP_SCANNER" "$transcript" > "$metrics_file" 2>/dev/null; then
         metrics_generated=$((metrics_generated + 1))
         echo "  ✅ $short_id: metrics generated"
       else
@@ -94,12 +99,12 @@ warning_report=""
 
 if [ -f "$AUDIT_LOG" ] && [ -s "$AUDIT_LOG" ]; then
   # Count warnings by rule
-  warning_tally="$(python3 -c "
+  warning_tally="$(soma_py -c "
 import json, sys
 from collections import Counter
 
 counts = Counter()
-with open('$AUDIT_LOG') as f:
+with open(sys.argv[1]) as f:
     for line in f:
         line = line.strip()
         if not line:
@@ -115,7 +120,7 @@ for rule, count in counts.most_common():
     flag = '⚠️  CONSIDER HARDENING' if count >= 3 else ''
     print(f'  {count}x {rule} {flag}')
     sys.stdout.flush()
-" 2>/dev/null || echo "  (parse error)")"
+" "$AUDIT_LOG" 2>/dev/null || echo "  (parse error)")"
 
   warnings_tallied="$(echo "$warning_tally" | wc -l)"
   echo "$warning_tally"
@@ -134,10 +139,10 @@ echo ""
 
 echo "📋 Check 3: Recomputing aggregate metrics..."
 
-metrics_summary="$(python3 -c "
-import json, os, glob
+metrics_summary="$(soma_py -c "
+import json, os, sys, glob
 
-metrics_dir = '$METRICS_DIR'
+metrics_dir = sys.argv[1]
 total_steps = 0
 total_waste = 0
 session_count = 0
@@ -180,7 +185,7 @@ rate = round(total_waste / total_steps * 100, 1) if total_steps > 0 else 0
 print(f'  Sessions: {session_count} (deep: {deep_sessions}, sweep: {sweep_sessions})')
 print(f'  Total steps: {total_steps:,}')
 print(f'  Total waste: {total_waste:,} ({rate}%)')
-" 2>/dev/null || echo "  (computation error)")"
+" "$METRICS_DIR" 2>/dev/null || echo "  (computation error)")"
 
 echo "$metrics_summary"
 echo ""
@@ -197,12 +202,12 @@ for transcript in $(find "$BRAIN_DIR" -name "transcript.jsonl" -mmin -120 2>/dev
     session_id="${rel%%/*}"
     short_id="${session_id:0:8}"
 
-    summary="$(python3 "$SWEEP_SCANNER" "$transcript" --summary-only 2>/dev/null || echo "{}")"
-    waste_rate="$(echo "$summary" | python3 -c "import json,sys; print(json.load(sys.stdin).get('waste_rate',0))" 2>/dev/null || echo "0")"
-    top_pattern="$(echo "$summary" | python3 -c "import json,sys; print(json.load(sys.stdin).get('top_pattern','unknown'))" 2>/dev/null || echo "unknown")"
+    summary="$(soma_py "$SWEEP_SCANNER" "$transcript" --summary-only 2>/dev/null || echo "{}")"
+    waste_rate="$(echo "$summary" | soma_py -c "import json,sys; print(json.load(sys.stdin).get('waste_rate',0))" 2>/dev/null || echo "0")"
+    top_pattern="$(echo "$summary" | soma_py -c "import json,sys; print(json.load(sys.stdin).get('top_pattern','unknown'))" 2>/dev/null || echo "unknown")"
 
     # Convert to percentage for comparison
-    waste_pct="$(python3 -c "import sys; print(int(float(sys.argv[1]) * 100))" "$waste_rate" 2>/dev/null || echo "0")"
+    waste_pct="$(soma_py -c "import sys; print(int(float(sys.argv[1]) * 100))" "$waste_rate" 2>/dev/null || echo "0")"
 
     if [ "$waste_pct" -gt 15 ]; then
       echo "  ⚠️  $short_id: ${step_count} steps, ~${waste_pct}% waste, top: $top_pattern"

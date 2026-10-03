@@ -3,7 +3,7 @@
 [![License: Apache 2.0](https://img.shields.io/badge/License-Apache_2.0-blue?style=flat-square)](LICENSE)
 [![Core Rules](https://img.shields.io/badge/Core_Rules-18-green?style=flat-square)](#-core-rules)
 [![Agent Skills](https://img.shields.io/badge/Agent_Skills-15-purple?style=flat-square)](#-agent-skills)
-[![Automation Scripts](https://img.shields.io/badge/Automation_Scripts-61-red?style=flat-square)](#%EF%B8%8F-automation-scripts)
+[![Automation Scripts](https://img.shields.io/badge/Automation_Scripts-62-red?style=flat-square)](#%EF%B8%8F-automation-scripts)
 [![Adaptive Rules](https://img.shields.io/badge/Adaptive_Rules-5_Types-orange?style=flat-square)](#-adaptive-rules)
 [![Version](https://img.shields.io/badge/Version-0.89.0-informational?style=flat-square)](docs/project/CHANGELOG.md)
 [![Blog Post](https://img.shields.io/badge/Blog-dev.to-black?style=flat-square&logo=devdotto)](https://dev.to/nseney1/rules-that-cant-prove-themselves-die-adaptive-governance-for-ai-coding-agents-25bn)
@@ -165,7 +165,7 @@ Soma models governance as a layered system of rules, skills, and automation. Eve
 ┌──────────────────────────────────────────────────────────────────────┐
 │  📐 CORE RULES (genome/)          18 Rules — inherited defaults      │
 │  🔧 AGENT SKILLS (organs/)       15 Skills — complex behaviors       │
-│  ⚙️  AUTOMATION (enzymes/)        61 Scripts — task automation        │
+│  ⚙️  AUTOMATION (enzymes/)        62 Scripts — task automation        │
 ├──────────────────────────────────────────────────────────────────────┤
 │  🛡️ VERIFICATION                  AST analysis tools                  │
 │     Layer 1: AST-based checks (import guards, complexity, coverage)  │
@@ -179,7 +179,7 @@ Soma models governance as a layered system of rules, skills, and automation. Eve
 |:------|:----------|:-----------------|
 | **Core Rules** | `genome/` | 18 rules — inherited behavioral defaults, rarely changed. |
 | **Agent Skills** | `organs/` | 15 skills — complex multi-step behaviors like adaptive-reviewer, genesis, security-audit. |
-| **Automation Scripts** | `enzymes/` | 61 scripts — task-specific automation (fitness scoring, rule creation, evidence pipeline). |
+| **Automation Scripts** | `enzymes/` | 62 scripts — task-specific automation (fitness scoring, rule creation, evidence pipeline). |
 | **Verification** | `immune_system/` | AST analysis tools for code checking. |
 | **Adaptive Rules** | `.soma/cells/` | Per-repo adaptive invariants. Generated, tested, evolved, or retired. |
 
@@ -280,7 +280,7 @@ Generate → Score (Confidence Decay) → Adapt → Differentiate → Prune / Re
 
 ## ⚙️ Automation Scripts
 
-Soma includes 61 task-specific scripts driving rule lifecycles, verification, and evidence pipelines. See [SCRIPTS.md](docs/architecture/scripts.md) for full documentation.
+Soma includes 62 task-specific scripts driving rule lifecycles, verification, and evidence pipelines. See [SCRIPTS.md](docs/architecture/scripts.md) for full documentation.
 
 ---
 
