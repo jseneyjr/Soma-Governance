@@ -27,7 +27,7 @@ develop ──→ release/v0.XX ──→ PR to main ──→ tag v0.XX.0 ─�
 8. **Tag release** (after merge): `git checkout main && git pull && git tag -a v0.XX.0 -m "<message>" && git push origin v0.XX.0`
 9. **Back-merge to develop**: `git checkout develop && git merge main -m "sync: merge main back to develop after v0.XX" && git push origin develop`
 10. **Create GitHub Release**: `gh release create v0.XX.0 --title "v0.XX.0 — <Theme>" --notes "<release notes>"`
-11. **Publish the validated artifacts**: the release event runs `publish.yml`, downloads the artifact produced by validation, verifies `SHA256SUMS` again, and uploads only the verified wheel and sdist. Do not rebuild in the publish job.
+11. **Publish the validated artifacts**: the release event runs `publish.yml`. It downloads the artifact that validation produced, verifies `SHA256SUMS` again, copies only the verified wheel and sdist into `publish-dist/`, and uploads them with `pypa/gh-action-pypi-publish` through **PyPI Trusted Publishing (OIDC)**. No PyPI API token is stored in the repository. The publish job runs in the `pypi` GitHub environment with `id-token: write`, and PyPI must list this repository, `publish.yml` and environment `pypi` as a trusted publisher. The `build-wheel` job signs build provenance for both files (`actions/attest-build-provenance`), and the publish action uploads PEP 740 attestations to PyPI. Do not rebuild in the publish job. To check provenance, run `gh attestation verify <file> --repo <owner>/<repo>`.
 12. **Cleanup**: `git push origin --delete release/v0.XX`
 
 ## Phase → Version Mapping
@@ -55,6 +55,10 @@ Before creating a release PR, verify:
 - [ ] Validation creates exactly one wheel and one sdist plus `SHA256SUMS`
 - [ ] Source-hidden smoke tests pass for both wheel and sdist
 - [ ] Publish downloads and digest-verifies the validated artifact; it does not rebuild
+- [ ] Publish uses OIDC Trusted Publishing (`pypi` environment, `id-token: write`); no `PYPI_API_TOKEN` secret or `twine` step
+- [ ] Build provenance attestations were created for the wheel and sdist
+- [ ] Workflows keep top-level `permissions: contents: read`, and every action is SHA-pinned (`tests/test_ci_workflows.py`)
+- [ ] `dependency-audit` (`pip-audit`) passes
 
 ### Documentation Hygiene (mandatory per release)
 

@@ -24,6 +24,14 @@ This project uses [Semantic Versioning](https://semver.org/).
 - **Recording an outcome left `.soma/evidence/.signals.lock` untracked** (BUG-040, #70): `evidence_lock()` keeps its lock file, and no ignore rule covered it, so `git add -A` would commit it. `.soma/evidence/.gitignore` now lists it. Regression tests: `tests/test_telemetry.py::TestEvidenceLockIgnoredByGit`, which also checks that the committed evidence files are still not ignored.
 - **Windows: `uninstall.sh` under Git Bash refused every path** (BUG-036, #62): MSYS paths (`/c/...`, `/tmp/...`) reached the confinement check in native Windows Python unconverted, so `os.path.isabs()` rejected them and nothing was removed. The check now maps them with `cygpath`, resolved from `PATH` by the shell, since a bare name in Windows Python also searches the current directory. Three defects behind it are fixed too: `read_manifest_field` wrote CRLF in the console code page, so every entry but the last, and non-ASCII names, silently dropped out of the plan; an entry it couldn't encode (a lone surrogate) ended the list early, and uninstall then exited 0 and deleted the manifest; and a refusal could crash while printing its own path. Hardening: on Windows the check also refuses path segments that end in a space or a dot, and `:` stream syntax, which Win32 would resolve to a different name than the one checked. Regression tests: the Git Bash path-form, Win32-normalisation and manifest-reader tests in `tests/test_uninstall_confinement.py`.
 
+### Security
+- **PyPI Trusted Publishing (OIDC)**: `publish.yml` no longer uses a long-lived `PYPI_API_TOKEN` or `twine`. The publish job runs in the `pypi` environment with `id-token: write` and uploads through `pypa/gh-action-pypi-publish`. It uploads only the files `verify_dist.py verify` printed, copied into `publish-dist/`, because `dist/` also holds `SHA256SUMS`. The build-once, digest-verified, no-rebuild chain is unchanged.
+- **Least-privilege tokens**: both workflows set top-level `permissions: contents: read`; only `build-wheel` (attestations) and `publish` (OIDC) are granted more, at job level.
+- **SHA-pinned actions**: every third-party action is pinned to a full commit SHA with a `# vX.Y.Z` comment; `.github/dependabot.yml` updates `github-actions` and `pip` weekly.
+- **Dependency audit**: a new `dependency-audit` job in `validate.yml` runs `pip-audit --strict .` on the runtime dependencies in `pyproject.toml` and fails on any finding. `pip-audit` is installed in CI only.
+- **Build provenance**: `build-wheel` signs SLSA provenance for the wheel and sdist with `actions/attest-build-provenance` on push and release builds. It is skipped on pull requests, because fork PRs get no OIDC token. The publish action also uploads PEP 740 attestations to PyPI.
+- Regression tests: `tests/test_ci_workflows.py`.
+
 ## [0.89.0] — 2026-10-02 — "MCP Execution Security"
 
 ### Added
