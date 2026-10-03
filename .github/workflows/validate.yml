@@ -12,7 +12,23 @@ permissions:
   contents: read
 
 jobs:
+  # Audits the resolved runtime dependencies declared in pyproject.toml.
+  # pip-audit is a CI-only tool; it is not a project dependency.
+  dependency-audit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install pip-audit
+        run: pip install pip-audit==2.10.1
+      - name: Audit project dependencies
+        run: pip-audit --strict .
+
   build-wheel:
+    needs: dependency-audit
     runs-on: ubuntu-latest
     # id-token + attestations are only for the provenance attestation step.
     # When called from publish.yml, the caller job must grant these too.
@@ -77,7 +93,7 @@ jobs:
         run: pip-audit --strict .
 
   validate:
-    needs: build-wheel
+    needs: [build-wheel, dependency-audit]
     strategy:
       matrix:
         os: [ubuntu-latest, macos-latest]
@@ -105,7 +121,7 @@ jobs:
 
       - name: Install test dependencies
         run: |
-          pip install pytest ruff hypothesis coverage pyyaml
+          pip install pytest==8.3.4 ruff==0.9.10 hypothesis==6.126.0 coverage==7.6.12 pyyaml==6.0.2
           pip install dist/*.whl
 
       # The unit suite below runs from the checkout (pythonpath = ["."]), so on
@@ -235,6 +251,7 @@ jobs:
           python -m pytest tests/
 
   validate-windows:
+    needs: [build-wheel, dependency-audit]
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0

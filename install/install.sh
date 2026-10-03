@@ -215,7 +215,8 @@ merge_mcp_config() {
   # itself (a workspace-local soma_mcp counts), but soma_py drops the CWD
   # entry and the workspace is appended LAST, so stdlib names (json.py,
   # os.py, ...) in the workspace can't shadow what soma_mcp imports (BUG-044).
-  if ! soma_py -c 'import sys; sys.path.append(sys.argv[1]); import soma_mcp' \
+  # Uses importlib.util.find_spec to check without executing top-level code.
+  if ! soma_py -c 'import sys, importlib.util; sys.path.append(sys.argv[1]); sys.exit(0 if importlib.util.find_spec("soma_mcp") is not None else 1)' \
        "$workspace" </dev/null >/dev/null 2>&1; then
     source_fallback="$REPO_DIR"
   fi
