@@ -113,7 +113,7 @@ def test_remedy_posix_absolute_outside_home():
 
 
 def test_remedy_fish():
-    assert remedy("fish", "/home/u/.local/bin", home="/home/u") == "fish_add_path $HOME/.local/bin"
+    assert remedy("fish", "/home/u/.local/bin", home="/home/u") == 'fish_add_path "$HOME/.local/bin"'
 
 
 def test_remedy_pwsh_sets_user_path():

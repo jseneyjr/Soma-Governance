@@ -218,6 +218,16 @@ function Write-InstallManifest {
     if (Test-Path -LiteralPath $versionFile -PathType Leaf) {
         $version = (Get-Content -LiteralPath $versionFile -Raw -Encoding UTF8).Trim()
     }
+    $manifestPath = Join-Path $manifestDir "manifest.json"
+    $existingPathLines = $null
+    if ($InstallScope -ne "local" -and (Test-Path -LiteralPath $manifestPath -PathType Leaf)) {
+        try {
+            $rawExisting = Get-Content -LiteralPath $manifestPath -Raw -Encoding UTF8 | ConvertFrom-Json
+            if ($null -ne $rawExisting -and $null -ne $rawExisting.path_lines) {
+                $existingPathLines = $rawExisting.path_lines
+            }
+        } catch {}
+    }
     $manifest = [ordered]@{
         "version" = $version
         "installed_at" = [DateTime]::UtcNow.ToString("yyyy-MM-ddTHH:mm:ssZ")
@@ -231,7 +241,9 @@ function Write-InstallManifest {
         "hooks" = @($InstalledHooks)
         "mcp_configs" = @($InstalledMcpConfigs)
     }
-    $manifestPath = Join-Path $manifestDir "manifest.json"
+    if ($null -ne $existingPathLines) {
+        $manifest["path_lines"] = $existingPathLines
+    }
     Write-Utf8File -Path $manifestPath -Content (($manifest | ConvertTo-Json -Depth 8) + "`n")
 }
 

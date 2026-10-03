@@ -183,7 +183,7 @@ def test_fish_honours_xdg_and_creates_parent(env_layout):
     assert do_fix(env_layout, shell="fish", extra_env={"XDG_CONFIG_HOME": str(xdg)}) == 0
     cfg = xdg / "fish" / "config.fish"
     assert cfg.read_text(encoding="utf-8") == (
-        "fish_add_path $HOME/.local/bin  " + FIX_PATH_MARKER + "\n")
+        'fish_add_path "$HOME/.local/bin"  ' + FIX_PATH_MARKER + "\n")
 
 
 def test_fish_default_location(env_layout):

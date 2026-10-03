@@ -554,6 +554,10 @@ function Remove-SomaPathLine {
     $tempPath = "$Path.soma.$([Guid]::NewGuid().ToString('N')).tmp"
     try {
         [System.IO.File]::WriteAllBytes($tempPath, $out)
+        try {
+            $acl = Get-Acl -LiteralPath $Path
+            Set-Acl -LiteralPath $tempPath -AclObject $acl
+        } catch {}
         Move-Item -LiteralPath $tempPath -Destination $Path -Force
     } finally {
         if (Test-Path -LiteralPath $tempPath -PathType Leaf) {
@@ -687,6 +691,12 @@ if ($Manifest) {
             $pl = Get-ManifestProperty -Object $entry -Name "line"
             if (-not ($pf -is [string]) -or -not ($pl -is [string])) {
                 $unsafeEntries += "path_lines entry: $entry (file and line must be strings)"
+                continue
+            }
+            $allowedRcBasenames = @(".bashrc", ".bash_profile", ".zshrc", "config.fish")
+            $pfBase = [System.IO.Path]::GetFileName($pf)
+            if ($allowedRcBasenames -notcontains $pfBase) {
+                $unsafeEntries += "path_lines entry: $pf (file basename must be one of .bashrc, .bash_profile, .zshrc, config.fish)"
                 continue
             }
             if ($pl.IndexOfAny([char[]]@("`r", "`n", [char]0)) -ge 0 -or

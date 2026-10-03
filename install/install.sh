@@ -167,7 +167,7 @@ write_manifest() {
   # lines in the user's rc file with nothing left to tell uninstall about them.
   local pl_suffix="" pl_json="[]"
   if [ "$scope" != "local" ] && [ -f "$target_json" ] && grep -q '"path_lines"' "$target_json"; then
-    if resolve_python && pl_json="$(SOMA_MANIFEST="$target_json" soma_python -I -S -c '
+    if soma_resolve_python && pl_json="$(SOMA_MANIFEST="$target_json" soma_py -I -S -c '
 import json, os
 with open(os.environ["SOMA_MANIFEST"], "r", encoding="utf-8") as fh:
     pl = json.load(fh).get("path_lines")

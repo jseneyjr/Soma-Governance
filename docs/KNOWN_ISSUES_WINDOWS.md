@@ -48,6 +48,9 @@ Under Git Bash, `resolve_home()` prefers `USERPROFILE` over `HOME`, and six call
 ### BUG-012: Implicit cp1252 encoding ([#49](https://github.com/nseney1/Soma-Governance/issues/49))
 On v0.89.0, `soma status` exits 1 with `UnicodeEncodeError` when stdout is cp1252 (for example, redirected output). **Workaround on v0.89.0:** `$env:PYTHONIOENCODING = "utf-8"`. `soma` and `enzymes/verify_bug_registry.py` now replace characters the console can't encode. Cell listing already reads UTF-8 explicitly since v0.89.0.
 
+### BUG-037: Git Bash `python3` resolved to Windows Store stub ([#64](https://github.com/nseney1/Soma-Governance/issues/64))
+A python.org install provides `python.exe` but no `python3.exe`, so in Git Bash `python3` resolved to the App Installer stub. `command -v python3` succeeded but execution failed, preventing hook generation and shell-script Python calls. `enzymes/soma_python.sh` now resolves a working Python 3.9+ interpreter (`soma_resolve_python` / `soma_py`) by probing `python3`, `python`, and `py -3`.
+
 ### BUG-013: Windows-only test failures ([#50](https://github.com/nseney1/Soma-Governance/issues/50))
 The tests embedded unescaped Windows paths in generated files, compared paths as POSIX strings, wrote CRLF where bytes mattered, hard-coded `/bin/bash`, and required symlink privileges. They now escape paths, compare normalized paths, write LF, resolve bash (or skip), and skip symlink and execute-bit checks Windows can't satisfy. CI now runs the suite on Windows (`test-windows`, v0.90; [#56](https://github.com/nseney1/Soma-Governance/issues/56)).
 
@@ -63,11 +66,6 @@ Write and execute tools now use single-use receipts obtained from `soma_request_
 The PowerShell scripts now carry a UTF-8 BOM, and CI dry-runs the installer under Windows PowerShell 5.1 as well as PowerShell 7. This fixes parsing, not the separate rule-content decoding problem in BUG-014.
 
 ## Open issues
-
-### BUG-037: Git Bash `python3` may be the Windows Store stub ([#64](https://github.com/nseney1/Soma-Governance/issues/64))
-A python.org install may not provide `python3.exe`, so `python3` resolves to the App Installer stub. `command -v python3` succeeds but execution fails, preventing hook generation and other shell-script Python calls.
-
-**Workaround:** disable the `python3.exe` App execution alias and put a real `python3` on `PATH`, such as a shim that invokes `python.exe`.
 
 ### BUG-032: PowerShell installer does not install lifecycle hooks
 `install.ps1` skips hooks because they require Bash, so post-session fitness updates never run after a native PowerShell install.

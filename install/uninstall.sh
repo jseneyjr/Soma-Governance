@@ -301,6 +301,8 @@ if mode == "manifest":
                 continue
             f, line = e.get("file"), e.get("line")
             why = check(f, home_roots, "rcfile")
+            if not why and (not isinstance(f, str) or os.path.basename(f) not in {".bashrc", ".bash_profile", ".zshrc", "config.fish"}):
+                why = "file basename must be one of .bashrc, .bash_profile, .zshrc, config.fish"
             if not why and (not isinstance(line, str) or any(c in line for c in "\n\r\0")):
                 why = "line must be a single-line string"
             if not why and not line.endswith("# added by soma doctor --fix-path"):
@@ -312,12 +314,18 @@ if mode == "manifest":
     sys.exit(1 if bad else 0)
 elif mode == "plan":
     roots = env_roots("SOMA_ROOTS")
+    home_roots = env_roots("SOMA_HOME_ROOTS")
     bad = 0
     for raw in sys.stdin.buffer.read().split(b"\0"):
         if not raw:
             continue
-        target = os.fsdecode(raw)
-        why = check(target, roots, "remove")
+        raw_str = os.fsdecode(raw)
+        if raw_str.startswith("rcfile:"):
+            target = raw_str[7:]
+            why = check(target, home_roots, "rcfile")
+        else:
+            target = raw_str
+            why = check(target, roots, "remove")
         if why:
             print("  UNSAFE plan entry: %s  (%s)" % (target, why))
             bad += 1
@@ -595,7 +603,7 @@ queue_claude_settings() {
 #          if doctor created it and nothing else is left.
 #   exit 0 cleaned, 3 no recorded line present (file untouched), 4 refused.
 rc_lines_py() {
-  SOMA_MANIFEST="$MANIFEST_PATH" SOMA_HOME="$RESOLVED_HOME" soma_python -I -S - "$@" <<'PY'
+  SOMA_MANIFEST="$MANIFEST_PATH" SOMA_HOME="$RESOLVED_HOME" soma_py -I -S - "$@" <<'PY'
 import json
 import os
 import stat
@@ -604,9 +612,10 @@ import tempfile
 
 sys.stdout.reconfigure(encoding="utf-8", errors="surrogateescape", newline="\n")
 MARK = "# added by soma doctor --fix-path"
+ALLOWED_RC_BASENAMES = {".bashrc", ".bash_profile", ".zshrc", "config.fish"}
 with open(os.environ["SOMA_MANIFEST"], "r", encoding="utf-8") as fh:
     entries = [e for e in (json.load(fh).get("path_lines") or [])
-               if isinstance(e, dict) and isinstance(e.get("file"), str)]
+               if isinstance(e, dict) and isinstance(e.get("file"), str) and os.path.basename(e["file"]) in ALLOWED_RC_BASENAMES]
 if sys.argv[1] == "list":
     seen = []
     for e in entries:
@@ -924,11 +933,16 @@ if [ -z "${SOMA_PYTHON:-}" ]; then
 else
   plan_rc=0
   plan_out="$(
-    for p in ${FILES_TO_REMOVE[@]+"${FILES_TO_REMOVE[@]}"} ${DIRS_TO_REMOVE[@]+"${DIRS_TO_REMOVE[@]}"} \
-             ${MODIFY_FILES[@]+"${MODIFY_FILES[@]}"} ${MCP_CONFIGS_TO_CLEAN[@]+"${MCP_CONFIGS_TO_CLEAN[@]}"} \
-             ${CONFIG_TO_REMOVE[@]+"${CONFIG_TO_REMOVE[@]}"} ${RC_FILES_TO_CLEAN[@]+"${RC_FILES_TO_CLEAN[@]}"}; do
-      [ "$p" = "$MANIFEST_PATH" ] || printf '%s\0' "$p"
-    done | SOMA_ROOTS="$(join_lines "${SINK_ROOTS[@]}")" soma_py -I -S -c "$PATH_CHECK_PY" plan 2>&1
+    {
+      for p in ${FILES_TO_REMOVE[@]+"${FILES_TO_REMOVE[@]}"} ${DIRS_TO_REMOVE[@]+"${DIRS_TO_REMOVE[@]}"} \
+               ${MODIFY_FILES[@]+"${MODIFY_FILES[@]}"} ${MCP_CONFIGS_TO_CLEAN[@]+"${MCP_CONFIGS_TO_CLEAN[@]}"} \
+               ${CONFIG_TO_REMOVE[@]+"${CONFIG_TO_REMOVE[@]}"}; do
+        [ "$p" = "$MANIFEST_PATH" ] || printf '%s\0' "$p"
+      done
+      for r in ${RC_FILES_TO_CLEAN[@]+"${RC_FILES_TO_CLEAN[@]}"}; do
+        printf 'rcfile:%s\0' "$r"
+      done
+    } | SOMA_ROOTS="$(join_lines "${SINK_ROOTS[@]}")" SOMA_HOME_ROOTS="$(join_lines "${ALLOWED_ROOTS[@]}")" soma_py -I -S -c "$PATH_CHECK_PY" plan 2>&1
   )" || plan_rc=$?
   if [ "$plan_rc" -ne 0 ]; then
     log_error "The removal plan contains paths outside the allowed roots:"

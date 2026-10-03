@@ -111,7 +111,7 @@ def remedy(shell: str, directory: str, home: str, os_name: str | None = None) ->
     if shell == "pwsh":
         return f'$env:PATH = "{shown}:" + $env:PATH'
     if shell == "fish":
-        return f"fish_add_path {shown}"
+        return f'fish_add_path "{shown}"'
     return f'export PATH="{shown}:$PATH"'
 
 
