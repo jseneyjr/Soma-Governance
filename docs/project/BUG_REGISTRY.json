@@ -858,6 +858,9 @@
       ],
       "regression_test": "tests/test_bug_registry.py::TestRegressionRunBudget::test_budget_grows_with_the_registry",
       "pattern": "Fixed timeout budget for growing test suite",
+      "changelog_ref": "Unreleased"
+    },
+    {
       "id": "BUG-047",
       "status": "fixed",
       "title": "soma init pre-commit hook aborted every commit with 'soma: not found' when soma was not on the hook's PATH",

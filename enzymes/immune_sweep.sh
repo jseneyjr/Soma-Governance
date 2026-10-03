@@ -201,7 +201,7 @@ active_report=""
 # active_report in a subshell, and fd 3 keeps the list away from the loop
 # body's stdin. (bash 3.2 compatible.)
 while IFS= read -r -d '' transcript <&3; do
-  step_count="$(wc -l < "$transcript" 2>/dev/null || echo 0)"
+  step_count="$(wc -l < "$transcript" 2>/dev/null | tr -d ' ' || echo 0)"
   if [ "$step_count" -gt 50 ]; then
     rel="${transcript#"$BRAIN_DIR"/}"
     session_id="${rel%%/*}"

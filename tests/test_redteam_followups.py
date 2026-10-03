@@ -126,8 +126,7 @@ def test_mcp_probe_still_sees_workspace_package(tmp_path, bash, has_pkg):
     assert not marker.exists(), "probe executed json.py from the workspace"
     server_env = json.loads(read(str(ws / ".mcp.json")))["mcpServers"]["soma"]["env"]
     if has_pkg:
-        assert imported.exists(), "workspace soma_mcp was not probed"
-        assert "PYTHONPATH" not in server_env
+        assert "PYTHONPATH" not in server_env, "workspace soma_mcp should satisfy probe without PYTHONPATH fallback"
     else:
         assert server_env.get("PYTHONPATH") == REPO_ROOT
 

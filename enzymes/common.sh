@@ -402,9 +402,9 @@ install_hooks() {
   local tmp="$target_dir/.hooks.json.$$.tmp"
   local rc=0
   (
-    trap '[ -z "$tmp" ] || rm -f -- "$tmp"' EXIT
-    trap 'exit 130' INT
-    trap 'exit 143' TERM
+    trap "rm -f -- \"$tmp\"" EXIT
+    trap "rm -f -- \"$tmp\"; exit 130" INT
+    trap "rm -f -- \"$tmp\"; exit 143" TERM
     soma_py -c "
 import json, os, stat, sys
 with open(sys.argv[1], encoding='utf-8') as fh:
