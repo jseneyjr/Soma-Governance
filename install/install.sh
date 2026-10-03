@@ -261,12 +261,12 @@ try:
     if os.path.exists(path):
         os.chmod(temp_path, stat.S_IMODE(os.stat(path).st_mode))
     os.replace(temp_path, path)
-except Exception:
-    try:
-        os.unlink(temp_path)
-    except FileNotFoundError:
-        pass
-    raise
+finally:
+    if os.path.exists(temp_path):
+        try:
+            os.unlink(temp_path)
+        except OSError:
+            pass
 PY
 }
 

@@ -172,7 +172,7 @@ if [ -d "$LOGS_REPO/governance" ]; then
 
             # Update cursor so we don't double-alert non-critical
             if [ -f "$AUTO_LOG" ]; then
-                wc -l < "$AUTO_LOG" > "$CURSOR_FILE"
+                wc -l < "$AUTO_LOG" | tr -d ' ' > "$CURSOR_FILE"
             fi
 
             echo "[{\"ephemeralMessage\": \"🔴 GOVERNANCE: $FINDING_COUNT critical change(s) were AUTO-APPLIED to your steering rules. Review: cat $LAST_CRITICAL\"}]"
@@ -180,10 +180,10 @@ if [ -d "$LOGS_REPO/governance" ]; then
             # 2. Check for genuinely new non-critical findings (cursor-based)
             NEW_FINDINGS=0
             if [ -f "$AUTO_LOG" ]; then
-                TOTAL_LINES=$(wc -l < "$AUTO_LOG")
+                TOTAL_LINES=$(wc -l < "$AUTO_LOG" | tr -d ' ')
                 LAST_SEEN=0
                 if [ -f "$CURSOR_FILE" ]; then
-                    LAST_SEEN=$(cat "$CURSOR_FILE" 2>/dev/null || echo "0")
+                    LAST_SEEN=$(tr -d ' ' < "$CURSOR_FILE" 2>/dev/null || echo "0")
                 fi
                 NEW_FINDINGS=$((TOTAL_LINES - LAST_SEEN))
             fi

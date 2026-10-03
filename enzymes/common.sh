@@ -371,7 +371,7 @@ install_hooks() {
   local template="$repo_dir/install/hooks.json.template"
   # Fallback: check repo root for backward compatibility
   [ ! -f "$template" ] && template="$repo_dir/hooks.json.template"
-  local scripts_dir="$repo_dir/enzymes"
+  local scripts_dir="$(normalize_path "$repo_dir/enzymes")"
   local target="$target_dir/hooks.json"
 
   if [ ! -f "$template" ]; then

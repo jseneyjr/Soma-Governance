@@ -1068,8 +1068,14 @@ if (-not $DryRun) {
         Assert-SafeSinkPath -Path $d -RejectFinalReparsePoint
         if (Test-Path -LiteralPath $d -PathType Container) {
             try {
-                Remove-Item -LiteralPath $d -Recurse -Force -ErrorAction Stop
-                Write-LogInfo "removed $d\"
+                $item = Get-Item -LiteralPath $d -Force -ErrorAction Stop
+                if ($item.Attributes.HasFlag([System.IO.FileAttributes]::ReparsePoint)) {
+                    Remove-Item -LiteralPath $d -Force -ErrorAction Stop
+                    Write-LogInfo "removed junction $d\"
+                } else {
+                    Remove-Item -LiteralPath $d -Recurse -Force -ErrorAction Stop
+                    Write-LogInfo "removed $d\"
+                }
             } catch {
                 Set-Failure "could not remove $d : $($_.Exception.Message)"
             }

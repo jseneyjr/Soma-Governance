@@ -203,7 +203,7 @@ def test_pwsh_and_unknown_get_guidance_only(env_layout, capsys, shell):
 
 
 def test_already_on_path_changes_nothing(env_layout, capsys):
-    rc = do_fix(env_layout, extra_env={"PATH": f"{env_layout['scripts']}:/usr/bin"})
+    rc = do_fix(env_layout, extra_env={"PATH": f"{env_layout['scripts']}{os.pathsep}/usr/bin"})
     assert rc == 0
     assert "already on PATH" in capsys.readouterr().out
     assert not (env_layout["home"] / ".zshrc").exists()
