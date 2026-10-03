@@ -89,6 +89,10 @@ def _check_cli_resolvable() -> bool:
         print(f"  ✅ soma CLI resolvable ({path})")
         return True
     print("  ❌ soma CLI not found on PATH")
+    from soma_cli.pathcheck import build_hint
+    hint = build_hint()
+    if hint:
+        print("\n".join("    " + line for line in hint.splitlines()))
     return False
 
 

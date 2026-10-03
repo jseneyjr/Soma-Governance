@@ -50,7 +50,8 @@ def _script_groups():
         },
         "CLI Commands": {ROOT / "soma"} | {
             path for path in (ROOT / "soma_cli").iterdir()
-            if path.is_file() and path.suffix == ".py" and path.name != "__init__.py"
+            if path.is_file() and path.suffix == ".py"
+            and path.name not in {"__init__.py", "__main__.py"}
         },
         "Install Scripts": {
             ROOT / "install.sh", ROOT / "install.ps1",

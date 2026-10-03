@@ -38,6 +38,28 @@ make install SOMA_PLATFORM=gemini
 
 > **PEP 668 (externally managed Python)?** Use an isolated virtual environment. If that is not possible, `pip install --user soma-governance` may be appropriate for your system.
 
+> **Tip:** for a user-wide CLI, `pipx install soma-governance` keeps Soma in its own environment and `pipx ensurepath` puts it on `PATH` for you.
+
+### Verify the install
+
+```bash
+soma --version
+soma doctor
+```
+
+### `soma: command not found`?
+
+`pip install --user` puts `soma` in your user scripts directory (`~/.local/bin` on Linux), which is often not on `PATH`. zsh in particular does not read `~/.profile`. Run `python3 -m soma_cli doctor` (use `python` on Windows): it prints the directory and the exact line for your shell. Typical fixes:
+
+| Shell | Add to | Line |
+|:--|:--|:--|
+| zsh | `~/.zshrc` | `export PATH="$HOME/.local/bin:$PATH"` |
+| bash | `~/.bashrc` (macOS: `~/.bash_profile`) | `export PATH="$HOME/.local/bin:$PATH"` |
+| fish | `~/.config/fish/config.fish` | `fish_add_path $HOME/.local/bin` |
+| PowerShell | user `Path` variable | the `[Environment]::SetEnvironmentVariable(...)` line printed by `soma doctor` |
+
+Open a new terminal afterwards. Until then, `python3 -m soma_cli <command>` works anywhere `soma` would.
+
 ## First Run with `soma init`
 
 `soma init` detects Gemini, Claude Code, Cursor, and Copilot markers. If detection is ambiguous, select one of those platforms explicitly.

@@ -47,10 +47,15 @@ info: ## Show current configuration
 	@echo "└───────────────────────────────┘"
 
 install: ## Install for configured platform (SOMA_PLATFORM)
-	@pip install --user -e . --quiet 2>/dev/null || pip install --user --break-system-packages -e . --quiet 2>/dev/null || pip install -e . --quiet 2>/dev/null || echo "  ⚠️  pip install -e . failed (soma CLI may not be on PATH)"
-	@if ! echo "$$PATH" | grep -q "$$HOME/.local/bin"; then \
-	  echo "  ℹ️  Add ~/.local/bin to your PATH: export PATH=\"$$HOME/.local/bin:\$$PATH\""; \
-	fi
+	@log=$$(mktemp); trap 'rm -f "$$log"' EXIT INT TERM; \
+	if python3 -m pip install --user -e . --quiet 2>"$$log" \
+	  || python3 -m pip install --user --break-system-packages -e . --quiet 2>>"$$log" \
+	  || python3 -m pip install -e . --quiet 2>>"$$log"; then :; else \
+	  echo "  ⚠️  pip install -e . failed (soma CLI may not be on PATH). pip reported:"; \
+	  sed 's/^/      /' "$$log"; \
+	fi; \
+	rm -f "$$log"
+	@# install.sh ends with shell-aware PATH guidance if `soma` doesn't resolve (BUG-041).
 	@bash install/install.sh $(SOMA_PLATFORM)
 
 install-gemini: ## Install rules for Gemini/Antigravity (alias)

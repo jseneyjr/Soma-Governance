@@ -44,6 +44,8 @@ soma init --yes
 soma status
 ```
 
+> **`soma: command not found`** (common under zsh after `pip install --user`)? Run `python3 -m soma_cli doctor` for the exact `PATH` line for your shell, or see [QUICKSTART.md](QUICKSTART.md#soma-command-not-found).
+
 <details>
 <summary>Alternative install methods</summary>
 

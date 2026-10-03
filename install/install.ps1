@@ -802,3 +802,26 @@ switch ($Platform) {
 if (-not $DryRun) {
     Write-InstallManifest
 }
+
+# CLI PATH guidance (BUG-041). Advisory only: prints the line to run, never
+# edits the user's environment, and never fails the install. Runs from the
+# Soma checkout so the governed project cannot shadow soma_cli via sys.path[0].
+if (-not $DryRun -and -not (Get-Command soma -ErrorAction SilentlyContinue)) {
+    $savedExitCode = $LASTEXITCODE
+    Push-Location -LiteralPath $RepoDir
+    try {
+        foreach ($py in @("python", "python3")) {
+            if (-not (Get-Command $py -ErrorAction SilentlyContinue)) { continue }
+            try {
+                $hint = & $py -m soma_cli.pathcheck --hint 2>$null
+                if ($LASTEXITCODE -eq 0) {
+                    if ($hint) { Write-Host ""; $hint | ForEach-Object { Write-Host $_ } }
+                    break
+                }
+            } catch { }
+        }
+    } finally {
+        Pop-Location
+        $global:LASTEXITCODE = $savedExitCode
+    }
+}

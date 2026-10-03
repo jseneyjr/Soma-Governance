@@ -8,6 +8,23 @@ from __future__ import annotations
 
 import argparse
 import sys
+from pathlib import Path
+
+
+def _version() -> str:
+    try:
+        from importlib.metadata import PackageNotFoundError, version
+        try:
+            return version("soma-governance")
+        except PackageNotFoundError:
+            pass
+    except ImportError:
+        pass
+    version_file = Path(__file__).resolve().parent.parent / "VERSION"
+    try:
+        return version_file.read_text(encoding="utf-8").strip()
+    except OSError:
+        return "unknown"
 
 
 def _build_parser() -> argparse.ArgumentParser:
@@ -15,6 +32,8 @@ def _build_parser() -> argparse.ArgumentParser:
         prog="soma",
         description="Soma Governance — make AI coding agents trustworthy",
     )
+    parser.add_argument("--version", action="version",
+                        version=f"soma {_version()}")
     sub = parser.add_subparsers(dest="command")
 
     # soma init

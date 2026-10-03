@@ -1,10 +1,10 @@
 # Scripts Reference
 
-This document catalogs 114 executable scripts, command modules, SDK modules, and MCP/core modules in the Soma governance framework.
+This document catalogs 115 executable scripts, command modules, SDK modules, and MCP/core modules in the Soma governance framework.
 
 ## Counting Method
 
-Counts are generated from the v0.89.0 source tree with mutually exclusive categories: package initializers (`__init__.py`, `__main__.py`) are excluded; the six lifecycle enzymes plus `install/hooks/pre-commit` are counted only as lifecycle scripts; all remaining top-level `enzymes/*.py` and `enzymes/*.sh` files are utilities; installer wrappers are counted separately; and all non-initializer `soma_core/*.py` modules are grouped with the MCP modules. This produces 114 unique paths with no double counting.
+Counts are generated from the v0.89.0 source tree with mutually exclusive categories: package initializers (`__init__.py`, `__main__.py`) are excluded; the six lifecycle enzymes plus `install/hooks/pre-commit` are counted only as lifecycle scripts; all remaining top-level `enzymes/*.py` and `enzymes/*.sh` files are utilities; installer wrappers are counted separately; and all non-initializer `soma_core/*.py` modules are grouped with the MCP modules. This produces 115 unique paths with no double counting.
 
 ## Summary by Category
 
@@ -12,12 +12,12 @@ Counts are generated from the v0.89.0 source tree with mutually exclusive catego
 |:---------|:----------------------------|:------|:------------|
 | [Lifecycle Scripts (Hooks)](#lifecycle-scripts-hooks--bash) | bash (`enzymes/`, `install/hooks/`) | 7 | Environment, agent execution, and pre-commit lifecycle hooks |
 | [Verification Scripts](#verification-scripts--python) | Python (`immune_system/verification/`) | 13 | Deterministic AST checkers, coverage tools, and adversarial verification |
-| [CLI Commands](#cli-commands--python-soma_cli) | Python and bash (`soma_cli/`, root) | 16 | CLI launcher and command implementation modules |
+| [CLI Commands](#cli-commands--python-soma_cli) | Python and bash (`soma_cli/`, root) | 17 | CLI launcher and command implementation modules |
 | [Install Scripts](#install-scripts--bash-and-powershell) | Bash and PowerShell (`install/`, root) | 6 | Platform installers, uninstallers, and root wrappers |
 | [Utility Scripts](#utility-scripts) | Python and bash (`enzymes/`) | 55 | Cell genetics, runtime engines, evidence, telemetry, and shared utilities |
 | [SDK Modules](#sdk-modules--python-soma_sdk) | Python (`soma_sdk/`) | 8 | Canonical scoring, parsing, telemetry, hot-zone, and governance APIs |
 | [MCP and Core Modules](#mcp-and-core-modules) | Python (`soma_mcp/`, `soma_core/`) | 9 | MCP transport, dispatch, confinement, content inventory, canonical evidence, cache, and receipts |
-| **Total** | | **114** | Unique paths under the method above |
+| **Total** | | **115** | Unique paths under the method above |
 
 ---
 
@@ -76,6 +76,7 @@ These 16 paths provide the root `soma` launcher and 15 non-initializer Python mo
 | **`init.py`** | `soma_cli/init.py` | `soma init`: Initializes rules for Gemini, Claude Code, Cursor, or Copilot; it does not auto-detect Kiro. |
 | **`migration.py`** | `soma_cli/migration.py` | Generation-fenced evidence cutover: locks writers, reconciles legacy ledgers into canonical `signals.jsonl`, snapshots source bytes with `SHA256SUMS`, atomically publishes converted signals, then advances the epoch. |
 | **`oracle.py`** | `soma_cli/oracle.py` | `soma oracle`: Cell health classification, diagnostics, and pruning recommendations (wraps `oracle_checkpoint.py`). |
+| **`pathcheck.py`** | `soma_cli/pathcheck.py` | Shell-aware PATH guidance: finds where pip installed `soma` and prints the line to add for zsh, bash, fish or PowerShell. Used by `soma doctor` and the installers; never edits dotfiles. |
 | **`promote.py`** | `soma_cli/promote.py` | `soma promote`: Evaluates and displays high-performing local cells eligible for promotion to forest-floor rules. |
 | **`report.py`** | `soma_cli/report.py` | `soma report`: Session report card showing triggered rules, event counts, and ASCII activity distributions. |
 | **`status.py`** | `soma_cli/status.py` | `soma status`: Displays active rules, cell inventory, operational metrics, and governance status. |
