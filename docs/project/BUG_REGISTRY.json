@@ -586,16 +586,19 @@
     {
       "id": "BUG-033",
       "issue_url": "https://github.com/nseney1/Soma-Governance/issues/55",
-      "status": "open",
+      "status": "fixed",
       "title": "`soma status` reports the wrong core-rule count for installer-based Claude setups",
       "discovered_in": "v0.88.2",
+      "fixed_in": "Unreleased",
       "root_cause": "path_error",
       "severity": "low",
-      "description": "install.sh/install.ps1 merge all rules into ~/.claude/CLAUDE.md, but soma_cli/status.py globs the rules directory for *.md excluding CLAUDE.md, and with no loose files it falls back to the package's own genome/. Reproduced on v0.89.0 with an isolated HOME: a 1-rule CLAUDE.md reports '19 active' (the genome/ count); the same CLAUDE.md plus 2 loose .md files reports '2 active'.",
+      "description": "install.sh/install.ps1 merge all rules into ~/.claude/CLAUDE.md, but soma_cli/status.py globs the rules directory for *.md excluding CLAUDE.md, and with no loose files it falls back to the package's own genome/. Reproduced on v0.89.0 with an isolated HOME: a 1-rule CLAUDE.md reports '19 active' (the genome/ count); the same CLAUDE.md plus 2 loose .md files reports '2 active'. Fixed: status now parses the Soma sections of CLAUDE.md in both formats that write it (the installers' '# Soma Governance Rules' header with '---' + H1 per rule, and soma init's SOMA:START/END block with '## <stem>' sections), adds loose rule files, drops merged sections that duplicate a loose file by stem, frontmatter id or H1, and no longer falls back to genome/ when CLAUDE.md holds Soma content. Merged installer sections are named by mapping their H1 back to the packaged rule id, so trigger counts still match.",
       "affected_files": [
         "soma_cli/status.py"
       ],
-      "pattern": "Status reads a different artifact than the installer writes"
+      "regression_test": "tests/test_status_claude_md.py",
+      "pattern": "Status reads a different artifact than the installer writes",
+      "changelog_ref": "Unreleased"
     },
     {
       "id": "BUG-034",
@@ -743,6 +746,31 @@
       ],
       "regression_test": "tests/test_telemetry.py::TestEvidenceLockIgnoredByGit::test_lock_file_is_ignored",
       "pattern": "Runtime lock file written inside the working tree without an ignore rule",
+      "changelog_ref": "Unreleased"
+    },
+    {
+      "id": "BUG-041",
+      "issue_url": null,
+      "status": "fixed",
+      "title": "soma CLI not found under zsh after pip install --user, with no guidance",
+      "discovered_in": "v0.89.0",
+      "fixed_in": "Unreleased",
+      "root_cause": "platform_compat",
+      "severity": "moderate",
+      "description": "pip install --user puts the soma console script in the user scripts directory (~/.local/bin on Linux). Debian/Ubuntu add it to PATH only in ~/.profile, which zsh does not read, so on a stock oh-my-zsh setup `soma` is 'command not found'. Seen on 2026-10-03. Nothing said why: the Makefile discarded pip's stderr (hiding pip's own not-on-PATH warning) and its PATH check was a substring grep for $HOME/.local/bin, wrong for venvs, macOS and Windows; soma doctor reported the failure without a remedy; `python3 -m soma_cli` did not work; and the docs never mentioned PATH. Fixed with soma_cli/pathcheck.py, which finds the directory pip used (sysconfig scripts paths), checks exact PATH entries, detects zsh/bash/fish/PowerShell and prints the one line to add and the rc file it belongs in. It never edits dotfiles. soma doctor, the end of install.sh and install.ps1 print it; the Makefile now uses python3 -m pip and shows pip's errors only when every install attempt fails. Also added soma_cli/__main__.py and soma --version, and a troubleshooting section in QUICKSTART.md. MCP was not affected: its config launches python3 -m soma_mcp.",
+      "affected_files": [
+        "soma_cli/pathcheck.py",
+        "soma_cli/doctor.py",
+        "soma_cli/cli.py",
+        "soma_cli/__main__.py",
+        "install/install.sh",
+        "install/install.ps1",
+        "Makefile",
+        "QUICKSTART.md",
+        "README.md"
+      ],
+      "regression_test": "tests/test_pathcheck.py",
+      "pattern": "Installer assumes the user's shell reads the same startup file as bash",
       "changelog_ref": "Unreleased"
     }
   ]

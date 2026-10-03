@@ -723,3 +723,15 @@ if [ "${INSTALL_GIT_HOOKS:-false}" = "true" ]; then
     echo "No .git/hooks directory found, skipping pre-commit hook installation."
   fi
 fi
+
+# CLI PATH guidance (BUG-041). zsh does not read ~/.profile, so after a
+# `pip install --user` the soma script is often "command not found". Print the
+# exact line for the user's shell; never edit dotfiles, never fail the install.
+# Runs from the Soma checkout: `-m` puts the cwd first on sys.path, and the
+# project being governed must not be able to shadow soma_cli or the stdlib.
+# The interpreter is the resolved one (BUG-037), not a bare python3.
+if [ "$DRY_RUN" != "true" ] && ! command -v soma >/dev/null 2>&1 \
+   && [ -n "${SOMA_PYTHON:-}" ]; then
+  echo ""
+  (cd "$REPO_DIR" && soma_py -m soma_cli.pathcheck --hint) 2>/dev/null || true
+fi

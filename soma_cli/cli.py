@@ -8,6 +8,23 @@ from __future__ import annotations
 
 import argparse
 import sys
+from pathlib import Path
+
+
+def _version() -> str:
+    try:
+        from importlib.metadata import PackageNotFoundError, version
+        try:
+            return version("soma-governance")
+        except PackageNotFoundError:
+            pass
+    except ImportError:
+        pass
+    version_file = Path(__file__).resolve().parent.parent / "VERSION"
+    try:
+        return version_file.read_text(encoding="utf-8").strip()
+    except OSError:
+        return "unknown"
 
 
 def _build_parser() -> argparse.ArgumentParser:
@@ -15,6 +32,8 @@ def _build_parser() -> argparse.ArgumentParser:
         prog="soma",
         description="Soma Governance — make AI coding agents trustworthy",
     )
+    parser.add_argument("--version", action="version",
+                        version=f"soma {_version()}")
     sub = parser.add_subparsers(dest="command")
 
     # soma init
@@ -117,6 +136,12 @@ def _build_parser() -> argparse.ArgumentParser:
     p_genesis.add_argument("--project-root", default=None,
                            help="Override project root path")
 
+    # soma completion
+    from soma_cli.completion import SHELLS
+    p_completion = sub.add_parser("completion", help="Print a shell completion script")
+    p_completion.add_argument("shell", choices=list(SHELLS),
+                              help="Target shell")
+
     return parser
 
 
@@ -186,6 +211,12 @@ def cmd_genesis(args: argparse.Namespace) -> int:
     return run_genesis(args)
 
 
+def cmd_completion(args: argparse.Namespace) -> int:
+    """Print a shell completion script."""
+    from soma_cli.completion import run_completion
+    return run_completion(args)
+
+
 COMMANDS = {
     "init": cmd_init,
     "status": cmd_status,
@@ -198,6 +229,7 @@ COMMANDS = {
     "promote": cmd_promote,
     "demote": cmd_demote,
     "genesis": cmd_genesis,
+    "completion": cmd_completion,
 }
 
 
