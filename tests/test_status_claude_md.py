@@ -180,3 +180,19 @@ def test_real_install_sh_claude_merge_plus_loose_files(env, capsys, tmp_path):
     (env / "beta.md").write_text("# Beta\n", encoding="utf-8")
     count, out = _status(capsys)
     assert count == len(_genome_rules()) + 2, out
+
+
+def test_bom_prefixed_loose_rule_uses_frontmatter_and_dedupes(env, capsys):
+    """PowerShell 5.1 Set-Content -Encoding UTF8 BOM-prefixes loose copies."""
+    (env / "alpha_loose.md").write_bytes(
+        b"\xef\xbb\xbf" + b"---\nid: alpha-rule\n---\n# Loose Alpha\n")
+    block = (
+        "<!-- SOMA:START -->\n# Soma Governance Rules\n\n"
+        "## alpha\n\n---\nid: alpha-rule\n---\n# Alpha\n"
+        "<!-- SOMA:END -->\n"
+    )
+    (env / "CLAUDE.md").write_text(block, encoding="utf-8")
+    count, out = _status(capsys)
+    assert count == 1, out
+    assert len(re.findall(r"^\s+alpha-rule\s", out, re.M)) == 1, out
+    assert "alpha_loose" not in out, out

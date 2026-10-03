@@ -199,3 +199,15 @@ def test_unsafe_completion_words_are_rejected(shell, word):
 
 def test_bash_word_lists_are_single_quoted():
     assert 'compgen -W "' not in _script("bash")
+
+
+# ── zsh _arguments: ':' in a [description] ends it early ─────────────────────
+
+def test_zsh_colons_in_descriptions_are_escaped():
+    import re
+    script = _script("zsh")
+    assert r"(default\: standard)" in script
+    descs = re.findall(r"\[([^\]]*)\]", script)
+    assert descs
+    bad = [d for d in descs if re.search(r"(?<!\\):", d)]
+    assert not bad, bad

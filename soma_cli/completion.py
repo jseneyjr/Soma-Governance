@@ -139,8 +139,13 @@ def _zq(text: str) -> str:
 
 
 def _zdesc(text: str) -> str:
-    """Escape for an _arguments [description]."""
-    return _zq(text.replace("\\", "").replace("[", "(").replace("]", ")"))
+    """Escape for an _arguments [description].
+
+    Backslashes are stripped first so the only ones emitted are the ':'
+    escapes (an unescaped ':' would end the description early).
+    """
+    text = text.replace("\\", "").replace("[", "(").replace("]", ")")
+    return _zq(text.replace(":", "\\:"))
 
 
 def _zsh_spec(o: _Opt) -> str:

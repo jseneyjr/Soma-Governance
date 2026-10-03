@@ -293,7 +293,7 @@ def run_status(args: argparse.Namespace) -> int:
     seen: set[str] = set()
     for f in core_files:
         try:
-            loose_text = f.read_text(encoding="utf-8")
+            loose_text = f.read_text(encoding="utf-8-sig")
         except Exception:
             loose_text = ""
         seen.update(k for k in (f.stem, _frontmatter_id(loose_text),
@@ -339,7 +339,7 @@ def run_status(args: argparse.Namespace) -> int:
 
     for f in core_files:
         try:
-            content = f.read_text(encoding="utf-8")
+            content = f.read_text(encoding="utf-8-sig")
         except Exception:
             content = ""
         total_chars += len(content)
@@ -365,7 +365,7 @@ def run_status(args: argparse.Namespace) -> int:
 
     for f in adaptive_files:
         try:
-            content = f.read_text(encoding="utf-8")
+            content = f.read_text(encoding="utf-8-sig")
         except Exception:
             content = ""
         total_chars += len(content)
