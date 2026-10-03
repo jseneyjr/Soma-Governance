@@ -175,6 +175,16 @@ def check(target, roots, kind):
         return "not an absolute path"
     if any(s in (".", "..") for s in target.replace("\\", "/").split("/")):
         return "contains a . or .. segment"
+    if os.name == "nt":
+        # Win32 drops trailing spaces and dots from a segment and reads ":" as
+        # a stream separator, so realpath would check a different name than
+        # the one given (`sub\.. ` is `sub\..`). rm takes it literally today;
+        # refuse it rather than rely on that.
+        body = target[2:] if target[1:2] == ":" else target
+        if ":" in body:
+            return "contains : (alternate data stream)"
+        if any(s and s[-1] in " ." for s in target.replace("\\", "/").split("/")):
+            return "has a segment that ends in a space or dot"
     # Only after the segment check: cygpath folds `..` away.
     target = native(target)
     if target is None:

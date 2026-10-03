@@ -455,6 +455,48 @@ def test_cygpath_in_the_project_dir_is_not_run(layout, monkeypatch):
     assert not manifest.exists()
 
 
+# ── Win32 name normalisation (hardening) ────────────────────────────────
+# Windows drops trailing spaces and dots from a path segment and reads `:` as
+# a stream separator, so `sub\.. ` names `sub\..`. Python's realpath applies
+# that; bash and rm take the name literally, so today such an entry never
+# reaches rm. The checker refuses it anyway rather than rely on that.
+
+needs_windows = pytest.mark.skipif(os.name != "nt", reason="Win32 path normalisation")
+
+
+@needs_windows
+@pytest.mark.parametrize("rel", [
+    "sub\\.. ", "sub\\..  ", "sub\\...", "sub\\.. .", "sub\\. ",
+    "sub\\.. \\x", "sub\\x\\... \\...", "sub\\x.", "sub\\x ",
+])
+def test_segment_ending_in_space_or_dot_is_refused(layout, rel):
+    target = str(layout["home"]) + "\\" + rel
+    rc, out = _plan([target], [str(layout["home"])])
+    assert rc == 1 and "ends in a space or dot" in out, out
+
+
+@needs_windows
+@pytest.mark.parametrize("rel", ["sub::$INDEX_ALLOCATION", "sub\\x:ads", "sub\\..::$INDEX_ALLOCATION"])
+def test_stream_syntax_is_refused(layout, rel):
+    target = str(layout["home"]) + "\\" + rel
+    rc, out = _plan([target], [str(layout["home"])])
+    assert rc == 1 and "alternate data stream" in out, out
+
+
+@needs_msys
+def test_msys_form_stream_syntax_is_refused(layout):
+    rc, out = _plan([msys(layout["home"]) + "/sub/x:ads"], [msys(layout["home"])])
+    assert rc == 1 and "alternate data stream" in out, out
+
+
+@needs_windows
+@pytest.mark.parametrize("rel", ["sub\\x.y", ".kiro\\steering\\soma-rule.md", "sub\\a b\\c"])
+def test_ordinary_dots_and_spaces_are_still_accepted(layout, rel):
+    target = str(layout["home"]) + "\\" + rel
+    rc, out = _plan([target], [str(layout["home"])])
+    assert rc == 0, out
+
+
 def test_unencodable_manifest_entry_is_refused(layout):
     """A lone surrogate can't be written out by read_manifest_field: the
     encode error ended the list early and the entries after it silently
