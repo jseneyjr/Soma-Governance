@@ -90,20 +90,30 @@ soma_py() {
     echo "soma: no working Python 3.9+ found (tried python3, python, py -3); set SOMA_PYTHON" >&2
     return 127
   fi
-  case "${1:-}" in
-    -c)
-      local code="${2-}"
-      shift 2 || shift $#
-      "$SOMA_PYTHON" -c "$_SOMA_PY_NO_CWD
+  local opts=()
+  while [ $# -gt 0 ]; do
+    case "$1" in
+      -c)
+        local code="${2-}"
+        shift 2 || shift $#
+        "$SOMA_PYTHON" ${opts+"${opts[@]}"} -c "$_SOMA_PY_NO_CWD
 $code" "$@"
-      ;;
-    -)
-      shift
-      "$SOMA_PYTHON" -c "$_SOMA_PY_NO_CWD
+        return $?
+        ;;
+      -)
+        shift
+        "$SOMA_PYTHON" ${opts+"${opts[@]}"} -c "$_SOMA_PY_NO_CWD
 exec(compile(__import__('sys').stdin.read(), '<stdin>', 'exec'))" "$@"
-      ;;
-    *)
-      "$SOMA_PYTHON" "$@"
-      ;;
-  esac
+        return $?
+        ;;
+      -*)
+        opts+=("$1")
+        shift
+        ;;
+      *)
+        break
+        ;;
+    esac
+  done
+  "$SOMA_PYTHON" ${opts+"${opts[@]}"} "$@"
 }

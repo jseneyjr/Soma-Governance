@@ -431,11 +431,23 @@ def generate_mcp_config(project_root: Path, dry_run: bool = False) -> None:
         raise ValueError(f"{mcp_file} field 'mcpServers' must be a JSON object")
     servers["soma"] = soma_entry
 
-    # Write beside the destination and replace only after serialization
-    # succeeds, so a failed update never truncates a valid configuration.
-    temp_file = mcp_file.with_name(f"{mcp_file.name}.soma.tmp")
+    mode = None
+    if mcp_file.exists():
+        try:
+            mode = os.stat(mcp_file).st_mode
+        except OSError:
+            pass
+
+    # Write beside the destination with unique pid temp name and replace only after
+    # serialization succeeds, preserving original file mode.
+    temp_file = mcp_file.with_name(f".{mcp_file.name}.{os.getpid()}.tmp")
     try:
         temp_file.write_text(json.dumps(data, indent=2) + "\n", encoding="utf-8")
+        if mode is not None:
+            try:
+                os.chmod(temp_file, mode)
+            except OSError:
+                pass
         temp_file.replace(mcp_file)
     finally:
         if temp_file.exists():

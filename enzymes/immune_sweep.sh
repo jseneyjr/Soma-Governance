@@ -71,7 +71,7 @@ if [ "$ACTIVE_ONLY" != "--active-only" ]; then
     [ -f "$metrics_file" ] && continue
 
     # Count steps
-    step_count="$(wc -l < "$transcript" 2>/dev/null || echo 0)"
+    step_count="$(wc -l < "$transcript" 2>/dev/null | tr -d ' ' || echo 0)"
 
     # Only process sessions with >100 steps
     if [ "$step_count" -gt 100 ]; then
@@ -232,7 +232,7 @@ echo ""
 GATE_LOG="$GOVERNANCE_DIR/gate_events.jsonl"
 if [ -f "$GATE_LOG" ] && [ "$ACTIVE_ONLY" != "--active-only" ]; then
   echo "📋 Check 5: Gate event summary..."
-  gate_count="$(wc -l < "$GATE_LOG")"
+  gate_count="$(wc -l < "$GATE_LOG" | tr -d ' ')"
   blocked="$(grep -c '"BLOCKED"' "$GATE_LOG" 2>/dev/null || echo 0)"
   echo "  Total events: $gate_count"
   echo "  Blocked: $blocked"
