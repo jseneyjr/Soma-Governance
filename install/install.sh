@@ -191,7 +191,8 @@ merge_mcp_config() {
     log_error "A working Python 3.9+ is required to safely merge MCP JSON configuration."
     return 1
   fi
-  if ! soma_py -c 'import sys, importlib.util; sys.path.append(sys.argv[1]); sys.exit(0 if importlib.util.find_spec("soma_mcp") is not None else 1)' "$workspace" >/dev/null 2>&1; then
+  if ! soma_py -c 'import sys; sys.path.append(sys.argv[1]); import soma_mcp' \
+       "$workspace" </dev/null >/dev/null 2>&1; then
     source_fallback="$REPO_DIR"
   fi
   SOMA_MCP_FILE="$config_file" SOMA_WORKSPACE="$workspace" \
