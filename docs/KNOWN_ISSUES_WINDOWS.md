@@ -14,16 +14,19 @@ Open Windows issues as of v0.89.0 were observed on Windows 11 with Windows Power
 | `install.ps1` parsing under Windows PowerShell 5.1 | Parse failure fixed in v0.89.0, but generated rules can contain mojibake and hooks are skipped | BUG-011, BUG-014, BUG-032 |
 | `install.ps1` under PowerShell 7 (`pwsh`) | Not fully verified; avoids the known PS 5.1 decoding issue, but the PowerShell installer still skips hooks | BUG-014, BUG-032 |
 | Hooks under Git Bash with a python.org install | Open: `python3` may resolve to the Windows Store stub | BUG-037 |
-| `uninstall.sh` under Git Bash | Open: rejects every path as "not an absolute path" and removes nothing | BUG-036 |
+| `uninstall.sh` under Git Bash | v0.89.0 rejects every path as "not an absolute path" and removes nothing; fixed after v0.89.0 | BUG-036 |
 | Test suite on Windows | v0.89.0 can write to the real home directory; fixed after v0.89.0 | BUG-010 |
 | `soma status` on a cp1252 console | v0.89.0 can crash unless `PYTHONIOENCODING=utf-8`; fixed after v0.89.0 | BUG-012 |
 | `soma_list_cells` / `Governance.list_cells` | Fixed in v0.89.0 (explicit UTF-8 inventory) | BUG-012 |
-| Windows-only tests | Fixed after v0.89.0; remaining Windows failures are BUG-036 and BUG-038 | BUG-013 |
+| Windows-only tests | Fixed after v0.89.0; remaining Windows failures are BUG-038 | BUG-013 |
 
 ## Fixed after v0.89.0 (unreleased)
 
 ### BUG-035: Cell inventory rejected edited cells ([#61](https://github.com/nseney1/Soma-Governance/issues/61))
 On v0.89.0, `soma_scan` and `soma_list_cells` fail with `file changed before it was opened`, and `soma_request_receipt` returns `Internal error`, so no write or execute tool can run. Cause: `os.stat` and `os.fstat` report different `st_ctime` values on Windows. The inventory now leaves `st_ctime` out of its change check on Windows and reads cells in binary mode.
+
+### BUG-036: `uninstall.sh` under Git Bash rejected every path ([#62](https://github.com/nseney1/Soma-Governance/issues/62))
+Under Git Bash the removal plan holds MSYS paths (`/c/Users/...`, `/tmp/...`), and the confinement check runs in native Windows Python, where `os.path.isabs()` rejects them, so on v0.89.0 uninstall refuses every entry and removes nothing. The check now maps MSYS paths with `cygpath` (resolved from `PATH` by the shell, never from the current directory), and the manifest reader writes UTF-8 with LF line endings, so manifests with several entries per field and non-ASCII names are removed in full. On Windows the check also refuses path segments that end in a space or a dot, and `:` stream syntax.
 
 ### BUG-010: Test suite wrote to the real home directory ([#47](https://github.com/nseney1/Soma-Governance/issues/47))
 Under Git Bash, `resolve_home()` prefers `USERPROFILE` over `HOME`, and six calls in `tests/test_install_lifecycle.py` overrode only `HOME`, so the installer ran against the real profile. The shared `run()` helper in `tests/conftest.py` now sets `USERPROFILE` whenever a test overrides `HOME` alone.
@@ -46,9 +49,6 @@ Write and execute tools now use single-use receipts obtained from `soma_request_
 The PowerShell scripts now carry a UTF-8 BOM, and CI dry-runs the installer under Windows PowerShell 5.1 as well as PowerShell 7. This fixes parsing, not the separate rule-content decoding problem in BUG-014.
 
 ## Open issues
-
-### BUG-036: `uninstall.sh` under Git Bash rejects every path ([#62](https://github.com/nseney1/Soma-Governance/issues/62))
-Under Git Bash the removal plan holds MSYS paths (`/c/Users/...`, `/tmp/...`), and the confinement check runs in native Windows Python, where `os.path.isabs()` rejects them. Uninstall refuses every entry and removes nothing. **Workaround:** remove Soma's files by hand.
 
 ### BUG-038: Enzyme scripts crash on a cp1252 stdout ([#65](https://github.com/nseney1/Soma-Governance/issues/65))
 About 20 standalone scripts under `enzymes/` print non-ASCII characters. With stdout on cp1252 (redirected or captured output) they exit 1 with `UnicodeEncodeError`; `tests/test_crossover_structured.py` fails on Windows for this reason. **Workaround:** `$env:PYTHONIOENCODING = "utf-8"` (PowerShell) or `export PYTHONIOENCODING=utf-8` (Git Bash).
