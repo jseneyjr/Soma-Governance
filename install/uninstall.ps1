@@ -908,7 +908,7 @@ if (-not $DryRun) {
     }
 
     foreach ($d in $DirsToRemove) {
-        Assert-SafeSinkPath -Path $d
+        Assert-SafeSinkPath -Path $d -RejectFinalReparsePoint
         if (Test-Path -LiteralPath $d -PathType Container) {
             try {
                 Remove-Item -LiteralPath $d -Recurse -Force -ErrorAction Stop
