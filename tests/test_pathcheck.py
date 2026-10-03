@@ -376,10 +376,20 @@ def _path_without_soma():
 @pytest.mark.parametrize("dry_run", [False, True])
 def test_install_sh_prints_zsh_hint(tmp_path, dry_run):
     from conftest import run
+    from soma_cli.pathcheck import default_candidates
     home = tmp_path / "home"
     bindir = home / ".local" / "bin"
     bindir.mkdir(parents=True)
     (bindir / "soma").write_text("#!/bin/sh\n")
+    # Also populate macOS/other candidate dirs relative to HOME
+    for cand in default_candidates():
+        rel = cand.replace("\\", "/").split("/.local/")[-1] if "/.local/" in cand else None
+        if not rel and "Library/Python" in cand:
+            rel = "Library/Python/" + cand.split("Library/Python/")[-1]
+        if rel:
+            target = home / rel
+            target.mkdir(parents=True, exist_ok=True)
+            (target / "soma").write_text("#!/bin/sh\n")
     env = {"HOME": str(home), "USERPROFILE": str(home), "SHELL": "/usr/bin/zsh",
            "ZDOTDIR": "", "PATH": _path_without_soma()}
     cmd = ["bash", str(REPO / "install" / "install.sh"), "kiro"]

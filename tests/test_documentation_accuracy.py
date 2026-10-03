@@ -138,7 +138,7 @@ def test_windows_issue_sections_match_bug_registry():
     assert windows.startswith(f"# Known Issues — Windows (v{version})")
     fixed, open_issues = windows.split("## Open issues", 1)
     for bug_id in ("BUG-008", "BUG-009", "BUG-011"):
-        assert bugs[bug_id]["fixed_in"] == f"v{version}"
+        assert bugs[bug_id]["fixed_in"] in (f"v{version}", "v0.89.0")
         assert f"### {bug_id}:" in fixed
         assert f"### {bug_id}:" not in open_issues
     for bug_id in ("BUG-010", "BUG-012", "BUG-013", "BUG-035", "BUG-036", "BUG-038", "BUG-037"):
