@@ -111,8 +111,21 @@ def test_broken_preset_fails_loudly_without_falling_back(bash, tmp_path, which):
     else:
         preset = str(tmp_path / "deleted-venv" / "python").replace("\\", "/")
     proc = _resolve_with(bash, bin_dir, SOMA_PYTHON=preset)
-    assert proc.stdout == "rc=1 [] resolved=", proc.stdout + proc.stderr
+    assert proc.stdout == "rc=1 [] resolved=0", proc.stdout + proc.stderr
     assert "SOMA_PYTHON" in proc.stderr and preset in proc.stderr
+
+
+def test_child_script_does_not_replace_a_rejected_preset(bash, tmp_path):
+    """The parent exports an empty SOMA_PYTHON after rejecting the preset; a
+    child that then probed would quietly use another interpreter."""
+    bin_dir = _bin(tmp_path)  # a working `python` is on PATH
+    preset = str(bin_dir / "python3").replace("\\", "/")
+    child = (f'. {_sh_quote(RESOLVER)}; soma_resolve_python && rc=0 || rc=$?; '
+             'printf "rc=%s [%s]" "$rc" "$SOMA_PYTHON"')
+    proc = run([bash, "-c", f'. {_sh_quote(RESOLVER)}\nsoma_resolve_python || true\n'
+                            f'bash -c {_sh_quote(child)}'],
+               env=_env(bin_dir, SOMA_PYTHON=preset))
+    assert proc.stdout == "rc=1 []", proc.stdout + proc.stderr
 
 
 def test_preset_soma_python_is_kept(bash, tmp_path):

@@ -22,8 +22,10 @@ print(sys.executable)' </dev/null 2>/dev/null)" || return 1
   printf '%s' "$out"
 }
 
-# Sets and exports SOMA_PYTHON, plus SOMA_PYTHON_RESOLVED=1 so child scripts
-# trust it without probing again (hooks run under tight timeouts).
+# Sets and exports SOMA_PYTHON, plus SOMA_PYTHON_RESOLVED (internal; don't set
+# it yourself): 1 lets child scripts trust the result without probing again
+# (hooks run under tight timeouts); 0 tells them resolution already failed,
+# so a rejected preset isn't silently replaced further down the tree.
 # - A preset SOMA_PYTHON is an explicit choice: it is probed, kept as given if
 #   it works, and reported (no fallback) if it doesn't.
 # - Otherwise the first of python3, python, `py -3` that runs Python 3.9+ wins,
@@ -34,6 +36,11 @@ soma_resolve_python() {
     export SOMA_PYTHON SOMA_PYTHON_RESOLVED
     return 0
   fi
+  if [ "${SOMA_PYTHON_RESOLVED:-}" = "0" ]; then
+    SOMA_PYTHON=""
+    export SOMA_PYTHON SOMA_PYTHON_RESOLVED
+    return 1
+  fi
   SOMA_PYTHON_RESOLVED=""
   if [ -n "${SOMA_PYTHON:-}" ]; then
     if _soma_probe_python "$SOMA_PYTHON" >/dev/null; then
@@ -43,6 +50,7 @@ soma_resolve_python() {
     fi
     echo "soma: SOMA_PYTHON=$SOMA_PYTHON is not a working Python 3.9+; fix or unset it" >&2
     SOMA_PYTHON=""
+    SOMA_PYTHON_RESOLVED=0
     export SOMA_PYTHON SOMA_PYTHON_RESOLVED
     return 1
   fi
@@ -57,7 +65,7 @@ soma_resolve_python() {
     if [ -n "$exe" ]; then break; fi
   done
   SOMA_PYTHON="$exe"
-  if [ -n "$SOMA_PYTHON" ]; then SOMA_PYTHON_RESOLVED=1; fi
+  if [ -n "$SOMA_PYTHON" ]; then SOMA_PYTHON_RESOLVED=1; else SOMA_PYTHON_RESOLVED=0; fi
   export SOMA_PYTHON SOMA_PYTHON_RESOLVED
   [ -n "$SOMA_PYTHON" ]
 }
