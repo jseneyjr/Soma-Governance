@@ -18,7 +18,8 @@ Open Windows issues as of v0.89.0 were observed on Windows 11 with Windows Power
 | Test suite on Windows | v0.89.0 can write to the real home directory; fixed after v0.89.0 | BUG-010 |
 | `soma status` on a cp1252 console | v0.89.0 can crash unless `PYTHONIOENCODING=utf-8`; fixed after v0.89.0 | BUG-012 |
 | `soma_list_cells` / `Governance.list_cells` | Fixed in v0.89.0 (explicit UTF-8 inventory) | BUG-012 |
-| Windows-only tests | Fixed after v0.89.0; remaining Windows failures are BUG-038 | BUG-013 |
+| Enzyme scripts on a cp1252 stdout | v0.89.0 can crash unless `PYTHONIOENCODING=utf-8`; fixed after v0.89.0 | BUG-038 |
+| Windows-only tests | Fixed after v0.89.0 | BUG-013 |
 
 ## Fixed after v0.89.0 (unreleased)
 
@@ -27,6 +28,9 @@ On v0.89.0, `soma_scan` and `soma_list_cells` fail with `file changed before it 
 
 ### BUG-036: `uninstall.sh` under Git Bash rejected every path ([#62](https://github.com/nseney1/Soma-Governance/issues/62))
 Under Git Bash the removal plan holds MSYS paths (`/c/Users/...`, `/tmp/...`), and the confinement check runs in native Windows Python, where `os.path.isabs()` rejects them, so on v0.89.0 uninstall refuses every entry and removes nothing. The check now maps MSYS paths with `cygpath` (resolved from `PATH` by the shell, never from the current directory), and the manifest reader writes UTF-8 with LF line endings, so manifests with several entries per field and non-ASCII names are removed in full. On Windows the check also refuses path segments that end in a space or a dot, and `:` stream syntax.
+
+### BUG-038: Enzyme scripts crashed on a cp1252 stdout ([#65](https://github.com/nseney1/Soma-Governance/issues/65))
+On v0.89.0, standalone scripts under `enzymes/` and `immune_system/verification/` print non-ASCII characters and exit 1 with `UnicodeEncodeError` when stdout is cp1252 (redirected or captured output, including hook runs). **Workaround on v0.89.0:** `$env:PYTHONIOENCODING = "utf-8"` (PowerShell) or `export PYTHONIOENCODING=utf-8` (Git Bash). All 29 entry points with non-ASCII output now replace characters the console can't encode.
 
 ### BUG-010: Test suite wrote to the real home directory ([#47](https://github.com/nseney1/Soma-Governance/issues/47))
 Under Git Bash, `resolve_home()` prefers `USERPROFILE` over `HOME`, and six calls in `tests/test_install_lifecycle.py` overrode only `HOME`, so the installer ran against the real profile. The shared `run()` helper in `tests/conftest.py` now sets `USERPROFILE` whenever a test overrides `HOME` alone.
@@ -49,9 +53,6 @@ Write and execute tools now use single-use receipts obtained from `soma_request_
 The PowerShell scripts now carry a UTF-8 BOM, and CI dry-runs the installer under Windows PowerShell 5.1 as well as PowerShell 7. This fixes parsing, not the separate rule-content decoding problem in BUG-014.
 
 ## Open issues
-
-### BUG-038: Enzyme scripts crash on a cp1252 stdout ([#65](https://github.com/nseney1/Soma-Governance/issues/65))
-About 20 standalone scripts under `enzymes/` print non-ASCII characters. With stdout on cp1252 (redirected or captured output) they exit 1 with `UnicodeEncodeError`; `tests/test_crossover_structured.py` fails on Windows for this reason. **Workaround:** `$env:PYTHONIOENCODING = "utf-8"` (PowerShell) or `export PYTHONIOENCODING=utf-8` (Git Bash).
 
 ### BUG-037: Git Bash `python3` may be the Windows Store stub ([#64](https://github.com/nseney1/Soma-Governance/issues/64))
 A python.org install may not provide `python3.exe`, so `python3` resolves to the App Installer stub. `command -v python3` succeeds but execution fails, preventing hook generation and other shell-script Python calls.
