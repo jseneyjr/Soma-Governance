@@ -634,17 +634,20 @@
     {
       "id": "BUG-036",
       "issue_url": "https://github.com/nseney1/Soma-Governance/issues/62",
-      "status": "open",
+      "status": "fixed",
       "title": "uninstall.sh under Git Bash rejects every path as 'not an absolute path'",
       "discovered_in": "v0.89.0",
+      "fixed_in": "Unreleased",
       "root_cause": "platform_compat",
       "severity": "moderate",
-      "description": "Under Git Bash, resolve_home returns `cygpath -u \"$USERPROFILE\"`, so RESOLVED_HOME, the allowed roots and every removal-plan entry are MSYS paths (/c/Users/..., /tmp/...). uninstall.sh's embedded Python check() runs in native Windows Python, where os.path.isabs() rejects them, so uninstall refuses every entry and removes nothing (fails closed). Git for Windows ships no Python, so python3 there is normally a native build. On Windows this fails the BUG-031 regression tests and five tests in tests/test_install_lifecycle.py. Until it is fixed, the refusal tests in tests/test_uninstall_confinement.py pass on Windows only because every entry is refused, so they don't discriminate there.",
+      "description": "Under Git Bash, resolve_home returns `cygpath -u \"$USERPROFILE\"`, so RESOLVED_HOME, the allowed roots and every removal-plan entry are MSYS paths (/c/Users/..., /tmp/...). uninstall.sh's embedded Python check() runs in native Windows Python, where os.path.isabs() rejects them, so uninstall refuses every entry and removes nothing (fails closed). Git for Windows ships no Python, so python3 there is normally a native build. On Windows this fails the BUG-031 regression tests and five tests in tests/test_install_lifecycle.py. (Corrected when fixed: an earlier version of this entry said the refusal tests in tests/test_uninstall_confinement.py passed on Windows only because every entry was refused. Hostile native-form manifests were in fact already refused with their specific reasons at manifest validation; it was the later removal-plan check, fed MSYS paths on stdin, that refused everything.) Fixed in uninstall.sh's confinement check: MSYS-form paths are mapped with cygpath after the ./.. segment check (cygpath folds ..); the shell resolves cygpath from PATH and passes its absolute path, because a bare name in native Windows Python also searches the current directory (the project being uninstalled). Fixing it exposed three more defects, also fixed: read_manifest_field wrote CRLF in the console code page, so every entry but the last and non-ASCII names silently dropped out of the plan; an entry it could not encode (a lone surrogate) ended the list early, after which uninstall exited 0 and deleted the manifest; and a refusal could crash while printing its own path. Hardening found while investigating: on Windows the check now refuses segments ending in a space or dot and ':' stream syntax, which Win32 resolves to a different name than the one checked. A sandbox probe of 15 such shapes found none that made uninstall.sh (or uninstall.ps1 under Windows PowerShell 5.1) delete anything outside the roots, because rm takes the name literally; PowerShell 7 was not tested.",
       "affected_files": [
         "install/uninstall.sh",
         "enzymes/common.sh"
       ],
-      "pattern": "POSIX-form paths handed to a native Windows interpreter"
+      "regression_test": "tests/test_uninstall_confinement.py::test_msys_form_plan_entries_inside_roots_are_accepted",
+      "pattern": "POSIX-form paths handed to a native Windows interpreter",
+      "changelog_ref": "Unreleased"
     },
     {
       "id": "BUG-037",
