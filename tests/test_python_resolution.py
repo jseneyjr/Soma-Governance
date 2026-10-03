@@ -53,7 +53,9 @@ def _bin(tmp_path, python3=STUB, python=None, py=STUB):
 
 
 def _env(bin_dir, home=None, **extra):
-    env = {"PATH": str(bin_dir) + os.pathsep + os.environ.get("PATH", "")}
+    # Never inherit a resolution from the shell running the tests.
+    env = {"PATH": str(bin_dir) + os.pathsep + os.environ.get("PATH", ""),
+           "SOMA_PYTHON_RESOLVED": ""}
     if home is not None:
         env.update(HOME=str(home), USERPROFILE=str(home))
     env.update(extra)
@@ -61,7 +63,8 @@ def _env(bin_dir, home=None, **extra):
 
 
 def _bash(bash, script, bin_dir, **extra):
-    return run([bash, "-c", "unset SOMA_PYTHON\n" + script], env=_env(bin_dir, **extra))
+    return run([bash, "-c", "unset SOMA_PYTHON SOMA_PYTHON_RESOLVED\n" + script],
+               env=_env(bin_dir, **extra))
 
 
 # ── Resolver ─────────────────────────────────────────────────────────
@@ -91,23 +94,45 @@ def test_resolver_reports_when_no_interpreter_works(bash, tmp_path):
     assert proc.stdout.strip() == "rc=1 []", proc.stdout + proc.stderr
 
 
-def test_stale_preset_falls_back_to_probing(bash, tmp_path):
-    """A preset pointing at a deleted interpreter would fail every call."""
-    bin_dir = _bin(tmp_path)
-    gone = str(tmp_path / "deleted-venv" / "python").replace("\\", "/")
-    proc = run([bash, "-c", f'. {_sh_quote(RESOLVER)}\nsoma_resolve_python\n'
-                            '"$SOMA_PYTHON" -c "print(42)"'],
-               env=_env(bin_dir, SOMA_PYTHON=gone))
-    assert proc.returncode == 0, proc.stderr
-    assert proc.stdout.strip() == "42"
+def _resolve_with(bash, bin_dir, **extra):
+    return run([bash, "-c", f'. {_sh_quote(RESOLVER)}\n'
+                            'soma_resolve_python && rc=0 || rc=$?\n'
+                            'printf "rc=%s [%s] resolved=%s" "$rc" "$SOMA_PYTHON" "${SOMA_PYTHON_RESOLVED:-}"'],
+               env=_env(bin_dir, **extra))
+
+
+@pytest.mark.parametrize("which", ["deleted interpreter", "store stub"])
+def test_broken_preset_fails_loudly_without_falling_back(bash, tmp_path, which):
+    """A preset is an explicit choice: if it doesn't run Python 3.9+, say so
+    rather than quietly using another interpreter (maintainer, #81)."""
+    bin_dir = _bin(tmp_path)  # a working `python` is on PATH, and must not be used
+    if which == "store stub":
+        preset = str(bin_dir / "python3").replace("\\", "/")
+    else:
+        preset = str(tmp_path / "deleted-venv" / "python").replace("\\", "/")
+    proc = _resolve_with(bash, bin_dir, SOMA_PYTHON=preset)
+    assert proc.stdout == "rc=1 [] resolved=", proc.stdout + proc.stderr
+    assert "SOMA_PYTHON" in proc.stderr and preset in proc.stderr
 
 
 def test_preset_soma_python_is_kept(bash, tmp_path):
-    bin_dir = _bin(tmp_path)
     preset = sys.executable.replace("\\", "/")
-    proc = run([bash, "-c", f'. {_sh_quote(RESOLVER)}\nsoma_resolve_python\nprintf %s "$SOMA_PYTHON"'],
-               env=_env(bin_dir, SOMA_PYTHON=preset))
-    assert proc.stdout == preset, proc.stderr
+    proc = _resolve_with(bash, _bin(tmp_path), SOMA_PYTHON=preset)
+    assert proc.stdout == f"rc=0 [{preset}] resolved=1", proc.stderr
+
+
+def test_resolution_is_marked_for_child_scripts(bash, tmp_path):
+    proc = _resolve_with(bash, _bin(tmp_path))
+    assert proc.stdout.startswith("rc=0 [") and proc.stdout.endswith("] resolved=1"), proc.stderr
+
+
+def test_marked_resolution_from_a_parent_is_not_probed_again(bash, tmp_path):
+    """Hooks run under tight timeouts, so a child trusts its parent's result.
+    The stub stands in for 'anything': it would fail a probe."""
+    bin_dir = _bin(tmp_path)
+    inherited = str(bin_dir / "python3").replace("\\", "/")
+    proc = _resolve_with(bash, bin_dir, SOMA_PYTHON=inherited, SOMA_PYTHON_RESOLVED="1")
+    assert proc.stdout == f"rc=0 [{inherited}] resolved=1", proc.stderr
 
 
 def test_resolver_leaves_stdin_for_the_hook(bash, tmp_path):
@@ -251,23 +276,18 @@ def _install_mcp(bash, bin_dir, tmp_path):
     project = tmp_path / "project"
     home.mkdir()
     project.mkdir()
-    # An inherited SOMA_PYTHON counts as a preset and would pin the path.
     proc = run([bash, INSTALL_SH, "mcp"], cwd=str(project),
                env=_env(bin_dir, home=home, SOMA_PYTHON=""))
     assert proc.returncode == 0, proc.stdout[-1000:] + proc.stderr[-1000:]
     return json.loads((project / ".mcp.json").read_text(encoding="utf-8"))["mcpServers"]["soma"]
 
 
-def test_mcp_config_names_a_working_interpreter_with_the_store_stub(bash, tmp_path):
+def test_mcp_config_is_merged_with_the_store_stub_and_names_python3(bash, tmp_path):
+    """The merge itself runs through the resolver, so it no longer fails on
+    the stub. The config always says python3: a resolved path would pin an
+    interpreter that upgrades or removal break, and differ between machines;
+    `soma doctor` reports the stub instead (maintainer's decision, #81)."""
     soma = _install_mcp(bash, _bin(tmp_path), tmp_path)
-    assert soma["command"] != "python3"
-    proc = subprocess.run([soma["command"], "-c", "import sys; print(sys.version_info[0])"],
-                          capture_output=True, text=True, timeout=60)
-    assert proc.stdout.strip() == "3"
-
-
-def test_mcp_config_keeps_python3_when_it_works(bash, tmp_path):
-    soma = _install_mcp(bash, _bin(tmp_path, python3=_real()), tmp_path)
     assert soma["command"] == "python3"
 
 
@@ -291,7 +311,9 @@ def test_no_shell_script_runs_python3_directly():
     for rel in SHELL_SOURCES:
         with open(os.path.join(REPO_ROOT, rel), encoding="utf-8") as f:
             for number, line in enumerate(f, 1):
-                if line.lstrip().startswith("#"):
+                # Comments and messages may name python3 (e.g. the manual
+                # `claude mcp add soma python3 -m soma_mcp` hint).
+                if line.lstrip().startswith(("#", "echo ", "log_")):
                     continue
                 if BARE_PYTHON3.search(line):
                     hits.append(f"{rel}:{number}: {line.strip()}")
@@ -327,33 +349,14 @@ def test_every_soma_py_caller_sources_the_resolver_first():
 # ── Python entry points that name an interpreter ─────────────────────
 
 
-def _stub_path_dir(tmp_path, python3_works):
-    """PATH dir with a python3 that shutil.which finds on every OS: a shell
-    script for POSIX, a .bat for Windows (PATHEXT)."""
-    d = tmp_path / "pybin"
-    d.mkdir()
-    if python3_works:
-        _write_exe(d / "python3", _real())
-        (d / "python3.bat").write_text(f'@"{sys.executable}" %*\r\n', encoding="utf-8")
-    else:
-        _write_exe(d / "python3", STUB)
-        (d / "python3.bat").write_text("@exit /b 49\r\n", encoding="utf-8")
-    return d
-
-
-def test_soma_init_mcp_config_avoids_the_store_stub(tmp_path, monkeypatch):
+def test_soma_init_mcp_config_names_python3_with_the_store_stub(tmp_path, monkeypatch):
+    """Same rule as install.sh: always python3, even when it is the stub."""
     from soma_cli.init import generate_mcp_config
-    monkeypatch.setenv("PATH", str(_stub_path_dir(tmp_path, python3_works=False)))
-    generate_mcp_config(tmp_path)
-    command = json.loads((tmp_path / ".mcp.json").read_text(encoding="utf-8"))["mcpServers"]["soma"]["command"]
-    assert command != "python3"
-    proc = subprocess.run([command, "-c", "print(42)"], capture_output=True, text=True, timeout=60)
-    assert proc.stdout.strip() == "42"
-
-
-def test_soma_init_mcp_config_keeps_python3_when_it_works(tmp_path, monkeypatch):
-    from soma_cli.init import generate_mcp_config
-    monkeypatch.setenv("PATH", str(_stub_path_dir(tmp_path, python3_works=True)))
+    stub_dir = tmp_path / "pybin"
+    stub_dir.mkdir()
+    _write_exe(stub_dir / "python3", STUB)
+    (stub_dir / "python3.bat").write_text("@exit /b 49\r\n", encoding="utf-8")
+    monkeypatch.setenv("PATH", str(stub_dir))
     generate_mcp_config(tmp_path)
     data = json.loads((tmp_path / ".mcp.json").read_text(encoding="utf-8"))
     assert data["mcpServers"]["soma"]["command"] == "python3"

@@ -8,8 +8,6 @@ import argparse
 import importlib.resources
 import json
 import shutil
-import subprocess
-import sys
 from pathlib import Path
 
 
@@ -342,27 +340,6 @@ def install_starter_rules(
 
 # ── MCP Config ──────────────────────────────────────────────────────────────
 
-def _mcp_python_command() -> str:
-    """The interpreter hosts should launch the MCP server with.
-
-    Keeps the portable python3 when it really runs Python 3.9+. On Windows
-    python3 can be the App Installer stub, which exits 49 (BUG-037), so
-    otherwise name this interpreter; that pins it until the next init.
-    """
-    found = shutil.which("python3")
-    if found:
-        try:
-            probe = subprocess.run(
-                [found, "-c", "import sys; sys.exit(sys.version_info < (3, 9))"],
-                stdin=subprocess.DEVNULL, capture_output=True, timeout=30,
-            )
-            if probe.returncode == 0:
-                return "python3"
-        except (OSError, subprocess.SubprocessError):
-            pass
-    return sys.executable
-
-
 def generate_mcp_config(project_root: Path, dry_run: bool = False) -> None:
     """Create or merge .mcp.json for the governed project.
 
@@ -373,7 +350,7 @@ def generate_mcp_config(project_root: Path, dry_run: bool = False) -> None:
     mcp_file = Path(workspace) / ".mcp.json"
 
     soma_entry = {
-        "command": _mcp_python_command(),
+        "command": "python3",
         "args": ["-m", "soma_mcp"],
         "cwd": workspace,
         "env": {"SOMA_WORKSPACE": workspace},

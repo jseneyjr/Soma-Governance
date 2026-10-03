@@ -8,41 +8,57 @@
 # Microsoft Store message and exits 49 (BUG-037). So a candidate counts only
 # if it actually runs Python 3.9+.
 
-# Sets and exports SOMA_PYTHON to an interpreter's absolute path (one word,
-# so `py -3` and paths with spaces quote cleanly as "$SOMA_PYTHON").
-# A preset SOMA_PYTHON that exists is trusted without probing: child scripts
-# inherit the parent's result, and hooks run under tight timeouts. One that
-# no longer exists (a deleted venv) is dropped and probed for. Returns 1, with
-# SOMA_PYTHON empty, when nothing works. SOMA_PYTHON_FOUND_AS names the
-# command that worked (python3, python or py), or "preset".
-soma_resolve_python() {
-  SOMA_PYTHON_FOUND_AS="preset"
-  if [ -n "${SOMA_PYTHON:-}" ] && command -v "$SOMA_PYTHON" >/dev/null 2>&1; then
-    export SOMA_PYTHON
-    return 0
-  fi
-  local probe='import sys
+# Prints sys.executable if "$@" runs Python 3.9+. -I -S keeps the probe
+# independent of the current directory, PYTHON* variables and site.
+_soma_probe_python() {
+  local out
+  out="$("$@" -I -S -c 'import sys
 if sys.version_info < (3, 9):
     sys.exit(1)
-print(sys.executable)'
+print(sys.executable)' </dev/null 2>/dev/null)" || return 1
+  # Windows Python ends lines with CRLF; $(...) strips only the LF.
+  out="${out%$'\r'}"
+  [ -n "$out" ] || return 1
+  printf '%s' "$out"
+}
+
+# Sets and exports SOMA_PYTHON, plus SOMA_PYTHON_RESOLVED=1 so child scripts
+# trust it without probing again (hooks run under tight timeouts).
+# - A preset SOMA_PYTHON is an explicit choice: it is probed, kept as given if
+#   it works, and reported (no fallback) if it doesn't.
+# - Otherwise the first of python3, python, `py -3` that runs Python 3.9+ wins,
+#   stored as its absolute path (one word, so it quotes cleanly).
+# Returns 1, with SOMA_PYTHON empty, when nothing works.
+soma_resolve_python() {
+  if [ -n "${SOMA_PYTHON:-}" ] && [ "${SOMA_PYTHON_RESOLVED:-}" = "1" ]; then
+    export SOMA_PYTHON SOMA_PYTHON_RESOLVED
+    return 0
+  fi
+  SOMA_PYTHON_RESOLVED=""
+  if [ -n "${SOMA_PYTHON:-}" ]; then
+    if _soma_probe_python "$SOMA_PYTHON" >/dev/null; then
+      SOMA_PYTHON_RESOLVED=1
+      export SOMA_PYTHON SOMA_PYTHON_RESOLVED
+      return 0
+    fi
+    echo "soma: SOMA_PYTHON=$SOMA_PYTHON is not a working Python 3.9+; fix or unset it" >&2
+    SOMA_PYTHON=""
+    export SOMA_PYTHON SOMA_PYTHON_RESOLVED
+    return 1
+  fi
   local exe="" cmd
   for cmd in python3 python py; do
     command -v "$cmd" >/dev/null 2>&1 || continue
     if [ "$cmd" = "py" ]; then
-      exe="$(py -3 -c "$probe" </dev/null 2>/dev/null)" || exe=""
+      exe="$(_soma_probe_python py -3)" || exe=""
     else
-      exe="$("$cmd" -c "$probe" </dev/null 2>/dev/null)" || exe=""
+      exe="$(_soma_probe_python "$cmd")" || exe=""
     fi
-    if [ -n "$exe" ]; then
-      SOMA_PYTHON_FOUND_AS="$cmd"
-      break
-    fi
+    if [ -n "$exe" ]; then break; fi
   done
-  [ -n "$exe" ] || SOMA_PYTHON_FOUND_AS=""
-  # Windows Python ends lines with CRLF; $(...) strips only the LF.
-  exe="${exe%$'\r'}"
   SOMA_PYTHON="$exe"
-  export SOMA_PYTHON
+  if [ -n "$SOMA_PYTHON" ]; then SOMA_PYTHON_RESOLVED=1; fi
+  export SOMA_PYTHON SOMA_PYTHON_RESOLVED
   [ -n "$SOMA_PYTHON" ]
 }
 
