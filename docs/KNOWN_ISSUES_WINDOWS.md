@@ -37,7 +37,7 @@ Under Git Bash, `resolve_home()` prefers `USERPROFILE` over `HOME`, and six call
 On v0.89.0, `soma status` exits 1 with `UnicodeEncodeError` when stdout is cp1252 (for example, redirected output). **Workaround on v0.89.0:** `$env:PYTHONIOENCODING = "utf-8"`. `soma` and `enzymes/verify_bug_registry.py` now replace characters the console can't encode. Cell listing already reads UTF-8 explicitly since v0.89.0.
 
 ### BUG-013: Windows-only test failures ([#50](https://github.com/nseney1/Soma-Governance/issues/50))
-The tests embedded unescaped Windows paths in generated files, compared paths as POSIX strings, wrote CRLF where bytes mattered, hard-coded `/bin/bash`, and required symlink privileges. They now escape paths, compare normalized paths, write LF, resolve bash (or skip), and skip symlink and execute-bit checks Windows can't satisfy. CI does not yet run the test suite on Windows ([#56](https://github.com/nseney1/Soma-Governance/issues/56)).
+The tests embedded unescaped Windows paths in generated files, compared paths as POSIX strings, wrote CRLF where bytes mattered, hard-coded `/bin/bash`, and required symlink privileges. They now escape paths, compare normalized paths, write LF, resolve bash (or skip), and skip symlink and execute-bit checks Windows can't satisfy. CI now runs the suite on Windows (`test-windows`, v0.90; [#56](https://github.com/nseney1/Soma-Governance/issues/56)).
 
 ## Fixed in v0.89.0
 

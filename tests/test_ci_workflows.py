@@ -219,3 +219,12 @@ def test_windows_test_job_actions_are_pinned_and_credentials_not_persisted():
     checkouts = _step_using(job, "actions/checkout")
     assert checkouts, "test-windows must check out the repository"
     assert all((s.get("with") or {}).get("persist-credentials") is False for s in checkouts)
+
+
+def test_windows_test_job_uses_bash_and_verifies_the_artifact():
+    job = _windows_test_job()
+    # `pip install dist/*.whl` relies on bash glob expansion (pwsh/cmd won't).
+    assert job.get("defaults", {}).get("run", {}).get("shell") == "bash"
+    runs = [s.get("run", "") for s in job["steps"]]
+    assert any("verify_dist.py verify dist" in r for r in runs), \
+        "test-windows must check the wheel digests before installing it"
