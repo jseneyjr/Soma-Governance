@@ -214,7 +214,7 @@ def main():
     parser.add_argument(
         '--test-result',
         required=True,
-        choices=['pass', 'fail', 'success', 'failure'],
+        choices=['pass', 'fail', 'success', 'failure', 'skipped', 'cancelled'],
         help='CI test result',
     )
     parser.add_argument('--commit-sha', default=None, help='Commit SHA')
