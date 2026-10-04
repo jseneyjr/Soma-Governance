@@ -135,7 +135,16 @@ def _force_demote(project_root: Path, cell_id: str, dry_run: bool, use_json: boo
         except OSError:
             import shutil
             shutil.move(str(tmp_path), str(target_path))
-        cell_path.unlink()
+        try:
+            if cell_path != target_path and cell_path.exists():
+                cell_path.unlink()
+        except Exception:
+            if target_path.exists() and cell_path.exists():
+                try:
+                    os.remove(target_path)
+                except Exception:
+                    pass
+            raise
     except Exception:
         if tmp_path.exists():
             tmp_path.unlink()

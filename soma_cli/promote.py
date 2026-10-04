@@ -13,22 +13,24 @@ PROMOTION_PATH = {"vacuole": "wall", "wall": "genome"}
 TYPE_TO_DIR = {"vacuole": "vacuoles", "wall": "walls"}
 
 
-def _find_cell(cells_dir: Path, cell_id: str) -> tuple[Path | None, str | None]:
-    """Find a cell file by ID across all type directories."""
-    # Sanitize cell_id to prevent path traversal
+def _find_cell(cells_dir: Path, genome_dir: Path | None = None, cell_id: str = "") -> tuple[Path | None, str | None]:
+    """Find a cell file by ID across vacuoles/, walls/, and genome/."""
     if not cell_id or "/" in cell_id or "\\" in cell_id or ".." in cell_id:
         return None, None
     for type_dir in ("vacuoles", "walls"):
         candidate = cells_dir / type_dir / f"{cell_id}.md"
         if candidate.is_file():
             return candidate, type_dir
+    if genome_dir and (genome_dir / f"{cell_id}.md").is_file():
+        return genome_dir / f"{cell_id}.md", "genome"
     return None, None
 
 
 def _force_promote(project_root: Path, cell_id: str, dry_run: bool, use_json: bool) -> int:
     """Force-promote a specific cell, bypassing evidence thresholds."""
     cells_dir = project_root / ".soma" / "cells"
-    cell_path, current_dir = _find_cell(cells_dir, cell_id)
+    genome_dir = project_root / "genome"
+    cell_path, current_dir = _find_cell(cells_dir, genome_dir, cell_id)
 
     if cell_path is None:
         msg = f"Cell '{cell_id}' not found in {cells_dir}"
@@ -39,16 +41,16 @@ def _force_promote(project_root: Path, cell_id: str, dry_run: bool, use_json: bo
         return 1
 
     # Determine current type from directory
-    current_type = current_dir.rstrip("s")  # vacuoles -> vacuole
+    current_type = current_dir.rstrip("s") if current_dir != "genome" else "genome"
     next_type = PROMOTION_PATH.get(current_type)
 
     if next_type is None:
-        msg = f"Cell '{cell_id}' is already at '{current_type}' (max promotion level)"
+        msg = f"Cell '{cell_id}' is already at terminal promotion level ('{current_type}')"
         if use_json:
-            print(json.dumps({"error": msg}))
+            print(json.dumps({"info": msg}))
         else:
-            print(f"  ⚠️  {msg}")
-        return 1
+            print(f"  ℹ️  {msg}")
+        return 0
 
     next_dir = TYPE_TO_DIR.get(next_type)
     if next_type == "genome":
@@ -118,7 +120,16 @@ def _force_promote(project_root: Path, cell_id: str, dry_run: bool, use_json: bo
         except OSError:
             import shutil
             shutil.move(str(tmp_path), str(target_path))
-        cell_path.unlink()
+        try:
+            if cell_path != target_path and cell_path.exists():
+                cell_path.unlink()
+        except Exception:
+            if target_path.exists() and cell_path.exists():
+                try:
+                    os.remove(target_path)
+                except Exception:
+                    pass
+            raise
     except Exception:
         if tmp_path.exists():
             tmp_path.unlink()
