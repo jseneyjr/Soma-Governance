@@ -9,6 +9,13 @@ This project uses [Semantic Versioning](https://semver.org/).
 - **MCP Tool Annotations**: Added required `readOnlyHint`, `destructiveHint`, `idempotentHint`, `openWorldHint`, and `title` annotations to all 15 MCP tools to comply with m8ven trust score requirements.
 - **Documentation**: Added `PRIVACY.md` to clarify the local-only nature of the MCP server versus the opt-in cloud nature of the CLI.
 - **Test Coverage**: Added test coverage for read-only MCP tools.
+- **`.gitignore` Updates**: Added `.soma/cells/*` to ignore local experiment cells by default and cleaned up duplicate `.hypothesis/` entries.
+
+### Changed
+- **Test Suite De-duplication & Decomposition**: Broken down massively bloated test files (`test_v090_hardening.py`, `test_telemetry_bugfixes.py`, and `test_redteam_followups.py`) into proper behavioral modules (e.g. `test_outcome_engine.py`, `test_cli_sync.py`, `test_immune_sweep.py`). Updated `BUG_REGISTRY.json` to properly map regression tests to their new homes.
+
+### Fixed
+- **Tautological Mocks**: Rewrote `tests/test_mcp_dispatch.py` to remove brittle mock-heavy tautological tests. Tests now verify functional boundaries instead of strict 1-to-1 implementation assertions.
 
 ## [0.90.0] — 2026-10-03 — "Security & Hardening"
 
