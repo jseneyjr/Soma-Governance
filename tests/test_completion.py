@@ -110,11 +110,12 @@ def test_unknown_shell_rejected():
         generate(_build_parser(), "tcsh")
 
 
-@pytest.mark.skipif(shutil.which("bash") is None, reason="bash not installed")
 def test_bash_syntax_ok(tmp_path):
+    from conftest import require_bash
+    bash_bin = require_bash()
     f = tmp_path / "soma.bash"
     f.write_text(_script("bash"), encoding="utf-8")
-    proc = subprocess.run(["bash", "-n", "soma.bash"], cwd=str(tmp_path), capture_output=True, text=True)
+    proc = subprocess.run([bash_bin, "-n", "soma.bash"], cwd=str(tmp_path), capture_output=True, text=True)
     assert proc.returncode == 0, proc.stderr
 
 

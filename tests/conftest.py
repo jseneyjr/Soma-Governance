@@ -21,7 +21,11 @@ def repo_root():
 def require_bash():
     """Path to bash, or skip. Prefers /bin/bash: on macOS that is 3.2, the
     oldest supported shell and the one that surfaced SOMA-C03. Windows has
-    no /bin/bash for native processes; Git Bash is found on PATH."""
+    no /bin/bash for native processes; Git Bash is found on PATH or Git installation."""
+    if os.name == "nt":
+        for git_bash in (r"C:\Program Files\Git\usr\bin\bash.exe", r"C:\Program Files (x86)\Git\usr\bin\bash.exe"):
+            if os.path.exists(git_bash):
+                return git_bash
     path = "/bin/bash" if os.path.exists("/bin/bash") else shutil.which("bash")
     if not path:
         pytest.skip("bash is not available")

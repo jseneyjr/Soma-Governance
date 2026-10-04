@@ -56,7 +56,7 @@ def _attempt_commit(repo: str, filename: str, content: str = 'test') -> subproce
     subprocess.run(['git', 'add', filename], capture_output=True, cwd=repo)
     return subprocess.run(
         ['git', 'commit', '-m', 'test commit'],
-        capture_output=True, cwd=repo, text=True
+        capture_output=True, cwd=repo, text=True, encoding='utf-8', errors='replace'
     )
 
 
@@ -96,7 +96,7 @@ class TestWallHookGeneration:
         # Attempt commit with nothing staged (should fail with empty commit, not hook)
         result = subprocess.run(
             ['git', 'commit', '--allow-empty', '-m', 'empty'],
-            capture_output=True, cwd=repo, text=True
+            capture_output=True, cwd=repo, text=True, encoding='utf-8', errors='replace'
         )
         # --allow-empty bypasses changed-file check, so hook sees empty CHANGED_FILES
         # Our hook should exit 0 for empty files
