@@ -1,4 +1,0 @@
-# file: /Users/nick/Documents/soma-v0.89-review/fixed/enzymes/verify_bug_registry.py
-# hypothesis_version: 6.140.2
-
-['--workspace', '-m', '-q', '.', '::', '<unknown>', 'BUG_REGISTRY.json', 'FAILED', 'FAILURES', '__main__', 'affected_files', 'bugs', 'changelog_ref', 'discovered_in', 'docs', 'fixed', 'fixed_in', 'id', 'open', 'project', 'pytest', 'r', 'regression_test', 'root_cause', 'severity', 'severity_levels', 'status', 'title', 'unknown', 'utf-8']

@@ -1,4 +1,0 @@
-# file: /Users/nick/Documents/soma-v0.89-review/fixed/soma_sdk/governance.py
-# hypothesis_version: 6.140.2
-
-[',', '-', '--bayesian', '--commits', '--days', '--domain', '--exclude', '--format', '--hypothesis', '--id', '--json', '--metric', '--minimum-mode', '--tags', '--target-paths', '--threshold', '--type', '.', '.sh', '.soma', 'JSON parse failed', 'README.md', '[^a-zA-Z0-9_.-]', '_error', '_name', '_path', 'bash', 'breeze', 'cell_adversarial.py', 'cell_coverage.py', 'cell_create.sh', 'cell_create_nl.py', 'cell_deps.py', 'cell_fitness.py', 'cell_quorum.py', 'cell_scan.py', 'cell_signal.sh', 'cells', 'details', 'enzymes', 'error', 'immune_entropy.py', 'immune_grade.py', 'immune_replay.py', 'immune_trends.py', 'mermaid', 'metrics', 'raw', 'text', 'utf-8', 'vacuole']

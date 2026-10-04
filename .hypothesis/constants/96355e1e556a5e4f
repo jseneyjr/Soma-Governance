@@ -1,4 +1,0 @@
-# file: /Users/nick/Documents/soma-v0.89-review/fixed/soma_core/__init__.py
-# hypothesis_version: 6.140.2
-
-['CellInventory', 'CellInventoryEntry', 'CellInventoryError', 'clear_receipts', 'inventory_cells', 'issue_receipt', 'verify_receipt']

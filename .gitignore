@@ -58,3 +58,4 @@ docs/postmortem-work-sessions.md
 .soma/backup/
 .soma/enforcement/
 docs/internal/
+.hypothesis/

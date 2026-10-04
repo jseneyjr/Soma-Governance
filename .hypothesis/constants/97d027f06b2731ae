@@ -1,4 +1,0 @@
-# file: /Users/nick/Documents/soma-v0.89-review/fixed/soma_cli/init.py
-# hypothesis_version: 6.140.2
-
-[493, '\n\n---\n\n', '\n  Aborted.', '  Aborted.', '  Proceed? [Y/n] ', '#!/bin/sh\n\n', '*.md', '-m', '.claude', '.cursor', '.cursorrules', '.gemini', '.git', '.github', '.mcp.json', '.oracles', '.soma', '<!-- SOMA:END -->', '<!-- SOMA:START -->', 'CLAUDE.md', 'Cargo.toml', 'META.md', 'README.md', 'SOMA_WORKSPACE', '_project_root', 'args', 'claude', 'command', 'config', 'copilot', 'cost-optimization', 'cursor', 'cwd', 'destructive-ops', 'env', 'force', 'full', 'gemini', 'genome', 'genome/providence.md', 'git-workflow', 'go', 'go.mod', 'hooks', 'javascript', 'mcp', 'mcpServers', 'minimal', 'package.json', 'pre-commit', 'providence', 'pyproject.toml', 'python', 'python3', 'rules', 'rust', 'setup.cfg', 'setup.py', 'soma', 'soma_cli', 'soma_mcp', 'standard', 'starter_rules', 'testing', 'unknown', 'utf-8', 'y', 'yes']

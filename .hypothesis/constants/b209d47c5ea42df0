@@ -1,4 +1,0 @@
-# file: /Users/nick/Documents/soma-v0.89-review/fixed/soma_cli/status.py
-# hypothesis_version: 6.140.2
-
-['%Y-%m-%d', '*.md', '.oracles', '.soma', 'Z', '_project_root', '_root', 'cell_id', 'cells', 'claude.md', 'created', 'evidence', 'expired', 'expiry', 'expiry_days', 'fitness.jsonl', 'genome', 'id', 'is_core', 'name', 'r', 'readme.md', 'triggers', 'unknown', 'utf-8', '—', '∞ (core)', '📊 Soma Status\n']

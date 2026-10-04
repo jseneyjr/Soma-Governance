@@ -1,4 +1,0 @@
-# file: /Users/nick/Documents/soma-v0.89-review/fixed/enzymes/fitness_updater.py
-# hypothesis_version: 6.140.2
-
-['"', "'", '*.md', '--cells-dir', '--evidence-dir', '--platform', '--repo-root', '.fitness.lock', '.soma', '.system_generated', '/', 'README.md', 'TargetFile', '__main__', 'a', 'antigravity', 'args', 'args_keys', 'arguments', 'cell_id', 'cell_path', 'cells', 'claude', 'create_file', 'edit_file', 'evidence', 'file_path', 'fitness_updater', 'generic', 'id', 'id_skip_dirs', 'input', 'logs', 'matched_files', 'metadata', 'name', 'path', 'replace_file_content', 'session', 'signals.jsonl', 'target_file_keys', 'target_paths', 'tool_calls', 'transcript', 'transcript_id', 'trigger', 'utf-8', 'write_to_file', 'write_tools']

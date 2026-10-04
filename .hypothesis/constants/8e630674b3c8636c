@@ -1,4 +1,0 @@
-# file: /Users/nick/Documents/soma-v0.89-review/fixed/immune_system/verification/quality_gate.py
-# hypothesis_version: 6.140.2
-
-[', ', '.py', '_', '__init__.py', 'assert', 'assertion_density', 'behavioral_coverage', 'conftest.py', 'fail', 'no_bare_pass', 'pytest', 'raises', 'self', 'test_', 'value']

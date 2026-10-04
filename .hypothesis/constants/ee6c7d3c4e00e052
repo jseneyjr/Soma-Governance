@@ -1,4 +1,0 @@
-# file: /Users/nick/Documents/soma-v0.89-review/fixed/soma_mcp/server.py
-# hypothesis_version: 6.140.2
-
-[-32700, -32603, -32602, -32601, -32600, -32002, -32000, 300, '1', '2.0', '2024-11-05', 'BLOCKED', 'CRITICAL ERROR', 'ERROR', 'ESCALATION_REQUIRED', 'FAIL', 'FAILED', 'Internal error', 'Parse error', 'REJECTED', 'SOMA_WORKSPACE', 'VERSION', '_sessionToken', 'arguments', 'capabilities', 'code', 'content', 'error', 'id', 'initialize', 'isError', 'jsonrpc', 'message', 'method', 'name', 'operation', 'params', 'protocolVersion', 'r', 'receipt', 'result', 'serverInfo', 'soma-governance', 'soma-mcp', 'soma_audit_security', 'soma_capture_insight', 'soma_checkpoint', 'soma_coverage', 'soma_create_cell', 'soma_fitness', 'soma_grade', 'soma_list_cells', 'soma_propose_change', 'soma_report_outcome', 'soma_request_receipt', 'soma_scan', 'soma_verify_changes', 'status', 'text', 'tools', 'tools/call', 'tools/list', 'type', 'unknown', 'utf-8', 'version', 'workspace']

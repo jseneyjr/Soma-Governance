@@ -1,4 +1,0 @@
-# file: /Users/nick/Documents/soma-v0.89-review/fixed/enzymes/inference_provider.py
-# hypothesis_version: 6.140.2
-
-[1.35, 8192, '"', '#', "'", '=', 'ANTHROPIC_API_KEY', 'API_KEY', 'GEMINI_API_KEY', 'GOOGLE_API_KEY', 'OPENAI_API_KEY', 'OPENAI_BASE_URL', 'anthropic', 'content', 'gemini', 'gemini-2.0-flash', 'gpt-4o', 'openai', 'prompt-only', 'role', 'soma', 'soma.conf', 'stdin', 'user', 'utf-8']
