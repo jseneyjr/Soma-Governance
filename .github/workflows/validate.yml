@@ -2,10 +2,11 @@ name: Validate
 
 on:
   push:
-    branches: [main, develop]
+    branches: [main, develop, 'release/**']
   pull_request:
-    branches: [main, develop]
+    branches: [main, develop, 'release/**']
   workflow_call:
+  workflow_dispatch:
 
 # Least privilege: every job gets a read-only token unless it grants more below.
 permissions:
