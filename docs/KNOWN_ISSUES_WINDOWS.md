@@ -15,7 +15,7 @@ CI now runs the full pytest suite on Windows (`test-windows` in `.github/workflo
 | MCP cell reads and receipts (`soma_scan`, `soma_list_cells`, `soma_request_receipt`) | v0.89.0 fails once any cell has been edited; fixed after v0.89.0 | BUG-035 |
 | `install.ps1` parsing under Windows PowerShell 5.1 | Parse failure fixed in v0.89.0, but generated rules can contain mojibake and hooks are skipped | BUG-011, BUG-014, BUG-032 |
 | `install.ps1` under PowerShell 7 (`pwsh`) | Not fully verified; avoids the known PS 5.1 decoding issue, but the PowerShell installer still skips hooks | BUG-014, BUG-032 |
-| Hooks under Git Bash with a python.org install | Open: `python3` may resolve to the Windows Store stub | BUG-037 |
+| Hooks under Git Bash with a python.org install | Fixed after v0.89.0 (`soma_python.sh` resolver) | BUG-037 |
 | `uninstall.sh` under Git Bash | v0.89.0 rejects every path as "not an absolute path" and removes nothing; fixed after v0.89.0 | BUG-036 |
 | Test suite on Windows | v0.89.0 can write to the real home directory; fixed after v0.89.0 | BUG-010 |
 | `soma status` on a cp1252 console | v0.89.0 can crash unless `PYTHONIOENCODING=utf-8`; fixed after v0.89.0 | BUG-012 |
