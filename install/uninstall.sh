@@ -573,9 +573,11 @@ CLAUDE_SETTINGS_TO_CLEAN=()
 queue_claude_settings() {
   local path="$1" queued
   [ -e "$path" ] || [ -L "$path" ] || return 0
-  for queued in ${CLAUDE_SETTINGS_TO_CLEAN[@]+"${CLAUDE_SETTINGS_TO_CLEAN[@]}"}; do
-    [ "$queued" != "$path" ] || return 0
-  done
+  if [ ${#CLAUDE_SETTINGS_TO_CLEAN[@]} -gt 0 ]; then
+    for queued in "${CLAUDE_SETTINGS_TO_CLEAN[@]}"; do
+      [ "$queued" != "$path" ] || return 0
+    done
+  fi
   if [ -L "$path" ] || [ -L "$(dirname "$path")" ]; then
     log_warn "Not modifying $path: it or its .claude directory is a symlink. Remove hooks.soma by hand."
     return 0
@@ -1087,7 +1089,7 @@ if [ ${#MODIFY_FILES[@]} -gt 0 ]; then
       continue
     fi
     if [ -f "$m" ]; then
-      soma_py -c "import sys; p=sys.argv[1]; lines=open(p,encoding='utf-8').readlines(); out=[]; [out.append(l) for l in lines if not (l.startswith('# Copilot') or l.startswith('# Soma'))]; open(p,'w',encoding='utf-8').writelines(out)" "$m" 2>/dev/null || true
+      soma_py -c "import os, sys; p=sys.argv[1]; tmp=f'{p}.tmp.{os.getpid()}'; lines=open(p,encoding='utf-8').readlines(); out=[l for l in lines if not (l.startswith('# Copilot') or l.startswith('# Soma'))]; open(tmp,'w',encoding='utf-8').writelines(out); os.replace(tmp, p)" "$m" 2>/dev/null || true
       # Truncating at our header can leave an empty file behind. Remove it only if
       # nothing but whitespace remains, so a user's own content is never lost.
       if [ ! -s "$m" ] || [ -z "$(tr -d '[:space:]' < "$m")" ]; then

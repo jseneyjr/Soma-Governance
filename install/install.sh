@@ -442,6 +442,7 @@ case "$PLATFORM" in
       if [ "$DRY_RUN" = "true" ]; then
         log_info "[dry-run] would install $name (converted syntax) -> $(normalize_path "$TARGET_RULES/$name")"
       else
+        [ -L "$TARGET_RULES/$name" ] && rm -f "$TARGET_RULES/$name"
         backup_file "$TARGET_RULES/$name"
         # Convert trigger syntax to Kiro inclusion syntax
         sed -e 's/^trigger: always_on$/inclusion: always/' \
@@ -540,6 +541,7 @@ case "$PLATFORM" in
         if [ "$DRY_RUN" = "true" ]; then
           log_info "[dry-run] would install ${name}.instructions.md -> $(normalize_path "$target")"
         else
+          [ -L "$target" ] && rm -f "$target"
           backup_file "$target"
           strip_frontmatter < "$rule" > "$target"
           record_installed_file "$target"
@@ -568,6 +570,7 @@ case "$PLATFORM" in
 
       echo "  Target: $(normalize_path "$TARGET_FILE")"
       if [ "$DRY_RUN" = "false" ]; then
+        [ -L "$TARGET_FILE" ] && rm -f "$TARGET_FILE"
         backup_file "$TARGET_FILE"
 
         echo "# Copilot Global Instructions" > "$TARGET_FILE"
@@ -631,6 +634,7 @@ case "$PLATFORM" in
 
     echo "  Target: $(normalize_path "$TARGET_FILE")"
     if [ "$DRY_RUN" = "false" ]; then
+      [ -L "$TARGET_FILE" ] && rm -f "$TARGET_FILE"
       backup_file "$TARGET_FILE"
       echo "# Soma Governance Rules" > "$TARGET_FILE"
       echo "" >> "$TARGET_FILE"

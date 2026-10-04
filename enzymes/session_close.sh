@@ -147,7 +147,8 @@ if [ -f "$MULCH_QUEUE" ] && [ -s "$MULCH_QUEUE" ]; then
     echo "  Processing mulch queue..."
     MULCH_COUNT=0
     while IFS= read -r line; do
-        NAME=$(echo "$line" | soma_py -c "import sys,json; print(json.load(sys.stdin).get('name','mulch-cell'))" 2>/dev/null || echo 'mulch-cell')
+        NAME=$(echo "$line" | soma_py -c "import sys,json,re; name=str(json.load(sys.stdin).get('name','mulch-cell')); print(re.sub(r'[^a-zA-Z0-9_-]', '', name))" 2>/dev/null || echo 'mulch-cell')
+        [ -n "$NAME" ] || NAME="mulch-cell"
         HYPO=$(echo "$line" | soma_py -c "import sys,json; print(json.load(sys.stdin).get('hypothesis',''))" 2>/dev/null || echo '')
         PRED=$(echo "$line" | soma_py -c "import sys,json; print(json.load(sys.stdin).get('prediction','Mulch hypothesis will reduce defect recurrence'))" 2>/dev/null || echo 'Mulch hypothesis will reduce defect recurrence')
         FALS=$(echo "$line" | soma_py -c "import sys,json; print(json.load(sys.stdin).get('falsification','Defect pattern recurs with equal frequency'))" 2>/dev/null || echo 'Defect pattern recurs with equal frequency')

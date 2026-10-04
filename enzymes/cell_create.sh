@@ -203,6 +203,10 @@ esac
 
 # Generate slug: lowercase, spaces to dashes, remove special chars, truncate to 50 chars
 if [[ -n "$ID_OVERRIDE" ]]; then
+  if [[ "$ID_OVERRIDE" == *"/"* || "$ID_OVERRIDE" == *"\\"* || "$ID_OVERRIDE" == *".."* ]]; then
+    echo "Error: Invalid ID_OVERRIDE contains path traversal characters." >&2
+    exit 1
+  fi
   SLUG="$ID_OVERRIDE"
 else
   SLUG=$(echo "$HYPOTHESIS" | tr '[:upper:]' '[:lower:]' | sed 's/[^a-z0-9 ]//g' | sed 's/ /-/g' | cut -c1-50 | sed 's/-$//')
