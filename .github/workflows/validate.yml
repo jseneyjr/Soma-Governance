@@ -104,7 +104,7 @@ jobs:
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
-          fetch-depth: 2
+          fetch-depth: 0
           persist-credentials: false
       
       - name: Set up Python
@@ -145,18 +145,21 @@ jobs:
 
       - name: Soma CI Outcome Report
         if: always()
+        env:
+          PR_BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          TEST_OUTCOME: ${{ steps.test.outcome }}
+          COMMIT_SHA: ${{ github.sha }}
         run: |
-          BASE_REF="${{ github.event.pull_request.base.sha }}"
-          if [ -n "$BASE_REF" ]; then
-            CHANGED=$(git diff --name-only "origin/$BASE_REF...HEAD" 2>/dev/null || git diff --name-only "$BASE_REF...HEAD" 2>/dev/null || echo "")
+          if [ -n "$PR_BASE_SHA" ]; then
+            CHANGED=$(git diff --name-only "origin/$PR_BASE_SHA...HEAD" 2>/dev/null || git diff --name-only "$PR_BASE_SHA...HEAD" 2>/dev/null || echo "")
           else
             CHANGED=$(git diff --name-only HEAD~1 HEAD 2>/dev/null || echo "")
           fi
           if [ -n "$CHANGED" ]; then
             python3 enzymes/ci_outcome_reporter.py \
               --changed-files "$CHANGED" \
-              --test-result "${{ steps.test.outcome }}" \
-              --commit-sha "${{ github.sha }}" \
+              --test-result "$TEST_OUTCOME" \
+              --commit-sha "$COMMIT_SHA" \
               --format markdown >> $GITHUB_STEP_SUMMARY
           fi
 

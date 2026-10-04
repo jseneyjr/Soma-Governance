@@ -273,17 +273,14 @@ function Merge-SomaMcpConfig {
 
     # Prefer a normally installed soma_mcp package. A checkout-only install
     # gets a documented source PYTHONPATH fallback instead of using the
-    # checkout as the governed workspace/cwd.
+    # checkout as the governed workspace/cwd. Uses isolated mode (-I) and
+    # importlib.util.find_spec to check without executing workspace code (BUG-044).
     $sourceFallback = $null
-    $savedLocation = (Get-Location).Path
     try {
-        Set-Location -LiteralPath $Workspace
-        & python3 -c "import soma_mcp" *> $null
+        & python3 -I -c "import sys, importlib.util; sys.path.append(sys.argv[1]); sys.exit(0 if importlib.util.find_spec('soma_mcp') is not $null else 1)" "$Workspace" *> $null
         if ($LASTEXITCODE -ne 0) { $sourceFallback = $RepoDir }
     } catch {
         $sourceFallback = $RepoDir
-    } finally {
-        Set-Location -LiteralPath $savedLocation
     }
     $serverEnv = [ordered]@{ "SOMA_WORKSPACE" = $Workspace }
     if ($sourceFallback) { $serverEnv["PYTHONPATH"] = $sourceFallback }

@@ -153,7 +153,7 @@ def _bash_complete(tmp_path, words, cword):
 def test_bash_completes_subcommands_and_choices(tmp_path):
     assert "init" in _bash_complete(tmp_path, ["soma", "in"], 1)
     assert set(_bash_complete(tmp_path, ["soma", "init", "--platform", ""], 3)) == {
-        "gemini", "claude", "cursor", "copilot"}
+        "gemini", "claude", "cursor", "copilot", "kiro"}
     assert "--dry-run" in _bash_complete(tmp_path, ["soma", "init", "--d"], 2)
     assert set(_bash_complete(tmp_path, ["soma", "completion", ""], 2)) >= set(SHELLS)
 
