@@ -76,8 +76,11 @@ while IFS= read -r file; do
 done <<< "$CHANGED_FILES"
 
 if [ "$MATCHED" -eq 1 ]; then
-    echo "\U0001f6e1\ufe0f  [{name}] Cell triggered (mechanical enforcement)"
-    echo "   Hypothesis: {quoted_hyp}"
+    echo -n "🛡️  ["
+    echo -n {quoted_name}
+    echo "] Cell triggered (mechanical enforcement)"
+    echo -n "   Hypothesis: "
+    echo {quoted_hyp}
     echo "   Files: $CHANGED_FILES"
     # Signal the cell
     SCRIPT_DIR="$(dirname "$0")/../../scripts"
@@ -111,8 +114,11 @@ while IFS= read -r file; do
 done <<< "$CHANGED_FILES"
 
 if [ "$MATCHED" -eq 1 ]; then
-    echo "\u26a0\ufe0f  [{name}] Membrane escalation triggered (mechanical enforcement)"
-    echo "   Hypothesis: {quoted_hyp}"
+    echo -n "⚠️  ["
+    echo -n {quoted_name}
+    echo "] Membrane escalation triggered (mechanical enforcement)"
+    echo -n "   Hypothesis: "
+    echo {quoted_hyp}
     echo "   Recommend elevated review before merging."
     exit 1  # Mechanical: block commit
 fi
@@ -143,8 +149,11 @@ while IFS= read -r file; do
 done <<< "$CHANGED_FILES"
 
 if [ "$MATCHED" -eq 1 ]; then
-    echo "\U0001f50d  [{name}] Trap check triggered (mechanical enforcement)"
-    echo "   Hypothesis: {quoted_hyp}"
+    echo -n "🔍  ["
+    echo -n {quoted_name}
+    echo "] Trap check triggered (mechanical enforcement)"
+    echo -n "   Hypothesis: "
+    echo {quoted_hyp}
     exit 1  # Mechanical: block commit
 fi
 

@@ -111,7 +111,7 @@ def laplace_score(
     Returns:
         Smoothed score in [0, 1] × impact_weight.
     """
-    weight = float(impact_weight if impact_weight is not None else 1.0)
+    weight = float(_to_num(impact_weight, default=1.0))
     return ((_to_num(tp) + 1.0) / (_to_num(triggers) + 2.0)) * weight
 
 

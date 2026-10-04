@@ -1087,8 +1087,7 @@ if [ ${#MODIFY_FILES[@]} -gt 0 ]; then
       continue
     fi
     if [ -f "$m" ]; then
-      sed -i.bak '/^# Copilot Global Instructions/,$d' "$m" && rm -f "$m.bak"
-      sed -i.bak '/^# Soma Governance Rules/,$d' "$m" && rm -f "$m.bak"
+      soma_py -c "import sys; p=sys.argv[1]; lines=open(p,encoding='utf-8').readlines(); out=[]; [out.append(l) for l in lines if not (l.startswith('# Copilot') or l.startswith('# Soma'))]; open(p,'w',encoding='utf-8').writelines(out)" "$m" 2>/dev/null || true
       # Truncating at our header can leave an empty file behind. Remove it only if
       # nothing but whitespace remains, so a user's own content is never lost.
       if [ ! -s "$m" ] || [ -z "$(tr -d '[:space:]' < "$m")" ]; then

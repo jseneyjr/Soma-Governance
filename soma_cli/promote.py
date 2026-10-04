@@ -113,7 +113,11 @@ def _force_promote(project_root: Path, cell_id: str, dry_run: bool, use_json: bo
             fh.write(content)
             fh.flush()
             os.fsync(fh.fileno())
-        os.replace(tmp_path, target_path)
+        try:
+            os.replace(tmp_path, target_path)
+        except OSError:
+            import shutil
+            shutil.move(str(tmp_path), str(target_path))
         cell_path.unlink()
     except Exception:
         if tmp_path.exists():

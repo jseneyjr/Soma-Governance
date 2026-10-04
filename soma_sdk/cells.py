@@ -1,5 +1,6 @@
 """Cell data structures and utilities."""
 from __future__ import annotations
+from datetime import datetime, timezone, date
 import math
 import os
 from dataclasses import dataclass, field
@@ -124,8 +125,16 @@ class Cell:
         if not self.is_promotable:
             return False
         if min_age_days > 0 and getattr(self, 'created_date', None):
+            c_date = self.created_date
+            if isinstance(c_date, str):
+                try:
+                    c_date = datetime.strptime(c_date, "%Y-%m-%d" if 'T' not in c_date else "%Y-%m-%dT%H:%M:%SZ")
+                except Exception:
+                    return True
+            elif isinstance(c_date, date) and not isinstance(c_date, datetime):
+                c_date = datetime.combine(c_date, datetime.min.time())
             now_utc = datetime.now(timezone.utc).replace(tzinfo=None)
-            created_utc = self.created_date.replace(tzinfo=None)
+            created_utc = c_date.replace(tzinfo=None) if hasattr(c_date, 'tzinfo') and c_date.tzinfo else c_date
             if (now_utc - created_utc).days < min_age_days:
                 return False
         return True
