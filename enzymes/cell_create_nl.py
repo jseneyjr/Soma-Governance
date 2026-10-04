@@ -221,18 +221,19 @@ def main():
         print(f'Warning: YAML parse error: {e}')
         fm = {}
     
-    cell_type = fm.get('type', 'vacuole')
+    raw_cell_type = str(fm.get('type', 'vacuole'))
+    cell_type = re.sub(r'[^a-zA-Z0-9_\-]', '', os.path.basename(raw_cell_type)) or 'vacuole'
     hypothesis = fm.get('hypothesis', args.description)
     
     # Generate filename
     if args.id:
-        slug = args.id
+        slug = re.sub(r'[^a-zA-Z0-9_\-]', '', os.path.basename(args.id))
     else:
         # Create slug from hypothesis
-        import re
         slug = re.sub(r'[^a-z0-9]+', '-', hypothesis.lower())[:50].strip('-')
     
     filename = f'{cell_type}-{slug}.md' if not slug.startswith(cell_type) else f'{slug}.md'
+    filename = os.path.basename(filename)
     
     # Determine target directory
     workspace = resolve_workspace(__file__)
@@ -243,7 +244,9 @@ def main():
     target_dir = os.path.join(workspace, '.soma', 'cells', type_dirs.get(cell_type, 'vacuoles'))
     os.makedirs(target_dir, exist_ok=True)
     
-    filepath = os.path.join(target_dir, filename)
+    filepath = os.path.realpath(os.path.join(target_dir, filename))
+    if not filepath.startswith(os.path.realpath(target_dir) + os.sep):
+        raise ValueError(f"Path traversal detected for filename '{filename}'")
     
     try:
         os.unlink(filepath)

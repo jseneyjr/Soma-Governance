@@ -32,7 +32,8 @@ def main():
                 'type': fm.get('type', ''),
                 'enforcement': fm.get('enforcement', 'advisory')
             })
-        except Exception: pass
+        except Exception as exc:
+            sys.stderr.write(f"Warning: Failed to parse cell {cell_file}: {exc}\n")
     
     # Compute coverage
     covered_files = set()

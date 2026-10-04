@@ -11,6 +11,11 @@ if [ -z "${1:-}" ]; then
 fi
 
 NEW_VERSION="$1"
+if [[ ! "$NEW_VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+(-[a-zA-Z0-9.]+)?$ ]]; then
+    echo "Error: Invalid semantic version format: '$NEW_VERSION'" >&2
+    echo "Expected format: X.Y.Z or X.Y.Z-tag (e.g. 0.92.0 or 0.92.0-rc1)" >&2
+    exit 1
+fi
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 VERSION_FILE="$REPO_ROOT/VERSION"
 

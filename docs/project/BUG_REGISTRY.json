@@ -876,6 +876,187 @@
       "regression_test": "tests/test_precommit_hook_fallback.py::test_falls_back_to_init_interpreter_when_soma_not_on_path",
       "pattern": "Hook or generated script that depends on the interactive shell's PATH",
       "changelog_ref": "v0.90.0"
+    },
+    {
+      "id": "BUG-048",
+      "status": "fixed",
+      "title": "enzymes/ttc_verifier.py fails to resolve escalation_sentinel.sh in external consumer projects",
+      "discovered_in": "v0.91.0",
+      "fixed_in": "v0.91.0",
+      "root_cause": "path_error",
+      "severity": "critical",
+      "description": "ttc_verifier.py resolved escalation_sentinel.sh via os.path.join(workspace, 'enzymes', ...). External projects lack an enzymes/ folder, forcing false ESCALATION_REQUIRED on all proposals.",
+      "affected_files": [
+        "enzymes/ttc_verifier.py"
+      ],
+      "regression_test": "tests/test_oracle_checkpoint.py",
+      "pattern": "Assuming workspace contains engine installation directory structure",
+      "changelog_ref": "v0.91.0"
+    },
+    {
+      "id": "BUG-049",
+      "status": "fixed",
+      "title": "enzymes/cell_create_nl.py cell_type parameter path traversal vulnerability",
+      "discovered_in": "v0.91.0",
+      "fixed_in": "v0.91.0",
+      "root_cause": "path_error",
+      "severity": "critical",
+      "description": "cell_create_nl.py joined unvalidated cell_type string into filename f'{cell_type}-{slug}.md', permitting directory traversal outside of .soma/cells/.",
+      "affected_files": [
+        "enzymes/cell_create_nl.py"
+      ],
+      "regression_test": "tests/test_cell_creation_security.py",
+      "pattern": "Joining unvalidated parameter into filesystem path without basename sanitization",
+      "changelog_ref": "v0.91.0"
+    },
+    {
+      "id": "BUG-050",
+      "status": "fixed",
+      "title": "enzymes/bump_version.sh version string unvalidated regex substitution code injection",
+      "discovered_in": "v0.91.0",
+      "fixed_in": "v0.91.0",
+      "root_cause": "schema_drift",
+      "severity": "critical",
+      "description": "bump_version.sh substituted unvalidated version argument $1 directly into Python code in soma_sdk/__init__.py, allowing arbitrary code execution upon import.",
+      "affected_files": [
+        "enzymes/bump_version.sh"
+      ],
+      "regression_test": "tests/test_packaging_install_correctness.py",
+      "pattern": "Unvalidated shell parameter substituted into executable code template",
+      "changelog_ref": "v0.91.0"
+    },
+    {
+      "id": "BUG-051",
+      "status": "fixed",
+      "title": "soma_mcp/tools.py soma_propose_change drops workspace parameter",
+      "discovered_in": "v0.91.0",
+      "fixed_in": "v0.91.0",
+      "root_cause": "path_error",
+      "severity": "critical",
+      "description": "soma_mcp/tools.py omitted workspace argument when calling soma_propose_change, causing path confinement to evaluate against os.getcwd() instead of _canonical_workspace.",
+      "affected_files": [
+        "soma_mcp/tools.py",
+        "enzymes/ttc_verifier.py"
+      ],
+      "regression_test": "tests/test_mcp_dispatch.py",
+      "pattern": "Omitting workspace parameter in MCP tool execution router",
+      "changelog_ref": "v0.91.0"
+    },
+    {
+      "id": "BUG-052",
+      "status": "fixed",
+      "title": "Core enzymes swallow cell parse errors with bare except Exception: pass",
+      "discovered_in": "v0.91.0",
+      "fixed_in": "v0.91.0",
+      "root_cause": "silent_failure",
+      "severity": "critical",
+      "description": "cell_scan.py, cell_deps.py, cell_coverage.py, and immune_grade.py swallowed cell parsing exceptions silently, un-guarding security paths.",
+      "affected_files": [
+        "enzymes/cell_scan.py",
+        "enzymes/cell_deps.py",
+        "enzymes/cell_coverage.py",
+        "enzymes/immune_grade.py"
+      ],
+      "regression_test": "tests/test_error_handling.py",
+      "pattern": "Bare except pass swallowing exception without stderr output or logging",
+      "changelog_ref": "v0.91.0"
+    },
+    {
+      "id": "BUG-053",
+      "status": "fixed",
+      "title": "soma_mcp/tools.py soma_verify_changes falsely attests layer1_only: false without executing Layer 2",
+      "discovered_in": "v0.91.0",
+      "fixed_in": "v0.91.0",
+      "root_cause": "schema_drift",
+      "severity": "critical",
+      "description": "soma_verify_changes returned layer1_only: false status PASS without running Layer 2 adversarial verification.",
+      "affected_files": [
+        "soma_mcp/tools.py"
+      ],
+      "regression_test": "tests/test_mcp_verify.py",
+      "pattern": "Returning pass response with unverified capability claims",
+      "changelog_ref": "v0.91.0"
+    },
+    {
+      "id": "BUG-054",
+      "status": "fixed",
+      "title": "soma_sdk/cells.py top-level import yaml breaches zero-deps MCP wall",
+      "discovered_in": "v0.91.0",
+      "fixed_in": "v0.91.0",
+      "root_cause": "platform_compat",
+      "severity": "moderate",
+      "description": "soma_sdk/cells.py contained top-level import yaml, causing allowlisted insight_capture enzyme to crash on bare Python interpreters.",
+      "affected_files": [
+        "soma_sdk/cells.py",
+        "enzymes/insight_capture.py"
+      ],
+      "regression_test": "tests/test_static_invariants.py",
+      "pattern": "Transitive import of non-stdlib dependency in stdio server path",
+      "changelog_ref": "v0.91.0"
+    },
+    {
+      "id": "BUG-055",
+      "status": "fixed",
+      "title": "enzymes/session_close.sh git sync order inversion leaves cell evolution uncommitted",
+      "discovered_in": "v0.91.0",
+      "fixed_in": "v0.91.0",
+      "root_cause": "dead_code",
+      "severity": "moderate",
+      "description": "session_close.sh executed git commit && git push before outcome_engine.py and cell_fitness.py ran, leaving cell evolution updates dirty on exit.",
+      "affected_files": [
+        "enzymes/session_close.sh"
+      ],
+      "regression_test": "tests/test_shell_isolation_behavioral.py",
+      "pattern": "Git push executed before lifecycle mutation steps complete",
+      "changelog_ref": "v0.91.0"
+    },
+    {
+      "id": "BUG-056",
+      "status": "fixed",
+      "title": "soma_mcp/cell_cache.py fails open on HMAC signature failure",
+      "discovered_in": "v0.91.0",
+      "fixed_in": "v0.91.0",
+      "root_cause": "silent_failure",
+      "severity": "moderate",
+      "description": "CellCache._verify_integrity emitted warning on STDERR and loaded tampered cells when HMAC verification failed instead of raising CellCacheError.",
+      "affected_files": [
+        "soma_mcp/cell_cache.py"
+      ],
+      "regression_test": "tests/test_evidence_integrity.py",
+      "pattern": "Cryptographic integrity check logs warning instead of failing closed",
+      "changelog_ref": "v0.91.0"
+    },
+    {
+      "id": "BUG-057",
+      "status": "fixed",
+      "title": "soma_core/receipts.py uses non-constant-time string comparisons & purges receipt on consume=False",
+      "discovered_in": "v0.91.0",
+      "fixed_in": "v0.91.0",
+      "root_cause": "mapping_error",
+      "severity": "moderate",
+      "description": "verify_receipt used standard == string equality and deleted receipt IDs from _receipt_store on invalid check even when consume=False.",
+      "affected_files": [
+        "soma_core/receipts.py"
+      ],
+      "regression_test": "tests/test_receipts.py",
+      "pattern": "Timing side channel in token verification and destructive state deletion on read",
+      "changelog_ref": "v0.91.0"
+    },
+    {
+      "id": "BUG-058",
+      "status": "fixed",
+      "title": "immune_system/verification/arbiter.py omits import_guard from TOOL_TO_CATEGORY",
+      "discovered_in": "v0.91.0",
+      "fixed_in": "v0.91.0",
+      "root_cause": "mapping_error",
+      "severity": "low",
+      "description": "arbiter.py TOOL_TO_CATEGORY mapping omitted import_guard tool evidence, causing import guard failures to be misclassified as agent convergences.",
+      "affected_files": [
+        "immune_system/verification/arbiter.py"
+      ],
+      "regression_test": "tests/test_verification/test_arbiter.py",
+      "pattern": "Tool omitted from category dictionary in evidence arbiter",
+      "changelog_ref": "v0.91.0"
     }
   ]
 }

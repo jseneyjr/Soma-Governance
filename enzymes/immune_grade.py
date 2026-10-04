@@ -42,7 +42,8 @@ def main():
             if isinstance(fm.get('fitness'), (int, float)):
                 fm['fitness'] = {'score': float(fm['fitness'])}
             cells.append(fm | {'_name': os.path.splitext(os.path.basename(cell_file))[0]})
-        except Exception: pass
+        except Exception as exc:
+            sys.stderr.write(f"Warning: Failed to parse cell {cell_file}: {exc}\n")
     
     if not cells:
         print('No cells found. Run Genesis first.')

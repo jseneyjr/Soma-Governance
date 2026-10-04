@@ -679,7 +679,7 @@ def execute_tool(name: str, args: dict):
         jit_result = jit_express(workspace, changed_files=[file_path])
         active_playbooks = jit_result.get('relevant_cells', [])
         
-        result = soma_propose_change(file_path, proposed_content, active_playbooks)
+        result = soma_propose_change(file_path, proposed_content, active_playbooks, workspace=workspace)
         status, verdict = _classify_propose_result(result)
         # Explicit status so the transport does not have to sniff the message text.
         payload = {"result": result, "status": status}
@@ -754,10 +754,13 @@ def execute_tool(name: str, args: dict):
             {"tool": r.tool, "target": r.target, "verdict": r.verdict, "detail": r.detail}
             for r in results
         ]
+        # Layer 2 execution is not implemented in MCP tools endpoint; force layer1_only to True
+        # so response accuracy is guaranteed.
+        actual_layer1_only = True
         return {
             "status": "PASS" if verdict else "FAIL",
             "summary": summary,
-            "layer1_only": layer1_only,
+            "layer1_only": actual_layer1_only,
             "evidence": evidence,
         }
 
