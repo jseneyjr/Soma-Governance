@@ -120,6 +120,16 @@ class Cell:
         score = laplace_score(self.fitness.true_positives, self.fitness.triggers)
         return score > 0.85 and self.fitness.triggers >= 20
 
+    def is_promotable_with_age(self, min_age_days: int = 0) -> bool:
+        if not self.is_promotable:
+            return False
+        if min_age_days > 0 and getattr(self, 'created_date', None):
+            now_utc = datetime.now(timezone.utc).replace(tzinfo=None)
+            created_utc = self.created_date.replace(tzinfo=None)
+            if (now_utc - created_utc).days < min_age_days:
+                return False
+        return True
+
 
 # ---------------------------------------------------------------------------
 # Canonical Cell Parser (Phase 2.1)

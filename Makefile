@@ -1,8 +1,5 @@
 # Soma — Makefile
-# Reads soma.conf for team/workflow configuration.
 # Without soma.conf, all defaults apply (solo/trunk/all).
-
--include soma.conf
 
 # Defaults (namespaced to avoid env collisions)
 SOMA_PLATFORM ?= gemini
@@ -63,7 +60,7 @@ install: ## Install for configured platform (SOMA_PLATFORM)
 	fi; \
 	rm -f "$$log"
 	@# install.sh ends with shell-aware PATH guidance if `soma` doesn't resolve (BUG-041).
-	@bash install/install.sh $(SOMA_PLATFORM)
+	@bash install/install.sh "$(SOMA_PLATFORM)"
 
 install-gemini: ## Install rules for Gemini/Antigravity (alias)
 	@bash install/install.sh gemini
@@ -81,11 +78,11 @@ install-mcp: ## Install only .mcp.json for any MCP-compatible agent
 	@bash install/install.sh mcp
 
 install-windows: ## Install rules and skills for Windows using PowerShell
-	@powershell -ExecutionPolicy Bypass -File install/install.ps1 -Platform $(SOMA_PLATFORM)
+	@powershell -ExecutionPolicy Bypass -File install/install.ps1 -Platform "$(SOMA_PLATFORM)"
 
 uninstall: ## Remove installed genome, organs, and hooks
 	@echo "Uninstalling Soma for $(SOMA_PLATFORM)..."
-	@bash install/uninstall.sh $(SOMA_PLATFORM)
+	@bash install/uninstall.sh "$(SOMA_PLATFORM)"
 
 doctor: ## Verify installation health & dependencies
 	@echo "Running health check..."
@@ -113,7 +110,7 @@ doctor: ## Verify installation health & dependencies
 	    echo ""; \
 	    echo "Installed skills (kiro):"; \
 	    if [ -d $(HOME)/.kiro/skills ]; then \
-	      ls -d $(HOME)/.kiro/skills/*/ 2>/dev/null | while read d; do echo "  ✅ $$(basename $$d)"; done || echo "  (none)"; \
+	      ls -d $(HOME)/.kiro/skills/*/ 2>/dev/null | while read d; do echo "  ✅ $$(basename $$d)"; done || echo="  (none)"; \
 	    else echo "  (none — $(HOME)/.kiro/skills/ not found)"; fi ;; \
 	  copilot) if [ -f $(HOME)/copilot-instructions.md ]; then echo "  ✅ $(HOME)/copilot-instructions.md"; else echo "  (none)"; fi ;; \
 	  claude) if [ -f $(HOME)/.claude/CLAUDE.md ]; then echo "  ✅ $(HOME)/.claude/CLAUDE.md"; else echo "  (none)"; fi ;; \
@@ -137,7 +134,7 @@ validate: ## Check script syntax and config values
 	    fi; \
 	  done; \
 	  echo "  ✅ python syntax"; \
-	  if "$(SOMA_PYTHON_BIN)" -m json.tool install/hooks.json.template > /dev/null 2>&1; then \
+	  if "$(SOMA_PYTHON_BIN)" -c "import json, sys; json.load(open(sys.argv[1], encoding='utf-8'))" install/hooks.json.template > /dev/null 2>&1; then \
 	    echo "  ✅ install/hooks.json.template (valid JSON)"; \
 	  else echo "  ❌ install/hooks.json.template (invalid JSON)"; failed=1; fi; \
 	else \

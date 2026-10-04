@@ -226,6 +226,11 @@ jobs:
           pip install pytest==8.3.4 ruff==0.9.10 hypothesis==6.126.0 coverage==7.6.12 pyyaml==6.0.2
           pip install dist/*.whl
 
+      - name: Wheel smoke test (source-isolated)
+        run: |
+          cd "$RUNNER_TEMP"
+          python -c "import soma_cli, soma_sdk; print('Soma wheel imports cleanly')"
+
       # HOME and USERPROFILE point at a throwaway directory so no test can write
       # to the runner's real profile (BUG-010). PYTHONUTF8=0 pins the Windows
       # legacy encodings (cp1252 locale and piped stdio), the ones contributors

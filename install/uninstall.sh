@@ -361,7 +361,7 @@ check_confined() {
 # be swapped for a symlink in between. Abort rather than follow it.
 guard_sink() {
   local kind="$1" target="$2"; shift 2
-  [ $# -gt 0 ] || set -- ${SINK_ROOTS[@]+"${SINK_ROOTS[@]}"}
+  if [ $# -eq 0 ] && [ ${#SINK_ROOTS[@]} -gt 0 ]; then set -- "${SINK_ROOTS[@]}"; fi
   if ! check_confined "$kind" "$target" "$@"; then
     log_error "Refusing to touch $target: $CONFINE_REASON"
     log_error "It no longer passes the confinement check. Aborting; remaining items left in place."
@@ -871,48 +871,59 @@ fi
 # the entire removal section.
 REAL_FILES=()
 REAL_DIRS=()
-for p in ${FILES_TO_REMOVE[@]+"${FILES_TO_REMOVE[@]}"} ${DIRS_TO_REMOVE[@]+"${DIRS_TO_REMOVE[@]}"}; do
-  if [ -d "$p" ]; then
-    REAL_DIRS+=("$p")
-  elif [ -f "$p" ]; then
-    REAL_FILES+=("$p")
-  fi
-done
-FILES_TO_REMOVE=(${REAL_FILES[@]+"${REAL_FILES[@]}"})
-DIRS_TO_REMOVE=(${REAL_DIRS[@]+"${REAL_DIRS[@]}"})
+if [ ${#FILES_TO_REMOVE[@]} -gt 0 ]; then
+  for p in "${FILES_TO_REMOVE[@]}"; do
+    if [ -d "$p" ]; then REAL_DIRS+=("$p"); elif [ -f "$p" ]; then REAL_FILES+=("$p"); fi
+  done
+fi
+if [ ${#DIRS_TO_REMOVE[@]} -gt 0 ]; then
+  for p in "${DIRS_TO_REMOVE[@]}"; do
+    if [ -d "$p" ]; then REAL_DIRS+=("$p"); elif [ -f "$p" ]; then REAL_FILES+=("$p"); fi
+  done
+fi
+FILES_TO_REMOVE=(); [ ${#REAL_FILES[@]} -eq 0 ] || FILES_TO_REMOVE=("${REAL_FILES[@]}")
+DIRS_TO_REMOVE=(); [ ${#REAL_DIRS[@]} -eq 0 ] || DIRS_TO_REMOVE=("${REAL_DIRS[@]}")
 
 REAL_MOD=()
-for m in ${MODIFY_FILES[@]+"${MODIFY_FILES[@]}"}; do
-  [ -f "$m" ] && REAL_MOD+=("$m")
-done
-MODIFY_FILES=(${REAL_MOD[@]+"${REAL_MOD[@]}"})
+if [ ${#MODIFY_FILES[@]} -gt 0 ]; then
+  for m in "${MODIFY_FILES[@]}"; do
+    [ -f "$m" ] && REAL_MOD+=("$m")
+  done
+fi
+MODIFY_FILES=(); [ ${#REAL_MOD[@]} -eq 0 ] || MODIFY_FILES=("${REAL_MOD[@]}")
 
 REAL_MCP=()
-for mcp_config in ${MCP_CONFIGS_TO_CLEAN[@]+"${MCP_CONFIGS_TO_CLEAN[@]}"}; do
-  [ -f "$mcp_config" ] && REAL_MCP+=("$mcp_config")
-done
-MCP_CONFIGS_TO_CLEAN=(${REAL_MCP[@]+"${REAL_MCP[@]}"})
+if [ ${#MCP_CONFIGS_TO_CLEAN[@]} -gt 0 ]; then
+  for mcp_config in "${MCP_CONFIGS_TO_CLEAN[@]}"; do
+    [ -f "$mcp_config" ] && REAL_MCP+=("$mcp_config")
+  done
+fi
+MCP_CONFIGS_TO_CLEAN=(); [ ${#REAL_MCP[@]} -eq 0 ] || MCP_CONFIGS_TO_CLEAN=("${REAL_MCP[@]}")
 
 REAL_RC=()
-for rc_file in ${RC_FILES_TO_CLEAN[@]+"${RC_FILES_TO_CLEAN[@]}"}; do
-  if [ -f "$rc_file" ]; then
-    REAL_RC+=("$rc_file")
-  else
-    log_warn "Recorded soma PATH line file is gone, skipping: $rc_file"
-  fi
-done
-RC_FILES_TO_CLEAN=(${REAL_RC[@]+"${REAL_RC[@]}"})
+if [ ${#RC_FILES_TO_CLEAN[@]} -gt 0 ]; then
+  for rc_file in "${RC_FILES_TO_CLEAN[@]}"; do
+    if [ -f "$rc_file" ]; then
+      REAL_RC+=("$rc_file")
+    else
+      log_warn "Recorded soma PATH line file is gone, skipping: $rc_file"
+    fi
+  done
+fi
+RC_FILES_TO_CLEAN=(); [ ${#REAL_RC[@]} -eq 0 ] || RC_FILES_TO_CLEAN=("${REAL_RC[@]}")
 
 # Parse every owned MCP config before deleting anything. If it was corrupted or
 # concurrently replaced, retain all installed files and the ownership manifest
 # so the uninstall can be retried safely.
-for mcp_config in ${MCP_CONFIGS_TO_CLEAN[@]+"${MCP_CONFIGS_TO_CLEAN[@]}"}; do
-  if ! validate_soma_mcp_config "$mcp_config"; then
-    log_error "MCP configuration is invalid or no longer contains the owned soma server: $mcp_config"
-    log_error "Refusing to continue. Nothing was removed and the manifest was kept."
-    exit 1
-  fi
-done
+if [ ${#MCP_CONFIGS_TO_CLEAN[@]} -gt 0 ]; then
+  for mcp_config in "${MCP_CONFIGS_TO_CLEAN[@]}"; do
+    if ! validate_soma_mcp_config "$mcp_config"; then
+      log_error "MCP configuration is invalid or no longer contains the owned soma server: $mcp_config"
+      log_error "Refusing to continue. Nothing was removed and the manifest was kept."
+      exit 1
+    fi
+  done
+fi
 
 queue_claude_settings "$WORK_DIR/.claude/settings.json"
 queue_claude_settings "$RESOLVED_HOME/.claude/settings.json"
@@ -935,14 +946,12 @@ else
   plan_rc=0
   plan_out="$(
     {
-      for p in ${FILES_TO_REMOVE[@]+"${FILES_TO_REMOVE[@]}"} ${DIRS_TO_REMOVE[@]+"${DIRS_TO_REMOVE[@]}"} \
-               ${MODIFY_FILES[@]+"${MODIFY_FILES[@]}"} ${MCP_CONFIGS_TO_CLEAN[@]+"${MCP_CONFIGS_TO_CLEAN[@]}"} \
-               ${CONFIG_TO_REMOVE[@]+"${CONFIG_TO_REMOVE[@]}"}; do
-        [ "$p" = "$MANIFEST_PATH" ] || printf '%s\0' "$p"
-      done
-      for r in ${RC_FILES_TO_CLEAN[@]+"${RC_FILES_TO_CLEAN[@]}"}; do
-        printf 'rcfile:%s\0' "$r"
-      done
+      if [ ${#FILES_TO_REMOVE[@]} -gt 0 ]; then for p in "${FILES_TO_REMOVE[@]}"; do [ "$p" = "$MANIFEST_PATH" ] || printf '%s\0' "$p"; done; fi
+      if [ ${#DIRS_TO_REMOVE[@]} -gt 0 ]; then for p in "${DIRS_TO_REMOVE[@]}"; do [ "$p" = "$MANIFEST_PATH" ] || printf '%s\0' "$p"; done; fi
+      if [ ${#MODIFY_FILES[@]} -gt 0 ]; then for p in "${MODIFY_FILES[@]}"; do [ "$p" = "$MANIFEST_PATH" ] || printf '%s\0' "$p"; done; fi
+      if [ ${#MCP_CONFIGS_TO_CLEAN[@]} -gt 0 ]; then for p in "${MCP_CONFIGS_TO_CLEAN[@]}"; do [ "$p" = "$MANIFEST_PATH" ] || printf '%s\0' "$p"; done; fi
+      if [ ${#CONFIG_TO_REMOVE[@]} -gt 0 ]; then for p in "${CONFIG_TO_REMOVE[@]}"; do [ "$p" = "$MANIFEST_PATH" ] || printf '%s\0' "$p"; done; fi
+      if [ ${#RC_FILES_TO_CLEAN[@]} -gt 0 ]; then for r in "${RC_FILES_TO_CLEAN[@]}"; do printf 'rcfile:%s\0' "$r"; done; fi
     } | SOMA_ROOTS="$(join_lines "${SINK_ROOTS[@]}")" SOMA_HOME_ROOTS="$(join_lines "${ALLOWED_ROOTS[@]}")" soma_py -I -S -c "$PATH_CHECK_PY" plan 2>&1
   )" || plan_rc=$?
   if [ "$plan_rc" -ne 0 ]; then
@@ -956,13 +965,13 @@ fi
 echo ""
 echo "The following will be removed/modified:"
 if [ "$MANIFEST_EXISTS" = "true" ]; then echo "  - [MANIFEST] $MANIFEST_PATH"; fi
-for f in ${FILES_TO_REMOVE[@]+"${FILES_TO_REMOVE[@]}"}; do echo "  - [FILE] $f"; done
-for d in ${DIRS_TO_REMOVE[@]+"${DIRS_TO_REMOVE[@]}"}; do echo "  - [DIR]  $d"; done
-for m in ${MODIFY_FILES[@]+"${MODIFY_FILES[@]}"}; do echo "  - [MOD]  $m (remove soma sections, keep the rest)"; done
-for mcp_config in ${MCP_CONFIGS_TO_CLEAN[@]+"${MCP_CONFIGS_TO_CLEAN[@]}"}; do echo "  - [MCP]  $mcp_config (remove mcpServers.soma, keep the rest)"; done
-for c in ${CONFIG_TO_REMOVE[@]+"${CONFIG_TO_REMOVE[@]}"}; do echo "  - [USER CONFIG] $c (pass --keep-config to keep it)"; done
-for s in ${CLAUDE_SETTINGS_TO_CLEAN[@]+"${CLAUDE_SETTINGS_TO_CLEAN[@]}"}; do echo "  - [MOD]  $s (remove hooks.soma, keep the rest)"; done
-for r in ${RC_FILES_TO_CLEAN[@]+"${RC_FILES_TO_CLEAN[@]}"}; do echo "  - [MOD]  $r (remove soma PATH line)"; done
+if [ ${#FILES_TO_REMOVE[@]} -gt 0 ]; then for f in "${FILES_TO_REMOVE[@]}"; do echo "  - [FILE] $f"; done; fi
+if [ ${#DIRS_TO_REMOVE[@]} -gt 0 ]; then for d in "${DIRS_TO_REMOVE[@]}"; do echo "  - [DIR]  $d"; done; fi
+if [ ${#MODIFY_FILES[@]} -gt 0 ]; then for m in "${MODIFY_FILES[@]}"; do echo "  - [MOD]  $m (remove soma sections, keep the rest)"; done; fi
+if [ ${#MCP_CONFIGS_TO_CLEAN[@]} -gt 0 ]; then for mcp_config in "${MCP_CONFIGS_TO_CLEAN[@]}"; do echo "  - [MCP]  $mcp_config (remove mcpServers.soma, keep the rest)"; done; fi
+if [ ${#CONFIG_TO_REMOVE[@]} -gt 0 ]; then for c in "${CONFIG_TO_REMOVE[@]}"; do echo "  - [USER CONFIG] $c (pass --keep-config to keep it)"; done; fi
+if [ ${#CLAUDE_SETTINGS_TO_CLEAN[@]} -gt 0 ]; then for s in "${CLAUDE_SETTINGS_TO_CLEAN[@]}"; do echo "  - [MOD]  $s (remove hooks.soma, keep the rest)"; done; fi
+if [ ${#RC_FILES_TO_CLEAN[@]} -gt 0 ]; then for r in "${RC_FILES_TO_CLEAN[@]}"; do echo "  - [MOD]  $r (remove soma PATH line)"; done; fi
 
 MANIFEST_COUNT=0
 [ "$MANIFEST_EXISTS" != "true" ] || MANIFEST_COUNT=1
@@ -975,7 +984,7 @@ fi
 if [ ${#PRESERVED_PATHS[@]} -gt 0 ]; then
   echo ""
   echo "Preserved (user-authored — pass --purge-data to remove):"
-  for p in ${PRESERVED_PATHS[@]+"${PRESERVED_PATHS[@]}"}; do echo "  - [KEEP] $p"; done
+  for p in "${PRESERVED_PATHS[@]}"; do echo "  - [KEEP] $p"; done
 fi
 
 if [ "$DRY_RUN" = "false" ] && [ "$FORCE" = "false" ]; then
@@ -1042,93 +1051,108 @@ fi
 # Inventory in-place backups BEFORE removing anything: cleaning a [MOD] file
 # writes a fresh .bak containing Soma content, and the parent of a removed file
 # may disappear.
-for f in ${FILES_TO_REMOVE[@]+"${FILES_TO_REMOVE[@]}"}; do
-  # The manifest itself is script-derived; see MANIFEST_SINK_ROOT.
-  if [ "$f" = "$MANIFEST_PATH" ]; then
-    guard_sink remove "$f" "$MANIFEST_SINK_ROOT"
-  else
-    guard_sink remove "$f"
-  fi
-  if [ -L "$f" ]; then
-    rm -f "$f" && echo "Removed symlink $f"
-  elif [ -f "$f" ]; then
-    rm -f "$f" && echo "Removed $f"
-  fi
-done
-for d in ${DIRS_TO_REMOVE[@]+"${DIRS_TO_REMOVE[@]}"}; do
-  guard_sink remove "$d"
-  if [ -L "$d" ] || soma_py -c "import os, sys; sys.exit(0 if os.path.islink(sys.argv[1]) else 1)" "$d" 2>/dev/null; then
-    rm -f "$d" && echo "Removed directory symlink/junction $d"
-  elif [ -d "$d" ]; then
-    rm -rf "$d" && echo "Removed $d/"
-  fi
-done
-
-for m in ${MODIFY_FILES[@]+"${MODIFY_FILES[@]}"}; do
-  guard_sink remove "$m"
-  if [ -L "$m" ]; then
-    # sed -i would read through the link and replace it with a regular file.
-    log_warn "Not modifying $m: it is a symlink. Remove the Soma section by hand."
-    continue
-  fi
-  if [ -f "$m" ]; then
-    sed -i.bak '/^# Copilot Global Instructions/,$d' "$m" && rm -f "$m.bak"
-    sed -i.bak '/^# Soma Governance Rules/,$d' "$m" && rm -f "$m.bak"
-    # Truncating at our header can leave an empty file behind. Remove it only if
-    # nothing but whitespace remains, so a user's own content is never lost.
-    if [ ! -s "$m" ] || [ -z "$(tr -d '[:space:]' < "$m")" ]; then
-      rm -f "$m"
-      echo "Cleaned and removed $m (contained only soma content)"
+if [ ${#FILES_TO_REMOVE[@]} -gt 0 ]; then
+  for f in "${FILES_TO_REMOVE[@]}"; do
+    # The manifest itself is script-derived; see MANIFEST_SINK_ROOT.
+    if [ "$f" = "$MANIFEST_PATH" ]; then
+      guard_sink remove "$f" "$MANIFEST_SINK_ROOT"
     else
-      echo "Cleaned $m"
+      guard_sink remove "$f"
     fi
-  fi
-done
+    if [ -L "$f" ]; then
+      rm -f "$f" && echo "Removed symlink $f"
+    elif [ -f "$f" ]; then
+      rm -f "$f" && echo "Removed $f"
+    fi
+  done
+fi
 
-for mcp_config in ${MCP_CONFIGS_TO_CLEAN[@]+"${MCP_CONFIGS_TO_CLEAN[@]}"}; do
-  if [ -f "$mcp_config" ]; then
-    remove_soma_mcp_server "$mcp_config"
-  fi
-done
+if [ ${#DIRS_TO_REMOVE[@]} -gt 0 ]; then
+  for d in "${DIRS_TO_REMOVE[@]}"; do
+    guard_sink remove "$d"
+    if [ -L "$d" ] || soma_py -c "import os, sys; sys.exit(0 if os.path.islink(sys.argv[1]) else 1)" "$d" 2>/dev/null; then
+      rm -f "$d" && echo "Removed directory symlink/junction $d"
+    elif [ -d "$d" ]; then
+      rm -rf "$d" && echo "Removed $d/"
+    fi
+  done
+fi
 
-for c in ${CONFIG_TO_REMOVE[@]+"${CONFIG_TO_REMOVE[@]}"}; do
-  guard_sink remove "$c"
-  if [ -f "$c" ]; then
-    rm -f "$c" && echo "Removed user config $c"
-  fi
-done
+if [ ${#MODIFY_FILES[@]} -gt 0 ]; then
+  for m in "${MODIFY_FILES[@]}"; do
+    guard_sink remove "$m"
+    if [ -L "$m" ]; then
+      # sed -i would read through the link and replace it with a regular file.
+      log_warn "Not modifying $m: it is a symlink. Remove the Soma section by hand."
+      continue
+    fi
+    if [ -f "$m" ]; then
+      sed -i.bak '/^# Copilot Global Instructions/,$d' "$m" && rm -f "$m.bak"
+      sed -i.bak '/^# Soma Governance Rules/,$d' "$m" && rm -f "$m.bak"
+      # Truncating at our header can leave an empty file behind. Remove it only if
+      # nothing but whitespace remains, so a user's own content is never lost.
+      if [ ! -s "$m" ] || [ -z "$(tr -d '[:space:]' < "$m")" ]; then
+        rm -f "$m"
+        echo "Cleaned and removed $m (contained only soma content)"
+      else
+        echo "Cleaned $m"
+      fi
+    fi
+  done
+fi
+
+if [ ${#MCP_CONFIGS_TO_CLEAN[@]} -gt 0 ]; then
+  for mcp_config in "${MCP_CONFIGS_TO_CLEAN[@]}"; do
+    if [ -f "$mcp_config" ]; then
+      remove_soma_mcp_server "$mcp_config"
+    fi
+  done
+fi
+
+if [ ${#CONFIG_TO_REMOVE[@]} -gt 0 ]; then
+  for c in "${CONFIG_TO_REMOVE[@]}"; do
+    guard_sink remove "$c"
+    if [ -f "$c" ]; then
+      rm -f "$c" && echo "Removed user config $c"
+    fi
+  done
+fi
 
 # Clean soma hooks from claude settings.json (queued, confined and previewed
 # above; BUG-045). Re-checked at the sink: the symlink test and guard_sink
 # catch a component swapped since planning.
-for settings_file in ${CLAUDE_SETTINGS_TO_CLEAN[@]+"${CLAUDE_SETTINGS_TO_CLEAN[@]}"}; do
-  if [ -L "$settings_file" ] || [ -L "$(dirname "$settings_file")" ]; then
-    log_warn "Not modifying $settings_file: it or its .claude directory became a symlink."
-    continue
-  fi
-  guard_sink remove "$settings_file" "${ALLOWED_ROOTS[@]}"
-  if claude_settings_py clean "$settings_file"; then
-    echo "Cleaned soma hooks from $settings_file"
-  else
-    log_warn "Could not rewrite $settings_file — left unchanged."
-  fi
-done
+if [ ${#CLAUDE_SETTINGS_TO_CLEAN[@]} -gt 0 ]; then
+  for settings_file in "${CLAUDE_SETTINGS_TO_CLEAN[@]}"; do
+    if [ -L "$settings_file" ] || [ -L "$(dirname "$settings_file")" ]; then
+      log_warn "Not modifying $settings_file: it or its .claude directory became a symlink."
+      continue
+    fi
+    guard_sink remove "$settings_file" "${ALLOWED_ROOTS[@]}"
+    if claude_settings_py clean "$settings_file"; then
+      echo "Cleaned soma hooks from $settings_file"
+    else
+      log_warn "Could not rewrite $settings_file — left unchanged."
+    fi
+  done
+fi
 
 # Remove the PATH lines `soma doctor --fix-path` appended (path_lines; queued,
 # confined and previewed above). Only lines exactly equal to the recorded one
 # go; an edited or missing line leaves the file untouched. On a hard failure
 # the manifest is kept so the record is not lost.
 RC_CLEAN_FAILED=false
-for rc_file in ${RC_FILES_TO_CLEAN[@]+"${RC_FILES_TO_CLEAN[@]}"}; do
-  guard_sink rcfile "$rc_file" "$RESOLVED_HOME"
-  rc_status=0
-  rc_lines_py clean "$rc_file" || rc_status=$?
-  case "$rc_status" in
-    0) ;;
-    3) log_warn "The soma PATH line in $rc_file was edited or removed — left $rc_file untouched." ;;
-    *) log_warn "Could not clean $rc_file — left unchanged."; RC_CLEAN_FAILED=true ;;
-  esac
-done
+if [ ${#RC_FILES_TO_CLEAN[@]} -gt 0 ]; then
+  for rc_file in "${RC_FILES_TO_CLEAN[@]}"; do
+    guard_sink rcfile "$rc_file" "$RESOLVED_HOME"
+    rc_status=0
+    rc_lines_py clean "$rc_file" || rc_status=$?
+    case "$rc_status" in
+      0) ;;
+      3) log_warn "The soma PATH line in $rc_file was edited or removed — left $rc_file untouched." ;;
+      *) log_warn "Could not clean $rc_file — left unchanged."; RC_CLEAN_FAILED=true ;;
+    esac
+  done
+fi
 
 # If manifest file exists and wasn't caught by the array (e.g. empty)
 if [ -f "$MANIFEST_PATH" ] && [ "$RC_CLEAN_FAILED" = "true" ]; then

@@ -392,7 +392,7 @@ function Apply-TeamOverrides {
 - **Review required**: At least one peer review before merge.
 - **Branch naming**: Use ``feature/<name>``, ``fix/<name>``, ``chore/<name>`` prefixes.
 "@
-                Add-Content -Path $gitWf -Value $override
+                Add-Content -Path $gitWf -Value $override -Encoding UTF8
                 Write-LogInfo "$([System.IO.Path]::GetFileName($gitWf)): team branching enforced"
             }
         }
@@ -412,7 +412,7 @@ function Apply-TeamOverrides {
 - **release branches**: Cut ``release/<version>`` from ``develop`` when preparing a release.
 - **hotfix branches**: Branch from ``main`` as ``hotfix/<name>``, merge back to both ``main`` and ``develop``.
 "@
-                Add-Content -Path $gitWf -Value $override
+                Add-Content -Path $gitWf -Value $override -Encoding UTF8
                 Write-LogInfo "$([System.IO.Path]::GetFileName($gitWf)): gitflow strategy applied"
             }
         }
@@ -437,7 +437,7 @@ function Apply-TeamOverrides {
 - **Approval required**: All destructive operations require $chain approval before execution.
 - **Document approver**: When executing destructive ops, cite who approved and when.
 "@
-                Add-Content -Path $destOps -Value $override
+                Add-Content -Path $destOps -Value $override -Encoding UTF8
                 Write-LogInfo "$([System.IO.Path]::GetFileName($destOps)): $chain approval chain enforced"
             }
         }

@@ -111,7 +111,8 @@ def laplace_score(
     Returns:
         Smoothed score in [0, 1] × impact_weight.
     """
-    return ((_to_num(tp) + 1.0) / (_to_num(triggers) + 2.0)) * float(impact_weight)
+    weight = float(impact_weight if impact_weight is not None else 1.0)
+    return ((_to_num(tp) + 1.0) / (_to_num(triggers) + 2.0)) * weight
 
 
 # Deprecated alias — external scripts importing bayesian_score won't break

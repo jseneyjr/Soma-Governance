@@ -3,9 +3,10 @@
 # Evaluates governance cells and applies mechanical enforcement blocking.
 set -uo pipefail
 
-# Resolve scripts directory
+# Resolve scripts directory relative to top-level repository root
+REPO_ROOT="$(git rev-parse --show-toplevel 2>/dev/null || pwd)"
 SCRIPT_DIR=""
-for candidate in "vendor/soma/enzymes" ".soma/../vendor/soma/enzymes" "enzymes"; do
+for candidate in "$REPO_ROOT/vendor/soma/enzymes" "$REPO_ROOT/enzymes"; do
     if [ -d "$candidate" ]; then
         SCRIPT_DIR="$candidate"
         break
