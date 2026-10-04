@@ -1,5 +1,6 @@
 """Cell data structures and utilities."""
 from __future__ import annotations
+from datetime import datetime, timezone, date
 import math
 import os
 from dataclasses import dataclass, field
@@ -101,6 +102,7 @@ class Cell:
     minimum_mode: str = 'breeze'
     tags: list = field(default_factory=list)
     fitness: CellFitness = field(default_factory=CellFitness)
+    created_date: Optional[Union[datetime, date, str]] = None
     
     @property
     def is_wall(self) -> bool:
@@ -119,6 +121,28 @@ class Cell:
             return False
         score = laplace_score(self.fitness.true_positives, self.fitness.triggers)
         return score > 0.85 and self.fitness.triggers >= 20
+
+    def is_promotable_with_age(self, min_age_days: int = 0) -> bool:
+        if not self.is_promotable:
+            return False
+        if min_age_days > 0:
+            c_date = getattr(self, 'created_date', None)
+            if not c_date:
+                return False
+            if isinstance(c_date, str):
+                try:
+                    c_date = datetime.strptime(c_date, "%Y-%m-%d" if 'T' not in c_date else "%Y-%m-%dT%H:%M:%SZ")
+                except Exception:
+                    return False
+            elif isinstance(c_date, date) and not isinstance(c_date, datetime):
+                c_date = datetime.combine(c_date, datetime.min.time())
+            if not isinstance(c_date, datetime):
+                return False
+            now_utc = datetime.now(timezone.utc).replace(tzinfo=None)
+            created_utc = c_date.replace(tzinfo=None) if hasattr(c_date, 'tzinfo') and c_date.tzinfo else c_date
+            if (now_utc - created_utc).days < min_age_days:
+                return False
+        return True
 
 
 # ---------------------------------------------------------------------------
@@ -154,7 +178,8 @@ def parse_cell_file(filepath: str) -> Tuple[dict, str]:
     if not os.path.isfile(filepath):
         raise CellNotFoundError(f"Cell file not found: {filepath}")
 
-    with open(filepath, encoding='utf-8') as f:
+    # utf-8-sig: PowerShell 5.1 `Set-Content -Encoding UTF8` writes a BOM.
+    with open(filepath, encoding='utf-8-sig') as f:
         content = f.read()
 
     if not content.startswith('---'):
@@ -269,7 +294,7 @@ def load_cell(
                     fitness_data = {'score': float(fitness_data)}
                 elif not isinstance(fitness_data, dict):
                     fitness_data = {}
-                return Cell(
+                cell_inst = Cell(
                     name=frontmatter.get('name', cell_id),
                     type=frontmatter.get('type', 'vacuole'),
                     hypothesis=frontmatter.get('hypothesis', ''),
@@ -285,7 +310,14 @@ def load_cell(
                         score=fitness_data.get('score'),
                         stress_survived=fitness_data.get('stress_survived', 0),
                     ),
+                    created_date=frontmatter.get('created_date') or frontmatter.get('created'),
                 )
+                if not cell_inst.created_date and os.path.exists(filepath):
+                    try:
+                        cell_inst.created_date = datetime.fromtimestamp(os.path.getctime(filepath), tz=timezone.utc)
+                    except Exception:
+                        pass
+                return cell_inst
 
     raise CellNotFoundError(f"Cell not found: {cell_id}")
 

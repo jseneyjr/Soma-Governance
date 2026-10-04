@@ -2,10 +2,18 @@
 # cell_create.sh: Programmatic Cell Creation for Soma
 # Usage: bash enzymes/cell_create.sh --type <type> --hypothesis <hypothesis> --prediction <prediction> --falsification <falsification> [options]
 
-# Source common.sh if it exists (for compatibility with existing structure)
-if [[ -f "enzymes/common.sh" ]]; then
-  source "enzymes/common.sh"
-fi
+# Symlink-safe self-location: a dirname of a symlinked invocation names the
+# link's directory, where soma_python.sh (and the Python helpers) don't exist.
+PRG="${BASH_SOURCE[0]}"
+while [ -h "$PRG" ]; do
+  DIR="$(cd -P "$(dirname "$PRG")" && pwd)"
+  PRG="$(readlink "$PRG")"
+  [[ $PRG != /* ]] && PRG="$DIR/$PRG"
+done
+SCRIPT_DIR="$(cd -P "$(dirname "$PRG")" && pwd)"
+# Nothing here uses common.sh; the Python helper below needs the resolver.
+source "$SCRIPT_DIR/soma_python.sh"
+soma_resolve_python || true
 
 # Default values
 # Walk up from CWD to find project root with .soma/cells/
@@ -116,12 +124,18 @@ while [[ $# -gt 0 ]]; do
   esac
 done
 
-SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+if [[ -n "$ID_OVERRIDE" ]]; then
+  if [[ "$ID_OVERRIDE" == *"/"* || "$ID_OVERRIDE" == *"\\"* || "$ID_OVERRIDE" == *".."* ]]; then
+    echo "Error: Invalid ID_OVERRIDE contains path traversal characters." >&2
+    exit 1
+  fi
+fi
+
 if [ -n "$DESCRIPTION" ]; then
     EXTRA_ARGS=""
     [ -n "$ID_OVERRIDE" ] && EXTRA_ARGS="$EXTRA_ARGS --id $ID_OVERRIDE"
     [ -n "$TYPE" ] && EXTRA_ARGS="$EXTRA_ARGS --type $TYPE"
-    python3 "$SCRIPT_DIR/cell_create_nl.py" "$DESCRIPTION" $EXTRA_ARGS
+    soma_py "$SCRIPT_DIR/cell_create_nl.py" "$DESCRIPTION" $EXTRA_ARGS
     exit $?
 fi
 
@@ -196,6 +210,10 @@ esac
 
 # Generate slug: lowercase, spaces to dashes, remove special chars, truncate to 50 chars
 if [[ -n "$ID_OVERRIDE" ]]; then
+  if [[ "$ID_OVERRIDE" == *"/"* || "$ID_OVERRIDE" == *"\\"* || "$ID_OVERRIDE" == *".."* ]]; then
+    echo "Error: Invalid ID_OVERRIDE contains path traversal characters." >&2
+    exit 1
+  fi
   SLUG="$ID_OVERRIDE"
 else
   SLUG=$(echo "$HYPOTHESIS" | tr '[:upper:]' '[:lower:]' | sed 's/[^a-z0-9 ]//g' | sed 's/ /-/g' | cut -c1-50 | sed 's/-$//')
@@ -206,6 +224,11 @@ DIR="$REPO_DIR/.soma/cells/$TYPE_PLURAL"
 mkdir -p "$DIR"
 
 FILE_PATH="$DIR/$SLUG.md"
+[ -h "$FILE_PATH" ] && rm -f "$FILE_PATH"
+
+HYPOTHESIS_YAML="$(printf '%s' "$HYPOTHESIS" | sed -e 's/\\/\\\\/g' -e 's/"/\\"/g' | tr '\n\r' '  ')"
+PREDICTION_YAML="$(printf '%s' "$PREDICTION" | sed -e 's/\\/\\\\/g' -e 's/"/\\"/g' | tr '\n\r' '  ')"
+FALSIFICATION_YAML="$(printf '%s' "$FALSIFICATION" | sed -e 's/\\/\\\\/g' -e 's/"/\\"/g' | tr '\n\r' '  ')"
 
 HYPOTHESIS_TRUNCATED=$(echo "$HYPOTHESIS" | cut -c1-60)
 if [[ ${#HYPOTHESIS} -gt 60 ]]; then
@@ -268,9 +291,9 @@ cat > "$FILE_PATH" << EOF
 id: $SLUG
 domain: $DOMAIN
 type: $TYPE
-hypothesis: "$HYPOTHESIS"
-prediction: "$PREDICTION"
-falsification: "$FALSIFICATION"
+hypothesis: "$HYPOTHESIS_YAML"
+prediction: "$PREDICTION_YAML"
+falsification: "$FALSIFICATION_YAML"
 expiry_sessions: $EXPIRY_SESSIONS
 expiry_days: $EXPIRY_DAYS
 created: "$DATE"

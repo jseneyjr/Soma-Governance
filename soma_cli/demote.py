@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import re
 import sys
 from pathlib import Path
@@ -102,7 +103,7 @@ def _force_demote(project_root: Path, cell_id: str, dry_run: bool, use_json: boo
                 flags=re.MULTILINE,
             )
 
-    # Remove enforcement:gate when demoting from wall to vacuole
+    # Remove enforcement:gate and enforcement_artifact when demoting from wall to vacuole
     if current_type == "wall" and next_type == "vacuole":
         content = re.sub(
             r"^enforcement:\s*gate\n?",
@@ -111,6 +112,21 @@ def _force_demote(project_root: Path, cell_id: str, dry_run: bool, use_json: boo
             count=1,
             flags=re.MULTILINE,
         )
+        content = re.sub(
+            r"^enforcement_artifact:\s*\S+\n?",
+            "",
+            content,
+            count=1,
+            flags=re.MULTILINE,
+        )
+        for pfx in ("check-", "gate-"):
+            for sfx in (".sh", ".py"):
+                art = project_root / ".soma" / "enforcement" / f"{pfx}{cell_id}{sfx}"
+                if art.exists():
+                    try:
+                        art.unlink()
+                    except Exception:
+                        pass
 
     # Guard against silent overwrite
     if target_path.exists():
@@ -121,10 +137,33 @@ def _force_demote(project_root: Path, cell_id: str, dry_run: bool, use_json: boo
             print(msg)
         return 1
 
-    # Write to new location and remove old
+    # Write to new location atomically and remove old
     target_path.parent.mkdir(parents=True, exist_ok=True)
-    target_path.write_text(content, encoding="utf-8")
-    cell_path.unlink()
+    tmp_path = target_path.with_name(f"{target_path.name}.tmp.{os.getpid()}")
+    try:
+        with open(tmp_path, "w", encoding="utf-8") as fh:
+            fh.write(content)
+            fh.flush()
+            os.fsync(fh.fileno())
+        try:
+            os.replace(tmp_path, target_path)
+        except OSError:
+            import shutil
+            shutil.move(str(tmp_path), str(target_path))
+        try:
+            if cell_path != target_path and cell_path.exists():
+                cell_path.unlink()
+        except Exception:
+            if target_path.exists() and cell_path.exists():
+                try:
+                    os.remove(target_path)
+                except Exception as ex:
+                    raise RuntimeError(f"Rollback failed: duplicate cell remains at {target_path}") from ex
+            raise
+    except Exception:
+        if tmp_path.exists():
+            tmp_path.unlink()
+        raise
 
     if use_json:
         print(json.dumps({"action": "demote", "cell_id": cell_id,

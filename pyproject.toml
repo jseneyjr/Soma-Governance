@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "soma-governance"
-version = "0.89.0"
+version = "0.90.0"
 description = "Governance framework that makes AI coding agents trustworthy"
 readme = "README.md"
 license = {text = "Apache-2.0"}
@@ -40,6 +40,7 @@ ai = ["google-genai>=1.0"]
 gemini = ["google-genai>=1.0"]
 anthropic = ["anthropic>=0.30"]
 openai = ["openai>=1.0"]
+keyring = ["keyring>=23.0.0"]
 dev = ["pytest", "ruff", "hypothesis", "coverage"]
 
 [project.urls]
