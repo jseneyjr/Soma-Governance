@@ -18,8 +18,8 @@ def _load_signal_weight(workspace):
     config_path = os.path.join(workspace, ".soma", "config.yaml")
     if not os.path.exists(config_path):
         return default
-        import yaml
     try:
+        import yaml
         with open(config_path, encoding="utf-8") as f:
             cfg = yaml.safe_load(f)
         if isinstance(cfg, dict):

@@ -346,9 +346,12 @@ def soma_propose_change(file_path: str, proposed_content: str,
              "The proposal was NOT sent to the oracle and NOT written."],
         )
 
-    # ── Gate 3: TTC oracle (network egress happens here, after containment).
-    oracle_verdict, oracle_detail = _consult_oracle(
-        workspace, relative_path, proposed_content)
+    # ── Gate 3: TTC oracle (air-gapped by default; external egress requires explicit opt-in).
+    if os.environ.get("SOMA_ENABLE_CLOUD_ORACLE", "0").lower() in ("1", "true"):
+        oracle_verdict, oracle_detail = _consult_oracle(
+            workspace, relative_path, proposed_content)
+    else:
+        oracle_verdict, oracle_detail = VERDICT_APPROVED, "Oracle skipped (local-only mode)"
     diff = _build_diff(resolved_path, relative_path, proposed_content)
 
     if oracle_verdict == VERDICT_REJECTED:

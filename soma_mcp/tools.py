@@ -115,16 +115,26 @@ def resolve_workspace(args=None):
 # Imported from immune_system.verification.checkpoint_checks to avoid
 # copy-paste divergence. See trap-recurring-finding-escape.md.
 
-from immune_system.verification.checkpoint_checks import (
-    run_all_checks as _run_checkpoint_checks,
-    check_test_coverage as _checkpoint_test_coverage,
-    check_hardcoded_paths as _checkpoint_hardcoded_paths,
-    check_assertion_density as _checkpoint_assertion_density,
-    check_cell_fitness as _checkpoint_cell_fitness,
-    check_cell_conventions as _checkpoint_cell_conventions,
-    check_arbitration_evidence as _checkpoint_arbitration_evidence,
-    CHECK_NAMES as _CHECKPOINT_NAMES,
-)
+try:
+    from immune_system.verification.checkpoint_checks import (
+        run_all_checks as _run_checkpoint_checks,
+        check_test_coverage as _checkpoint_test_coverage,
+        check_hardcoded_paths as _checkpoint_hardcoded_paths,
+        check_assertion_density as _checkpoint_assertion_density,
+        check_cell_fitness as _checkpoint_cell_fitness,
+        check_cell_conventions as _checkpoint_cell_conventions,
+        check_arbitration_evidence as _checkpoint_arbitration_evidence,
+        CHECK_NAMES as _CHECKPOINT_NAMES,
+    )
+except ImportError:
+    _run_checkpoint_checks = None
+    _checkpoint_test_coverage = None
+    _checkpoint_hardcoded_paths = None
+    _checkpoint_assertion_density = None
+    _checkpoint_cell_fitness = None
+    _checkpoint_cell_conventions = None
+    _checkpoint_arbitration_evidence = None
+    _CHECKPOINT_NAMES = []
 
 
 
@@ -327,7 +337,7 @@ TOOL_DEFINITIONS = [
                 "dry_run": {"type": "boolean", "description": "Optional dry run flag"},
                 "receipt": {"type": "string", "description": "Execution receipt ID obtained from soma_request_receipt"}
             },
-            "required": ["description"]
+            "required": ["description", "receipt"]
         }
     },
     {
@@ -392,7 +402,7 @@ TOOL_DEFINITIONS = [
                 },
                 "receipt": {"type": "string", "description": "Execution receipt ID obtained from soma_request_receipt"}
             },
-            "required": ["outcome", "idempotency_key"]
+            "required": ["outcome", "idempotency_key", "receipt"]
         }
     },
     {
@@ -474,7 +484,7 @@ TOOL_DEFINITIONS = [
                 "proposed_content": {"type": "string", "description": "The complete proposed file content."},
                 "receipt": {"type": "string", "description": "Execution receipt ID obtained from soma_request_receipt"}
             },
-            "required": ["file_path", "proposed_content"]
+            "required": ["file_path", "proposed_content", "receipt"]
         }
     },
     {
@@ -535,7 +545,8 @@ TOOL_DEFINITIONS = [
                 },
                 "layer1_only": {"type": "boolean", "description": "Only run Layer-1 checks (default true)."},
                 "receipt": {"type": "string", "description": "Execution receipt ID obtained from soma_request_receipt"}
-            }
+            },
+            "required": ["receipt"]
         }
     },
     {
@@ -552,7 +563,8 @@ TOOL_DEFINITIONS = [
             "type": "object",
             "properties": {
                 "receipt": {"type": "string", "description": "Execution receipt ID obtained from soma_request_receipt"}
-            }
+            },
+            "required": ["receipt"]
         }
     },
     {
@@ -576,7 +588,8 @@ TOOL_DEFINITIONS = [
                     "description": "Generate HMAC key if none exists (default false)."
                 },
                 "receipt": {"type": "string", "description": "Execution receipt ID obtained from soma_request_receipt"}
-            }
+            },
+            "required": ["receipt"]
         }
     },
     {
@@ -615,7 +628,7 @@ TOOL_DEFINITIONS = [
                 },
                 "receipt": {"type": "string", "description": "Execution receipt ID obtained from soma_request_receipt"}
             },
-            "required": ["insight", "context_files"]
+            "required": ["insight", "context_files", "receipt"]
         }
     }
 ]
@@ -753,6 +766,8 @@ def execute_tool(name: str, args: dict):
             workspace = confine_workspace(args.get('workspace') or resolve_workspace(args))
         except ValueError as exc:
             return {"error": str(exc), "status": _STATUS_FAIL}
+        if _run_checkpoint_checks is None:
+            return {"error": "immune_system module is not available", "status": _STATUS_FAIL}
         from pathlib import Path
         root = Path(workspace)
         issues = _run_checkpoint_checks(root)
@@ -765,7 +780,10 @@ def execute_tool(name: str, args: dict):
 
     elif name == "soma_scan":
         # v0.23: JIT expression — returns only relevant cells, not everything
-        workspace = resolve_workspace(args)
+        try:
+            workspace = confine_workspace(args.get('workspace') or resolve_workspace(args))
+        except ValueError as exc:
+            return {"error": str(exc), "status": _STATUS_FAIL}
         files = args.get('files', None)
         return jit_express(workspace, changed_files=files)
 
@@ -849,7 +867,7 @@ def execute_tool(name: str, args: dict):
             record = capture_insight(
                 workspace=workspace,
                 insight=args.get('insight', ''),
-                context_files=args.get('context_files', []),
+                context_files=[str(confine_path(f, workspace)[1]) for f in args.get('context_files', [])],
                 source_conversation=args.get('source_conversation'),
                 category=args.get('category'),
             )

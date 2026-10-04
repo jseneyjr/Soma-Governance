@@ -71,7 +71,8 @@ def test_indirect_import(cell, workspace):
                 if f'import {basename}' in content or f'from {module}' in content:
                     importers += 1
                     break
-        except Exception: pass
+        except Exception as exc:
+            sys.stderr.write(f"Warning: Failed to inspect {f}: {exc}\n")
     
     if importers > 0:
         return {'test': 'Indirect import bypass', 'result': 'VULNERABLE',
@@ -169,7 +170,8 @@ def main():
                 fm, _body = parse_cell_file(cell_file)
                 fm['_name'] = os.path.splitext(os.path.basename(cell_file))[0]
                 cells_to_test.append(fm)
-            except Exception: pass
+            except Exception as exc:
+                sys.stderr.write(f"Warning: Failed to parse cell {cell_file}: {exc}\n")
     
     all_results = []
     tests = [test_rename_bypass, test_indirect_import, test_config_bypass, test_test_bypass, test_hypothesis_staleness]

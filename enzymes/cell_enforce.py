@@ -32,7 +32,8 @@ def load_cells(cells_dir):
             fm['_name'] = os.path.splitext(os.path.basename(cell_file))[0]
             fm['_body'] = body.strip()
             cells.append(fm)
-        except Exception: pass
+        except Exception as exc:
+            sys.stderr.write(f"Warning: Failed to parse cell {cell_file}: {exc}\n")
     return cells
 
 

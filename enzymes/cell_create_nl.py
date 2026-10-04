@@ -137,7 +137,12 @@ def create_cell_from_insight_cluster(cluster: dict, workspace: str) -> str:
         if signal_counts.get(cell_id, {}).get('has_triggers', False):
             return filepath
 
-    with open(filepath, "w", encoding="utf-8") as f:
+    try:
+        os.unlink(filepath)
+    except OSError:
+        pass
+    fd = os.open(filepath, os.O_CREAT | os.O_EXCL | os.O_WRONLY, 0o644)
+    with open(fd, "w", encoding="utf-8") as f:
         f.write(cell_content)
 
     return filepath
@@ -240,7 +245,12 @@ def main():
     
     filepath = os.path.join(target_dir, filename)
     
-    with open(filepath, 'w', encoding="utf-8") as f:
+    try:
+        os.unlink(filepath)
+    except OSError:
+        pass
+    fd = os.open(filepath, os.O_CREAT | os.O_EXCL | os.O_WRONLY, 0o644)
+    with open(fd, 'w', encoding="utf-8") as f:
         f.write(cell_content)
     
     rel_path = os.path.relpath(filepath, workspace)

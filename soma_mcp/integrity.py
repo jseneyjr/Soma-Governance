@@ -146,13 +146,9 @@ def generate_key(workspace: str) -> str:
         raise FileExistsError(f"HMAC key already exists: {path}")
     os.makedirs(os.path.dirname(path), exist_ok=True)
     key_hex = secrets.token_hex(32)  # 256-bit key
-    with open(path, "w", encoding="utf-8") as f:
-        f.write(key_hex + "\n")
-    # Restrict permissions (owner read/write only)
-    try:
-        os.chmod(path, 0o600)
-    except OSError:
-        pass  # Windows or restrictive filesystem
+    fd = os.open(path, os.O_CREAT | os.O_WRONLY | os.O_EXCL, 0o600)
+    with open(fd, "w", encoding="utf-8") as f:
+        f.write(key_hex + "\n")  # Windows or restrictive filesystem
     return path
 
 
