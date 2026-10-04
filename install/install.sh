@@ -737,6 +737,9 @@ if [ "${INSTALL_GIT_HOOKS:-false}" = "true" ]; then
     if [ "$DRY_RUN" = "true" ]; then
       echo "[dry-run] would install git pre-commit hook."
     else
+      if [ -f ".git/hooks/pre-commit" ]; then
+        backup_file ".git/hooks/pre-commit"
+      fi
       cp "$REPO_DIR/install/hooks/pre-commit" ".git/hooks/pre-commit"
       chmod +x ".git/hooks/pre-commit"
       # Recorded so uninstall can remove it. It used to be installed and then

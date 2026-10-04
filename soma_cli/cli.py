@@ -44,7 +44,7 @@ def _build_parser() -> argparse.ArgumentParser:
     p_init = sub.add_parser("init", help="Set up governance for this project")
     p_init.add_argument("--dry-run", action="store_true",
                         help="Show what would be installed without doing it")
-    p_init.add_argument("--platform", choices=["gemini", "claude", "cursor", "copilot"],
+    p_init.add_argument("--platform", choices=["gemini", "claude", "cursor", "copilot", "kiro"],
                         help="Skip platform detection, force a platform")
     p_init.add_argument("--rules", choices=["minimal", "standard", "full"],
                         default="standard",
