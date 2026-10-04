@@ -34,7 +34,7 @@
       "affected_files": [
         "enzymes/outcome_engine.py"
       ],
-      "regression_test": "tests/test_telemetry_bugfixes.py::TestBug1OutcomeEnginePath::test_reads_from_evidence_dir",
+      "regression_test": "tests/test_outcome_engine.py::TestBug1OutcomeEnginePath::test_reads_from_evidence_dir",
       "pattern": "Hardcoded paths diverge from actual evidence directory structure",
       "changelog_ref": "v0.81.0"
     },
@@ -49,7 +49,7 @@
       "affected_files": [
         "enzymes/outcome_engine.py"
       ],
-      "regression_test": "tests/test_telemetry_bugfixes.py::TestBug2OutcomeEngineSchema::test_cell_id_schema_matches",
+      "regression_test": "tests/test_outcome_engine.py::TestBug2OutcomeEngineSchema::test_cell_id_schema_matches",
       "pattern": "Multiple writers produce different schemas for the same data, reader expects only one",
       "changelog_ref": "v0.81.0"
     },
@@ -64,7 +64,7 @@
       "affected_files": [
         "soma_cli/sync.py"
       ],
-      "regression_test": "tests/test_telemetry_bugfixes.py::TestBug3SyncOutcomeMapping::test_success_mapped_to_tp",
+      "regression_test": "tests/test_cli_sync.py::TestBug3SyncOutcomeMapping::test_success_mapped_to_tp",
       "pattern": "Outcome value vocabulary not shared between writer and reader",
       "changelog_ref": "v0.81.0"
     },
@@ -79,7 +79,7 @@
       "affected_files": [
         "soma_cli/sync.py"
       ],
-      "regression_test": "tests/test_sync_bugfix4.py::TestBug4ScoreClobber::test_score_preserved_when_no_outcomes",
+      "regression_test": "tests/test_cli_sync.py::TestBug4ScoreClobber::test_score_preserved_when_no_outcomes",
       "pattern": "Absence of evidence treated as evidence of absence",
       "changelog_ref": "v0.82.0"
     },
@@ -788,7 +788,7 @@
       "affected_files": [
         "enzymes/immune_sweep.sh"
       ],
-      "regression_test": "tests/test_v090_hardening.py::test_immune_sweep_runs_without_soma_data_dir",
+      "regression_test": "tests/test_immune_sweep.py::test_immune_sweep_runs_without_soma_data_dir",
       "pattern": "Variable read under set -u that no code path assigns",
       "changelog_ref": "Unreleased"
     },
@@ -804,7 +804,7 @@
       "affected_files": [
         "install/uninstall.sh"
       ],
-      "regression_test": "tests/test_v090_hardening.py::test_manifestless_uninstall_without_python_removes_nothing",
+      "regression_test": "tests/test_install_lifecycle.py::test_manifestless_uninstall_without_python_removes_nothing",
       "pattern": "Security check degrades to a weaker fallback instead of failing closed",
       "changelog_ref": "Unreleased"
     },
@@ -823,7 +823,7 @@
         "install/install.sh",
         "install/uninstall.sh"
       ],
-      "regression_test": "tests/test_redteam_followups.py::test_install_and_uninstall_ignore_cwd_modules",
+      "regression_test": "tests/test_shell_isolation_behavioral.py::test_install_and_uninstall_ignore_cwd_modules",
       "pattern": "Inline interpreter code run with the current directory on the import path",
       "changelog_ref": "Unreleased"
     },
@@ -839,7 +839,7 @@
       "affected_files": [
         "install/uninstall.sh"
       ],
-      "regression_test": "tests/test_redteam_followups.py::test_settings_cleanup_refuses_symlinked_claude_dir",
+      "regression_test": "tests/test_shell_isolation_behavioral.py::test_settings_cleanup_refuses_symlinked_claude_dir",
       "pattern": "File rewrite that bypasses the path confinement guard",
       "changelog_ref": "Unreleased"
     },
