@@ -150,6 +150,9 @@ update: ## Pull latest and re-install
 	@echo ""
 	@$(MAKE) install
 
+bump: ## Bump version across all project surfaces (e.g., make bump VERSION=0.92.0)
+	@bash enzymes/bump_version.sh "$(VERSION)"
+
 status: ## Show installed vs repo diff
 	@echo "Comparing installed rules to repo..."
 	@case "$(SOMA_PLATFORM)" in \
