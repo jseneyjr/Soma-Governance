@@ -59,4 +59,6 @@ docs/postmortem-work-sessions.md
 .soma/enforcement/
 docs/internal/
 .hypothesis/
-.hypothesis/
+
+# Ignore local experimental cells by default (force-add to PR)
+/.soma/cells/*
