@@ -1,0 +1,4 @@
+# file: /Users/nick/Documents/soma-v0.89-review/fixed/soma_sdk/telemetry.py
+# hypothesis_version: 6.140.2
+
+[0.05, '%Y-%m-%dT%H:%M:%SZ', '*', ',', '--cell', '--meta', '--signal', '--source', '--workspace', '.', '.signals.lock', '.soma', ':', '=', 'Cell name', 'Signal source', 'Signal type', 'Workspace root', '__main__', 'a', 'a+b', 'cell', 'ci', 'epoch_generation', 'event_id', 'evidence', 'fn', 'fp', 'generation', 'global', 'manual', 'mcp', 'metadata', 'migration.lock', 'payload_digest', 'r', 'session', 'signal', 'signals.jsonl', 'source', 'timestamp', 'tp', 'trigger', 'unknown', 'utf-8']

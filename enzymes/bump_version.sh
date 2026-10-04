@@ -23,7 +23,9 @@ fi
 echo "Bumping version from $OLD_VERSION to $NEW_VERSION..."
 
 # We use Python for cross-platform file replacement (avoids sed -i differences between GNU/BSD).
-python3 -c "
+source "$(dirname "${BASH_SOURCE[0]}")/soma_python.sh"
+soma_resolve_python || exit 1
+"$SOMA_PYTHON" -c "
 import os, sys
 
 old = sys.argv[1]

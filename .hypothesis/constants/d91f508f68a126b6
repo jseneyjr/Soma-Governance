@@ -1,0 +1,4 @@
+# file: /Users/nick/Documents/soma-v0.89-review/fixed/soma_sdk/analysis.py
+# hypothesis_version: 6.140.2
+
+[0.0, 0.05, 0.4, 0.6, 0.8, 1.0, 'A', 'A+', 'A-', 'B', 'B+', 'B-', 'C', 'C+', 'C-', 'D', 'D+', 'F', 'acceptable', 'assessment', 'entropy', 'evenness', 'healthy', 'imbalanced', 'monoculture']

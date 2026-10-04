@@ -1,0 +1,4 @@
+# file: /Users/nick/Documents/soma-v0.89-review/fixed/immune_system/verification/branch_coverage.py
+# hypothesis_version: 6.140.2
+
+[120, '--branch', '--cov-branch', '--no-header', '-m', '-o', '-q', 'All branches covered', '_trace_runner.py', 'branch_coverage', 'coverage', 'coverage.data', 'coverage.json', 'files', 'json', 'missing_branches', 'missing_lines', 'pytest', 'replace', 'run', 'trace_results.json', 'utf-8', 'w']

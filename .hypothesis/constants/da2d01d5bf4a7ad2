@@ -1,0 +1,4 @@
+# file: /Users/nick/Documents/soma-v0.89-review/fixed/immune_system/verification/arbiter.py
+# hypothesis_version: 6.140.2
+
+['branch_coverage', 'call_graph', 'confirmed_risk', 'contradicted_claim', 'mutation_tester', 'persistence_checker', 'undetected_by_both', 'unmatched_prediction', '⚠️', '✅', '💀', '🔴']

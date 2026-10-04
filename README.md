@@ -3,11 +3,10 @@
 [![License: Apache 2.0](https://img.shields.io/badge/License-Apache_2.0-blue?style=flat-square)](LICENSE)
 [![Core Rules](https://img.shields.io/badge/Core_Rules-18-green?style=flat-square)](#-core-rules)
 [![Agent Skills](https://img.shields.io/badge/Agent_Skills-15-purple?style=flat-square)](#-agent-skills)
-[![Automation Scripts](https://img.shields.io/badge/Automation_Scripts-62-red?style=flat-square)](#%EF%B8%8F-automation-scripts)
+[![Automation Scripts](https://img.shields.io/badge/Automation_Scripts-63-red?style=flat-square)](#%EF%B8%8F-automation-scripts)
 [![Adaptive Rules](https://img.shields.io/badge/Adaptive_Rules-5_Types-orange?style=flat-square)](#-adaptive-rules)
 [![Version](https://img.shields.io/badge/Version-0.91.0-informational?style=flat-square)](docs/project/CHANGELOG.md)
 [![Blog Post](https://img.shields.io/badge/Blog-dev.to-black?style=flat-square&logo=devdotto)](https://dev.to/nseney1/your-ai-agents-rules-file-is-a-gentlemans-agreement-heres-what-happens-when-you-build-2dml)
-[![Blog Post 2](https://img.shields.io/badge/Blog_2-dev.to-black?style=flat-square&logo=devdotto)](https://dev.to/nseney1/your-ai-agents-rules-file-is-a-gentlemans-agreement-heres-what-happens-when-you-build-2dml)
 [![M8ven Score](https://m8ven.ai/badge/mcp/nseney1-soma-governance-yv4xbk)](https://m8ven.ai/mcp/nseney1/soma-governance?s=readme)
 
 **Governance framework that makes AI coding agents trustworthy.**
@@ -20,7 +19,7 @@ Soma makes AI agents trustworthy by providing observably traceable governance �
 
 > **Internal naming convention**: Soma uses a biological metaphor internally (genome, enzymes, organs, cells) to model rule evolution — see the codebase for details.
 
-See the [NOTICE](NOTICE) file for our full local-only Data Privacy Statement.
+See the [NOTICE](NOTICE) and [PRIVACY.md](PRIVACY.md) files for our full Data Privacy Statement.
 
 ---
 
@@ -283,7 +282,7 @@ Generate → Score (Confidence Decay) → Adapt → Differentiate → Prune / Re
 
 ## ⚙️ Automation Scripts
 
-Soma includes 62 task-specific scripts driving rule lifecycles, verification, and evidence pipelines. See [SCRIPTS.md](docs/architecture/scripts.md) for full documentation.
+Soma includes 63 task-specific scripts driving rule lifecycles, verification, and evidence pipelines. See [SCRIPTS.md](docs/architecture/scripts.md) for full documentation.
 
 ---
 
@@ -357,6 +356,7 @@ Features that are planned but not yet shipped are listed in [ROADMAP.md](docs/pr
 | Document | Audience | Description |
 |:---------|:---------|:------------|
 | [**Blog Post**](https://dev.to/nseney1/your-ai-agents-rules-file-is-a-gentlemans-agreement-heres-what-happens-when-you-build-2dml) | Everyone | "Your AI agent's rules file is a gentleman's agreement..." |
+| [PRIVACY.md](PRIVACY.md) | Users | Data privacy boundaries and LLM opt-in details |
 | [CHANGELOG](docs/project/CHANGELOG.md) | Users | Release history |
 | [Bug Registry](docs/project/BUG_REGISTRY.json) | Contributors, agents | Every known bug, fixed and open, with root cause and regression test |
 | [Known Issues — Windows](docs/KNOWN_ISSUES_WINDOWS.md) | Windows users | Open Windows bugs, workarounds, and impact |

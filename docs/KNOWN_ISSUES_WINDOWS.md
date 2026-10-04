@@ -1,4 +1,4 @@
-# Known Issues — Windows (v0.90.0)
+# Known Issues — Windows (v0.91.0)
 
 Open Windows issues as of v0.90.0 were observed on Windows 11 with Windows PowerShell 5.1, Git Bash, and Python 3.14. Each open issue is tracked in [`BUG_REGISTRY.json`](project/BUG_REGISTRY.json) with `"status": "open"`.
 

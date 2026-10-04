@@ -1,0 +1,4 @@
+# file: /Users/nick/Documents/soma-v0.89-review/fixed/soma_cli/migration.py
+# hypothesis_version: 6.140.2
+
+[b'\n', 300, '.soma', '.tmp', ':', 'SHA256SUMS', 'cell', 'cell_id', 'converted', 'epoch_generation', 'event_id', 'evidence', 'failure', 'fitness.jsonl', 'fn', 'fp', 'generation', 'linked_mismatch', 'manual', 'mcp', 'metadata', 'migrated_from', 'migration.lock', 'outcome', 'outcome_id', 'outcomes.jsonl', 'partial', 'payload_digest', 'posix', 'reconciled', 'signal', 'skipped_existing', 'skipped_twin', 'snapshot', 'source', 'success', 'timestamp', 'tp', 'trigger', 'triggered_at', 'unconvertible', 'utf-8', 'wb']

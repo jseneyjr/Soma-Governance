@@ -205,12 +205,6 @@ def resolve_provider(workspace=None, provider_name=None):
         base_url = resolve_key(workspace, ["OPENAI_BASE_URL"])
         return OpenAIProvider(api_key=openai_key, base_url=base_url)
         
-    # Try Gemini ADC
-    try:
-        return GeminiProvider(api_key=None)
-    except Exception:
-        pass
-
     # Fallback. Note on stderr (never stdout — it may be a JSON-RPC transport)
     # so an unconfigured install is diagnosable instead of silently degrading.
     print("[soma] No inference provider configured; falling back to "

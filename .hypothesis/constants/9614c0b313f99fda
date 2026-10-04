@@ -1,0 +1,4 @@
+# file: /Users/nick/Documents/soma-v0.89-review/fixed/immune_system/verification/call_graph.py
+# hypothesis_version: 6.140.2
+
+['.', '.py', '.sh', '__', '__main__', '__pycache__', 'call_graph', 'def ', 'ignore', 'r', 'utf-8', '✅', '🔴']

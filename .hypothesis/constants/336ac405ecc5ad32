@@ -1,0 +1,4 @@
+# file: /Users/nick/Documents/soma-v0.89-review/fixed/immune_system/verification/__init__.py
+# hypothesis_version: 6.140.2
+
+['affected_function', 'array', 'block', 'boundary_violation', 'category', 'claim', 'code_injection', 'contract_drift', 'convention_violation', 'critical', 'dead_code', 'description', 'division_by_zero', 'doc_drift', 'dry_violation', 'enum', 'evidence_file', 'evidence_line', 'high', 'idempotency', 'integer', 'items', 'low', 'mechanism', 'medium', 'missing_coverage', 'missing_wire', 'object', 'overflow', 'path_traversal', 'persistence_gap', 'properties', 'race_condition', 'required', 'revise', 'risk', 'severity', 'shell_injection', 'ship', 'state_corruption', 'string', 'tautological_test', 'tests_covering', 'type', 'type_mismatch', 'unguarded_transition']

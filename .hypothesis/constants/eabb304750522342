@@ -1,0 +1,4 @@
+# file: /Users/nick/Documents/soma-v0.89-review/fixed/soma_sdk/scoring.py
+# hypothesis_version: 6.140.2
+
+[0.0, 0.5, 0.9, 0.95, 0.99, 1.0, 1.645, 1.96, 2.0, 2.576, '/', 'certainty', 'high', 'low', 'lower', 'lower_90', 'mean', 'medium', 'n', 'upper', 'upper_90']

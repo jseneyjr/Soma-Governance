@@ -1,0 +1,4 @@
+# file: /Users/nick/Documents/soma-v0.89-review/fixed/immune_system/verification/persistence_checker.py
+# hypothesis_version: 6.140.2
+
+[',', '--exclude', '__main__', 'persistence_checker', 'r', 'utf-8', '✅', '🔴']

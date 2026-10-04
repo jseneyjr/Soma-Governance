@@ -1,0 +1,4 @@
+# file: /Users/nick/Documents/soma-v0.89-review/fixed/enzymes/ttc_verifier.py
+# hypothesis_version: 6.140.2
+
+['.soma', '30', '; ', '=', 'APPROVED', 'BLOCKED', 'ESCALATION_REQUIRED', 'PROTOCOL=', 'REJECTED', 'SELF-TEST FAIL: ', '__main__', '_body', '_name', 'api key', 'api_key = "sk-', 'approved', 'assert 1 == 1', 'assert True', 'assertion', 'bash', 'body', 'breeze', 'class ', 'class component', 'clean proposal', 'content', 'credential', 'enzymes', 'functional component', 'gale', 'guidance', 'hypothesis', 'jest', 'jsx', 'maelstrom', 'n/a', 'name', 'no oracles defined', 'no-class-components', 'no-hardcoded-secrets', 'password', 'password = "', 'path traversal', 'playbook', 'prediction', 'pytest', 'r', 'react', 'reason', 'rejected', 'secret', 'src/App.jsx', 'status', 'tempest', 'test', 'token', 'trident', 'unknown', 'unnamed playbook', 'utf-8', 'vitest', 'wall-test-assertions']

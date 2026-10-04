@@ -6,10 +6,10 @@ This Privacy Policy explains how Soma handles your data. The Soma toolset operat
 
 The `soma_mcp` server provides tools to LLM IDEs (e.g., Claude Desktop, Antigravity, Cursor) via the Model Context Protocol (MCP).
 
-**Privacy Guarantee**: The MCP server is **fully local and air-gapped**.
-- It does **not** make any external network calls to the internet.
-- It only communicates with your local Git repository via subprocesses to analyze file histories, diffs, and generate governance rules.
-- No source code, project metadata, or governance reports are ever sent to external telemetry or third-party servers by the MCP server itself.
+**Privacy Guarantee**: The MCP server is **local-first**.
+- Most tools (like scanning and rule evaluation) operate entirely locally and do **not** make external network calls.
+- The exception is `soma_propose_change` (and related LLM-powered audits), which may transmit the proposed source code and relevant `.oracles` rules to external inference providers to perform advanced checks.
+- No telemetry or background tracking is sent to third-party servers by the MCP server itself.
 
 *Note: The LLM IDE client connecting to the MCP server may send prompts containing the MCP server's output to its respective cloud provider (e.g., Anthropic or OpenAI) in accordance with the IDE's own privacy policy.*
 

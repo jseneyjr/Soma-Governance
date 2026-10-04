@@ -3,7 +3,7 @@
 All notable changes to Soma are documented here.
 This project uses [Semantic Versioning](https://semver.org/).
 
-## [0.91.0] — 2026-10-04 — "Trust Score Improvements"
+## [0.91.0] - 2026-10-04
 
 ### Added
 - **MCP Tool Annotations**: Added required `readOnlyHint`, `destructiveHint`, `idempotentHint`, `openWorldHint`, and `title` annotations to all 15 MCP tools to comply with m8ven trust score requirements.

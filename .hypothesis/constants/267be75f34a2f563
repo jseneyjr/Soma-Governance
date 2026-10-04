@@ -1,0 +1,4 @@
+# file: /Users/nick/Documents/soma-v0.89-review/fixed/soma_core/receipts.py
+# hypothesis_version: 6.140.2
+
+[b'\x00', b'<link>', b'<missing>', b'soma-cell-digest-v1\x00', b'soma-file-digest-v1\x00', '.md', '.soma', '/', '_sessionToken', 'args_hash', 'cell_digest', 'cells', 'context_files', 'expires_at', 'file_digest', 'file_path', 'files', 'operation', 'rb', 'receipt', 'session_id', 'utf-8', 'workspace']

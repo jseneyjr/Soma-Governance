@@ -1,0 +1,4 @@
+# file: /Users/nick/Documents/soma-v0.89-review/fixed/enzymes/diagnose_hot_zones.py
+# hypothesis_version: 6.140.2
+
+['\nThreshold health:', '--workspace', '.', 'BUG_REGISTRY.json', '__main__', 'active_files', 'active_patterns', 'config', 'docs', 'error', 'file_heat', 'file_heat_threshold', 'max_file_boost', 'max_pattern_boost', 'pattern_heat', 'project', 'proximity', 'r', 'sanity', 'total_bugs', 'utf-8']

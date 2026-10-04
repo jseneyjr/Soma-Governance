@@ -1,0 +1,4 @@
+# file: /Users/nick/Documents/soma-v0.89-review/fixed/soma_cli/cli.py
+# hypothesis_version: 6.140.2
+
+[0.5, 130, '*', '--cell', '--dry-run', '--files', '--force', '--json', '--layer1-only', '--mcp', '--min-confidence', '--platform', '--pre-commit', '--project-root', '--repo-root', '--rules', '--session', '--session-count', '--strict', '--workspace', '--yes', '-y', 'Session report card', 'System health check', '__main__', 'checkpoint', 'claude', 'command', 'copilot', 'cursor', 'demote', 'doctor', 'full', 'gemini', 'genesis', 'init', 'minimal', 'oracle', 'promote', 'report', 'soma', 'standard', 'status', 'store_true', 'sync', 'verify']

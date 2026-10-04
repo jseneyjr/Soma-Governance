@@ -14,10 +14,10 @@ Counts are generated from the v0.89.0 source tree with mutually exclusive catego
 | [Verification Scripts](#verification-scripts--python) | Python (`immune_system/verification/`) | 13 | Deterministic AST checkers, coverage tools, and adversarial verification |
 | [CLI Commands](#cli-commands--python-soma_cli) | Python and bash (`soma_cli/`, root) | 18 | CLI launcher and command implementation modules |
 | [Install Scripts](#install-scripts--bash-and-powershell) | Bash and PowerShell (`install/`, root) | 6 | Platform installers, uninstallers, and root wrappers |
-| [Utility Scripts](#utility-scripts) | Python and bash (`enzymes/`) | 56 | Cell genetics, runtime engines, evidence, telemetry, and shared utilities |
+| [Utility Scripts](#utility-scripts) | Python and bash (`enzymes/`) | 57 | Cell genetics, runtime engines, evidence, telemetry, and shared utilities |
 | [SDK Modules](#sdk-modules--python-soma_sdk) | Python (`soma_sdk/`) | 8 | Canonical scoring, parsing, telemetry, hot-zone, and governance APIs |
 | [MCP and Core Modules](#mcp-and-core-modules) | Python (`soma_mcp/`, `soma_core/`) | 9 | MCP transport, dispatch, confinement, content inventory, canonical evidence, cache, and receipts |
-| **Total** | | **117** | Unique paths under the method above |
+| **Total** | | **118** | Unique paths under the method above |
 
 ---
 

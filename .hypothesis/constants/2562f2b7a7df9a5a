@@ -1,0 +1,4 @@
+# file: /Users/nick/Documents/soma-v0.89-review/fixed/immune_system/verification/checkpoint_checks.py
+# hypothesis_version: 6.140.2
+
+[0.5, '*.md', '*.py', '---', '.', '.git', '.mypy_cache', '.py', '.pytest_cache', '.soma', '.tox', '.venv', '?', 'README.md', '__', '__pycache__', 'arbitration_evidence', 'assert ', 'assert(', 'assertion_density', 'block', 'build', 'cell_conventions', 'cell_fitness', 'cell_id', 'cells', 'check', 'chloroplast', 'chloroplasts', 'cycle', 'cycle_(\\d+)', 'dist', 'divergence_count', 'domain', 'egg-info', 'enforcement', 'evidence', 'failure', 'file', 'fp', 'gate', 'hardcoded_paths', 'id', 'line', 'membrane', 'membranes', 'message', 'node_modules', 'outcome', 'outcomes.jsonl', 'plasmodesmata', 'pytest.fail', 'pytest.raises', 'replace', 'revise', 'self.assert', 'ship', 'success', 'test_', 'test_coverage', 'tests', 'total', 'tp', 'type', 'unknown', 'utf-8', 'vacuole', 'vacuoles', 'venv', 'verdict', 'wall', 'walls']

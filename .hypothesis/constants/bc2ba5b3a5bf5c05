@@ -1,0 +1,4 @@
+# file: /Users/nick/Documents/soma-v0.89-review/fixed/soma_cli/sync.py
+# hypothesis_version: 6.140.2
+
+[1.0, '**', '*.md', '.', '.soma', '.tmp', 'README.md', 'Updated', 'Would update', 'cell_id', 'cells', 'changes', 'dry_run', 'error', 'errors', 'evidence', 'false_positives', 'file', 'fitness', 'fp', 'has_outcomes', 'has_triggers', 'id', 'impact_weight', 'json', 'last_trigger', 'last_trigger_date', 'line', 'message', 'ok', 'posix', 'score', 'status', 'tp', 'triggers', 'true_positives', 'unknown error', 'utf-8', 'w']

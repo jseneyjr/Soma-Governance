@@ -1,0 +1,4 @@
+# file: /Users/nick/Documents/soma-v0.89-review/fixed/soma_core/cell_inventory.py
+# hypothesis_version: 6.140.2
+
+[b'\x00', b'soma-cell-inventory-v1\x00', 65536, '.md', '.soma', '/', 'O_CLOEXEC', 'O_NOFOLLOW', 'cells', 'expected a directory', 'filename', 'list', 'open', 'read', 'stat', 'utf-8', 'validate']

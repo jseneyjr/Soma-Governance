@@ -312,7 +312,7 @@ TOOL_DEFINITIONS = [
         "name": "soma_create_cell",
         "description": "Takes a natural language description and builds a prompt to create a governance cell.",
         "annotations": {
-            "readOnlyHint": True,
+            "readOnlyHint": False,
             "destructiveHint": False,
             "idempotentHint": True,
             "openWorldHint": False,
@@ -365,7 +365,7 @@ TOOL_DEFINITIONS = [
         "annotations": {
             "readOnlyHint": False,
             "destructiveHint": False,
-            "idempotentHint": False,
+            "idempotentHint": True,
             "openWorldHint": False,
             "title": "Report Outcome"
         },
@@ -429,8 +429,8 @@ TOOL_DEFINITIONS = [
         "name": "soma_fitness",
         "description": "Returns fitness landscape showing cell health and evolution.",
         "annotations": {
-            "readOnlyHint": True,
-            "destructiveHint": False,
+            "readOnlyHint": False,
+            "destructiveHint": True,
             "idempotentHint": True,
             "openWorldHint": False,
             "title": "Soma Fitness"
@@ -461,10 +461,10 @@ TOOL_DEFINITIONS = [
         "name": "soma_propose_change",
         "description": "(PROTOTYPE - ADVISORY ONLY) The gateway MCP tool. Propose a change to a file. The system will verify the change against active JIT rules before writing to the file.",
         "annotations": {
-            "readOnlyHint": True,
+            "readOnlyHint": False,
             "destructiveHint": False,
             "idempotentHint": True,
-            "openWorldHint": False,
+            "openWorldHint": True,
             "title": "Propose Change"
         },
         "inputSchema": {
@@ -481,7 +481,7 @@ TOOL_DEFINITIONS = [
         "name": "soma_audit_security",
         "description": "Run a basic Security prototype audit on a proposed diff.",
         "annotations": {
-            "readOnlyHint": True,
+            "readOnlyHint": False,
             "destructiveHint": False,
             "idempotentHint": True,
             "openWorldHint": False,
@@ -501,7 +501,7 @@ TOOL_DEFINITIONS = [
         "name": "soma_audit_performance",
         "description": "Run a basic Performance prototype audit on a proposed diff.",
         "annotations": {
-            "readOnlyHint": True,
+            "readOnlyHint": False,
             "destructiveHint": False,
             "idempotentHint": True,
             "openWorldHint": False,
@@ -544,7 +544,7 @@ TOOL_DEFINITIONS = [
         "name": "soma_checkpoint",
         "description": "Run all checkpoint checks against the workspace.",
         "annotations": {
-            "readOnlyHint": True,
+            "readOnlyHint": False,
             "destructiveHint": False,
             "idempotentHint": True,
             "openWorldHint": False,

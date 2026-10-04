@@ -1,0 +1,4 @@
+# file: /Users/nick/Documents/soma-v0.89-review/fixed/soma_core/evidence.py
+# hypothesis_version: 6.140.2
+
+['0', '1', 'cell', 'cell_id', 'cells_used', 'credit_weight', 'error', 'failure', 'file', 'fp', 'has_outcomes', 'has_triggers', 'last_trigger', 'line', 'metadata', 'outcome', 'r', 'signal', 'signals.jsonl', 'success', 'timestamp', 'tp', 'trigger', 'triggered_at', 'triggers', 'utf-8']

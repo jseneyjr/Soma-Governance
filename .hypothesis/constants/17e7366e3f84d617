@@ -1,0 +1,4 @@
+# file: /Users/nick/Documents/soma-v0.89-review/fixed/immune_system/verification/mutation_tester.py
+# hypothesis_version: 6.140.2
+
+[1.0, '--no-header', '--tb=no', '-m', '-q', '-x', '.py', '_mutant_', '_test_mutant_', 'apply', 'binop', 'boolop', 'cmpop', 'const', 'lineno', 'mutation_tester', 'pytest', 'return_val', 'stmt_del', 'unaryop', 'w']

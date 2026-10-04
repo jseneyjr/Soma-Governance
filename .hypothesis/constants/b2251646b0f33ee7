@@ -1,0 +1,4 @@
+# file: /Users/nick/Documents/soma-v0.89-review/fixed/soma_sdk/hot_zones.py
+# hypothesis_version: 6.140.2
+
+[0.0, 0.1, 0.3, 0.5, 'BUG_REGISTRY.json', 'affected_files', 'boost_config', 'bugs', 'data_model', 'data_path', 'dead_code', 'docs', 'error_handling', 'file_heat_threshold', 'mapping', 'mapping_error', 'max_file_boost', 'max_pattern_boost', 'path', 'path_error', 'project', 'r', 'release_window', 'root_cause', 'schema', 'schema_drift', 'silent', 'silent_failure', 'tags', 'target_paths', 'type_coercion', 'unused', 'utf-8']
