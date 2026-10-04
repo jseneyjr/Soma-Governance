@@ -3,6 +3,12 @@
 All notable changes to Soma are documented here.
 This project uses [Semantic Versioning](https://semver.org/).
 
+## [0.91.1] — 2026-10-04 — "Temp Artifact Clean & Release Hygiene"
+
+### Fixed
+- **Temporary Artifact Cleanup**: Removed accidental temporary test coverage file (`coverage_baseline.txt`) from git tracking.
+- **`.gitignore` Hardening**: Added `coverage_baseline.txt` to `.gitignore` to prevent re-introduction.
+
 ## [0.91.0] — 2026-10-04 — "Test Suite & Maelstrom Remediation"
 
 ### Added

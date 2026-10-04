@@ -49,6 +49,7 @@ Thumbs.db
 *.swp
 *~
 *.bak
+coverage_baseline.txt
 docs/postmortem-work-sessions.md
 
 # Cell fitness tracking (private telemetry)
