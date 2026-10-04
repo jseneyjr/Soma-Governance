@@ -292,6 +292,13 @@ TOOL_DEFINITIONS = [
     {
         "name": "soma_request_receipt",
         "description": "Request an execution receipt for a privileged tool. Required before calling any write tools, or execution tools (if execution is enabled).",
+        "annotations": {
+            "readOnlyHint": False,
+            "destructiveHint": False,
+            "idempotentHint": False,
+            "openWorldHint": False,
+            "title": "Request Receipt"
+        },
         "inputSchema": {
             "type": "object",
             "properties": {
@@ -304,6 +311,13 @@ TOOL_DEFINITIONS = [
     {
         "name": "soma_create_cell",
         "description": "Takes a natural language description and builds a prompt to create a governance cell.",
+        "annotations": {
+            "readOnlyHint": True,
+            "destructiveHint": False,
+            "idempotentHint": True,
+            "openWorldHint": False,
+            "title": "Create Cell"
+        },
         "inputSchema": {
             "type": "object",
             "properties": {
@@ -324,6 +338,13 @@ TOOL_DEFINITIONS = [
             "based on your current git diff, ranked by proven effectiveness. "
             "Includes safety gates, known anti-patterns, and project-specific conventions."
         ),
+        "annotations": {
+            "readOnlyHint": True,
+            "destructiveHint": False,
+            "idempotentHint": True,
+            "openWorldHint": False,
+            "title": "Soma Scan"
+        },
         "inputSchema": {
             "type": "object",
             "properties": {
@@ -341,6 +362,13 @@ TOOL_DEFINITIONS = [
             "Report the outcome of your work for fitness scoring. "
             "Call after completing a task to improve future governance guidance."
         ),
+        "annotations": {
+            "readOnlyHint": False,
+            "destructiveHint": False,
+            "idempotentHint": False,
+            "openWorldHint": False,
+            "title": "Report Outcome"
+        },
         "inputSchema": {
             "type": "object",
             "properties": {
@@ -370,6 +398,13 @@ TOOL_DEFINITIONS = [
     {
         "name": "soma_grade",
         "description": "Returns governance report card with fitness grades.",
+        "annotations": {
+            "readOnlyHint": True,
+            "destructiveHint": False,
+            "idempotentHint": True,
+            "openWorldHint": False,
+            "title": "Soma Grade"
+        },
         "inputSchema": {
             "type": "object",
             "properties": {}
@@ -378,6 +413,13 @@ TOOL_DEFINITIONS = [
     {
         "name": "soma_coverage",
         "description": "Returns cell coverage report showing which files are governed.",
+        "annotations": {
+            "readOnlyHint": True,
+            "destructiveHint": False,
+            "idempotentHint": True,
+            "openWorldHint": False,
+            "title": "Soma Coverage"
+        },
         "inputSchema": {
             "type": "object",
             "properties": {}
@@ -386,6 +428,13 @@ TOOL_DEFINITIONS = [
     {
         "name": "soma_fitness",
         "description": "Returns fitness landscape showing cell health and evolution.",
+        "annotations": {
+            "readOnlyHint": True,
+            "destructiveHint": False,
+            "idempotentHint": True,
+            "openWorldHint": False,
+            "title": "Soma Fitness"
+        },
         "inputSchema": {
             "type": "object",
             "properties": {
@@ -396,6 +445,13 @@ TOOL_DEFINITIONS = [
     {
         "name": "soma_list_cells",
         "description": "Lists all governance cells with their type, hypothesis, and fitness data.",
+        "annotations": {
+            "readOnlyHint": True,
+            "destructiveHint": False,
+            "idempotentHint": True,
+            "openWorldHint": False,
+            "title": "List Cells"
+        },
         "inputSchema": {
             "type": "object",
             "properties": {}
@@ -404,6 +460,13 @@ TOOL_DEFINITIONS = [
     {
         "name": "soma_propose_change",
         "description": "(PROTOTYPE - ADVISORY ONLY) The gateway MCP tool. Propose a change to a file. The system will verify the change against active JIT rules before writing to the file.",
+        "annotations": {
+            "readOnlyHint": True,
+            "destructiveHint": False,
+            "idempotentHint": True,
+            "openWorldHint": False,
+            "title": "Propose Change"
+        },
         "inputSchema": {
             "type": "object",
             "properties": {
@@ -417,6 +480,13 @@ TOOL_DEFINITIONS = [
     {
         "name": "soma_audit_security",
         "description": "Run a basic Security prototype audit on a proposed diff.",
+        "annotations": {
+            "readOnlyHint": True,
+            "destructiveHint": False,
+            "idempotentHint": True,
+            "openWorldHint": False,
+            "title": "Audit Security"
+        },
         "inputSchema": {
             "type": "object",
             "properties": {
@@ -430,6 +500,13 @@ TOOL_DEFINITIONS = [
     {
         "name": "soma_audit_performance",
         "description": "Run a basic Performance prototype audit on a proposed diff.",
+        "annotations": {
+            "readOnlyHint": True,
+            "destructiveHint": False,
+            "idempotentHint": True,
+            "openWorldHint": False,
+            "title": "Audit Performance"
+        },
         "inputSchema": {
             "type": "object",
             "properties": {
@@ -443,6 +520,13 @@ TOOL_DEFINITIONS = [
     {
         "name": "soma_verify_changes",
         "description": "Verify proposed changes against Layer-1 governance checks.",
+        "annotations": {
+            "readOnlyHint": False,
+            "destructiveHint": False,
+            "idempotentHint": True,
+            "openWorldHint": False,
+            "title": "Verify Changes"
+        },
         "inputSchema": {
             "type": "object",
             "properties": {
@@ -459,6 +543,13 @@ TOOL_DEFINITIONS = [
     {
         "name": "soma_checkpoint",
         "description": "Run all checkpoint checks against the workspace.",
+        "annotations": {
+            "readOnlyHint": True,
+            "destructiveHint": False,
+            "idempotentHint": True,
+            "openWorldHint": False,
+            "title": "Soma Checkpoint"
+        },
         "inputSchema": {
             "type": "object",
             "properties": {
@@ -472,6 +563,13 @@ TOOL_DEFINITIONS = [
             "Generate and sign a cell integrity manifest for the workspace. "
             "Creates an HMAC-SHA256 key if none exists and generate_key is true."
         ),
+        "annotations": {
+            "readOnlyHint": False,
+            "destructiveHint": True,
+            "idempotentHint": True,
+            "openWorldHint": False,
+            "title": "Generate Manifest"
+        },
         "inputSchema": {
             "type": "object",
             "properties": {
@@ -490,6 +588,13 @@ TOOL_DEFINITIONS = [
             "correlates it with governance cell coverage, and persists it to "
             ".soma/human_insights.jsonl for fitness scoring."
         ),
+        "annotations": {
+            "readOnlyHint": False,
+            "destructiveHint": False,
+            "idempotentHint": False,
+            "openWorldHint": False,
+            "title": "Capture Insight"
+        },
         "inputSchema": {
             "type": "object",
             "properties": {
