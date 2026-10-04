@@ -78,7 +78,7 @@ soma_resolve_python() {
 # Not -I: that would also drop user site-packages (a `pip install --user`
 # PyYAML, common on Windows) and PYTHONPATH. Snippets must not use
 # `from __future__` (it has to be the first statement).
-_SOMA_PY_NO_CWD="import sys as _s; _s.path[:] = [_p for _p in _s.path if _p not in ('', '.')]; del _s"
+_SOMA_PY_NO_CWD="import sys as _s, os as _o; _cwd=_o.getcwd(); _s.path[:] = [_p for _p in _s.path if _p not in ('', '.', _cwd)]; del _s, _o"
 
 # Runs the resolved interpreter. Scripts call soma_resolve_python first, so
 # this never probes; it only explains a missing interpreter.
@@ -111,6 +111,15 @@ exec(compile(__import__('sys').stdin.read(), '<stdin>', 'exec'))" "$@"
         shift
         ;;
       *)
+        if [ "${SOMA_PY_NO_CWD:-0}" = "1" ] && [ $# -gt 0 ]; then
+          local script_file="$1"
+          shift
+          "$SOMA_PYTHON" ${opts+"${opts[@]}"} -c "$_SOMA_PY_NO_CWD
+import sys, runpy
+sys.argv = sys.argv[1:]
+runpy.run_path(sys.argv[0], run_name='__main__')" "$script_file" "$@"
+          return $?
+        fi
         break
         ;;
     esac

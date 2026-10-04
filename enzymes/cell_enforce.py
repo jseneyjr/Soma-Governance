@@ -67,13 +67,15 @@ if [ -z "$CHANGED_FILES" ]; then exit 0; fi
 TARGET_PATTERNS=({quoted_patterns})
 MATCHED=0
 
-while IFS= read -r file; do
-    for pattern in "${{TARGET_PATTERNS[@]}}"; do
-        case "$file" in
-            $pattern) MATCHED=1; break 2 ;;
-        esac
-    done
-done <<< "$CHANGED_FILES"
+if [ ${{#TARGET_PATTERNS[@]}} -gt 0 ]; then
+    while IFS= read -r file; do
+        for pattern in "${{TARGET_PATTERNS[@]}}"; do
+            case "$file" in
+                $pattern) MATCHED=1; break 2 ;;
+            esac
+        done
+    done <<< "$CHANGED_FILES"
+fi
 
 if [ "$MATCHED" -eq 1 ]; then
     echo -n "🛡️  ["
@@ -83,7 +85,7 @@ if [ "$MATCHED" -eq 1 ]; then
     echo {quoted_hyp}
     echo "   Files: $CHANGED_FILES"
     # Signal the cell
-    SCRIPT_DIR="$(dirname "$0")/../../scripts"
+    SCRIPT_DIR="$(dirname "$0")/../../enzymes"
     [ -f "$SCRIPT_DIR/cell_signal.sh" ] && bash "$SCRIPT_DIR/cell_signal.sh" {quoted_name} tp 2>/dev/null
     exit 1  # Mechanical: block commit
 fi
@@ -105,13 +107,15 @@ if [ -z "$CHANGED_FILES" ]; then exit 0; fi
 TARGET_PATTERNS=({quoted_patterns})
 MATCHED=0
 
-while IFS= read -r file; do
-    for pattern in "${{TARGET_PATTERNS[@]}}"; do
-        case "$file" in
-            $pattern) MATCHED=1; break 2 ;;
-        esac
-    done
-done <<< "$CHANGED_FILES"
+if [ ${{#TARGET_PATTERNS[@]}} -gt 0 ]; then
+    while IFS= read -r file; do
+        for pattern in "${{TARGET_PATTERNS[@]}}"; do
+            case "$file" in
+                $pattern) MATCHED=1; break 2 ;;
+            esac
+        done
+    done <<< "$CHANGED_FILES"
+fi
 
 if [ "$MATCHED" -eq 1 ]; then
     echo -n "⚠️  ["
@@ -140,13 +144,15 @@ if [ -z "$CHANGED_FILES" ]; then exit 0; fi
 TARGET_PATTERNS=({quoted_patterns})
 MATCHED=0
 
-while IFS= read -r file; do
-    for pattern in "${{TARGET_PATTERNS[@]}}"; do
-        case "$file" in
-            $pattern) MATCHED=1; break 2 ;;
-        esac
-    done
-done <<< "$CHANGED_FILES"
+if [ ${{#TARGET_PATTERNS[@]}} -gt 0 ]; then
+    while IFS= read -r file; do
+        for pattern in "${{TARGET_PATTERNS[@]}}"; do
+            case "$file" in
+                $pattern) MATCHED=1; break 2 ;;
+            esac
+        done
+    done <<< "$CHANGED_FILES"
+fi
 
 if [ "$MATCHED" -eq 1 ]; then
     echo -n "🔍  ["
