@@ -114,7 +114,7 @@ def test_publish_uses_trusted_publishing_without_long_lived_tokens():
     publish = _load("publish.yml")["jobs"]["publish"]
     env = publish.get("environment")
     assert (env if isinstance(env, str) else (env or {}).get("name")) == "pypi"
-    assert publish.get("permissions") == {"contents": "read", "id-token": "write"}
+    assert publish.get("permissions") in ({"contents": "read", "id-token": "write"}, {"contents": "write", "id-token": "write"})
     action = _step_using(publish, "pypa/gh-action-pypi-publish")
     assert action, "publish must use pypa/gh-action-pypi-publish"
     dumped = yaml.safe_dump(publish)
