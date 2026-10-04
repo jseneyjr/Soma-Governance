@@ -277,7 +277,7 @@ function Merge-SomaMcpConfig {
     # importlib.util.find_spec to check without executing workspace code (BUG-044).
     $sourceFallback = $null
     try {
-        & python3 -I -c "import sys, importlib.util; sys.path.append(sys.argv[1]); sys.exit(0 if importlib.util.find_spec('soma_mcp') is not $null else 1)" "$Workspace" *> $null
+        & python3 -I -c "import sys, importlib.util; sys.path.append(sys.argv[1]); sys.exit(0 if importlib.util.find_spec('soma_mcp') is not None else 1)" "$Workspace" *> $null
         if ($LASTEXITCODE -ne 0) { $sourceFallback = $RepoDir }
     } catch {
         $sourceFallback = $RepoDir
