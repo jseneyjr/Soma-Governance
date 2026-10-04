@@ -7,7 +7,38 @@ from dataclasses import dataclass, field
 from fractions import Fraction
 from typing import Callable, Optional, Tuple, Union
 
-import yaml
+try:
+    import yaml
+except ImportError:
+    yaml = None
+
+def _stdlib_parse_frontmatter(yaml_text: str) -> dict:
+    import json
+    out = {}
+    for line in yaml_text.splitlines():
+        line = line.strip()
+        if not line or line.startswith('#'):
+            continue
+        if ':' in line:
+            k, v = line.split(':', 1)
+            k = k.strip()
+            v = v.strip()
+            if (v.startswith('"') and v.endswith('"')) or (v.startswith("'") and v.endswith("'")):
+                v = v[1:-1]
+            elif v.lower() == 'true':
+                v = True
+            elif v.lower() == 'false':
+                v = False
+            else:
+                try:
+                    v = int(v)
+                except ValueError:
+                    try:
+                        v = float(v)
+                    except ValueError:
+                        pass
+            out[k] = v
+    return out
 
 from soma_sdk.errors import CellParseError, CellNotFoundError, CellPathTraversalError
 from soma_sdk.scoring import bayesian_posterior, laplace_score
@@ -190,10 +221,13 @@ def parse_cell_file(filepath: str) -> Tuple[dict, str]:
         raise CellParseError(f"Unclosed frontmatter in {filepath}")
 
     yaml_text = content[3:end_idx].strip()
-    try:
-        frontmatter = yaml.safe_load(yaml_text)
-    except yaml.YAMLError as e:
-        raise CellParseError(f"Invalid YAML in {filepath}: {e}") from e
+    if yaml is not None:
+        try:
+            frontmatter = yaml.safe_load(yaml_text)
+        except yaml.YAMLError as e:
+            raise CellParseError(f"Invalid YAML in {filepath}: {e}") from e
+    else:
+        frontmatter = _stdlib_parse_frontmatter(yaml_text)
 
     if not isinstance(frontmatter, dict):
         raise CellParseError(f"Frontmatter is not a mapping in {filepath}")

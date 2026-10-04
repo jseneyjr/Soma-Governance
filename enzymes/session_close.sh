@@ -45,32 +45,28 @@ if [ -x "$EXPORT_SCRIPT" ]; then
     bash "$EXPORT_SCRIPT" > /dev/null 2>&1 || true
 fi
 
-# Push steering repo if dirty (catches any rule edits made during session)
-if [ -d "$STEERING_REPO/.git" ]; then
-    cd "$STEERING_REPO"
-    # Safe branch detection (Thorns fix #10): skip push if detached HEAD
-    CURRENT_BRANCH=$(git symbolic-ref --short -q HEAD 2>/dev/null || true)
-    if [ -n "$CURRENT_BRANCH" ] && [ -n "$(git status --porcelain 2>/dev/null)" ]; then
-        git add . && git commit -m "chore(sync): auto-sync on session close: $(date -u +"%Y-%m-%dT%H:%M:%SZ" 2>/dev/null || date +"%Y-%m-%dT%H:%M:%S")" && git push origin "$CURRENT_BRANCH" 2>/dev/null || true
-    fi
-fi
-
 echo '{}'
 
 
 # === Automated Outcome Feedback ===
 echo "Running outcome engine..."
 SCRIPTS_DIR="$SCRIPT_DIR"
-soma_py "$SCRIPTS_DIR/outcome_engine.py" 2>/dev/null || true
+if [ -f "$SCRIPTS_DIR/outcome_engine.py" ]; then
+    soma_py "$SCRIPTS_DIR/outcome_engine.py"
+fi
 
 # === Automated Cell Evolution ===
 echo "Running cell evolution..."
 
 # 1. Evaluate fitness with telomere shortening decay
-soma_py "$SCRIPTS_DIR/cell_fitness.py" 2>/dev/null || true
+if [ -f "$SCRIPTS_DIR/cell_fitness.py" ]; then
+    soma_py "$SCRIPTS_DIR/cell_fitness.py"
+fi
 
 # 2. Run selection pressure (archive extinct cells)
-bash "$SCRIPTS_DIR/cell_selection.sh" --execute 2>/dev/null || true
+if [ -f "$SCRIPTS_DIR/cell_selection.sh" ]; then
+    bash "$SCRIPTS_DIR/cell_selection.sh" --execute
+fi
 
 # 3. Probabilistic crossover: if >5 cells with fitness >0.5, attempt one crossover
 CROSSOVER_CANDIDATES=$(soma_py -c "
@@ -103,7 +99,9 @@ else:
 if [ -n "$CROSSOVER_CANDIDATES" ]; then
   read -r CELL_A CELL_B <<< "$CROSSOVER_CANDIDATES"
   echo "  Attempting crossover: $CELL_A × $CELL_B"
-  soma_py "$SCRIPTS_DIR/cell_crossover.py" "$CELL_A" "$CELL_B" 2>/dev/null || true
+  if [ -f "$SCRIPTS_DIR/cell_crossover.py" ]; then
+      soma_py "$SCRIPTS_DIR/cell_crossover.py" "$CELL_A" "$CELL_B"
+  fi
 fi
 
 # 4. Check for metamorphosis candidates
@@ -207,3 +205,12 @@ print('\u255a' + '\u2550'*50 + '\u255d')
 " 2>/dev/null || true
 
 echo "Cell evolution complete."
+
+# Push steering repo if dirty (catches any rule/fitness edits made during session)
+if [ -d "$STEERING_REPO/.git" ]; then
+    cd "$STEERING_REPO"
+    CURRENT_BRANCH=$(git symbolic-ref --short -q HEAD 2>/dev/null || true)
+    if [ -n "$CURRENT_BRANCH" ] && [ -n "$(git status --porcelain 2>/dev/null)" ]; then
+        git add . && git commit -m "chore(sync): auto-sync on session close: $(date -u +"%Y-%m-%dT%H:%M:%SZ" 2>/dev/null || date +"%Y-%m-%dT%H:%M:%S")" && git push origin "$CURRENT_BRANCH" 2>/dev/null || true
+    fi
+fi

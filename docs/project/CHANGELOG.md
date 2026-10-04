@@ -3,6 +3,24 @@
 All notable changes to Soma are documented here.
 This project uses [Semantic Versioning](https://semver.org/).
 
+## [0.91.0] — 2026-10-04 — "Test Suite & Maelstrom Remediation"
+
+### Added
+- **MCP Tool Annotations**: Added required `readOnlyHint`, `destructiveHint`, `idempotentHint`, `openWorldHint`, and `title` annotations to all 15 MCP tools to comply with m8ven trust score requirements.
+- **Documentation**: Added `PRIVACY.md` to clarify the local-only nature of the MCP server versus the opt-in cloud nature of the CLI, establishing dual-scope boundaries.
+- **Test Coverage**: Added test coverage for read-only MCP tools.
+- **`.gitignore` Updates**: Added `.soma/cells/*` to ignore local experiment cells by default, cleaned up duplicate `.hypothesis/` entries, and ensured local-only secrets (`.soma/keys/manifest.key` and `.soma/human_insights.jsonl`) are strictly ignored.
+
+### Changed
+- **Test Suite De-duplication & Decomposition**: Broken down massively bloated test files (`test_v090_hardening.py`, `test_telemetry_bugfixes.py`, and `test_redteam_followups.py`) into proper behavioral modules (e.g. `test_outcome_engine.py`, `test_cli_sync.py`, `test_immune_sweep.py`). Updated `BUG_REGISTRY.json` to properly map regression tests to their new homes.
+- **Tool Architecture**: Moved `soma_audit_security` and `soma_audit_performance` into read-only tooling since they strictly compute heuristics without mutating state, and corrected inverted annotations on `soma_fitness`.
+- **Docs Drift**: Reconciled the total script count in architecture documentation to 118, accounting for recent utility script additions, and marked v0.90 bugs fixed in Bug Registry.
+
+### Fixed
+- **Tautological Mocks**: Rewrote `tests/test_mcp_dispatch.py` to remove brittle mock-heavy tautological tests. Tests now verify functional boundaries instead of strict 1-to-1 implementation assertions.
+- **Maelstrom Remediation**: Resolved tautological test assertions across `tests/test_local_promotion_decay.py` and `tests/test_outcome_engine.py` by converting to real subprocess integration tests and tightening signal thresholds.
+- **Script Robustness**: Hardened `enzymes/bump_version.sh` against clobbering by using regex anchoring and adding a fail-loud validation step before writing.
+
 ## [0.90.0] — 2026-10-03 — "Security & Hardening"
 
 ### Added

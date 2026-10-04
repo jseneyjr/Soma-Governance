@@ -27,7 +27,10 @@ import tempfile
 import yaml
 from datetime import datetime, timezone
 from pathlib import Path
-from soma_resolve import resolve_workspace
+try:
+    from enzymes.soma_resolve import resolve_workspace
+except ImportError:
+    from soma_resolve import resolve_workspace
 
 _project_root = str(Path(__file__).resolve().parent.parent)
 if _project_root not in sys.path:

@@ -59,7 +59,8 @@ for f in cells:
                 'minimum_mode': fm.get('minimum_mode', ''),
                 'hypothesis': hypothesis
             })
-    except Exception: pass
+    except Exception as exc:
+        sys.stderr.write(f"Warning: Failed to parse cell {f}: {exc}\n")
 
 # Check dormant spores for reactivation
 spores_file = os.path.join(workspace, '.soma', 'cells', '.spores.jsonl')

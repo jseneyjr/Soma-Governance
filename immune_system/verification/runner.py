@@ -288,7 +288,9 @@ def run_layer2(
 
 
 def gate_verdict(results: list[ToolEvidence]) -> bool:
-    """Simple gate: PASS if all tools pass, FAIL if any fails."""
+    """Simple gate: PASS if all tools pass, FAIL if any fails or if results is empty."""
+    if not results:
+        return False
     return all(r.verdict for r in results)
 
 

@@ -115,16 +115,26 @@ def resolve_workspace(args=None):
 # Imported from immune_system.verification.checkpoint_checks to avoid
 # copy-paste divergence. See trap-recurring-finding-escape.md.
 
-from immune_system.verification.checkpoint_checks import (
-    run_all_checks as _run_checkpoint_checks,
-    check_test_coverage as _checkpoint_test_coverage,
-    check_hardcoded_paths as _checkpoint_hardcoded_paths,
-    check_assertion_density as _checkpoint_assertion_density,
-    check_cell_fitness as _checkpoint_cell_fitness,
-    check_cell_conventions as _checkpoint_cell_conventions,
-    check_arbitration_evidence as _checkpoint_arbitration_evidence,
-    CHECK_NAMES as _CHECKPOINT_NAMES,
-)
+try:
+    from immune_system.verification.checkpoint_checks import (
+        run_all_checks as _run_checkpoint_checks,
+        check_test_coverage as _checkpoint_test_coverage,
+        check_hardcoded_paths as _checkpoint_hardcoded_paths,
+        check_assertion_density as _checkpoint_assertion_density,
+        check_cell_fitness as _checkpoint_cell_fitness,
+        check_cell_conventions as _checkpoint_cell_conventions,
+        check_arbitration_evidence as _checkpoint_arbitration_evidence,
+        CHECK_NAMES as _CHECKPOINT_NAMES,
+    )
+except ImportError:
+    _run_checkpoint_checks = None
+    _checkpoint_test_coverage = None
+    _checkpoint_hardcoded_paths = None
+    _checkpoint_assertion_density = None
+    _checkpoint_cell_fitness = None
+    _checkpoint_cell_conventions = None
+    _checkpoint_arbitration_evidence = None
+    _CHECKPOINT_NAMES = []
 
 
 
@@ -292,6 +302,13 @@ TOOL_DEFINITIONS = [
     {
         "name": "soma_request_receipt",
         "description": "Request an execution receipt for a privileged tool. Required before calling any write tools, or execution tools (if execution is enabled).",
+        "annotations": {
+            "readOnlyHint": False,
+            "destructiveHint": False,
+            "idempotentHint": False,
+            "openWorldHint": False,
+            "title": "Request Receipt"
+        },
         "inputSchema": {
             "type": "object",
             "properties": {
@@ -304,6 +321,13 @@ TOOL_DEFINITIONS = [
     {
         "name": "soma_create_cell",
         "description": "Takes a natural language description and builds a prompt to create a governance cell.",
+        "annotations": {
+            "readOnlyHint": False,
+            "destructiveHint": False,
+            "idempotentHint": True,
+            "openWorldHint": False,
+            "title": "Create Cell"
+        },
         "inputSchema": {
             "type": "object",
             "properties": {
@@ -313,7 +337,7 @@ TOOL_DEFINITIONS = [
                 "dry_run": {"type": "boolean", "description": "Optional dry run flag"},
                 "receipt": {"type": "string", "description": "Execution receipt ID obtained from soma_request_receipt"}
             },
-            "required": ["description"]
+            "required": ["description", "receipt"]
         }
     },
     {
@@ -324,6 +348,13 @@ TOOL_DEFINITIONS = [
             "based on your current git diff, ranked by proven effectiveness. "
             "Includes safety gates, known anti-patterns, and project-specific conventions."
         ),
+        "annotations": {
+            "readOnlyHint": True,
+            "destructiveHint": False,
+            "idempotentHint": True,
+            "openWorldHint": False,
+            "title": "Soma Scan"
+        },
         "inputSchema": {
             "type": "object",
             "properties": {
@@ -341,6 +372,13 @@ TOOL_DEFINITIONS = [
             "Report the outcome of your work for fitness scoring. "
             "Call after completing a task to improve future governance guidance."
         ),
+        "annotations": {
+            "readOnlyHint": False,
+            "destructiveHint": False,
+            "idempotentHint": True,
+            "openWorldHint": False,
+            "title": "Report Outcome"
+        },
         "inputSchema": {
             "type": "object",
             "properties": {
@@ -364,12 +402,19 @@ TOOL_DEFINITIONS = [
                 },
                 "receipt": {"type": "string", "description": "Execution receipt ID obtained from soma_request_receipt"}
             },
-            "required": ["outcome", "idempotency_key"]
+            "required": ["outcome", "idempotency_key", "receipt"]
         }
     },
     {
         "name": "soma_grade",
         "description": "Returns governance report card with fitness grades.",
+        "annotations": {
+            "readOnlyHint": True,
+            "destructiveHint": False,
+            "idempotentHint": True,
+            "openWorldHint": False,
+            "title": "Soma Grade"
+        },
         "inputSchema": {
             "type": "object",
             "properties": {}
@@ -378,6 +423,13 @@ TOOL_DEFINITIONS = [
     {
         "name": "soma_coverage",
         "description": "Returns cell coverage report showing which files are governed.",
+        "annotations": {
+            "readOnlyHint": True,
+            "destructiveHint": False,
+            "idempotentHint": True,
+            "openWorldHint": False,
+            "title": "Soma Coverage"
+        },
         "inputSchema": {
             "type": "object",
             "properties": {}
@@ -386,6 +438,13 @@ TOOL_DEFINITIONS = [
     {
         "name": "soma_fitness",
         "description": "Returns fitness landscape showing cell health and evolution.",
+        "annotations": {
+            "readOnlyHint": True,
+            "destructiveHint": False,
+            "idempotentHint": True,
+            "openWorldHint": False,
+            "title": "Soma Fitness"
+        },
         "inputSchema": {
             "type": "object",
             "properties": {
@@ -396,6 +455,13 @@ TOOL_DEFINITIONS = [
     {
         "name": "soma_list_cells",
         "description": "Lists all governance cells with their type, hypothesis, and fitness data.",
+        "annotations": {
+            "readOnlyHint": True,
+            "destructiveHint": False,
+            "idempotentHint": True,
+            "openWorldHint": False,
+            "title": "List Cells"
+        },
         "inputSchema": {
             "type": "object",
             "properties": {}
@@ -404,6 +470,13 @@ TOOL_DEFINITIONS = [
     {
         "name": "soma_propose_change",
         "description": "(PROTOTYPE - ADVISORY ONLY) The gateway MCP tool. Propose a change to a file. The system will verify the change against active JIT rules before writing to the file.",
+        "annotations": {
+            "readOnlyHint": False,
+            "destructiveHint": False,
+            "idempotentHint": True,
+            "openWorldHint": True,
+            "title": "Propose Change"
+        },
         "inputSchema": {
             "type": "object",
             "properties": {
@@ -411,18 +484,24 @@ TOOL_DEFINITIONS = [
                 "proposed_content": {"type": "string", "description": "The complete proposed file content."},
                 "receipt": {"type": "string", "description": "Execution receipt ID obtained from soma_request_receipt"}
             },
-            "required": ["file_path", "proposed_content"]
+            "required": ["file_path", "proposed_content", "receipt"]
         }
     },
     {
         "name": "soma_audit_security",
         "description": "Run a basic Security prototype audit on a proposed diff.",
+        "annotations": {
+            "readOnlyHint": True,
+            "destructiveHint": False,
+            "idempotentHint": True,
+            "openWorldHint": False,
+            "title": "Audit Security"
+        },
         "inputSchema": {
             "type": "object",
             "properties": {
                 "file_path": {"type": "string", "description": "Path to the file being changed."},
-                "proposed_content": {"type": "string", "description": "The complete proposed file content."},
-                "receipt": {"type": "string", "description": "Execution receipt ID obtained from soma_request_receipt"}
+                "proposed_content": {"type": "string", "description": "The complete proposed file content."}
             },
             "required": ["file_path", "proposed_content"]
         }
@@ -430,12 +509,18 @@ TOOL_DEFINITIONS = [
     {
         "name": "soma_audit_performance",
         "description": "Run a basic Performance prototype audit on a proposed diff.",
+        "annotations": {
+            "readOnlyHint": True,
+            "destructiveHint": False,
+            "idempotentHint": True,
+            "openWorldHint": False,
+            "title": "Audit Performance"
+        },
         "inputSchema": {
             "type": "object",
             "properties": {
                 "file_path": {"type": "string", "description": "Path to the file being changed."},
-                "proposed_content": {"type": "string", "description": "The complete proposed file content."},
-                "receipt": {"type": "string", "description": "Execution receipt ID obtained from soma_request_receipt"}
+                "proposed_content": {"type": "string", "description": "The complete proposed file content."}
             },
             "required": ["file_path", "proposed_content"]
         }
@@ -443,6 +528,13 @@ TOOL_DEFINITIONS = [
     {
         "name": "soma_verify_changes",
         "description": "Verify proposed changes against Layer-1 governance checks.",
+        "annotations": {
+            "readOnlyHint": False,
+            "destructiveHint": False,
+            "idempotentHint": True,
+            "openWorldHint": False,
+            "title": "Verify Changes"
+        },
         "inputSchema": {
             "type": "object",
             "properties": {
@@ -453,17 +545,26 @@ TOOL_DEFINITIONS = [
                 },
                 "layer1_only": {"type": "boolean", "description": "Only run Layer-1 checks (default true)."},
                 "receipt": {"type": "string", "description": "Execution receipt ID obtained from soma_request_receipt"}
-            }
+            },
+            "required": ["receipt"]
         }
     },
     {
         "name": "soma_checkpoint",
         "description": "Run all checkpoint checks against the workspace.",
+        "annotations": {
+            "readOnlyHint": False,
+            "destructiveHint": False,
+            "idempotentHint": True,
+            "openWorldHint": False,
+            "title": "Soma Checkpoint"
+        },
         "inputSchema": {
             "type": "object",
             "properties": {
                 "receipt": {"type": "string", "description": "Execution receipt ID obtained from soma_request_receipt"}
-            }
+            },
+            "required": ["receipt"]
         }
     },
     {
@@ -472,6 +573,13 @@ TOOL_DEFINITIONS = [
             "Generate and sign a cell integrity manifest for the workspace. "
             "Creates an HMAC-SHA256 key if none exists and generate_key is true."
         ),
+        "annotations": {
+            "readOnlyHint": False,
+            "destructiveHint": True,
+            "idempotentHint": True,
+            "openWorldHint": False,
+            "title": "Generate Manifest"
+        },
         "inputSchema": {
             "type": "object",
             "properties": {
@@ -480,7 +588,8 @@ TOOL_DEFINITIONS = [
                     "description": "Generate HMAC key if none exists (default false)."
                 },
                 "receipt": {"type": "string", "description": "Execution receipt ID obtained from soma_request_receipt"}
-            }
+            },
+            "required": ["receipt"]
         }
     },
     {
@@ -490,6 +599,13 @@ TOOL_DEFINITIONS = [
             "correlates it with governance cell coverage, and persists it to "
             ".soma/human_insights.jsonl for fitness scoring."
         ),
+        "annotations": {
+            "readOnlyHint": False,
+            "destructiveHint": False,
+            "idempotentHint": False,
+            "openWorldHint": False,
+            "title": "Capture Insight"
+        },
         "inputSchema": {
             "type": "object",
             "properties": {
@@ -512,7 +628,7 @@ TOOL_DEFINITIONS = [
                 },
                 "receipt": {"type": "string", "description": "Execution receipt ID obtained from soma_request_receipt"}
             },
-            "required": ["insight", "context_files"]
+            "required": ["insight", "context_files", "receipt"]
         }
     }
 ]
@@ -563,7 +679,7 @@ def execute_tool(name: str, args: dict):
         jit_result = jit_express(workspace, changed_files=[file_path])
         active_playbooks = jit_result.get('relevant_cells', [])
         
-        result = soma_propose_change(file_path, proposed_content, active_playbooks)
+        result = soma_propose_change(file_path, proposed_content, active_playbooks, workspace=workspace)
         status, verdict = _classify_propose_result(result)
         # Explicit status so the transport does not have to sniff the message text.
         payload = {"result": result, "status": status}
@@ -638,10 +754,13 @@ def execute_tool(name: str, args: dict):
             {"tool": r.tool, "target": r.target, "verdict": r.verdict, "detail": r.detail}
             for r in results
         ]
+        # Layer 2 execution is not implemented in MCP tools endpoint; force layer1_only to True
+        # so response accuracy is guaranteed.
+        actual_layer1_only = True
         return {
             "status": "PASS" if verdict else "FAIL",
             "summary": summary,
-            "layer1_only": layer1_only,
+            "layer1_only": actual_layer1_only,
             "evidence": evidence,
         }
 
@@ -650,6 +769,8 @@ def execute_tool(name: str, args: dict):
             workspace = confine_workspace(args.get('workspace') or resolve_workspace(args))
         except ValueError as exc:
             return {"error": str(exc), "status": _STATUS_FAIL}
+        if _run_checkpoint_checks is None:
+            return {"error": "immune_system module is not available", "status": _STATUS_FAIL}
         from pathlib import Path
         root = Path(workspace)
         issues = _run_checkpoint_checks(root)
@@ -662,7 +783,10 @@ def execute_tool(name: str, args: dict):
 
     elif name == "soma_scan":
         # v0.23: JIT expression — returns only relevant cells, not everything
-        workspace = resolve_workspace(args)
+        try:
+            workspace = confine_workspace(args.get('workspace') or resolve_workspace(args))
+        except ValueError as exc:
+            return {"error": str(exc), "status": _STATUS_FAIL}
         files = args.get('files', None)
         return jit_express(workspace, changed_files=files)
 
@@ -746,7 +870,7 @@ def execute_tool(name: str, args: dict):
             record = capture_insight(
                 workspace=workspace,
                 insight=args.get('insight', ''),
-                context_files=args.get('context_files', []),
+                context_files=[str(confine_path(f, workspace)[1]) for f in args.get('context_files', [])],
                 source_conversation=args.get('source_conversation'),
                 category=args.get('category'),
             )

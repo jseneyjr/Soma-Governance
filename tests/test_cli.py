@@ -107,18 +107,16 @@ class TestNonUtf8Console:
 
 
 def _run_init_in(tmp_path, extra_args=None):
-    """Helper: invoke run_init targeting tmp_path with sensible defaults."""
-    from soma_cli.cli import _build_parser
-    from soma_cli.init import run_init
-
-    argv = ["init", "--platform", "gemini", "--yes"]
+    """Helper: invoke soma init targeting tmp_path using a subprocess."""
+    argv = [sys.executable, "-m", "soma_cli.cli", "init", "--platform", "gemini", "--yes"]
     if extra_args:
         argv.extend(extra_args)
 
-    parser = _build_parser()
-    args = parser.parse_args(argv)
-    args._project_root = tmp_path
-    return run_init(args)
+    env = dict(os.environ, HOME=str(tmp_path), USERPROFILE=str(tmp_path))
+    repo_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    env["PYTHONPATH"] = repo_root + (os.pathsep + env["PYTHONPATH"] if "PYTHONPATH" in env else "")
+    proc = subprocess.run(argv, cwd=str(tmp_path), capture_output=True, text=True, env=env)
+    return proc.returncode
 
 
 def _installed_rules(tmp_path):
@@ -189,17 +187,15 @@ import json
 
 def _run_init_mcp(tmp_path, extra_args=None):
     """Helper: invoke run_init with --mcp targeting tmp_path."""
-    from soma_cli.cli import _build_parser
-    from soma_cli.init import run_init
-
-    argv = ["init", "--platform", "gemini", "--yes", "--mcp"]
+    argv = [sys.executable, "-m", "soma_cli.cli", "init", "--platform", "gemini", "--yes", "--mcp"]
     if extra_args:
         argv.extend(extra_args)
 
-    parser = _build_parser()
-    args = parser.parse_args(argv)
-    args._project_root = tmp_path
-    return run_init(args)
+    env = dict(os.environ, HOME=str(tmp_path), USERPROFILE=str(tmp_path))
+    repo_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    env["PYTHONPATH"] = repo_root + (os.pathsep + env["PYTHONPATH"] if "PYTHONPATH" in env else "")
+    proc = subprocess.run(argv, cwd=str(tmp_path), capture_output=True, text=True, env=env)
+    return proc.returncode
 
 
 class TestMCPConfig:

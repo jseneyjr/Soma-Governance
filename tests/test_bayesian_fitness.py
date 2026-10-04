@@ -228,3 +228,32 @@ class TestMandatoryInvariantSlots:
         assert result['stats']['matched'] == 4  # all match *.py
         assert result['stats']['expressed'] == 3  # budget=3
 
+# ── Phase 2: C1 — NEW/DORMANT Status Restoration ─────────────────────────
+
+class TestNewDormantStatus:
+    """Verify zero-trigger cells produce maximally uncertain Bayesian scores
+    and that decayed_fitness handles missing data gracefully."""
+
+    def test_zero_trigger_cell_returns_maximally_uncertain(self):
+        """A brand-new cell with 0 triggers should score 0.5 (maximally uncertain)."""
+        sys.path.insert(0, os.path.join(REPO_ROOT, 'enzymes'))
+        from cell_fitness import bayesian_fitness
+        result = bayesian_fitness(tp=0, fp=0)
+        assert result['mean'] == pytest.approx(0.5)
+        assert result['certainty'] == 'low'
+
+    def test_zero_trigger_cell_has_wide_confidence_interval(self):
+        """Zero-trigger cells should have a wide 90% CI spanning nearly [0, 1]."""
+        sys.path.insert(0, os.path.join(REPO_ROOT, 'enzymes'))
+        from cell_fitness import bayesian_fitness
+        result = bayesian_fitness(tp=0, fp=0)
+        assert result['lower_90'] < 0.2, f"Lower bound too high: {result['lower_90']}"
+        assert result['upper_90'] > 0.8, f"Upper bound too low: {result['upper_90']}"
+
+    def test_decayed_fitness_returns_none_for_no_data(self):
+        """decayed_fitness should return raw_score unchanged when no date is available."""
+        sys.path.insert(0, os.path.join(REPO_ROOT, 'enzymes'))
+        from cell_fitness import decayed_fitness
+        assert decayed_fitness(None, None) is None
+        assert decayed_fitness(0.8, None) == 0.8
+

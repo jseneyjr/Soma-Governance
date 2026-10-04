@@ -25,7 +25,8 @@ def main():
                 'type': fm.get('type', ''),
                 'target_paths': fm.get('target_paths', []),
             })
-        except Exception: pass
+        except Exception as exc:
+            sys.stderr.write(f"Warning: Failed to parse cell {cell_file}: {exc}\n")
     
     # Find overlapping target_paths between cell pairs
     import json

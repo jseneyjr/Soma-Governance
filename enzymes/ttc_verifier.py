@@ -181,7 +181,10 @@ def get_escalation_protocol(file_path: str, workspace: str) -> str:
     unparseable line all yielded "breeze", so the single most common
     misconfiguration silently disabled the gate.
     """
-    sentinel = os.path.join(workspace, "enzymes", "escalation_sentinel.sh")
+    engine_dir = os.path.dirname(os.path.abspath(__file__))
+    sentinel = os.path.join(engine_dir, "escalation_sentinel.sh")
+    if not os.path.exists(sentinel):
+        sentinel = os.path.join(workspace, "enzymes", "escalation_sentinel.sh")
     if not os.path.exists(sentinel):
         _log(f"[TTC] escalation sentinel missing at {sentinel}; failing closed.")
         return PROTOCOL_UNKNOWN
@@ -289,13 +292,14 @@ def _render(verdict: str, relative_path: str, protocol: str, lines: List[str],
 
 
 def soma_propose_change(file_path: str, proposed_content: str,
-                        active_playbooks: List[Dict]) -> str:
+                        active_playbooks: List[Dict],
+                        workspace: Optional[str] = None) -> str:
     """Review a proposed change and return a verdict plus a diff.
 
     ADVISORY ONLY: nothing is written to disk. The caller applies the change
     with its own file-editing tool after reading the verdict.
     """
-    workspace = resolve_workspace()
+    workspace = workspace or resolve_workspace()
 
     # ── Gate 0: containment. FIRST, before any read, subprocess or network
     # egress, so a traversal path is never handed to an external LLM.
@@ -346,9 +350,12 @@ def soma_propose_change(file_path: str, proposed_content: str,
              "The proposal was NOT sent to the oracle and NOT written."],
         )
 
-    # ── Gate 3: TTC oracle (network egress happens here, after containment).
-    oracle_verdict, oracle_detail = _consult_oracle(
-        workspace, relative_path, proposed_content)
+    # ── Gate 3: TTC oracle (air-gapped by default; external egress requires explicit opt-in).
+    if os.environ.get("SOMA_ENABLE_CLOUD_ORACLE", "0").lower() in ("1", "true"):
+        oracle_verdict, oracle_detail = _consult_oracle(
+            workspace, relative_path, proposed_content)
+    else:
+        oracle_verdict, oracle_detail = VERDICT_APPROVED, "Oracle skipped (local-only mode)"
     diff = _build_diff(resolved_path, relative_path, proposed_content)
 
     if oracle_verdict == VERDICT_REJECTED:

@@ -173,7 +173,7 @@ class TestStatus:
         ret = run_status(args)
         assert ret == 0
         captured = capsys.readouterr()
-        assert "~100 tokens (estimated)" in captured.out
+        assert "~100 tokens (pre-JIT max)" in captured.out
 
     def test_status_adaptive_rule_expiry_active(self, tmp_path, capsys):
         """Active adaptive rules show remaining days."""

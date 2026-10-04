@@ -21,7 +21,8 @@ Thank you for your interest in contributing!
 - **Python 3.9+** — all code must be compatible with Python 3.9 through 3.12
 - **`from __future__ import annotations`** — required as the first import in any file using `X | None` union syntax
 - **CI matrix** — tests run on Python 3.9 + 3.11 across Linux, macOS, and Windows
-- **Test command**: `python3 -m pytest tests/ -q` (~1,465 tests)
+- **Test command**: `python3 -m pytest tests/ -q` (~2,145 tests)
+- **Local Test Caches**: Property-based testing generates a `.hypothesis/` directory, and Pytest generates a `.pytest_cache/` directory. These are binary caches used by the testing framework and should *never* be committed to version control.
 
 ### Contributing Cells
 If your Genesis scan produced useful cells, you can contribute them:

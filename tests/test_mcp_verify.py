@@ -85,8 +85,8 @@ class TestMCPVerifyChanges:
         assert isinstance(result["summary"], str)
         assert "Layer 1" in result["summary"]
 
-    def test_verify_changes_empty_files_returns_pass(self, tmp_path, monkeypatch):
-        """Empty file list returns PASS (nothing to check)."""
+    def test_verify_changes_empty_files_returns_fail(self, tmp_path, monkeypatch):
+        """Empty file list returns FAIL (empty list cannot pass verification)."""
         from soma_mcp.tools import execute_tool
 
         (tmp_path / ".soma" / "cells").mkdir(parents=True)
@@ -96,7 +96,7 @@ class TestMCPVerifyChanges:
             "workspace": str(tmp_path),
         })
 
-        assert result["status"] == "PASS"
+        assert result["status"] == "FAIL"
 
     def test_verify_changes_includes_layer1_only_flag(self, tmp_path, monkeypatch):
         """Result must include layer1_only field reflecting the request."""

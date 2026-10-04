@@ -130,9 +130,8 @@ class CellCache:
                 if verify_signature(manifest, key):
                     warn("integrity: HMAC signature verified ✓")
                 else:
-                    warn(
-                        "integrity: HMAC signature verification FAILED "
-                        "— manifest may be tampered"
-                    )
+                    raise CellCacheError("integrity: HMAC signature verification FAILED — manifest may be tampered")
+        except CellCacheError:
+            raise
         except Exception as exc:
             warn(f"integrity check failed (non-fatal): {exc}")

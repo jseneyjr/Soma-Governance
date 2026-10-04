@@ -271,10 +271,13 @@ main() {
         local path_matched=false
         while IFS= read -r mem_path; do
           [ -z "$mem_path" ] && continue
-          if echo "$files" | grep -qF "$mem_path"; then
-            path_matched=true
-            break
-          fi
+          while IFS= read -r f; do
+            [ -z "$f" ] && continue
+            if [[ "$f" == $mem_path ]]; then
+              path_matched=true
+              break 2
+            fi
+          done <<< "$files"
         done <<< "$mem_paths"
         if [ "$path_matched" = true ]; then
           # Escalate if mem_mode > protocol

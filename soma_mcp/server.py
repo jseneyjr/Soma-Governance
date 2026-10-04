@@ -26,14 +26,14 @@ _execution_enabled = False
 
 _READ_TOOLS = frozenset({
     "soma_scan", "soma_list_cells", "soma_grade", "soma_coverage", "soma_fitness",
-    "soma_request_receipt"
+    "soma_request_receipt", "soma_audit_security", "soma_audit_performance"
 })
 _WRITE_TOOLS = frozenset({
     "soma_report_outcome", "soma_capture_insight", "soma_create_cell"
 })
 _EXECUTE_TOOLS = frozenset({
     "soma_propose_change", "soma_verify_changes", "soma_checkpoint",
-    "soma_audit_security", "soma_audit_performance", "soma_generate_manifest",
+    "soma_generate_manifest",
 })
 
 _tool_call_times = defaultdict(list)

@@ -1,6 +1,6 @@
-# Known Issues — Windows (v0.90.0)
+# Known Issues — Windows (v0.91.0)
 
-Open Windows issues as of v0.90.0 were observed on Windows 11 with Windows PowerShell 5.1, Git Bash, and Python 3.14. Each open issue is tracked in [`BUG_REGISTRY.json`](project/BUG_REGISTRY.json) with `"status": "open"`.
+Open Windows issues as of v0.91.0 were observed on Windows 11 with Windows PowerShell 5.1, Git Bash, and Python 3.14. Each open issue is tracked in [`BUG_REGISTRY.json`](project/BUG_REGISTRY.json) with `"status": "open"`.
 
 > **⚠ On v0.89.0, don't run the full test suite on a Windows machine you care about (BUG-010).** It can write to the real home directory. That includes `tests/test_install_lifecycle.py`, which `enzymes/verify_readme_claims.py` may invoke. Fixed after v0.89.0; see below.
 
@@ -31,7 +31,7 @@ Fix for the stub: **Settings > Apps > Advanced app settings > App execution alia
 
 `soma doctor --fix-path` does not edit PowerShell profiles; on Windows it prints the `[Environment]::SetEnvironmentVariable(...)` command for the user `Path` instead. Under Git Bash (`SHELL` set to bash) it edits `~/.bashrc` like on Linux, and `install/uninstall.ps1` removes that line again from the home manifest's `path_lines`, keeping a UTF-8 BOM and the line endings. `uninstall.ps1` refuses to rewrite an rc file that is a symlink (warns instead); `uninstall.sh` follows a symlink whose target stays inside your home directory.
 
-## Fixed after v0.89.0 (unreleased)
+## Fixed in v0.90.0
 
 ### BUG-035: Cell inventory rejected edited cells ([#61](https://github.com/nseney1/Soma-Governance/issues/61))
 On v0.89.0, `soma_scan` and `soma_list_cells` fail with `file changed before it was opened`, and `soma_request_receipt` returns `Internal error`, so no write or execute tool can run. Cause: `os.stat` and `os.fstat` report different `st_ctime` values on Windows. The inventory now leaves `st_ctime` out of its change check on Windows and reads cells in binary mode.

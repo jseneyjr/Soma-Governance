@@ -387,7 +387,7 @@ def run_status(args: argparse.Namespace) -> int:
     print("📊 Soma Status\n")
     print(f"  {'Core rules:':<16}{len(core_files) + len(merged_rules)} active")
     print(f"  {'Adaptive rules:':<16}{len(adaptive_files)} (traps/patterns)")
-    print(f"  {'Context load:':<16}~{estimated_tokens:,} tokens (estimated)\n")
+    print(f"  {'Context load:':<16}~{estimated_tokens:,} tokens (pre-JIT max)\n")
 
     if not all_rules:
         print("  No rules found. Run 'soma init' to set up governance rules.")

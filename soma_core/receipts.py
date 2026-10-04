@@ -136,19 +136,18 @@ def verify_receipt(
             _receipt_store.pop(receipt_id, None)
             return False
         
-        # Server recomputes hashes to compare
+        import hmac
         is_valid = (
-            stored["session_id"] == session_id and
-            stored["workspace"] == workspace and
-            stored["operation"] == operation and
-            stored["args_hash"] == _hash_args(args) and
-            stored["file_digest"] == file_digest and
-            stored["cell_digest"] == cell_digest
+            hmac.compare_digest(stored["session_id"], session_id) and
+            hmac.compare_digest(stored["workspace"], workspace) and
+            hmac.compare_digest(stored["operation"], operation) and
+            hmac.compare_digest(stored["args_hash"], _hash_args(args)) and
+            hmac.compare_digest(stored["file_digest"], file_digest) and
+            hmac.compare_digest(stored["cell_digest"], cell_digest)
         )
         
-        # Pop receipt immediately if validation fails (prevent replay/enumeration),
-        # or if verification succeeds and it is meant to be consumed.
-        if not is_valid or consume:
+        # Purge receipt only when verification succeeds and consume=True
+        if is_valid and consume:
             _receipt_store.pop(receipt_id, None)
             
         return is_valid

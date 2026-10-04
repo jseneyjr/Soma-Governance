@@ -29,7 +29,8 @@ def main():
                 'tp': (fm.get('fitness') or {}).get('true_positives', 0),
                 'fp': (fm.get('fitness') or {}).get('false_positives', 0),
             })
-        except Exception: pass
+        except Exception as exc:
+            sys.stderr.write(f"Warning: Failed to parse cell {cell_file}: {exc}\n")
     
     if not cells:
         print('No cells found.')

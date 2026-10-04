@@ -52,6 +52,7 @@ def arbitrate(
         "branch_coverage": RiskCategory.DEAD_CODE,
         "mutation_tester": RiskCategory.TAUTOLOGICAL_TEST,
         "call_graph": RiskCategory.MISSING_WIRE,
+        "import_guard": RiskCategory.BOUNDARY_VIOLATION,
     }
 
     all_categories = set(pred_by_cat.keys()) | set(claim_by_cat.keys())

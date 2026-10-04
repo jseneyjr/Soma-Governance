@@ -63,3 +63,15 @@ def test_soma_py_cwd_isolation(tmp_path, fake_home):
     proc = run(cmd, cwd=str(tmp_path), env=env)
     assert proc.returncode == 0, proc.stderr
     assert "OK" in proc.stdout
+
+def test_cell_enforce_handles_null_target_paths():
+    """generate_precommit_check must handle target_paths=None without crashing."""
+    from cell_enforce import generate_precommit_check
+    cell = {
+        "_name": "test-null-targets",
+        "type": "wall",
+        "hypothesis": "test",
+        "target_paths": None,
+    }
+    check_code = generate_precommit_check(cell, "/tmp")
+    assert "TARGET_PATTERNS=()" in check_code

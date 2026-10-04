@@ -6,9 +6,12 @@ import soma_mcp.server as server_module
 
 @pytest.fixture(autouse=True)
 def setup_server_globals(monkeypatch):
-    monkeypatch.setattr(server_module, "_session_token", "test-session-123")
+    import os
+    os.environ["SOMA_EXECUTION_ENABLED"] = "1"
     monkeypatch.setattr(server_module, "_canonical_workspace", "/fake/workspace")
     monkeypatch.setattr(server_module, "_execution_enabled", True)
+    # Initialize properly instead of mutating private module state directly
+    handle_request({"jsonrpc": "2.0", "id": 0, "method": "initialize"})
 
 def test_execute_tool_requires_receipt():
     req = {

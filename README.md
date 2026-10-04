@@ -3,11 +3,11 @@
 [![License: Apache 2.0](https://img.shields.io/badge/License-Apache_2.0-blue?style=flat-square)](LICENSE)
 [![Core Rules](https://img.shields.io/badge/Core_Rules-18-green?style=flat-square)](#-core-rules)
 [![Agent Skills](https://img.shields.io/badge/Agent_Skills-15-purple?style=flat-square)](#-agent-skills)
-[![Automation Scripts](https://img.shields.io/badge/Automation_Scripts-62-red?style=flat-square)](#%EF%B8%8F-automation-scripts)
+[![Automation Scripts](https://img.shields.io/badge/Automation_Scripts-63-red?style=flat-square)](#%EF%B8%8F-automation-scripts)
 [![Adaptive Rules](https://img.shields.io/badge/Adaptive_Rules-5_Types-orange?style=flat-square)](#-adaptive-rules)
-[![Version](https://img.shields.io/badge/Version-0.90.0-informational?style=flat-square)](docs/project/CHANGELOG.md)
-[![Blog Post](https://img.shields.io/badge/Blog-dev.to-black?style=flat-square&logo=devdotto)](https://dev.to/nseney1/rules-that-cant-prove-themselves-die-adaptive-governance-for-ai-coding-agents-25bn)
-[![Blog Post 2](https://img.shields.io/badge/Blog_2-dev.to-black?style=flat-square&logo=devdotto)](https://dev.to/nseney1/your-ai-agents-rules-file-is-a-gentlemans-agreement-heres-what-happens-when-you-make-3df5)
+[![Version](https://img.shields.io/badge/Version-0.91.0-informational?style=flat-square)](docs/project/CHANGELOG.md)
+[![Blog Post](https://img.shields.io/badge/Blog-dev.to-black?style=flat-square&logo=devdotto)](https://dev.to/nseney1/your-ai-agents-rules-file-is-a-gentlemans-agreement-heres-what-happens-when-you-build-2dml)
+[![M8ven Score](https://m8ven.ai/badge/mcp/nseney1-soma-governance-yv4xbk)](https://m8ven.ai/mcp/nseney1/soma-governance?s=readme)
 
 **Governance framework that makes AI coding agents trustworthy.**
 
@@ -19,7 +19,7 @@ Soma makes AI agents trustworthy by providing observably traceable governance �
 
 > **Internal naming convention**: Soma uses a biological metaphor internally (genome, enzymes, organs, cells) to model rule evolution — see the codebase for details.
 
-See the [NOTICE](NOTICE) file for our full local-only Data Privacy Statement.
+See the [NOTICE](NOTICE) and [PRIVACY.md](PRIVACY.md) files for our full Data Privacy Statement.
 
 ---
 
@@ -84,13 +84,13 @@ Add Soma as an MCP server in your AI agent's config. Set `SOMA_WORKSPACE` to the
 
 Works with Gemini Antigravity, Claude Code, Cursor, and any MCP-compatible agent.
 
-**Capabilities:** With `SOMA_EXECUTION_ENABLED` omitted, the server exposes six read tools and three write tools. Write tools are discoverable but require a receipt. Setting `SOMA_EXECUTION_ENABLED=1` additionally exposes six execute tools, which also require receipts.
+**Capabilities:** With `SOMA_EXECUTION_ENABLED` omitted, the server exposes eight read tools and three write tools. Write tools are discoverable but require a receipt. Setting `SOMA_EXECUTION_ENABLED=1` additionally exposes four execute tools, which also require receipts.
 
 | Tier | Available tools |
 |:-----|:----------------|
-| Read (default) | `soma_request_receipt`, `soma_scan`, `soma_list_cells`, `soma_grade`, `soma_coverage`, `soma_fitness` |
+| Read (default) | `soma_request_receipt`, `soma_scan`, `soma_list_cells`, `soma_grade`, `soma_coverage`, `soma_fitness`, `soma_audit_security`, `soma_audit_performance` |
 | Write (default; receipt required) | `soma_report_outcome`, `soma_capture_insight`, `soma_create_cell` |
-| Execute (opt-in; receipt required) | `soma_propose_change`, `soma_verify_changes`, `soma_checkpoint`, `soma_audit_security`, `soma_audit_performance`, `soma_generate_manifest` |
+| Execute (opt-in; receipt required) | `soma_propose_change`, `soma_verify_changes`, `soma_checkpoint`, `soma_generate_manifest` |
 
 **Receipt flow for write and execute tools:**
 
@@ -282,7 +282,7 @@ Generate → Score (Confidence Decay) → Adapt → Differentiate → Prune / Re
 
 ## ⚙️ Automation Scripts
 
-Soma includes 62 task-specific scripts driving rule lifecycles, verification, and evidence pipelines. See [SCRIPTS.md](docs/architecture/scripts.md) for full documentation.
+Soma includes 63 task-specific scripts driving rule lifecycles, verification, and evidence pipelines. See [SCRIPTS.md](docs/architecture/scripts.md) for full documentation.
 
 ---
 
@@ -355,7 +355,8 @@ Features that are planned but not yet shipped are listed in [ROADMAP.md](docs/pr
 
 | Document | Audience | Description |
 |:---------|:---------|:------------|
-| [**Blog Post**](https://dev.to/nseney1/rules-that-cant-prove-themselves-die-adaptive-governance-for-ai-coding-agents-25bn) | Everyone | "Rules That Can't Prove Themselves Die" — full introduction |
+| [**Blog Post**](https://dev.to/nseney1/your-ai-agents-rules-file-is-a-gentlemans-agreement-heres-what-happens-when-you-build-2dml) | Everyone | "Your AI agent's rules file is a gentleman's agreement..." |
+| [PRIVACY.md](PRIVACY.md) | Users | Data privacy boundaries and LLM opt-in details |
 | [CHANGELOG](docs/project/CHANGELOG.md) | Users | Release history |
 | [Bug Registry](docs/project/BUG_REGISTRY.json) | Contributors, agents | Every known bug, fixed and open, with root cause and regression test |
 | [Known Issues — Windows](docs/KNOWN_ISSUES_WINDOWS.md) | Windows users | Open Windows bugs, workarounds, and impact |

@@ -188,3 +188,10 @@ def test_readme_core_rule_count_and_inventory_match_genome():
     section = readme.split("## 📐 Core Rules", 1)[1].split("## 🔧 Agent Skills", 1)[0]
     linked = {target for target in re.findall(r"\]\((genome/[^)]+\.md)\)", section)}
     assert linked == rules
+
+
+def test_readme_m8ven_trust_badge_exists():
+    readme = read(str(ROOT / "README.md"))
+    expected_markdown = r"\[\!\[M8ven Score\]\(https://m8ven\.ai/badge/mcp/nseney1-soma-governance-yv4xbk\)\]\(https://m8ven\.ai/mcp/nseney1/soma-governance\?s=readme\)"
+    assert re.search(expected_markdown, readme), "m8ven badge missing or malformed in README"
+

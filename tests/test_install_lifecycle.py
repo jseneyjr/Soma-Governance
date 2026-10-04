@@ -280,3 +280,116 @@ def test_starter_rules_match_init():
         f"  manifest only: {manifest - init_paths}\n"
         f"  init.py only: {init_paths - manifest}"
     )
+
+# ── install_hooks: encoding and atomic render ──────────────────────────────
+
+ENZYMES = os.path.join(REPO_ROOT, "enzymes")
+
+def _fake_repo(tmp_path, template_text):
+    repo = tmp_path / "repo"
+    (repo / "install").mkdir(parents=True)
+    (repo / "enzymes").mkdir()
+    tpl = repo / "install" / "hooks.json.template"
+    tpl.write_text(template_text, encoding="utf-8")
+    return repo, tpl
+
+def _env(tmp_path, **extra):
+    import sys
+    home = tmp_path / "home"
+    home.mkdir(exist_ok=True)
+    env = {"HOME": str(home), "USERPROFILE": str(home), "SOMA_PYTHON": sys.executable,
+           "SOMA_PYTHON_RESOLVED": ""}
+    env.update(extra)
+    return env
+
+def _install_hooks(bash, tmp_path, repo, target, **extra):
+    script = (f'source "{ENZYMES}/common.sh"; '
+              f'install_hooks "{repo}" "{target}"')
+    return run([bash, "-c", script], env=_env(tmp_path, **extra))
+
+def test_install_hooks_renders_utf8_template_under_ascii_locale(tmp_path, bash):
+    repo, _ = _fake_repo(
+        tmp_path, '{"hooks": [{"name": "gate \u2705", "cmd": "{{SCRIPTS_DIR}}/x.sh"}]}')
+    target = tmp_path / "out"
+    proc = _install_hooks(bash, tmp_path, repo, target, LC_ALL="C", LANG="C",
+                          PYTHONUTF8="0", PYTHONCOERCECLOCALE="0",
+                          PYTHONIOENCODING="")
+    assert proc.returncode == 0, proc.stdout + proc.stderr
+    data = json.loads(read(str(target / "hooks.json")))
+    assert data["hooks"][0]["name"] == "gate \u2705"
+    assert data["hooks"][0]["cmd"].replace("\\", "/") == (str(repo / "enzymes") + "/x.sh").replace("\\", "/")
+
+ORIGINAL_HOOKS = '{"hooks": "original"}\n'
+
+def _existing_target(tmp_path):
+    target = tmp_path / "out"
+    target.mkdir()
+    (target / "hooks.json").write_text(ORIGINAL_HOOKS, encoding="utf-8")
+    return target
+
+def test_install_hooks_invalid_render_keeps_existing_hooks(tmp_path, bash):
+    repo, _ = _fake_repo(tmp_path, '{ not json {{SCRIPTS_DIR}}')
+    target = _existing_target(tmp_path)
+    proc = _install_hooks(bash, tmp_path, repo, target)
+    assert proc.returncode != 0
+    assert read(str(target / "hooks.json")) == ORIGINAL_HOOKS
+    assert os.listdir(str(target)) == ["hooks.json"], "temp file left behind"
+
+def test_install_hooks_failed_render_keeps_existing_hooks(tmp_path, bash):
+    if os.name == "nt" or (hasattr(os, "geteuid") and os.geteuid() == 0):
+        pytest.skip("needs POSIX permissions enforced for this user")
+    repo, tpl = _fake_repo(tmp_path, '{"cmd": "{{SCRIPTS_DIR}}"}')
+    tpl.chmod(0)  # rendering (the read) fails; the -f existence check passes
+    target = _existing_target(tmp_path)
+    try:
+        proc = _install_hooks(bash, tmp_path, repo, target)
+    finally:
+        tpl.chmod(0o644)
+    assert proc.returncode != 0
+    assert read(str(target / "hooks.json")) == ORIGINAL_HOOKS
+    assert os.listdir(str(target)) == ["hooks.json"], "temp file left behind"
+
+# ── BUG-043: manifestless uninstall fails closed without Python ────────────
+
+STORE_STUB_EXIT = 49
+
+def _write_exe(path, body):
+    import stat
+    path.write_bytes(("#!/bin/sh\n" + body + "\n").encode("utf-8"))
+    path.chmod(path.stat().st_mode | stat.S_IXUSR | stat.S_IXGRP | stat.S_IXOTH)
+
+def _snapshot(root):
+    out = {}
+    for dirpath, _dirs, files in os.walk(str(root)):
+        for name in files:
+            p = os.path.join(dirpath, name)
+            with open(p, "rb") as fh:
+                out[os.path.relpath(p, str(root))] = fh.read()
+    return out
+
+def test_manifestless_uninstall_without_python_removes_nothing(tmp_path, bash):
+    if os.name == "nt":
+        pytest.skip("POSIX shebang shims; the stub is simulated, not native")
+    proj = tmp_path / "proj"
+    proj.mkdir()
+    home = tmp_path / "home"
+    env = _env(tmp_path)
+    proc = run([bash, os.path.join(REPO_ROOT, "install", "install.sh"), "kiro"],
+               cwd=str(proj), env=env)
+    assert proc.returncode == 0, proc.stderr[-800:]
+    (home / ".soma" / "manifest.json").unlink()
+    hooks = home / ".kiro" / "hooks" / "hooks.json"
+    assert hooks.exists()
+    before = _snapshot(home)
+
+    fake_bin = tmp_path / "bin"
+    fake_bin.mkdir()
+    for name in ("python3", "python", "py"):
+        _write_exe(fake_bin / name, f"exit {STORE_STUB_EXIT}")
+    env = dict(env, SOMA_PYTHON="",
+               PATH=str(fake_bin) + os.pathsep + os.environ.get("PATH", ""))
+    proc = run([bash, os.path.join(REPO_ROOT, "install", "uninstall.sh"), "kiro",
+                "--force", "--no-restore", "--keep-config"], cwd=str(proj), env=env)
+    assert proc.returncode != 0, "uninstall proceeded without a confinement check"
+    assert "SOMA_PYTHON" in proc.stderr, proc.stderr
+    assert _snapshot(home) == before, "files were removed"
