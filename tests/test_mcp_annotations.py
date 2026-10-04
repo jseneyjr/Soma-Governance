@@ -31,9 +31,13 @@ _EXPECTED = {
 
 
 @pytest.fixture
-def tools(monkeypatch):
-    monkeypatch.setattr(server_module, "_session_token", "test-session")
-    monkeypatch.setattr(server_module, "_execution_enabled", True)
+def tools():
+    # Properly initialize the server to set the session token
+    # instead of mutating private module state directly
+    import os
+    os.environ["SOMA_EXECUTION_ENABLED"] = "1"
+    server_module._execution_enabled = True # Keep for now as there's no setup fn
+    handle_request({"jsonrpc": "2.0", "id": 0, "method": "initialize"})
     resp = handle_request({"jsonrpc": "2.0", "id": 1, "method": "tools/list"})
     return {t["name"]: t for t in resp["result"]["tools"]}
 

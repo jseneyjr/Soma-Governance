@@ -134,3 +134,57 @@ class TestExponentialDecay:
         result = apply_decay(meta)
         # Should not crash, should return meta unchanged
         assert result is not None
+
+# ── Phase 5: C5 — Decay Idempotency ──────────────────────────────────────
+
+import time
+
+class TestDecayIdempotency:
+    """Verify apply_decay is idempotent within a session."""
+
+    def test_consecutive_decay_is_noop(self):
+        """Two apply_decay calls within 1 hour should only decay once."""
+        from cell_promote import apply_decay
+        meta = {'fitness': {
+            'triggers': 100, 'true_positives': 90, 'false_positives': 10,
+            'last_decay_epoch': int(time.time())  # just decayed
+        }}
+        original_triggers = meta['fitness']['triggers']
+        apply_decay(meta)
+        assert meta['fitness']['triggers'] == original_triggers, \
+            f"Decay should be no-op within session, got {meta['fitness']['triggers']}"
+
+    def test_decay_applies_after_gap(self):
+        """Decay should apply if last_decay_epoch is > 1 hour ago."""
+        from cell_promote import apply_decay
+        meta = {'fitness': {
+            'triggers': 100, 'true_positives': 90, 'false_positives': 10,
+            'last_decay_epoch': int(time.time()) - 7200  # 2 hours ago
+        }}
+        apply_decay(meta)
+        assert meta['fitness']['triggers'] < 100, \
+            f"Decay should apply after 2-hour gap, got {meta['fitness']['triggers']}"
+
+    def test_decay_sets_epoch_after_application(self):
+        """After decaying, last_decay_epoch should be set to current time."""
+        from cell_promote import apply_decay
+        before = int(time.time())
+        meta = {'fitness': {
+            'triggers': 100, 'true_positives': 90, 'false_positives': 10
+        }}
+        apply_decay(meta)
+        after = int(time.time())
+        epoch = meta['fitness'].get('last_decay_epoch', 0)
+        assert before <= epoch <= after, \
+            f"last_decay_epoch should be set to current time, got {epoch}"
+
+    def test_first_decay_no_epoch_applies(self):
+        """Cells without last_decay_epoch (legacy) should still get decayed."""
+        from cell_promote import apply_decay
+        meta = {'fitness': {
+            'triggers': 100, 'true_positives': 90, 'false_positives': 10
+            # no last_decay_epoch
+        }}
+        apply_decay(meta)
+        assert meta['fitness']['triggers'] < 100, \
+            "First decay (no epoch) should apply"

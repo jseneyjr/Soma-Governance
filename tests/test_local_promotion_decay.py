@@ -19,58 +19,119 @@ sys.path.insert(0, os.path.join(REPO_ROOT, 'enzymes'))
 class TestLocalPromotionDecay:
     """Verify decay is applied during --local promotion evaluation."""
 
-    def test_local_path_applies_decay_before_scoring(self):
-        """Directly test that the --local code path uses decayed counts.
+    def test_local_path_applies_decay_before_scoring(self, tmp_path):
+        """Verify the CLI 'soma promote --local' applies decay to stale cells.
+        
+        Instead of importing internal modules, we construct a stale cell and run 
+        the CLI integration path to ensure the output matches decayed expectations.
+        """
+        import time
+        import yaml
 
-        We import and inspect the logic: after normalize_fitness + apply_decay,
-        a cell with tp=18/triggers=20 should have triggers=19 (int(20*0.95)=19)
-        which is < 20, preventing promotion.
+        cells_dir = tmp_path / ".soma" / "cells" / "vacuoles"
+        cells_dir.mkdir(parents=True)
 
-        Without decay, it would promote (score=0.864 > 0.85, triggers=20)."""
-        from cell_promote import apply_decay, normalize_fitness
-
-        metadata = {
-            'enforcement': 'advisory',
-            'impact_weight': 1.0,
+        # This cell would normally promote (triggers >= 20, score > 0.85)
+        # But it's stale (decay epoch is 2 hours ago).
+        cell_path = cells_dir / "stale-cell.md"
+        meta = {
+            'id': 'stale-cell',
+            'type': 'vacuole',
+            'target_paths': ['src/*.py'],
             'fitness': {
-                'triggers': 20,
-                'true_positives': 18,
-                'false_positives': 2
+                'triggers': 21,
+                'true_positives': 19,
+                'false_positives': 2,
+                'last_decay_epoch': int(time.time()) - 7200
             }
         }
+        content = f"---\\n{yaml.dump(meta, default_flow_style=False)}---\\n# Stale Cell\\n"
+        cell_path.write_text(content, encoding='utf-8')
 
-        fitness = normalize_fitness(metadata)
-        # Without decay: Bayesian = 19/22 = 0.864 > 0.85, triggers=20 >= 20 → promotes
-        raw_score = ((fitness['true_positives'] + 1) / (fitness['triggers'] + 2))
-        assert raw_score > 0.85, f"Pre-decay score should be > 0.85, got {raw_score:.4f}"
-        assert fitness['triggers'] >= 20, "Pre-decay triggers should be >= 20"
+        # Run the local promote enzyme which uses the --local flag
+        proc = subprocess.run(
+            [sys.executable, os.path.join(REPO_ROOT, "enzymes", "cell_promote.py"), "--local"],
+            cwd=str(tmp_path),
+            capture_output=True,
+            text=True
+        )
+        assert proc.returncode == 0
+        
+        # It should NOT be promoted because 21 triggers decayed to 19 (which is < 20 limit)
+        assert "No candidates found for promotion." in proc.stdout
+        assert "stale-cell" not in proc.stdout
 
-        # After decay: triggers=int(20*0.95)=19 < 20 → should NOT promote
-        metadata['fitness'] = fitness
-        apply_decay(metadata)
-        decayed = metadata['fitness']
-
-        assert decayed['triggers'] < 20, \
-            f"Post-decay triggers should be < 20, got {decayed['triggers']}"
-
-        decayed_score = ((decayed['true_positives'] + 1) / (decayed['triggers'] + 2))
-
-        # This is the actual promotion check from --local path
-        would_promote = decayed_score > 0.85 and decayed['triggers'] >= 20
-        assert not would_promote, \
-            f"After decay, cell should NOT promote (score={decayed_score:.4f}, triggers={decayed['triggers']})"
-
-    def test_apply_decay_reduces_stale_triggers(self):
-        """Verify apply_decay actually reduces trigger count for stale cells.
-        This is the behavioral contract: if a cell hasn't been seen in >1 hour,
-        decay must reduce its triggers to prevent stale count inflation."""
+    def test_tier_check_persists_decay(self, tmp_path):
+        """Verify cell_promote.py --tier-check actually persists decayed triggers to disk."""
         import time
-        from cell_promote import apply_decay
+        import yaml
 
-        meta = {'fitness': {
-            'triggers': 100, 'true_positives': 90, 'false_positives': 10,
-            'last_decay_epoch': int(time.time()) - 7200  # 2 hours ago
-        }}
-        apply_decay(meta)
-        assert meta['fitness']['triggers'] < 100, \
-            "apply_decay must reduce triggers for stale cells"
+        cells_dir = tmp_path / ".soma" / "cells" / "vacuoles"
+        cells_dir.mkdir(parents=True)
+
+        cell_path = cells_dir / "decay-me.md"
+        meta = {
+            'id': 'decay-me',
+            'type': 'vacuole',
+            'enforcement': 'advisory',
+            'fitness': {
+                'triggers': 100,
+                'true_positives': 90,
+                'false_positives': 10,
+                'last_decay_epoch': int(time.time()) - 7200
+            }
+        }
+        content = f"---\\n{yaml.dump(meta, default_flow_style=False)}---\\n# Cell\\n"
+        cell_path.write_text(content, encoding='utf-8')
+
+        proc = subprocess.run(
+            [sys.executable, os.path.join(REPO_ROOT, "enzymes", "cell_promote.py"), "--tier-check", "--execute"],
+            cwd=str(tmp_path),
+            capture_output=True,
+            text=True
+        )
+        assert proc.returncode == 0
+        
+        # Read back the cell and verify decay was applied (triggers should be 95)
+        new_content = cell_path.read_text(encoding='utf-8')
+        parts = new_content.split('---')
+        new_meta = yaml.safe_load(parts[1])
+        assert new_meta['fitness']['triggers'] == 95
+
+# ── Phase 3: C2 — Promotion Zero-Trigger Guard ───────────────────────────
+
+class TestPromotionZeroTriggerGuard:
+    """Verify untested cells cannot be promoted regardless of impact_weight."""
+
+    def test_normalize_fitness_zero_triggers_not_promoted(self):
+        """A cell with 0 triggers must not be promotable: score below threshold."""
+        from bayesian_score import bayesian_score
+        from cell_promote import normalize_fitness
+        meta = {'fitness': {'triggers': 0, 'true_positives': 0, 'false_positives': 0}}
+        result = normalize_fitness(meta)
+        # Compute the Bayesian score this cell would receive
+        score = bayesian_score(
+            result.get('true_positives', 0), result.get('triggers', 0)
+        )
+        # Score must be 0.5 (maximally uncertain), well below promotion threshold 0.7
+        assert score == pytest.approx(0.5)
+        assert score < 0.7, \
+            f"Zero-trigger cell must not meet promotion threshold, got {score}"
+        # Triggers must remain 0 — hard gate for promotion
+        assert result.get('triggers', 0) == 0
+
+    def test_normalize_fitness_high_triggers_preserves_data(self):
+        """Normalization must preserve data, and high-quality cells must score above 0.9."""
+        from bayesian_score import bayesian_score
+        from cell_promote import normalize_fitness
+        meta = {'fitness': {'triggers': 50, 'true_positives': 48, 'false_positives': 1}}
+        result = normalize_fitness(meta)
+        # All fields preserved
+        assert result['triggers'] == 50
+        assert result['true_positives'] == 48
+        assert result['false_positives'] == 1
+        # Score computed from preserved data should reflect high quality
+        score = bayesian_score(result['true_positives'], result['triggers'])
+        assert score == pytest.approx((48 + 1) / (50 + 2))
+        assert score > 0.9, \
+            f"High-quality cell should score above 0.9, got {score}"

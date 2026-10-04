@@ -254,3 +254,44 @@ class TestExpress:
         result = express(ws, changed_files=['src/foo.py'])
         # Mandatory cells can exceed budget, but non-mandatory should respect it
         assert result['stats']['budget'] == 2
+
+# ── Phase 4: C3 — Mandatory Cells Fitness Score ──────────────────────────
+
+from tests.helpers_cell import write_cell_with_fitness, soma_workspace
+
+class TestMandatoryCellsFitnessScore:
+    """Verify mandatory wall/gate cells have their fitness score computed."""
+
+    @pytest.fixture
+    def populated_workspace(self, soma_workspace):
+        """Workspace with a wall cell and an advisory cell for fitness tests."""
+        cells_dir = soma_workspace / ".soma" / "cells"
+        write_cell_with_fitness(cells_dir, "wall-auth", cell_type="wall",
+                               triggers=50, tp=48, fp=1,
+                               hypothesis="Auth check")
+        write_cell_with_fitness(cells_dir, "advisory-style",
+                               triggers=10, tp=8, fp=1,
+                               hypothesis="Style check")
+        return str(soma_workspace)
+
+    def test_mandatory_cells_have_nonzero_fitness(self, populated_workspace):
+        """Wall cells must have their fitness computed, not default to 0."""
+        from jit_engine import express
+        result = express(populated_workspace, changed_files=["app.py"], budget=5)
+
+        for cell in result['relevant_cells']:
+            if cell.get('type') == 'wall':
+                fitness = cell.get('fitness', 0)
+                assert fitness > 0, \
+                    f"Mandatory cell '{cell.get('name')}' has fitness {fitness}, expected > 0"
+
+    def test_all_expressed_cells_have_fitness(self, populated_workspace):
+        """Every expressed cell (mandatory or candidate) must have fitness."""
+        from jit_engine import express
+        result = express(populated_workspace, changed_files=["app.py"], budget=5)
+
+        for cell in result['relevant_cells']:
+            assert 'fitness' in cell, \
+                f"Cell '{cell.get('name')}' missing fitness key"
+            assert isinstance(cell['fitness'], (int, float)), \
+                f"Cell '{cell.get('name')}' fitness is not numeric"

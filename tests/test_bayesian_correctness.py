@@ -194,3 +194,59 @@ try:
 
 except ImportError:
     pass  # hypothesis not installed — skip property tests
+
+# ── Phase 1: Bayesian Score Parity ────────────────────────────────────────
+
+class TestBayesianScoreParity:
+    """Verify the canonical formula is used consistently across all modules."""
+
+    def test_shared_module_exists(self):
+        """bayesian_score.py must exist as the single source of truth."""
+        from bayesian_score import bayesian_score
+        assert callable(bayesian_score)
+
+    def test_shared_module_basic_calculation(self):
+        from bayesian_score import bayesian_score
+        assert bayesian_score(5, 10) == pytest.approx((5+1)/(10+2))
+        assert bayesian_score(0, 0) == pytest.approx(0.5)
+        assert bayesian_score(0, 0, 1.8) == pytest.approx(0.9)
+
+    def test_cell_fitness_agrees_with_shared_module(self):
+        """cell_fitness.bayesian_fitness and bayesian_score agree on directionality."""
+        from bayesian_score import bayesian_score
+        from cell_fitness import bayesian_fitness
+        # Non-trivial data: tp=3, fp=1 (triggers=4 for bayesian_score)
+        # bayesian_score: Laplace — (3+1)/(4+2) = 4/6 ≈ 0.6667
+        shared = bayesian_score(3, 4)
+        assert shared == pytest.approx(4 / 6)
+        # bayesian_fitness: Jeffrey's prior — a=3.5, b=1.5, mean=3.5/5.0=0.7
+        cell = bayesian_fitness(tp=3, fp=1)
+        assert cell['mean'] == pytest.approx(0.7)
+        # Both must agree: high-tp data → score well above 0.5
+        assert shared > 0.5
+        assert cell['mean'] > 0.5
+
+    def test_cell_promote_normalize_fitness_callable(self):
+        """cell_promote.normalize_fitness must extract and preserve fitness fields."""
+        from cell_promote import normalize_fitness
+        meta = {'fitness': {'triggers': 5, 'true_positives': 3, 'false_positives': 1}}
+        result = normalize_fitness(meta)
+        assert isinstance(result, dict)
+        assert result['triggers'] == 5
+        assert result['true_positives'] == 3
+        assert result['false_positives'] == 1
+
+    def test_cell_promote_normalizes_scalar_fitness(self):
+        """cell_promote.normalize_fitness handles scalar fitness values."""
+        from cell_promote import normalize_fitness
+        # Scalar fitness (1.0) should become {'score': 1.0}
+        meta = {'fitness': 1.0}
+        result = normalize_fitness(meta)
+        assert isinstance(result, dict)
+        assert result.get('score') == 1.0
+
+    def test_handles_string_inputs(self):
+        """Should coerce string values from YAML without crashing."""
+        from bayesian_score import bayesian_score
+        result = bayesian_score("5", "10", "1.0")
+        assert result == pytest.approx((5+1)/(10+2))

@@ -237,3 +237,96 @@ class TestUpdateCellFitness:
         
         fm, _ = parse_cell_file(path)
         assert fm['fitness']['true_positives'] in ["1.0", "1", "1/1"] or str(fm['fitness']['true_positives']) in ["1.0", "1", "1/1"]
+
+class TestAppendFitnessLogGenerationFence:
+    def test_outcome_engine_appends_are_generation_fenced(self, tmp_path):
+        from enzymes.outcome_engine import append_fitness_log
+        ws = str(tmp_path)
+        os.makedirs(os.path.join(ws, ".soma"), exist_ok=True)
+        with open(os.path.join(ws, ".soma", "epoch_generation"), "w", encoding="utf-8") as f:
+            f.write("2\n")
+        sig = [{"cell": "c", "_path": "x", "signal": 0.5, "verified": True, "reasons": []}]
+        assert append_fitness_log(ws, sig, {}, expected_generation=1) is False
+        assert not os.path.exists(os.path.join(ws, ".soma", "evidence", "signals.jsonl"))
+        assert append_fitness_log(ws, sig, {}, expected_generation=2) is True
+
+# ── Bug 1: Outcome Engine Path ──────────────────────────────────────────
+
+class TestBug1OutcomeEnginePath:
+    """Bug 1: capture_mcp_outcomes must read from .soma/evidence/outcomes.jsonl."""
+
+    def test_reads_from_evidence_dir(self, tmp_path):
+        """outcome_engine reads from .soma/evidence/outcomes.jsonl, not .soma/outcomes.jsonl."""
+        from outcome_engine import capture_mcp_outcomes
+
+        # Write to the CORRECT path
+        evidence_dir = tmp_path / '.soma' / 'evidence'
+        evidence_dir.mkdir(parents=True)
+        signals_file = evidence_dir / 'signals.jsonl'
+        record = {'cell_id': 'trap-example', 'outcome': 'success',
+                  'timestamp': '2026-10-01T00:00:00Z'}
+        signals_file.write_text(json.dumps(record) + '\n', encoding='utf-8')
+
+        results = capture_mcp_outcomes(str(tmp_path))
+        assert len(results) == 1
+        assert results[0]['cell_id'] == 'trap-example'
+
+    def test_ignores_old_path(self, tmp_path):
+        """outcome_engine does NOT read from the old .soma/outcomes.jsonl path."""
+        from outcome_engine import capture_mcp_outcomes
+
+        # Write to the OLD (wrong) path
+        old_dir = tmp_path / '.soma'
+        old_dir.mkdir(parents=True)
+        old_file = old_dir / 'outcomes.jsonl'
+        old_file.write_text(json.dumps({'cell_id': 'stale'}) + '\n', encoding='utf-8')
+
+        # Correct path doesn't exist
+        results = capture_mcp_outcomes(str(tmp_path))
+        assert len(results) == 0, 'Should not read from old .soma/outcomes.jsonl path'
+
+
+class TestBug2OutcomeEngineSchema:
+    """Bug 2: compute_fitness_signals must handle both cells_used and cell_id schemas."""
+
+    def test_cell_id_schema_matches(self, tmp_path):
+        """MCP records with cell_id (string) are matched to cells."""
+        from outcome_engine import compute_fitness_signals
+
+        triggered_cells = [{
+            '_name': 'trap-example',
+            '_path': str(tmp_path / 'cell.md'),
+            'target_paths': ['enzymes/*'],
+        }]
+        outcomes = {
+            'tests': {'verified': True, 'passed': True, 'framework': 'pytest'},
+            'build': {'verified': False, 'passed': None},
+            'git': {'reverts': 0, 'rework_count': 0},
+            'mcp': [{'cell_id': 'trap-example', 'outcome': 'success'}],
+        }
+
+        signals = compute_fitness_signals(triggered_cells, outcomes)
+        assert len(signals) == 1
+        # success + tests passed = positive signal (agent reported success correctly)
+        assert signals[0]['signal'] > 0
+        assert any('agent reported success' in r for r in signals[0]['reasons'])
+
+    def test_cells_used_schema_still_works(self, tmp_path):
+        """Legacy records with cells_used (list) still match."""
+        from outcome_engine import compute_fitness_signals
+
+        triggered_cells = [{
+            '_name': 'trap-example',
+            '_path': str(tmp_path / 'cell.md'),
+            'target_paths': ['enzymes/*'],
+        }]
+        outcomes = {
+            'tests': {'verified': True, 'passed': True, 'framework': 'pytest'},
+            'build': {'verified': False, 'passed': None},
+            'git': {'reverts': 0, 'rework_count': 0},
+            'mcp': [{'cells_used': ['trap-example'], 'outcome': 'success'}],
+        }
+
+        signals = compute_fitness_signals(triggered_cells, outcomes)
+        assert len(signals) == 1
+        assert any('agent reported success' in r for r in signals[0]['reasons'])

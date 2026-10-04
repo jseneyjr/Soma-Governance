@@ -308,3 +308,166 @@ class TestRunSync:
         output = json.loads(capsys.readouterr().out)
         assert "changes" in output
         assert isinstance(output["changes"], list)
+
+# ── Regression tests for Bug 4: sync.py score clobber ──────────────────────────
+
+def _make_cell_file(cells_dir, name, fitness=None):
+    """Create a minimal cell .md file with optional fitness block."""
+    cell_path = os.path.join(cells_dir, f'{name}.md')
+    fm = {
+        'id': name,
+        'type': 'wall',
+        'target_paths': ['tests/*'],
+    }
+    if fitness:
+        fm['fitness'] = fitness
+    content = f'---\n{yaml.dump(fm, default_flow_style=False)}---\n\n# {name}\n'
+    os.makedirs(os.path.dirname(cell_path), exist_ok=True)
+    with open(cell_path, 'w', encoding='utf-8') as f:
+        f.write(content)
+    return cell_path
+
+def _read_frontmatter(cell_path):
+    """Read YAML frontmatter from a cell file."""
+    with open(cell_path, 'r', encoding='utf-8') as f:
+        content = f.read()
+    end = content.find('---', 3)
+    return yaml.safe_load(content[3:end].strip())
+
+class TestBug4ScoreClobber:
+    """sync.py must NOT clobber scores when no outcome data exists."""
+
+    def test_score_preserved_when_no_outcomes(self, tmp_path):
+        """Cell with triggers but zero tp/fp keeps existing score."""
+        from soma_cli.sync import sync_frontmatter
+
+        cells_dir = str(tmp_path / 'cells')
+        cell_path = _make_cell_file(
+            cells_dir, 'trap-example',
+            fitness={'triggers': 5, 'true_positives': 3, 'false_positives': 1,
+                     'score': 0.6, 'last_trigger_date': '2026-10-01T00:00:00Z'},
+        )
+
+        # Evidence has triggers but NO outcomes (tp=0, fp=0)
+        counts = {
+            'trap-example': {
+                'triggers': 6, 'tp': 0, 'fp': 0, 'last_trigger': '2026-10-01T01:00:00Z',
+            },
+        }
+
+        sync_frontmatter(cells_dir, counts)
+
+        fm = _read_frontmatter(cell_path)
+        fitness = fm['fitness']
+        # Triggers should update
+        assert fitness['triggers'] == 6
+        # But score should NOT be clobbered to 0.0
+        assert fitness['score'] != 0.0, (
+            'Bug 4: score clobbered to 0.0 when no outcome data exists'
+        )
+
+    def test_score_updated_when_outcomes_exist(self, tmp_path):
+        """Cell with both triggers and tp/fp gets correct score."""
+        from soma_cli.sync import sync_frontmatter
+
+        cells_dir = str(tmp_path / 'cells')
+        cell_path = _make_cell_file(
+            cells_dir, 'trap-example',
+            fitness={'triggers': 0, 'true_positives': 0, 'false_positives': 0,
+                     'score': None},
+        )
+
+        counts = {
+            'trap-example': {
+                'triggers': 10, 'tp': 7, 'fp': 2, 'last_trigger': '2026-10-01T01:00:00Z',
+            },
+        }
+
+        sync_frontmatter(cells_dir, counts)
+
+        fm = _read_frontmatter(cell_path)
+        fitness = fm['fitness']
+        assert fitness['triggers'] == 10
+        assert fitness['true_positives'] == 7
+        assert fitness['false_positives'] == 2
+        assert fitness['score'] == 0.7  # 7/10
+
+    def test_zero_triggers_score_is_none(self, tmp_path):
+        """Cell with 0 triggers → score = None."""
+        from soma_cli.sync import sync_frontmatter
+
+        cells_dir = str(tmp_path / 'cells')
+        cell_path = _make_cell_file(
+            cells_dir, 'trap-example',
+            fitness={'triggers': 0, 'true_positives': 0, 'false_positives': 0,
+                     'score': None},
+        )
+
+        counts = {
+            'trap-example': {
+                'triggers': 0, 'tp': 0, 'fp': 0, 'last_trigger': None,
+            },
+        }
+
+        # Should not change anything (already in sync)
+        changes = sync_frontmatter(cells_dir, counts)
+        assert len(changes) == 0
+
+class TestBug3SyncOutcomeMapping:
+    """Bug 3: sync.py aggregate_evidence must map success→tp, failure→fp."""
+
+    def test_success_mapped_to_tp(self, tmp_path):
+        """outcome='success' is counted as tp."""
+        from soma_cli.sync import aggregate_evidence
+
+        evidence_dir = str(tmp_path)
+        signals_file = tmp_path / 'signals.jsonl'
+        record = {'cell_id': 'trap-example', 'outcome': 'success',
+                  'timestamp': '2026-10-01T00:00:00Z'}
+        signals_file.write_text(json.dumps(record) + '\n', encoding='utf-8')
+
+        counts = aggregate_evidence(evidence_dir)
+        assert counts['trap-example']['tp'] == 1
+
+    def test_failure_mapped_to_fp(self, tmp_path):
+        """outcome='failure' is counted as fp."""
+        from soma_cli.sync import aggregate_evidence
+
+        evidence_dir = str(tmp_path)
+        signals_file = tmp_path / 'signals.jsonl'
+        record = {'cell_id': 'trap-example', 'outcome': 'failure',
+                  'timestamp': '2026-10-01T00:00:00Z'}
+        signals_file.write_text(json.dumps(record) + '\n', encoding='utf-8')
+
+        counts = aggregate_evidence(evidence_dir)
+        assert counts['trap-example']['fp'] == 1
+
+    def test_literal_tp_fp_still_work(self, tmp_path):
+        """outcome='tp' and 'fp' still count correctly (backward compat)."""
+        from soma_cli.sync import aggregate_evidence
+
+        evidence_dir = str(tmp_path)
+        signals_file = tmp_path / 'signals.jsonl'
+        lines = [
+            json.dumps({'cell_id': 'cell-a', 'outcome': 'tp'}),
+            json.dumps({'cell_id': 'cell-a', 'outcome': 'fp'}),
+        ]
+        signals_file.write_text('\n'.join(lines) + '\n', encoding='utf-8')
+
+        counts = aggregate_evidence(evidence_dir)
+        assert counts['cell-a']['tp'] == 1
+        assert counts['cell-a']['fp'] == 1
+
+    def test_partial_outcome_ignored(self, tmp_path):
+        """outcome='partial' is neither tp nor fp."""
+        from soma_cli.sync import aggregate_evidence
+
+        evidence_dir = str(tmp_path)
+        signals_file = tmp_path / 'signals.jsonl'
+        record = {'cell_id': 'trap-example', 'outcome': 'partial',
+                  'timestamp': '2026-10-01T00:00:00Z'}
+        signals_file.write_text(json.dumps(record) + '\n', encoding='utf-8')
+
+        counts = aggregate_evidence(evidence_dir)
+        assert counts['trap-example']['tp'] == 0
+        assert counts['trap-example']['fp'] == 0
