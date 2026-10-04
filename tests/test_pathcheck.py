@@ -238,7 +238,8 @@ def test_build_hint_venv_says_activate_not_rc_file(tmp_path):
                       venv_prefix=str(venv))
     assert text is not None
     assert "virtual environment" in text
-    assert f"source {venv}/bin/activate" in text
+    vprefix = str(venv).replace("\\", "/")
+    assert f"source {vprefix}/bin/activate" in text
     assert "~/.zshrc" not in text
 
 
@@ -264,7 +265,8 @@ def test_build_hint_venv_path_with_spaces_is_quoted(tmp_path):
     text = build_hint(env=env, candidates=[str(bindir)], which=lambda *_a, **_k: None,
                       home=str(tmp_path), platform="linux", os_name="posix",
                       venv_prefix=str(venv))
-    assert f"source '{venv}/bin/activate'" in text
+    vprefix = str(venv).replace("\\", "/")
+    assert f"source '{vprefix}/bin/activate'" in text
 
 
 def test_build_hint_pwsh_venv_activate_is_quoted_call(tmp_path):
@@ -308,7 +310,8 @@ def test_build_hint_pwsh_on_posix_venv_uses_activate_ps1(tmp_path):
 def test_build_hint_fish_venv_with_space_is_quoted(tmp_path):
     venv, text = _venv_hint(tmp_path, "my venv", "bin",
                             platform="linux", os_name="posix", shell="fish")
-    assert f"source '{venv}/bin/activate.fish'" in text
+    vprefix = str(venv).replace("\\", "/")
+    assert f"source '{vprefix}/bin/activate.fish'" in text
 
 
 def test_build_hint_git_bash_venv_with_space_is_quoted(tmp_path):

@@ -408,7 +408,7 @@ install_hooks() {
     soma_py -c "
 import json, os, stat, sys
 with open(sys.argv[1], encoding='utf-8') as fh:
-    rendered = fh.read().replace('{{SCRIPTS_DIR}}', sys.argv[2])
+    rendered = fh.read().replace('{{SCRIPTS_DIR}}', sys.argv[2].replace(chr(92), '/'))
 try:
     json.loads(rendered)
 except ValueError as exc:

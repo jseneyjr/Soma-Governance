@@ -75,7 +75,16 @@ def on_path(directory: str, path_env: str, sep: str = os.pathsep,
             casefold: bool = os.name == "nt") -> bool:
     """True if directory is an exact entry of path_env (not a substring)."""
     target = _norm(directory, casefold)
-    raw_entries = path_env.split(sep)
+    raw = path_env.split(sep)
+    raw_entries = []
+    i = 0
+    while i < len(raw):
+        if sep == ":" and len(raw[i]) == 1 and raw[i].isalpha() and i + 1 < len(raw) and (raw[i+1].startswith("/") or raw[i+1].startswith("\\")):
+            raw_entries.append(f"{raw[i]}:{raw[i+1]}")
+            i += 2
+        else:
+            raw_entries.append(raw[i])
+            i += 1
     entries = []
     for e in raw_entries:
         if sep == ";" and ":" in e and not (len(e) >= 2 and e[1:2] == ":"):
