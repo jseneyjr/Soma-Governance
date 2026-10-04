@@ -69,7 +69,7 @@ def run(cmd, cwd=REPO_ROOT, env=None, stdin=subprocess.DEVNULL, timeout=120):
             full_env["USERPROFILE"] = env["HOME"]
     return subprocess.run(
         cmd, cwd=cwd, env=full_env, stdin=stdin,
-        capture_output=True, text=True, timeout=timeout,
+        capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=timeout,
     )
 
 

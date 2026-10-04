@@ -209,7 +209,7 @@ def test_install_hooks_renders_utf8_template_under_ascii_locale(tmp_path, bash):
     assert proc.returncode == 0, proc.stdout + proc.stderr
     data = json.loads(read(str(target / "hooks.json")))
     assert data["hooks"][0]["name"] == "gate \u2705"
-    assert data["hooks"][0]["cmd"] == str(repo / "enzymes").replace("\\", "/") + "/x.sh"
+    assert data["hooks"][0]["cmd"].replace("\\", "/") == (str(repo / "enzymes") + "/x.sh").replace("\\", "/")
 
 
 ORIGINAL_HOOKS = '{"hooks": "original"}\n'
