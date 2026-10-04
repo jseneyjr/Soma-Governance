@@ -228,3 +228,11 @@ def test_windows_test_job_uses_bash_and_verifies_the_artifact():
     runs = [s.get("run", "") for s in job["steps"]]
     assert any("verify_dist.py verify dist" in r for r in runs), \
         "test-windows must check the wheel digests before installing it"
+
+def test_publish_workflow_isolates_release_assets():
+    """publish.yml must isolate github release asset uploads to a separate job."""
+    with open(os.path.join(REPO_ROOT, ".github", "workflows", "publish.yml"), encoding="utf-8") as f:
+        workflow = f.read()
+    assert "release-assets:" in workflow
+    assert "RELEASE_TAG:" in workflow
+    assert "|| true" not in workflow

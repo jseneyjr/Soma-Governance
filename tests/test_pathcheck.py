@@ -411,3 +411,9 @@ def test_install_sh_prints_zsh_hint(tmp_path, dry_run):
     else:
         assert "~/.zshrc" in proc.stdout
         assert 'export PATH="$HOME/.local/bin:$PATH"' in proc.stdout
+
+def test_pathcheck_on_path_handles_windows_colons():
+    """on_path with sep=';' should not corrupt Windows drive paths containing colons."""
+    from soma_cli.pathcheck import on_path
+    path_env = r"C:\Python312\Scripts;C:\Windows\System32"
+    assert on_path(r"C:\Python312\Scripts", path_env, sep=";", casefold=True)

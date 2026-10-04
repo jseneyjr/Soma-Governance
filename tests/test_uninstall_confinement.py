@@ -624,3 +624,29 @@ def test_stow_style_symlinked_config_dir_inside_home_uninstalls(tmp_path):
     assert proc.returncode == 0, proc.stdout[-1500:] + proc.stderr[-1500:]
     assert not rule.exists()
     assert (home / ".kiro").is_symlink(), "the user's symlink itself must be left alone"
+
+
+from conftest import REPO_ROOT, require_bash, run, symlink_or_skip
+UNINSTALL_SH = os.path.join(REPO_ROOT, "install", "uninstall.sh")
+
+
+def test_stow_style_symlinked_config_dir_inside_home_uninstalls(tmp_path):
+    home, project = tmp_path / "home", tmp_path / "project"
+    project.mkdir()
+    real_kiro = home / "dotfiles" / ".kiro"
+    (real_kiro / "steering").mkdir(parents=True)
+    rule = real_kiro / "steering" / "soma-rule.md"
+    rule.write_text("rule\n", encoding="utf-8")
+    symlink_or_skip(real_kiro, home / ".kiro")
+    manifest = home / ".soma" / "manifest.json"
+    manifest.parent.mkdir(parents=True)
+    manifest.write_text(json.dumps({
+        "platform": "kiro", "scope": "global", "backup_dir": None,
+        "files": [str(home / ".kiro" / "steering" / "soma-rule.md")],
+        "organs": [], "hooks": [],
+    }), encoding="utf-8")
+    proc = run([require_bash(), UNINSTALL_SH, "kiro", "--force", "--no-restore", "--keep-config"],
+               cwd=str(project), env={"HOME": str(home), "USERPROFILE": str(home)})
+    assert proc.returncode == 0, proc.stdout[-1500:] + proc.stderr[-1500:]
+    assert not rule.exists()
+    assert (home / ".kiro").is_symlink(), "the user's symlink itself must be left alone"

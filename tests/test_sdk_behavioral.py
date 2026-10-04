@@ -242,3 +242,19 @@ class TestPathTraversal:
         with pytest.raises(CellPathTraversalError):
             from soma_sdk.cells import load_cell
             load_cell('/etc/passwd')
+
+def test_load_cell_uses_created_field(tmp_path):
+    """load_cell must read 'created' field from cell frontmatter."""
+    from soma_sdk.cells import load_cell
+    cell_file = tmp_path / ".soma" / "cells" / "vacuoles" / "created-test.md"
+    cell_file.parent.mkdir(parents=True, exist_ok=True)
+    cell_file.write_text("""---
+id: created-test
+type: vacuole
+hypothesis: test
+created: "2025-01-01T00:00:00Z"
+---
+body
+""", encoding="utf-8")
+    cell = load_cell("created-test", cells_dir=str(tmp_path / ".soma" / "cells"))
+    assert cell.created_date == "2025-01-01T00:00:00Z" or getattr(cell.created_date, "year", None) == 2025

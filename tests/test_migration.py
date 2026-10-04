@@ -263,3 +263,25 @@ def test_migration_dedupes_linked_twin_even_when_timestamps_differ(tmp_path):
     assert run_epoch_migration(str(tmp_path)) is True
     rows = _lines(ev / "signals.jsonl")
     assert sum(1 for r in rows if r["cell"] == "cell-m" and r["signal"] == "tp") == 1
+
+
+def _jsonl(path):
+    with open(path, encoding="utf-8") as f:
+        return [json.loads(line) for line in f if line.strip()]
+
+
+
+def test_migration_dedupes_linked_twin_even_when_timestamps_differ(tmp_path):
+    from soma_cli.migration import run_epoch_migration
+    ev = tmp_path / ".soma" / "evidence"
+    ev.mkdir(parents=True)
+    with open(ev / "outcomes.jsonl", "w", encoding="utf-8") as f:
+        f.write(json.dumps({"cell_id": "cell-m", "outcome": "success",
+                            "timestamp": "2026-02-01T10:00:00Z", "outcome_id": "oid-1"}) + "\n")
+    with open(ev / "signals.jsonl", "w", encoding="utf-8") as f:
+        f.write(json.dumps({"timestamp": "2026-02-01T10:00:01Z", "cell": "cell-m",
+                            "signal": "tp", "source": "mcp",
+                            "metadata": {"outcome_id": "oid-1"}}) + "\n")
+    assert run_epoch_migration(str(tmp_path)) is True
+    rows = _jsonl(ev / "signals.jsonl")
+    assert sum(1 for r in rows if r["cell"] == "cell-m" and r["signal"] == "tp") == 1
