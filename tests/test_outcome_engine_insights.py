@@ -8,11 +8,9 @@ import os
 import sys
 import pytest
 
-# outcome_engine does `from soma_resolve import ...`; make enzymes/ importable
-# so this module does not depend on another test file having run first.
-_ENZYMES = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "enzymes")
-if _ENZYMES not in sys.path:
-    sys.path.insert(0, _ENZYMES)
+REPO_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+if REPO_ROOT not in sys.path:
+    sys.path.insert(0, REPO_ROOT)
 
 
 def _write_insights(workspace, insights):
@@ -316,6 +314,46 @@ class TestMainCursorCommitOrdering:
         oe.main()
         with open(_cursor_path(ws)) as f:
             assert int(f.read()) == os.path.getsize(os.path.join(ws, ".soma", "human_insights.jsonl"))
+
+def _fitness(ws, name):
+    from soma_sdk.cells import parse_cell_file
+    fm, _ = parse_cell_file(os.path.join(ws, ".soma", "cells", "vacuoles", f"{name}.md"))
+    return fm["fitness"]
+
+def test_retry_after_partial_append_neither_duplicates_nor_reinflates(tmp_path, monkeypatch):
+    import soma_sdk.telemetry as telemetry
+    ws = str(tmp_path)
+    _write_cell(ws, "vacuole-a", ["a/*.py"])
+    _write_cell(ws, "vacuole-b", ["b/*.py"])
+    _write_insights(ws, [_covered("vacuole-a"), _covered("vacuole-b")])
+    oe = _stub_main(monkeypatch, ws)
+    before_a, before_b = _fitness(ws, "vacuole-a"), _fitness(ws, "vacuole-b")
+
+    real_append = telemetry.append_signals
+    calls = {"n": 0}
+
+    def flaky(*args, **kwargs):
+        calls["n"] += 1
+        if calls["n"] == 1:
+            raise RuntimeError("disk full")
+        return real_append(*args, **kwargs)
+
+    monkeypatch.setattr(telemetry, "append_signals", flaky)
+    oe.main()  # atomic batch fails before any signal lands
+    assert not os.path.exists(_cursor_path(ws)), "cursor advanced past unpersisted insight"
+    assert _signals_log(ws) == [], "failed batch persisted partial evidence"
+    oe.main()  # retry
+    rows = _signals_log(ws)
+    assert sorted(r["cell"] for r in rows) == ["vacuole-a", "vacuole-b"], (
+        "retry duplicated an already-logged insight event"
+    )
+    after_a, after_b = _fitness(ws, "vacuole-a"), _fitness(ws, "vacuole-b")
+    assert after_a["true_positives"] == before_a["true_positives"] + 1
+    assert after_b["true_positives"] == before_b["true_positives"] + 1
+
+    oe.main()  # nothing new: cursor committed, no further change
+    assert len(_signals_log(ws)) == 2
+    assert _fitness(ws, "vacuole-a")["true_positives"] == after_a["true_positives"]
 
 def _fitness(ws, name):
     from soma_sdk.cells import parse_cell_file

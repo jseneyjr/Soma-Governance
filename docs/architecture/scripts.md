@@ -1,6 +1,6 @@
 # Scripts Reference
 
-This document catalogs 117 executable scripts, command modules, SDK modules, and MCP/core modules in the Soma governance framework.
+This document catalogs 118 executable scripts, command modules, SDK modules, and MCP/core modules in the Soma governance framework.
 
 ## Counting Method
 
@@ -103,7 +103,7 @@ These 6 scripts provide Bash and PowerShell install/uninstall entrypoints. `inst
 
 ## Utility Scripts
 
-These 56 scripts are the top-level `enzymes/*.py` and `enzymes/*.sh` files not already counted as lifecycle hooks. The subsection counts below are exclusive and sum to 55.
+These 57 scripts are the top-level `enzymes/*.py` and `enzymes/*.sh` files not already counted as lifecycle hooks. The subsection counts below are exclusive and sum to 57.
 
 ### 1. Master Pipeline Orchestrator (removed)
 
@@ -177,7 +177,7 @@ These 56 scripts are the top-level `enzymes/*.py` and `enzymes/*.sh` files not a
 | **`insight_capture.py`** | `enzymes/insight_capture.py` | Captures human developer insights into `.soma/human_insights.jsonl` and correlates them with existing cells. |
 | **`insight_correlator.py`** | `enzymes/insight_correlator.py` | Clusters captured human insights over rolling windows to automatically propose new governance cells. |
 
-### 5. Shared Infrastructure & Workspace Resolution (5 scripts)
+### 5. Shared Infrastructure & Workspace Resolution (7 scripts)
 
 | Script | Location | Purpose |
 |:-------|:---------|:--------|
@@ -187,6 +187,7 @@ These 56 scripts are the top-level `enzymes/*.py` and `enzymes/*.sh` files not a
 | **`soma_sleep.py`** | `enzymes/soma_sleep.py` | Memory consolidation engine executed at session close for offline evidence distillation and cell decay. |
 | **`escalation_sentinel.py`** | `enzymes/escalation_sentinel.py` | Python engine managing review mode configuration and steering rules for protocol escalation. |
 | **`inference_provider.py`** | `enzymes/inference_provider.py` | Inference provider abstraction layer with secure credential lookup and key management for AI-assisted enzymes. |
+| **`bump_version.sh`** | `enzymes/bump_version.sh` | Updates versions in files across the repository to ensure consistency during releases. |
 
 ---
 

@@ -57,8 +57,7 @@ docs/postmortem-work-sessions.md
 .soma/credentials.conf
 .soma/backup/
 .soma/enforcement/
+.soma/keys/
+.soma/human_insights.jsonl
 docs/internal/
 .hypothesis/
-
-# Ignore local experimental cells by default (force-add to PR)
-/.soma/cells/*

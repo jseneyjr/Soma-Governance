@@ -239,6 +239,42 @@ class TestSyncFrontmatter:
         assert len(changes) == 1
         assert changes[0]["cell_id"] == "cell-a"
 
+    def test_sync_preserves_both_when_has_outcomes_is_false(self, tmp_path):
+        """When ledger has only triggers (has_outcomes=False), tp and fp are preserved."""
+        from soma_sdk.cells import parse_cell_file
+        cells_dir = tmp_path / ".soma" / "cells" / "vacuoles"
+        cells_dir.mkdir(parents=True)
+        cell_file = cells_dir / "cell-a.md"
+        cell_file.write_text(
+            "---\n"
+            "id: cell-a\n"
+            "type: vacuole\n"
+            "fitness:\n"
+            "  triggers: 5\n"
+            "  true_positives: 2\n"
+            "  false_positives: 1\n"
+            "  score: 0.4\n"
+            "---\n# cell-a\n",
+            encoding="utf-8",
+        )
+        counts = {
+            "cell-a": {
+                "triggers": 6,
+                "has_triggers": True,
+                "has_outcomes": False,
+                "tp": 0,
+                "fp": 0,
+            }
+        }
+        changes = sync_frontmatter(str(cells_dir), counts)
+        assert len(changes) == 1
+        assert changes[0]["triggers"] == "5 → 6"
+
+        fm, _ = parse_cell_file(str(cell_file))
+        assert fm["fitness"]["triggers"] == 6
+        assert fm["fitness"]["true_positives"] == 2
+        assert fm["fitness"]["false_positives"] == 1
+
 
 class TestRunSync:
     """Tests for the CLI entrypoint run_sync()."""

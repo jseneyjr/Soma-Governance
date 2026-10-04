@@ -111,7 +111,7 @@ def test_write_tool_fails_closed_without_canonical_workspace(workspaces, monkeyp
 def test_receipt_records_nonempty_state_digests(workspaces):
     canonical, _ = workspaces
     (canonical / "target.py").write_text("x = 1\n", encoding="utf-8")
-    receipt = _request_receipt("soma_audit_security",
+    receipt = _request_receipt("soma_propose_change",
                                {"file_path": "target.py", "proposed_content": "x = 2\n"})
     stored = receipts._receipt_store[receipt]
     assert stored["file_digest"], "receipt is not bound to the target file"
@@ -122,8 +122,8 @@ def test_receipt_redeems_when_state_is_unchanged(workspaces):
     canonical, _ = workspaces
     (canonical / "target.py").write_text("x = 1\n", encoding="utf-8")
     args = {"file_path": "target.py", "proposed_content": "x = 2\n"}
-    receipt = _request_receipt("soma_audit_security", args)
-    resp = _call("soma_audit_security", dict(args, receipt=receipt))
+    receipt = _request_receipt("soma_propose_change", args)
+    resp = _call("soma_propose_change", dict(args, receipt=receipt))
     assert "result" in resp, resp
 
 
@@ -132,9 +132,9 @@ def test_receipt_is_stale_after_target_file_changes(workspaces):
     target = canonical / "target.py"
     target.write_text("x = 1\n", encoding="utf-8")
     args = {"file_path": "target.py", "proposed_content": "x = 2\n"}
-    receipt = _request_receipt("soma_audit_security", args)
+    receipt = _request_receipt("soma_propose_change", args)
     target.write_text("x = 'changed after scan'\n", encoding="utf-8")
-    resp = _call("soma_audit_security", dict(args, receipt=receipt))
+    resp = _call("soma_propose_change", dict(args, receipt=receipt))
     assert resp.get("error", {}).get("message") == STALE_RECEIPT, resp
 
 
@@ -164,7 +164,7 @@ def test_receipt_flow_works_after_cell_edited_since_creation(workspaces):
 
 def test_receipt_request_rejects_paths_outside_workspace(workspaces):
     resp = _call("soma_request_receipt", {
-        "operation": "soma_audit_security",
+        "operation": "soma_propose_change",
         "arguments": {"file_path": "../other/escape.py", "proposed_content": ""},
     })
     assert "error" in resp, resp

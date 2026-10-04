@@ -113,6 +113,8 @@ def _run_init_in(tmp_path, extra_args=None):
         argv.extend(extra_args)
 
     env = dict(os.environ, HOME=str(tmp_path), USERPROFILE=str(tmp_path))
+    repo_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    env["PYTHONPATH"] = repo_root + (os.pathsep + env["PYTHONPATH"] if "PYTHONPATH" in env else "")
     proc = subprocess.run(argv, cwd=str(tmp_path), capture_output=True, text=True, env=env)
     return proc.returncode
 
@@ -190,6 +192,8 @@ def _run_init_mcp(tmp_path, extra_args=None):
         argv.extend(extra_args)
 
     env = dict(os.environ, HOME=str(tmp_path), USERPROFILE=str(tmp_path))
+    repo_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    env["PYTHONPATH"] = repo_root + (os.pathsep + env["PYTHONPATH"] if "PYTHONPATH" in env else "")
     proc = subprocess.run(argv, cwd=str(tmp_path), capture_output=True, text=True, env=env)
     return proc.returncode
 

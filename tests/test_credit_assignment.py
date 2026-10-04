@@ -13,10 +13,7 @@ REPO_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 if REPO_ROOT not in sys.path:
     sys.path.insert(0, REPO_ROOT)
 
-# Add enzymes/ to path for soma_resolve
-_enzymes = os.path.join(REPO_ROOT, 'enzymes')
-if _enzymes not in sys.path:
-    sys.path.insert(0, _enzymes)
+
 
 
 def _make_cell_dict(name, target_paths):

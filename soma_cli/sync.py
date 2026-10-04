@@ -106,12 +106,16 @@ def sync_frontmatter(
             old_last_trigger = fitness.get("last_trigger_date")
 
             has_triggers = evidence.get("has_triggers", "triggers" in evidence)
-            has_outcomes = evidence.get(
-                "has_outcomes", "tp" in evidence or "fp" in evidence
+            has_outcomes = evidence.get("has_outcomes")
+            has_tp = (
+                False if has_outcomes is False else evidence.get("has_tp", "tp" in evidence)
+            )
+            has_fp = (
+                False if has_outcomes is False else evidence.get("has_fp", "fp" in evidence)
             )
             triggers = evidence.get("triggers", 0) if has_triggers else old_triggers
-            tp = evidence.get("tp", 0) if has_outcomes else old_tp
-            fp = evidence.get("fp", 0) if has_outcomes else old_fp
+            tp = evidence.get("tp", 0) if has_tp else old_tp
+            fp = evidence.get("fp", 0) if has_fp else old_fp
 
             score = old_score
             if tp + fp > 0:

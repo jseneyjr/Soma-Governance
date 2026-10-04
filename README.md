@@ -84,13 +84,13 @@ Add Soma as an MCP server in your AI agent's config. Set `SOMA_WORKSPACE` to the
 
 Works with Gemini Antigravity, Claude Code, Cursor, and any MCP-compatible agent.
 
-**Capabilities:** With `SOMA_EXECUTION_ENABLED` omitted, the server exposes six read tools and three write tools. Write tools are discoverable but require a receipt. Setting `SOMA_EXECUTION_ENABLED=1` additionally exposes six execute tools, which also require receipts.
+**Capabilities:** With `SOMA_EXECUTION_ENABLED` omitted, the server exposes eight read tools and three write tools. Write tools are discoverable but require a receipt. Setting `SOMA_EXECUTION_ENABLED=1` additionally exposes four execute tools, which also require receipts.
 
 | Tier | Available tools |
 |:-----|:----------------|
-| Read (default) | `soma_request_receipt`, `soma_scan`, `soma_list_cells`, `soma_grade`, `soma_coverage`, `soma_fitness` |
+| Read (default) | `soma_request_receipt`, `soma_scan`, `soma_list_cells`, `soma_grade`, `soma_coverage`, `soma_fitness`, `soma_audit_security`, `soma_audit_performance` |
 | Write (default; receipt required) | `soma_report_outcome`, `soma_capture_insight`, `soma_create_cell` |
-| Execute (opt-in; receipt required) | `soma_propose_change`, `soma_verify_changes`, `soma_checkpoint`, `soma_audit_security`, `soma_audit_performance`, `soma_generate_manifest` |
+| Execute (opt-in; receipt required) | `soma_propose_change`, `soma_verify_changes`, `soma_checkpoint`, `soma_generate_manifest` |
 
 **Receipt flow for write and execute tools:**
 

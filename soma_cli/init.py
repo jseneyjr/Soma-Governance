@@ -113,7 +113,7 @@ def get_rules_dir(platform: str, home: Path | None = None,
         ValueError: If platform is unsupported.
     """
     if home is None:
-        home = Path.home()
+        home = Path(os.environ.get("HOME") or Path.home())
     home = Path(home)
     if project_root is None:
         project_root = Path.cwd()

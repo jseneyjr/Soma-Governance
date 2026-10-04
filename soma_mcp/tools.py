@@ -429,8 +429,8 @@ TOOL_DEFINITIONS = [
         "name": "soma_fitness",
         "description": "Returns fitness landscape showing cell health and evolution.",
         "annotations": {
-            "readOnlyHint": False,
-            "destructiveHint": True,
+            "readOnlyHint": True,
+            "destructiveHint": False,
             "idempotentHint": True,
             "openWorldHint": False,
             "title": "Soma Fitness"
@@ -481,7 +481,7 @@ TOOL_DEFINITIONS = [
         "name": "soma_audit_security",
         "description": "Run a basic Security prototype audit on a proposed diff.",
         "annotations": {
-            "readOnlyHint": False,
+            "readOnlyHint": True,
             "destructiveHint": False,
             "idempotentHint": True,
             "openWorldHint": False,
@@ -491,8 +491,7 @@ TOOL_DEFINITIONS = [
             "type": "object",
             "properties": {
                 "file_path": {"type": "string", "description": "Path to the file being changed."},
-                "proposed_content": {"type": "string", "description": "The complete proposed file content."},
-                "receipt": {"type": "string", "description": "Execution receipt ID obtained from soma_request_receipt"}
+                "proposed_content": {"type": "string", "description": "The complete proposed file content."}
             },
             "required": ["file_path", "proposed_content"]
         }
@@ -501,7 +500,7 @@ TOOL_DEFINITIONS = [
         "name": "soma_audit_performance",
         "description": "Run a basic Performance prototype audit on a proposed diff.",
         "annotations": {
-            "readOnlyHint": False,
+            "readOnlyHint": True,
             "destructiveHint": False,
             "idempotentHint": True,
             "openWorldHint": False,
@@ -511,8 +510,7 @@ TOOL_DEFINITIONS = [
             "type": "object",
             "properties": {
                 "file_path": {"type": "string", "description": "Path to the file being changed."},
-                "proposed_content": {"type": "string", "description": "The complete proposed file content."},
-                "receipt": {"type": "string", "description": "Execution receipt ID obtained from soma_request_receipt"}
+                "proposed_content": {"type": "string", "description": "The complete proposed file content."}
             },
             "required": ["file_path", "proposed_content"]
         }
