@@ -115,9 +115,17 @@ exec(compile(__import__('sys').stdin.read(), '<stdin>', 'exec'))" "$@"
           local script_file="$1"
           shift
           "$SOMA_PYTHON" ${opts+"${opts[@]}"} -c "$_SOMA_PY_NO_CWD
-import sys, runpy
+import sys, os, runpy
+sf = sys.argv[1]
 sys.argv = sys.argv[1:]
-runpy.run_path(sys.argv[0], run_name='__main__')" "$script_file" "$@"
+sd = os.path.abspath(os.path.dirname(sf))
+cw = os.path.abspath(os.getcwd())
+if sd == cw or sd in ('', '.'):
+    with open(sf, 'rb') as _f: _code = _f.read()
+    _gl = {'__name__': '__main__', '__file__': os.path.abspath(sf)}
+    exec(compile(_code, sf, 'exec'), _gl)
+else:
+    runpy.run_path(sf, run_name='__main__')" "$script_file" "$@"
           return $?
         fi
         break

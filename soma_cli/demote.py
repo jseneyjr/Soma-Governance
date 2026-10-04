@@ -103,7 +103,7 @@ def _force_demote(project_root: Path, cell_id: str, dry_run: bool, use_json: boo
                 flags=re.MULTILINE,
             )
 
-    # Remove enforcement:gate when demoting from wall to vacuole
+    # Remove enforcement:gate and enforcement_artifact when demoting from wall to vacuole
     if current_type == "wall" and next_type == "vacuole":
         content = re.sub(
             r"^enforcement:\s*gate\n?",
@@ -112,6 +112,21 @@ def _force_demote(project_root: Path, cell_id: str, dry_run: bool, use_json: boo
             count=1,
             flags=re.MULTILINE,
         )
+        content = re.sub(
+            r"^enforcement_artifact:\s*\S+\n?",
+            "",
+            content,
+            count=1,
+            flags=re.MULTILINE,
+        )
+        for pfx in ("check-", "gate-"):
+            for sfx in (".sh", ".py"):
+                art = project_root / ".soma" / "enforcement" / f"{pfx}{cell_id}{sfx}"
+                if art.exists():
+                    try:
+                        art.unlink()
+                    except Exception:
+                        pass
 
     # Guard against silent overwrite
     if target_path.exists():
@@ -142,8 +157,8 @@ def _force_demote(project_root: Path, cell_id: str, dry_run: bool, use_json: boo
             if target_path.exists() and cell_path.exists():
                 try:
                     os.remove(target_path)
-                except Exception:
-                    pass
+                except Exception as ex:
+                    raise RuntimeError(f"Rollback failed: duplicate cell remains at {target_path}") from ex
             raise
     except Exception:
         if tmp_path.exists():

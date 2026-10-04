@@ -41,7 +41,7 @@ def generate_precommit_check(cell, workspace):
     name = cell['_name']
     cell_type = cell.get('type', 'vacuole')
     hypothesis = cell.get('hypothesis', '')
-    target_paths = cell.get('target_paths', [])
+    target_paths = cell.get('target_paths') or []
     
     quoted_name = shlex.quote(name)
     quoted_hyp = shlex.quote(hypothesis[:80])
@@ -173,7 +173,7 @@ def generate_gate_assertion(cell, workspace):
     name = cell['_name']
     cell_type = cell.get('type', 'vacuole')
     hypothesis = cell.get('hypothesis', '')
-    target_paths = cell.get('target_paths', [])
+    target_paths = cell.get('target_paths') or []
     
     class_suffix = re.sub(r"[^a-zA-Z0-9]", "_", name)
     json_name = json.dumps(name)

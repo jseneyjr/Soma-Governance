@@ -161,6 +161,10 @@ def main():
                        help='Create cells from insight clusters instead of AI generation')
     args = parser.parse_args()
     
+    if args.id:
+        if "/" in args.id or "\\" in args.id or ".." in args.id:
+            sys.exit("Error: Invalid ID contains path traversal characters.")
+    
     if args.from_insight_cluster:
         try:
             from enzymes.insight_correlator import cluster_insights

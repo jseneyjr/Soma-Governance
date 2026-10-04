@@ -87,8 +87,17 @@ def on_path(directory: str, path_env: str, sep: str = os.pathsep,
             i += 1
     entries = []
     for e in raw_entries:
-        if sep == ";" and ":" in e and not (len(e) >= 2 and e[1:2] == ":"):
-            entries.extend(e.split(":"))
+        if sep == ";" and ":" in e:
+            sub = e.split(":")
+            j = 0
+            while j < len(sub):
+                if len(sub[j]) == 1 and sub[j].isalpha() and j + 1 < len(sub) and (sub[j+1].startswith("/") or sub[j+1].startswith("\\")):
+                    entries.append(f"{sub[j]}:{sub[j+1]}")
+                    j += 2
+                else:
+                    if sub[j]:
+                        entries.append(sub[j])
+                    j += 1
         elif sep == ":" and ";" in e:
             entries.extend(e.split(";"))
         else:

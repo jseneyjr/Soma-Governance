@@ -124,6 +124,13 @@ while [[ $# -gt 0 ]]; do
   esac
 done
 
+if [[ -n "$ID_OVERRIDE" ]]; then
+  if [[ "$ID_OVERRIDE" == *"/"* || "$ID_OVERRIDE" == *"\\"* || "$ID_OVERRIDE" == *".."* ]]; then
+    echo "Error: Invalid ID_OVERRIDE contains path traversal characters." >&2
+    exit 1
+  fi
+fi
+
 if [ -n "$DESCRIPTION" ]; then
     EXTRA_ARGS=""
     [ -n "$ID_OVERRIDE" ] && EXTRA_ARGS="$EXTRA_ARGS --id $ID_OVERRIDE"
@@ -217,6 +224,11 @@ DIR="$REPO_DIR/.soma/cells/$TYPE_PLURAL"
 mkdir -p "$DIR"
 
 FILE_PATH="$DIR/$SLUG.md"
+[ -h "$FILE_PATH" ] && rm -f "$FILE_PATH"
+
+HYPOTHESIS_YAML="$(printf '%s' "$HYPOTHESIS" | sed -e 's/\\/\\\\/g' -e 's/"/\\"/g' | tr '\n\r' '  ')"
+PREDICTION_YAML="$(printf '%s' "$PREDICTION" | sed -e 's/\\/\\\\/g' -e 's/"/\\"/g' | tr '\n\r' '  ')"
+FALSIFICATION_YAML="$(printf '%s' "$FALSIFICATION" | sed -e 's/\\/\\\\/g' -e 's/"/\\"/g' | tr '\n\r' '  ')"
 
 HYPOTHESIS_TRUNCATED=$(echo "$HYPOTHESIS" | cut -c1-60)
 if [[ ${#HYPOTHESIS} -gt 60 ]]; then
@@ -279,9 +291,9 @@ cat > "$FILE_PATH" << EOF
 id: $SLUG
 domain: $DOMAIN
 type: $TYPE
-hypothesis: "$HYPOTHESIS"
-prediction: "$PREDICTION"
-falsification: "$FALSIFICATION"
+hypothesis: "$HYPOTHESIS_YAML"
+prediction: "$PREDICTION_YAML"
+falsification: "$FALSIFICATION_YAML"
 expiry_sessions: $EXPIRY_SESSIONS
 expiry_days: $EXPIRY_DAYS
 created: "$DATE"

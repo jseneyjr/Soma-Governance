@@ -310,7 +310,7 @@ def load_cell(
                         score=fitness_data.get('score'),
                         stress_survived=fitness_data.get('stress_survived', 0),
                     ),
-                    created_date=frontmatter.get('created_date'),
+                    created_date=frontmatter.get('created_date') or frontmatter.get('created'),
                 )
                 if not cell_inst.created_date and os.path.exists(filepath):
                     try:

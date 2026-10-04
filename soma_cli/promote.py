@@ -127,8 +127,8 @@ def _force_promote(project_root: Path, cell_id: str, dry_run: bool, use_json: bo
             if target_path.exists() and cell_path.exists():
                 try:
                     os.remove(target_path)
-                except Exception:
-                    pass
+                except Exception as ex:
+                    raise RuntimeError(f"Rollback failed: duplicate cell remains at {target_path}") from ex
             raise
     except Exception:
         if tmp_path.exists():

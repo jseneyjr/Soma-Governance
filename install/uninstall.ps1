@@ -572,8 +572,12 @@ $ManifestPath = Join-Path (Join-Path $UserHome ".soma") "manifest.json"
 $LocalManifestPath = Join-Path (Join-Path $WorkDir ".soma") "manifest.json"
 $ManifestIsLocal = $false
 if (Test-Path -LiteralPath $LocalManifestPath -PathType Leaf) {
-    $ManifestPath = $LocalManifestPath
-    $ManifestIsLocal = $true
+    if (Test-SafeManifestPath -Path $LocalManifestPath -Roots @($WorkDir)) {
+        $ManifestPath = $LocalManifestPath
+        $ManifestIsLocal = $true
+    } else {
+        Write-LogWarn "Local manifest at $LocalManifestPath failed confinement check ($script:UnsafeReason). Ignoring local manifest."
+    }
 }
 
 # Confinement roots (see Test-SafeManifestPath). The sink additionally admits
