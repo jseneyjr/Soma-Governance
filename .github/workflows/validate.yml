@@ -158,7 +158,7 @@ jobs:
           if [ -n "$CHANGED" ]; then
             python3 enzymes/ci_outcome_reporter.py \
               --changed-files "$CHANGED" \
-              --test-result "$TEST_OUTCOME" \
+              --test-result "${TEST_OUTCOME:-skipped}" \
               --commit-sha "$COMMIT_SHA" \
               --format markdown >> $GITHUB_STEP_SUMMARY
           fi
