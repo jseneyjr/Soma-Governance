@@ -77,6 +77,8 @@ SOURCE_TO_TEST_MAP = {
     "soma_core/evidence.py": "tests/test_canonical_evidence_readers.py",
     "soma_core/frontmatter.py": "tests/test_core_lifecycle.py",
     "soma_core/lifecycle.py": "tests/test_core_lifecycle.py",
+    "soma_core/locking.py": "tests/test_locking.py",
+    "soma_core/quarantine.py": "tests/test_quarantine_resilience.py",
     "soma_core/verification_jobs.py": "tests/test_mcp_async_verify.py",
     "soma_mcp/integrity.py": "tests/test_mcp_receipt_binding.py",
     "soma_mcp/jit_engine.py": "tests/test_jit_engine_behavioral.py",

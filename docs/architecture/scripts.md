@@ -1,10 +1,10 @@
 # Scripts Reference
 
-This document catalogs 122 executable scripts, command modules, SDK modules, and MCP/core modules in the Soma governance framework.
+This document catalogs 124 executable scripts, command modules, SDK modules, and MCP/core modules in the Soma governance framework.
 
 ## Counting Method
 
-Counts are generated from the v0.93.0 source tree with mutually exclusive categories: package initializers (`__init__.py`, `__main__.py`) are excluded; the six lifecycle enzymes plus `install/hooks/pre-commit` are counted only as lifecycle scripts; all remaining top-level `enzymes/*.py` and `enzymes/*.sh` files are utilities; installer wrappers are counted separately; and all non-initializer `soma_core/*.py` modules are grouped with the MCP modules. This produces 122 unique paths with no double counting.
+Counts are generated from the v0.93.0 source tree with mutually exclusive categories: package initializers (`__init__.py`, `__main__.py`) are excluded; the six lifecycle enzymes plus `install/hooks/pre-commit` are counted only as lifecycle scripts; all remaining top-level `enzymes/*.py` and `enzymes/*.sh` files are utilities; installer wrappers are counted separately; and all non-initializer `soma_core/*.py` modules are grouped with the MCP modules. This produces 124 unique paths with no double counting.
 
 ## Summary by Category
 
@@ -16,8 +16,8 @@ Counts are generated from the v0.93.0 source tree with mutually exclusive catego
 | [Install Scripts](#install-scripts--bash-and-powershell) | Bash and PowerShell (`install/`, root) | 6 | Platform installers, uninstallers, and root wrappers |
 | [Utility Scripts](#utility-scripts) | Python and bash (`enzymes/`) | 57 | Cell genetics, runtime engines, evidence, telemetry, and shared utilities |
 | [SDK Modules](#sdk-modules--python-soma_sdk) | Python (`soma_sdk/`) | 8 | Canonical scoring, parsing, telemetry, hot-zone, and governance APIs |
-| [MCP and Core Modules](#mcp-and-core-modules) | Python (`soma_mcp/`, `soma_core/`) | 12 | MCP transport, dispatch, confinement, content inventory, canonical evidence, cache, and receipts |
-| **Total** | | **122** | Unique paths under the method above |
+| [MCP and Core Modules](#mcp-and-core-modules) | Python (`soma_mcp/`, `soma_core/`) | 14 | MCP transport, dispatch, confinement, content inventory, canonical evidence, cache, and receipts |
+| **Total** | | **124** | Unique paths under the method above |
 
 ---
 
@@ -211,7 +211,7 @@ These 8 non-initializer modules provide the canonical Python APIs used by the CL
 
 ## MCP and Core Modules
 
-These 12 modules implement the MCP server, state-bound authorization, safe cell inventory, frontmatter parsing, lifecycle state machine, verification job orchestration, and canonical evidence reading. Package initializers and `soma_mcp/__main__.py` are excluded from the count.
+These 14 modules implement the MCP server, state-bound authorization, safe cell inventory, frontmatter parsing, lifecycle state machine, verification job orchestration, canonical evidence reading, transactional resource locking, and self-healing quarantine. Package initializers and `soma_mcp/__main__.py` are excluded from the count.
 
 | Module | Location | Purpose |
 |:-------|:---------|:--------|
@@ -226,6 +226,8 @@ These 12 modules implement the MCP server, state-bound authorization, safe cell 
 | **`evidence.py`** | `soma_core/evidence.py` | Standard-library canonical reader for weighted `signals.jsonl` evidence, independent trigger/outcome dimensions, and structured parse errors. |
 | **`frontmatter.py`** | `soma_core/frontmatter.py` | Standalone zero-dependency frontmatter parsing and YAML header extraction decoupled from MCP runtime. |
 | **`lifecycle.py`** | `soma_core/lifecycle.py` | Canonical cell lifecycle state machine (`NEW`, `SURVIVE`, `ADAPT`, `EXTINCT`, `APOPTOSIS`, `WALL`, `GENOME`) with Laplace smoothing and protected rule guards. |
+| **`locking.py`** | `soma_core/locking.py` | Cross-platform transactional resource locking with timeout fences and native Windows fallback. |
+| **`quarantine.py`** | `soma_core/quarantine.py` | Self-healing quarantine isolating damaged YAML cells and unparseable JSONL files to preserve system availability. |
 | **`verification_jobs.py`** | `soma_core/verification_jobs.py` | In-memory asynchronous verification job store and background thread worker for Layer 2 verification. |
 
 ---

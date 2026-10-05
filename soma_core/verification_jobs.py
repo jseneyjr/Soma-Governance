@@ -228,3 +228,53 @@ def submit_verification_job(
     )
     thread.start()
     return job
+
+
+def shutdown_verification_engine(grace_period: float = 2.0) -> None:
+    """Gracefully terminate verification worker execution and mark active jobs failed."""
+    now = _utc_now_iso()
+    with _JOBS_LOCK:
+        for job in _JOBS.values():
+            if job.status in (JOB_STATUS_QUEUED, JOB_STATUS_RUNNING):
+                job.status = JOB_STATUS_FAILED
+                job.error = "server_shutdown: process terminated during verification"
+                job.completed_at = now
+
+
+def persist_jobs_state(workspace: str) -> str:
+    """Save the current in-memory job registry to .soma/jobs_state.json."""
+    import json
+    from pathlib import Path
+    ws = Path(workspace).resolve()
+    soma_dir = ws / ".soma"
+    soma_dir.mkdir(parents=True, exist_ok=True)
+    state_file = soma_dir / "jobs_state.json"
+
+    with _JOBS_LOCK:
+        data = {jid: j.to_dict() for jid, j in _JOBS.items()}
+
+    state_file.write_text(json.dumps(data, indent=2), encoding="utf-8")
+    return str(state_file)
+
+
+def restore_jobs_state(workspace: str) -> list[VerificationJob]:
+    """Load previously persisted jobs from .soma/jobs_state.json into memory."""
+    import json
+    from pathlib import Path
+    state_file = Path(workspace).resolve() / ".soma" / "jobs_state.json"
+    if not state_file.exists():
+        return []
+
+    try:
+        data = json.loads(state_file.read_text(encoding="utf-8"))
+        restored = []
+        with _JOBS_LOCK:
+            for jid, d in data.items():
+                if jid not in _JOBS:
+                    job = VerificationJob(**d)
+                    _JOBS[jid] = job
+                restored.append(_JOBS[jid])
+        return restored
+    except Exception:
+        return []
+

@@ -19,6 +19,7 @@ from pathlib import Path
 from typing import Any, Dict, Optional, Tuple
 
 from soma_core.frontmatter import parse_frontmatter
+from soma_core.locking import workspace_lock
 from soma_sdk.scoring import laplace_score
 
 STATUS_NEW = "NEW"
@@ -345,9 +346,10 @@ def promote_cell(
             "target_path": str(target_path),
         }
 
-    content = cell_path.read_text(encoding="utf-8")
-    new_content = _transform_frontmatter_type(content, next_type)
-    _atomic_write_and_unlink(cell_path, target_path, new_content)
+    with workspace_lock(workspace, "cells"):
+        content = cell_path.read_text(encoding="utf-8")
+        new_content = _transform_frontmatter_type(content, next_type)
+        _atomic_write_and_unlink(cell_path, target_path, new_content)
 
     return {
         "status": "promoted",
@@ -407,20 +409,21 @@ def demote_cell(
             "target_path": str(target_path),
         }
 
-    content = cell_path.read_text(encoding="utf-8")
-    new_content = _transform_frontmatter_type(content, next_type)
-    _atomic_write_and_unlink(cell_path, target_path, new_content)
+    with workspace_lock(workspace, "cells"):
+        content = cell_path.read_text(encoding="utf-8")
+        new_content = _transform_frontmatter_type(content, next_type)
+        _atomic_write_and_unlink(cell_path, target_path, new_content)
 
-    # Clean up gate enforcement artifacts when demoting from wall to vacuole
-    if current_type == "wall" and next_type == "vacuole":
-        for pfx in ("check-", "gate-"):
-            for sfx in (".sh", ".py"):
-                art = workspace / ".soma" / "enforcement" / f"{pfx}{clean_id}{sfx}"
-                if art.exists():
-                    try:
-                        art.unlink()
-                    except Exception:
-                        pass
+        # Clean up gate enforcement artifacts when demoting from wall to vacuole
+        if current_type == "wall" and next_type == "vacuole":
+            for pfx in ("check-", "gate-"):
+                for sfx in (".sh", ".py"):
+                    art = workspace / ".soma" / "enforcement" / f"{pfx}{clean_id}{sfx}"
+                    if art.exists():
+                        try:
+                            art.unlink()
+                        except Exception:
+                            pass
 
     return {
         "status": "demoted",
