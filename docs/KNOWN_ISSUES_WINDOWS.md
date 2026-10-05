@@ -8,19 +8,19 @@ CI now runs the full pytest suite on Windows (`test-windows` in `.github/workflo
 
 ## Impact summary
 
-| Area | v0.89.0 status | Bug |
+| Area | Status | Bug |
 |---|---|---|
 | `python -m soma_mcp` | Startup fixed in v0.89.0 | BUG-008 |
 | MCP write/execute tools | Fixed in v0.89.0; request a state-bound receipt first | BUG-009 |
-| MCP cell reads and receipts (`soma_scan`, `soma_list_cells`, `soma_request_receipt`) | v0.89.0 fails once any cell has been edited; fixed after v0.89.0 | BUG-035 |
-| `install.ps1` parsing under Windows PowerShell 5.1 | Parse failure fixed in v0.89.0, but generated rules can contain mojibake and hooks are skipped | BUG-011, BUG-014, BUG-032 |
-| `install.ps1` under PowerShell 7 (`pwsh`) | Not fully verified; avoids the known PS 5.1 decoding issue, but the PowerShell installer still skips hooks | BUG-014, BUG-032 |
+| MCP cell reads and receipts (`soma_scan`, `soma_list_cells`, `soma_request_receipt`) | Fixed in v0.90.0 | BUG-035 |
+| `install.ps1` parsing and encoding under Windows PowerShell 5.1 | Fixed in v0.93.0 (explicit UTF-8 on all reads, BOM preserved) | BUG-011, BUG-014 |
+| `install.ps1` lifecycle hooks under PowerShell 5.1 & 7 | Fixed in v0.93.0 (native Python hook runner `soma hook` / `soma_cli.hooks`) | BUG-032 |
 | Hooks under Git Bash with a python.org install | Fixed after v0.89.0 (`soma_python.sh` resolver) | BUG-037 |
-| `uninstall.sh` under Git Bash | v0.89.0 rejects every path as "not an absolute path" and removes nothing; fixed after v0.89.0 | BUG-036 |
-| Test suite on Windows | v0.89.0 can write to the real home directory; fixed after v0.89.0 | BUG-010 |
-| `soma status` on a cp1252 console | v0.89.0 can crash unless `PYTHONIOENCODING=utf-8`; fixed after v0.89.0 | BUG-012 |
+| `uninstall.sh` under Git Bash | Fixed in v0.90.0 | BUG-036 |
+| Test suite on Windows | Fixed in v0.90.0 | BUG-010 |
+| `soma status` on a cp1252 console | Fixed in v0.90.0 | BUG-012 |
 | `soma_list_cells` / `Governance.list_cells` | Fixed in v0.89.0 (explicit UTF-8 inventory) | BUG-012 |
-| Enzyme scripts on a cp1252 stdout | v0.89.0 can crash unless `PYTHONIOENCODING=utf-8`; fixed after v0.89.0 | BUG-038 |
+| Enzyme scripts on a cp1252 stdout | Fixed in v0.90.0 | BUG-038 |
 | Windows-only tests | Fixed after v0.89.0 | BUG-013 |
 
 ## MCP server does not start: `python3` is the Windows Store stub
@@ -65,14 +65,14 @@ Write and execute tools now use single-use receipts obtained from `soma_request_
 ### BUG-011: `install.ps1` did not parse under Windows PowerShell 5.1 ([#48](https://github.com/nseney1/Soma-Governance/issues/48))
 The PowerShell scripts now carry a UTF-8 BOM, and CI dry-runs the installer under Windows PowerShell 5.1 as well as PowerShell 7. This fixes parsing, not the separate rule-content decoding problem in BUG-014.
 
+## Fixed in v0.93.0
+
+### BUG-014: PowerShell installer writes mojibake into generated rule files ([#59](https://github.com/nseney1/Soma-Governance/issues/59))
+`install.ps1` reads rule and config files with explicit `-Encoding UTF8` and writes files preserving UTF-8 formatting and BOM. Together with the native hook runner in v0.93.0, generated rule files and configurations decode identically on PowerShell 5.1, PowerShell 7, and POSIX platforms.
+
+### BUG-032: Native PowerShell installer does not install lifecycle hooks
+`install.ps1` now deploys native hooks via `Install-Hooks` and `soma hook` / `python -m soma_cli.hooks <phase>`, eliminating the bash dependency on Windows. Installed hooks are recorded in `manifest.json` and cleanly uninstalled by `uninstall.ps1`.
+
 ## Open issues
 
-### BUG-032: PowerShell installer does not install lifecycle hooks
-`install.ps1` skips hooks because they require Bash, so post-session fitness updates never run after a native PowerShell install.
-
-**Workaround:** install through Git Bash with `install/install.sh`, with a real `python3` on `PATH` (see BUG-037).
-
-### BUG-014: PowerShell installer writes mojibake ([#59](https://github.com/nseney1/Soma-Governance/issues/59), split from [#48](https://github.com/nseney1/Soma-Governance/issues/48))
-Windows PowerShell 5.1 decodes UTF-8 rule files using its locale default when `Get-Content` has no explicit encoding, so generated rules can contain mojibake. The PowerShell installer also skips hooks.
-
-**Workaround:** use `pwsh` to avoid the known PS 5.1 decoding problem, while recognizing that PowerShell installer hook parity is still unavailable.
+All previously known Windows lifecycle and platform compatibility issues are resolved as of v0.93.0. Tests run automatically across Windows and Ubuntu environments in CI.

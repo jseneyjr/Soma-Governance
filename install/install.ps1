@@ -18,6 +18,8 @@ param (
     [Parameter(Position = 1)]
     [string]$Mode = "global",
 
+    [switch]$Hooks,
+
     [switch]$DryRun,
 
     [switch]$Help
@@ -25,15 +27,14 @@ param (
 
 if ($Help) {
     Write-Host "Soma - Windows PowerShell Installer"
-    Write-Host "Usage: .\install.ps1 [[-Platform] <gemini|kiro|copilot|claude|mcp>] [[-Mode] <global|project>] [-DryRun]"
+    Write-Host "Usage: .\install.ps1 [[-Platform] <gemini|kiro|copilot|claude|mcp>] [[-Mode] <global|project>] [-Hooks] [-DryRun]"
     Write-Host ""
     Write-Host "Parameters:"
     Write-Host "  -Platform   Target platform: gemini (default), kiro, copilot, claude, or mcp"
     Write-Host "  -Mode       Copilot/Claude mode: global (default) or project/local"
+    Write-Host "  -Hooks      Install git pre-commit hook into .git/hooks"
     Write-Host "  -DryRun     Preview changes without copying or modifying files"
     Write-Host "  -Help       Show this help message"
-    Write-Host ""
-    Write-Host "Note: Hooks require bash (Git Bash, WSL, or MSYS2) and are not deployed by this script."
     exit 0
 }
 
@@ -342,6 +343,92 @@ function Backup-DirItem {
     }
 }
 
+# ── Hooks Installation ───────────────────────────────────────────
+function Install-Hooks {
+    param(
+        [string]$RepoDir,
+        [string]$TargetHooksDir
+    )
+
+    if ($Config.ENABLE_HOOKS -ne "true") {
+        return
+    }
+
+    $targetFile = Join-Path $TargetHooksDir "hooks.json"
+
+    if ($DryRun) {
+        Write-LogInfo "[dry-run] would install hooks.json to $TargetHooksDir"
+        return
+    }
+
+    if (-not (Test-Path -LiteralPath $TargetHooksDir -PathType Container)) {
+        New-Item -ItemType Directory -Path $TargetHooksDir -Force | Out-Null
+    }
+
+    # Resolve working Python interpreter
+    $pythonCmd = "python"
+    foreach ($py in @("python", "python3", "py")) {
+        if (Get-Command $py -ErrorAction SilentlyContinue) {
+            try {
+                $null = & $py -c "import sys; sys.exit(0)" 2>$null
+                if ($LASTEXITCODE -eq 0) {
+                    $pythonCmd = $py
+                    break
+                }
+            } catch {}
+        }
+    }
+
+    $hooksJson = @"
+{
+  "governance-monitor": {
+    "PreInvocation": [
+      {
+        "type": "command",
+        "command": "$pythonCmd -m soma_cli.hooks pre-invocation",
+        "timeout": 15
+      }
+    ]
+  },
+  "safety-gate": {
+    "PreToolUse": [
+      {
+        "matcher": "run_command",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "$pythonCmd -m soma_cli.hooks safety-gate",
+            "timeout": 5
+          }
+        ]
+      }
+    ]
+  },
+  "session-close": {
+    "Stop": [
+      {
+        "type": "command",
+        "command": "$pythonCmd -m soma_cli.hooks session-close",
+        "timeout": 30
+      }
+    ]
+  }
+}
+"@
+
+    try {
+        $null = $hooksJson | ConvertFrom-Json
+    } catch {
+        Write-LogError "hooks.json rendering produced invalid JSON: $_"
+        return
+    }
+
+    Backup-FileItem -FilePath $targetFile
+    Write-Utf8File -Path $targetFile -Content ($hooksJson + "`n")
+    Record-InstalledHook -Path $targetFile
+    Write-LogInfo "installed hooks.json"
+}
+
 # ── Frontmatter Stripping ─────────────────────────────────────────
 function Get-ContentWithoutFrontmatter {
     param([string]$FilePath)
@@ -512,9 +599,12 @@ switch ($Platform) {
         # Team overrides
         Apply-TeamOverrides -RulesDir $targetRules
 
-        # Hook warning (PowerShell limitation)
-        Write-Host ""
-        Write-LogWarn "Hooks require bash (Git Bash, WSL, or MSYS2) - hook scripts were NOT installed."
+        # Hooks
+        $targetHooks = Join-Path $UserHome ".gemini\config\plugins\governance"
+        if ($InstallScope -eq "local") {
+            $targetHooks = Join-Path (Get-Location).Path ".soma\plugins\governance"
+        }
+        Install-Hooks -RepoDir $RepoDir -TargetHooksDir $targetHooks
 
         Write-Host ""
         if ($DryRun) {
@@ -601,9 +691,9 @@ switch ($Platform) {
             Write-LogInfo "merged soma into mcp.json"
         }
 
-        # Hook warning (PowerShell limitation)
-        Write-Host ""
-        Write-LogWarn "Hooks require bash (Git Bash, WSL, or MSYS2) - hook scripts were NOT installed."
+        # Hooks
+        $targetHooks = Join-Path $UserHome ".kiro\hooks"
+        Install-Hooks -RepoDir $RepoDir -TargetHooksDir $targetHooks
 
         Write-Host ""
         if ($DryRun) {
@@ -805,6 +895,37 @@ switch ($Platform) {
             Record-McpConfig -Path $mcpFile
             Write-LogInfo "merged soma into .mcp.json"
         }
+    }
+if ($Hooks -or $env:INSTALL_GIT_HOOKS -eq "true") {
+    $gitHooksDir = Join-Path (Get-Location).Path ".git\hooks"
+    if (Test-Path -LiteralPath $gitHooksDir -PathType Container) {
+        $preCommitPath = Join-Path $gitHooksDir "pre-commit"
+        if ($DryRun) {
+            Write-Host "[dry-run] would install git pre-commit hook."
+        } else {
+            Backup-FileItem -FilePath $preCommitPath
+            $hookBody = @'
+#!/usr/bin/env bash
+# Soma Git Pre-Commit Hook (cross-platform runner)
+if command -v soma >/dev/null 2>&1; then
+  soma hook pre-commit || exit $?
+elif python3 -c 'import soma_cli' >/dev/null 2>&1; then
+  python3 -m soma_cli.hooks pre-commit || exit $?
+elif python -c 'import soma_cli' >/dev/null 2>&1; then
+  python -m soma_cli.hooks pre-commit || exit $?
+elif py -3 -c 'import soma_cli' >/dev/null 2>&1; then
+  py -3 -m soma_cli.hooks pre-commit || exit $?
+else
+  echo "soma pre-commit: cannot run governance checks. 'soma' is not on PATH" >&2
+  exit 1
+fi
+'@
+            Write-Utf8File -Path $preCommitPath -Content ($hookBody + "`n")
+            Record-InstalledHook -Path $preCommitPath
+            Write-Host "Installed git pre-commit hook."
+        }
+    } else {
+        Write-Host "No .git\hooks directory found, skipping pre-commit hook installation."
     }
 }
 
