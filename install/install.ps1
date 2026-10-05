@@ -896,6 +896,8 @@ switch ($Platform) {
             Write-LogInfo "merged soma into .mcp.json"
         }
     }
+}
+
 if ($Hooks -or $env:INSTALL_GIT_HOOKS -eq "true") {
     $gitHooksDir = Join-Path (Get-Location).Path ".git\hooks"
     if (Test-Path -LiteralPath $gitHooksDir -PathType Container) {
