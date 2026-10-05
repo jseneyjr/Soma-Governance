@@ -3,6 +3,26 @@
 All notable changes to Soma are documented here.
 This project uses [Semantic Versioning](https://semver.org/).
 
+## [0.94.1] — 2026-10-05 — "Zero-Flaw Concurrency, Cross-Platform Parity & Sandbox Hardening"
+
+### Fixed
+- **CI xdist Flag Portability** (C-01): Corrected `pytest` argument detection in `Makefile` to check `--numprocesses` instead of `-n` (which clashed with `--no-header`), and added `pytest-xdist==3.6.1` to GitHub Actions workflow jobs (`validate.yml`), preventing unrecognized argument failures on fresh runner environments.
+- **Windows Path Glob Normalization** (C-02): Resolved path matching failure in `enzymes/fitness_updater.py` where backslashes prevented `fnmatch` from matching POSIX-style glob patterns (`src/**`), fixing zero-cell signal regressions on Windows runners.
+- **Thread-Reentrant FileLock Self-Deadlock** (C-03): Integrated thread-local recursion counters (`_THREAD_STATE`) into `soma_core/locking.py` `workspace_lock`, eliminating self-deadlock when the same thread re-acquires a lock across nested transactional operations.
+- **Whitespace JSONL Quarantine False-Positive** (C-04): Fixed `soma_core/quarantine.py` `safe_read_jsonl` to require at least one non-whitespace line before triggering corruption quarantine, preventing healthy blank telemetry files from being unlinked.
+- **Cell File Frontmatter Parser Integrity** (C-05): Added `startswith("---")` verification to `soma_core/quarantine.py` `safe_parse_cell_file`, preventing markdown files containing horizontal rules (`---`) in their body from suffering silent content truncation.
+- **Safety Gate Metacharacter & Dangerous Flag Enforcement** (C-06): Hardened fast-path command validation in `soma_cli/hooks.py` by adding `(`, `)` subshell delimiters to metacharacters, blocking concatenated git branch deletion flags (e.g. `-Dmain`), and catching destructive write flags (`--output=`, `--ext-cmd=`).
+- **MCP Tool Path Traversal Confinement** (C-07): Enforced strict workspace path confinement (`confine_path`) across `soma_scan` and `soma_propose_change` parameters in `soma_mcp/tools.py`, neutralizing directory traversal payloads attempting to escape the repository root.
+- **Windows CLI Unicode Console Encoding** (C-08, I-03): Installed `sys.stdout.reconfigure(errors="replace")` guards at the entrypoint of all `soma_cli` tools (`hooks.py`, `checkpoint.py`, `demote.py`, `promote.py`, `pathcheck.py`), and extended `tests/test_enzyme_console_encoding.py` to continuously guard the entire `soma_cli/` package against Windows `cp1252` encoding crashes.
+- **Worker Status Preservation on Daemon Shutdown** (W-01): Guarded verification pipeline worker state updates in `soma_core/verification_jobs.py` to prevent background threads from overwriting terminal `FAILED` status set during server shutdown.
+- **Atomic Single-Use Receipt Invalidation** (W-02): Updated `soma_core/receipts.py` `verify_receipt(..., consume=True)` to invalidate single-use receipt tokens on failed verification attempts as well as successful ones, closing replay windows.
+- **Zero-Signal SNR Boundary Invariant** (W-03): Corrected `CellFitness.snr_db` in `soma_sdk/cells.py` to return `-float("inf")` when $tp == 0$ and $fp > 0$ (pure noise), distinguishing defective cells from balanced 1:1 signal-to-noise ratios.
+- **Unified Domain Error Hierarchy** (W-04): Inherited `soma_sdk.errors.SomaError` from `soma_core.errors.SomaError`, unifying exception handling across core and SDK consumer boundaries.
+- **Checkpoint Coverage Mapping Reconciled** (W-05): Cleaned up phantom test mappings in `immune_system/verification/checkpoint_checks.py` `SOURCE_TO_TEST_MAP`, synchronizing registered files with actual behavioral suites.
+- **Version Bump Test Fixture Completeness** (I-01): Populated all 7 release surfaces in `tests/test_phase4_enzymes.py` `test_bump_version_dry_run` and asserted strict exit code `rc == 0`.
+- **Package Hierarchy Mutation Testing** (I-02): Enhanced `immune_system/verification/mutation_tester.py` to support regex-based package import patching (`from pkg.mod import ...`), allowing `test_pythonpath_package_import` to be un-skipped and verified green.
+- **PowerShell MCP Interpreter Detection** (I-04): Updated `Merge-SomaMcpConfig` in `install/install.ps1` to dynamically resolve working Python interpreters rather than hardcoding `python3`.
+
 ## [0.94.0] — 2026-10-05 — "Operational Resilience, Invariant Correctness & Zero-Overhead Optimization"
 
 ### Added
