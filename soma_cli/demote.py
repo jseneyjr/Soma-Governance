@@ -9,15 +9,11 @@ import sys
 from pathlib import Path
 
 
-DEMOTION_PATH = {"genome": "wall", "wall": "vacuole"}
-TYPE_TO_DIR = {"wall": "walls", "vacuole": "vacuoles"}
-
-# The 11 built-in core rules that must not be demoted
-PROTECTED_RULES = {
-    "providence", "cost-optimization", "subagent-delegation", "architectural-tenets",
-    "polyglot-standards", "feature-specs", "testing", "documentation",
-    "destructive-ops", "git-workflow", "desktop-automation"
-}
+from soma_core.lifecycle import (
+    DEMOTION_PATH,
+    PROTECTED_RULES,
+    TYPE_TO_DIR,
+)
 
 
 def _find_cell(cells_dir: Path, genome_dir: Path, cell_id: str) -> tuple[Path | None, str | None]:

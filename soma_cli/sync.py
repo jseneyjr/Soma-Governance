@@ -119,6 +119,9 @@ def sync_frontmatter(
 
             score = old_score
             if tp + fp > 0:
+                # Empirical point estimate stored in frontmatter for backward compatibility.
+                # Canonical lifecycle and promotion evaluations apply Laplace/Bayesian
+                # smoothing from soma_sdk.scoring.laplace_score and soma_core.lifecycle.
                 score = round(tp / triggers, 4) if triggers > 0 else None
             elif triggers == 0:
                 score = None

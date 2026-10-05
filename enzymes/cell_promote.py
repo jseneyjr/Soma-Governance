@@ -16,8 +16,9 @@ _project_root = str(Path(__file__).resolve().parent.parent)
 if _project_root not in sys.path:
     sys.path.insert(0, _project_root)
 from soma_sdk.cells import parse_cell_file
+from soma_core.lifecycle import apply_exponential_decay as apply_decay_core, DEFAULT_DECAY_FACTOR
 
-DECAY_FACTOR = 0.95  # Multiply counts by this each application; ~20-session memory window
+DECAY_FACTOR = DEFAULT_DECAY_FACTOR  # Multiply counts by this each application; ~20-session memory window
 
 
 def apply_decay(meta):
@@ -34,33 +35,8 @@ def apply_decay(meta):
     if not isinstance(fitness, dict):
         return meta
 
-    # Idempotency guard: skip if already decayed within the last hour
-    now = int(time.time())
-    last_decay = fitness.get('last_decay_epoch', 0)
-    if now - last_decay < 3600:
-        return meta
-
-    triggers = fitness.get('triggers', 0)
-    tp = fitness.get('true_positives', 0)
-    fp = fitness.get('false_positives', 0)
-
-    if triggers <= 0:
-        fitness['last_decay_epoch'] = now
-        meta['fitness'] = fitness
-        return meta
-
-    # Decay counts, floor to integers, never below 1 for triggers
-    fitness['triggers'] = max(1, int(triggers * DECAY_FACTOR))
-    fitness['true_positives'] = max(0, int(tp * DECAY_FACTOR))
-    fitness['false_positives'] = max(0, int(fp * DECAY_FACTOR))
-
-    # Recompute score with centralized Bayesian posterior mean
-    new_tp = fitness['true_positives']
-    new_triggers = fitness['triggers']
-    fitness['score'] = round(bayesian_score(new_tp, new_triggers), 4)
-
-    fitness['last_decay_epoch'] = now
-    meta['fitness'] = fitness
+    decayed = apply_decay_core(fitness, decay_factor=DECAY_FACTOR, min_interval_seconds=3600)
+    meta['fitness'] = decayed
     return meta
 
 def normalize_fitness(metadata):
