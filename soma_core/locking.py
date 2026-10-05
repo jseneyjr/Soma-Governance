@@ -28,8 +28,7 @@ _THREAD_LOCKS: dict[str, threading.RLock] = {}
 _THREAD_LOCKS_GUARD = threading.Lock()
 
 
-class LockTimeoutError(TimeoutError):
-    """Raised when a workspace lock cannot be acquired within the timeout period."""
+from soma_core.errors import LockTimeoutError
 
 
 def _get_thread_lock(lock_path: str) -> threading.RLock:
@@ -114,7 +113,8 @@ def workspace_lock(
     acquired_thread = thread_lock.acquire(timeout=timeout_sec)
     if not acquired_thread:
         raise LockTimeoutError(
-            f"Could not acquire lock for '{resource}' within {timeout_sec:.2f}s (thread contention)"
+            f"Could not acquire lock for '{resource}' within {timeout_sec:.2f}s (thread contention)",
+            resource=resource,
         )
 
     fd = None
@@ -124,7 +124,8 @@ def workspace_lock(
         acquired_os = _acquire_os_lock(fd, remaining_timeout)
         if not acquired_os:
             raise LockTimeoutError(
-                f"Could not acquire lock for '{resource}' within {timeout_sec:.2f}s (process contention)"
+                f"Could not acquire lock for '{resource}' within {timeout_sec:.2f}s (process contention)",
+                resource=resource,
             )
         yield lock_file
     finally:

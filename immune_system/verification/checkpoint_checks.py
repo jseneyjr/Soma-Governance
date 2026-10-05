@@ -74,6 +74,7 @@ SOURCE_TO_TEST_MAP = {
     "soma_cli/promote.py": "tests/test_cli_promote.py",
     "soma_cli/sync.py": "tests/test_cli_sync.py",
     "soma_cli/verify.py": "tests/test_cli_verify.py",
+    "soma_core/errors.py": "tests/test_domain_errors.py",
     "soma_core/evidence.py": "tests/test_canonical_evidence_readers.py",
     "soma_core/frontmatter.py": "tests/test_core_lifecycle.py",
     "soma_core/lifecycle.py": "tests/test_core_lifecycle.py",

@@ -15,4 +15,4 @@ _project_root = str(Path(__file__).resolve().parent.parent)
 if _project_root not in sys.path:
     sys.path.insert(0, _project_root)
 
-from soma_sdk.scoring import bayesian_score, bayesian_posterior, laplace_score  # noqa: F401, E402
+from soma_sdk.scoring import bayesian_score, bayesian_posterior, laplace_score, wilson_lower_bound  # noqa: F401, E402

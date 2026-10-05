@@ -23,12 +23,15 @@ def _wilson_interval(tp: int, total: int, z: float = 1.645) -> Tuple[float, floa
     Returns:
         Tuple of (lower_bound, upper_bound).
     """
-    if total == 0:
+    total_num = max(0.0, _to_num(total))
+    if total_num == 0.0:
         return 0.0, 1.0
-    p = tp / total
-    denom = 1 + z ** 2 / total
-    center = (p + z ** 2 / (2 * total)) / denom
-    spread = z * math.sqrt((p * (1 - p) + z ** 2 / (4 * total)) / total) / denom
+    tp_num = max(0.0, min(_to_num(tp), total_num))
+    p = tp_num / total_num
+    denom = 1 + z ** 2 / total_num
+    center = (p + z ** 2 / (2 * total_num)) / denom
+    inside = (p * (1 - p) + z ** 2 / (4 * total_num)) / total_num
+    spread = z * math.sqrt(max(0.0, inside)) / denom
     return max(0.0, center - spread), min(1.0, center + spread)
 
 
@@ -93,6 +96,25 @@ def bayesian_posterior(
     }
 
 
+def wilson_lower_bound(
+    tp: int,
+    triggers: int,
+    z: float = 1.645,
+) -> float:
+    """Wilson score lower bound for success rate with confidence z.
+
+    Args:
+        tp: Number of successes (true positives).
+        triggers: Total number of observations.
+        z: Z-score for confidence level (default 1.645 for 90%).
+
+    Returns:
+        Lower bound strictly in [0.0, 1.0].
+    """
+    lower, _ = _wilson_interval(tp, triggers, z=z)
+    return max(0.0, min(1.0, lower))
+
+
 def laplace_score(
     tp: int,
     triggers: int,
@@ -112,7 +134,10 @@ def laplace_score(
         Smoothed score in [0, 1] × impact_weight.
     """
     weight = float(_to_num(impact_weight, default=1.0))
-    return ((_to_num(tp) + 1.0) / (_to_num(triggers) + 2.0)) * weight
+    tp_num = _to_num(tp)
+    triggers_num = max(_to_num(triggers), tp_num)
+    score = ((tp_num + 1.0) / (triggers_num + 2.0)) * weight
+    return max(0.0, min(1.0 * weight, score)) if weight > 0 else 0.0
 
 
 # Deprecated alias — external scripts importing bayesian_score won't break
