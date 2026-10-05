@@ -125,6 +125,39 @@ class TestInvariant3_ReceiptSafety:
             consume=True,
         ) is False
 
+        # Attempted redemption with invalid args and consume=True MUST burn receipt immediately
+        receipt_id2 = issue_receipt(
+            session_id=session_id,
+            workspace=workspace,
+            operation=op,
+            args=args,
+            file_digest=file_digest,
+            cell_digest=cell_digest,
+            ttl_seconds=60,
+        )
+        assert verify_receipt(
+            receipt_id=receipt_id2,
+            session_id=session_id,
+            workspace=workspace,
+            operation=op,
+            args={"files": ["wrong.py"]},
+            file_digest=file_digest,
+            cell_digest=cell_digest,
+            consume=True,
+        ) is False
+
+        # Subsequent redemption with correct args must fail because receipt was burned
+        assert verify_receipt(
+            receipt_id=receipt_id2,
+            session_id=session_id,
+            workspace=workspace,
+            operation=op,
+            args=args,
+            file_digest=file_digest,
+            cell_digest=cell_digest,
+            consume=True,
+        ) is False
+
     def test_receipt_cross_session_or_workspace_rejection(self, tmp_path):
         workspace = str(tmp_path)
         receipt_id = issue_receipt(

@@ -50,7 +50,13 @@ def _script(shell):
 def test_parser_exposes_completion_subcommand():
     subs = _subparsers(_build_parser())
     assert "completion" in subs
-    assert set(_choices(subs["completion"])) == set(SHELLS)
+    assert set(SHELLS).issubset(set(_choices(subs["completion"])))
+    # Verify global flags are inherited (C-04)
+    opts = _options(subs["completion"])
+    assert "--plumbing" in opts
+    assert "--internal" in opts
+    assert "-v" in opts or "--verbose" in opts
+    assert "-q" in opts or "--quiet" in opts
 
 
 @pytest.mark.parametrize("shell", SHELLS)

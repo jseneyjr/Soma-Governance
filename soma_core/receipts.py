@@ -5,6 +5,7 @@ import time
 import threading
 import hashlib
 import hmac
+from pathlib import Path
 from typing import Dict, Any, Iterable, List, Optional
 
 from soma_core.cell_inventory import inventory_cells
@@ -94,11 +95,20 @@ def compute_file_digest(workspace: str, paths: Iterable[str]) -> str:
     Missing files are bound as missing, so creating one later also makes the
     receipt stale. Raises ValueError for paths outside the workspace.
     """
+    ws_root = Path(workspace).resolve()
+    seen = set()
+    canonical_items = []
+    for p in paths:
+        resolved = _confined(workspace, p)
+        canonical_rel = Path(resolved).resolve().relative_to(ws_root).as_posix()
+        if canonical_rel not in seen:
+            seen.add(canonical_rel)
+            canonical_items.append((canonical_rel, resolved))
+    canonical_items.sort(key=lambda x: x[0])
+
     h = hashlib.sha256(b"soma-file-digest-v1\0")
-    normalized_paths = sorted(set(os.path.normpath(p).replace("\\", "/") for p in paths))
-    for rel in normalized_paths:
-        resolved = _confined(workspace, rel)
-        h.update(rel.encode("utf-8") + b"\0")
+    for rel_posix, resolved in canonical_items:
+        h.update(rel_posix.encode("utf-8") + b"\0")
         if os.path.isfile(resolved):
             with open(resolved, "rb") as f:
                 h.update(hashlib.sha256(f.read()).digest())
@@ -184,8 +194,8 @@ def verify_receipt(
             _safe_compare(stored["cell_digest"], cell_digest)
         )
         
-        # Single-use: burn receipt upon successful redemption when consume=True
-        if consume and is_valid:
+        # Single-use: burn receipt upon redemption attempt when consume=True (C-03)
+        if consume:
             _receipt_store.pop(receipt_id, None)
             
         return is_valid
