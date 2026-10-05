@@ -99,6 +99,8 @@ Works with Gemini Antigravity, Claude Code, Cursor, and any MCP-compatible agent
 
 Receipts expire after 300 seconds and are single-use. They are bound to the current MCP session, canonical workspace, operation, exact arguments, target-file state, and governance-cell state. If a target file or any cell changes before redemption, request a new receipt. Receipts authorize a specific state-bound operation; they do not authenticate a person. Reusing the same `soma_report_outcome` idempotency key with the same payload is a no-op; changing the payload for that key fails closed.
 
+**Asynchronous verification:** For long-running adversarial Layer 2 checks, `soma_verify_changes` accepts `async_mode: true`. The tool immediately returns a `job_token`, executing verification in a background worker thread. Host agents can poll job status and retrieve signed receipts via the read-only `soma_poll_verification` tool without blocking.
+
 ### SDK
 
 ```bash
@@ -308,10 +310,10 @@ Copy [`soma.conf.example`](install/soma.conf.example) → `soma.conf` to customi
 | **Linux** | Bash | `make install` | `bash install/uninstall.sh` | ✅ | ✅ | ✅ |
 | **macOS** | Zsh / Bash | `make install` | `bash install/uninstall.sh` | ✅ | ✅ | ✅ |
 | **WSL** | Bash | `make install` | `bash install/uninstall.sh` | ✅ | ✅ | ✅ |
-| **Windows (Git Bash)** | Bash | `make install` | `bash install/uninstall.sh` | ✅ | ✅ | ⚠️ |
-| **Windows (PowerShell)** | PowerShell | `.\install.ps1` | `.\install\uninstall.ps1` | ⚠️ | ⚠️ | ❌ |
+| **Windows (Git Bash)** | Bash | `make install` | `bash install/uninstall.sh` | ✅ | ✅ | ✅ |
+| **Windows (PowerShell)** | PowerShell | `.\install.ps1` | `.\install\uninstall.ps1` | ✅ | ✅ | ✅ |
 
-> **⚠ Windows known issues (open):** Under Windows PowerShell 5.1, the default for `.\install.ps1`, the installer writes mojibake into the generated rules ([BUG-014](docs/project/BUG_REGISTRY.json)); use `pwsh` to avoid it. Details and workarounds: [Known Issues — Windows](docs/KNOWN_ISSUES_WINDOWS.md).
+> **Windows Support:** As of v0.93.0, Windows PowerShell 5.1, PowerShell 7, and Git Bash have full parity with native lifecycle hooks (`soma hook`) and UTF-8 encoding ([BUG-014](docs/project/BUG_REGISTRY.json), [BUG-032](docs/project/BUG_REGISTRY.json)). Details: [Known Issues — Windows](docs/KNOWN_ISSUES_WINDOWS.md).
 
 ---
 

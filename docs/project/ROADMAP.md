@@ -110,6 +110,20 @@ Opaque, stateful, session-bound cryptographic receipts. MCP write/execute tools 
 **Status**: ✅ Shipped (v0.89.0)
 Open bug tracking, Windows/MCP platform compatibility categorizations.
 
+## Phase 5.1 — v0.93.0 ✅ Shipped
+
+### Autonomous Cell Lifecycle
+**Status**: ✅ Shipped (v0.93.0)  
+Unified cell lifecycle state machine (`NEW`, `SURVIVE`, `ADAPT`, `EXTINCT`, `APOPTOSIS`, `WALL`, `GENOME`) with Laplace-smoothed scoring, Wilson confidence bounds, protected rules guards, and atomic rollback semantics.
+
+### Multi-Platform Hook Parity
+**Status**: ✅ Shipped (v0.93.0)  
+Native cross-platform lifecycle hook runner (`soma hook <phase>`) providing 100% parity across Linux, macOS, and native Windows (PowerShell 5.1 / 7). Resolved BUG-014 (UTF-8 encoding / BOM) and BUG-032 (lifecycle hooks). All 69 registered bugs verified fixed.
+
+### Asynchronous Verification Engine
+**Status**: ✅ Shipped (v0.93.0)  
+Non-blocking Layer 2 verification over MCP (`soma_verify_changes` with `async_mode`) and read-only polling (`soma_poll_verification`) with m8ven annotations.
+
 ## Research
 
 ### Antifragile Scaling
