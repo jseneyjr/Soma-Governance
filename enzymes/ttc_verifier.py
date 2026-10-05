@@ -21,6 +21,7 @@ import difflib
 import os
 import subprocess
 import sys
+import tempfile
 from pathlib import Path
 from typing import Dict, List, Optional
 
@@ -426,11 +427,16 @@ def _self_test() -> int:
     probe = os.path.join(workspace, target)
     existed_before = os.path.exists(probe)
 
+    tmp_dir = tempfile.gettempdir()
+    abs_escape = os.path.join(tmp_dir, "soma-ttc-abs.txt")
+    escape_target = os.path.join(tmp_dir, "soma-ttc-escape.txt")
+    rel_escape = os.path.join("..", "..", "..", "..", tmp_dir.lstrip("/\\"), "soma-ttc-escape.txt")
+
     cases = [
         ("playbook rejection (class component)", target, bad_proposal),
         ("clean proposal", target, good_proposal),
-        ("path traversal", "../../../../tmp/soma-ttc-escape.txt", good_proposal),
-        ("absolute path outside workspace", "/tmp/soma-ttc-abs.txt", good_proposal),
+        ("path traversal", rel_escape, good_proposal),
+        ("absolute path outside workspace", abs_escape, good_proposal),
     ]
     for label, path, content in cases:
         print(f"\n--- {label} ---")
@@ -440,7 +446,7 @@ def _self_test() -> int:
     failures = []
     if os.path.exists(probe) and not existed_before:
         failures.append(f"created {probe}")
-    for escape in ("/tmp/soma-ttc-escape.txt", "/tmp/soma-ttc-abs.txt"):
+    for escape in (escape_target, abs_escape):
         if os.path.exists(escape):
             failures.append(f"created {escape}")
     if failures:
