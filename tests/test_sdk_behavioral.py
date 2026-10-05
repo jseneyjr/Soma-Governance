@@ -64,7 +64,13 @@ class TestCellFitnessBaseline:
         assert f.snr_db is None
 
     def test_snr_db_no_tp(self):
+        """tp == 0 and fp > 0 → -99.0 (pure noise, zero signal, JSON-safe)."""
         f = CellFitness(triggers=5, true_positives=0, false_positives=5)
+        assert f.snr_db == -99.0
+
+    def test_snr_db_zero_triggers(self):
+        """tp == 0 and fp == 0 → 0.0 (baseline/undefined)."""
+        f = CellFitness(triggers=0, true_positives=0, false_positives=0)
         assert f.snr_db == 0.0
 
     def test_bayesian_returns_dict(self):

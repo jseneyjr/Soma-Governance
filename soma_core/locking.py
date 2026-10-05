@@ -26,6 +26,8 @@ except ImportError:
 LOCK_DIRNAME = "locks"
 _THREAD_LOCKS: dict[str, threading.RLock] = {}
 _THREAD_LOCKS_GUARD = threading.Lock()
+_THREAD_STATE = threading.local()
+
 
 
 from soma_core.errors import LockTimeoutError
@@ -117,6 +119,23 @@ def workspace_lock(
             resource=resource,
         )
 
+    norm = os.path.abspath(str_path)
+    held = getattr(_THREAD_STATE, "held_locks", None)
+    if held is None:
+        held = {}
+        _THREAD_STATE.held_locks = held
+
+    if norm in held:
+        held[norm] += 1
+        try:
+            yield lock_file
+        finally:
+            held[norm] -= 1
+            if held[norm] == 0:
+                del held[norm]
+            thread_lock.release()
+        return
+
     fd = None
     try:
         remaining_timeout = max(0.01, timeout_sec - (time.time() - start_time))
@@ -127,8 +146,10 @@ def workspace_lock(
                 f"Could not acquire lock for '{resource}' within {timeout_sec:.2f}s (process contention)",
                 resource=resource,
             )
+        held[norm] = 1
         yield lock_file
     finally:
+        held.pop(norm, None)
         if fd is not None:
             try:
                 _release_os_lock(fd)

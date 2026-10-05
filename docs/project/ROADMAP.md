@@ -138,6 +138,20 @@ Hardened Wilson score intervals and Laplace smoothing validated through exhausti
 **Status**: ✅ Shipped (v0.94.0)  
 Sub-0.1ms safety-gate fast-path allow-list for read-only commands (0.087ms mean latency), zero-copy directory scanning via `os.scandir`, parallelized test execution via `pytest-xdist` (3.9x speedup: 71s down to 18s), and complete pure-Python migration of 12 utility enzymes with backwards-compatible shell delegations.
 
+## Phase 5.3 — v0.94.1 ✅ Shipped
+
+### Concurrency Integrity & Reentrant Locking
+**Status**: ✅ Shipped (v0.94.1)  
+Thread-local recursion tracking (`_THREAD_STATE`) in `soma_core/locking.py` `workspace_lock` eliminating reentrant self-deadlock, and graceful worker shutdown invariant preservation in `soma_core/verification_jobs.py`.
+
+### Cross-Platform Normalization & CI Portability
+**Status**: ✅ Shipped (v0.94.1)  
+Windows path backslash-to-slash normalization in `enzymes/fitness_updater.py` unblocking glob pattern matching (`src/**`), dynamic Python interpreter discovery in `install/install.ps1`, `sys.stdout.reconfigure(errors="replace")` guards across all CLI tools preventing `cp1252` encoding crashes, and CI runner xdist flag fix.
+
+### Sandbox & Safety Gate Hardening
+**Status**: ✅ Shipped (v0.94.1)  
+Subshell metacharacter protection and destructive command flag detection (`-D`, `--output=`, `--ext-cmd=`) in `soma_cli/hooks.py` safety gate, path traversal confinement across `soma_mcp/tools.py` (`soma_scan`, `soma_propose_change`), atomic single-use cryptographic receipt invalidation on failed verification in `soma_core/receipts.py`, and pure-noise SNR `-inf` boundary invariant.
+
 ## Research
 
 ### Antifragile Scaling

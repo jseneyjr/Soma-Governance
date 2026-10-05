@@ -92,6 +92,23 @@ class TestSafetyGate:
         assert res["decision"] == "force_ask"
         assert "unable to parse command" in res["reason"].lower()
 
+    @pytest.mark.parametrize(
+        "cmd",
+        [
+            "echo (Remove-Item -Path C:\\ -Recurse -Force)",
+            "git branch -Dmain",
+            "git branch -D main",
+            "git diff --output=out.txt",
+            "git diff --ext-cmd=rm",
+        ],
+    )
+    def test_fast_path_evasion_vectors_blocked_or_force_ask(self, cmd: str, tmp_path: Path):
+        rc, res = run_safety_gate(cmd=cmd, workspace=tmp_path)
+        assert rc == 0
+        # Dangerous or bypassing commands must never be fast-path allowed
+        assert res["decision"] == "force_ask"
+
+
     def test_redacts_credentials_in_logs(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
         monkeypatch.setenv("SOMA_LOGS_DIR", str(tmp_path))
         fake_akia = "AKIA" + "IOSFODNN7EXAMPLE"

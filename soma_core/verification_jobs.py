@@ -132,6 +132,8 @@ def clear_all_jobs() -> None:
 def _run_verification_pipeline(job: VerificationJob, llm_backend: Optional[Callable[[str], str]] = None) -> None:
     """Worker logic executing Layer 1 (and optionally Layer 2) verification."""
     with _JOBS_LOCK:
+        if job.status != JOB_STATUS_QUEUED:
+            return
         job.status = JOB_STATUS_RUNNING
         job.started_at = _utc_now_iso()
 
@@ -193,15 +195,17 @@ def _run_verification_pipeline(job: VerificationJob, llm_backend: Optional[Calla
                     result_payload["status"] = "FAIL"
 
         with _JOBS_LOCK:
-            job.status = JOB_STATUS_COMPLETED
-            job.result = result_payload
-            job.completed_at = _utc_now_iso()
+            if job.status == JOB_STATUS_RUNNING:
+                job.status = JOB_STATUS_COMPLETED
+                job.result = result_payload
+                job.completed_at = _utc_now_iso()
 
     except Exception as exc:
         with _JOBS_LOCK:
-            job.status = JOB_STATUS_FAILED
-            job.error = str(exc)
-            job.completed_at = _utc_now_iso()
+            if job.status == JOB_STATUS_RUNNING:
+                job.status = JOB_STATUS_FAILED
+                job.error = str(exc)
+                job.completed_at = _utc_now_iso()
 
 
 def submit_verification_job(

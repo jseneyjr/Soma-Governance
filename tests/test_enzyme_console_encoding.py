@@ -123,6 +123,7 @@ def _entry_points_with_non_ascii_strings():
     sys.stdout.write as well as print(), so any such literal counts."""
     paths = glob.glob(os.path.join(REPO_ROOT, "enzymes", "**", "*.py"), recursive=True)
     paths += glob.glob(os.path.join(REPO_ROOT, "immune_system", "**", "*.py"), recursive=True)
+    paths += glob.glob(os.path.join(REPO_ROOT, "soma_cli", "**", "*.py"), recursive=True)
     found = {}
     for path in sorted(paths):
         with open(path, encoding="utf-8") as f:

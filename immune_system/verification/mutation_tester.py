@@ -9,6 +9,7 @@ suite against each mutant, and reports surviving mutations.
 
 import ast
 import copy
+import re
 import subprocess
 import sys
 import tempfile
@@ -291,9 +292,15 @@ def check(
             original_stem = target_path.stem
             mutant_stem = Path(tmp_path).stem
 
-            patched_test = test_source.replace(
-                f"from {original_stem} import",
-                f"from {mutant_stem} import",
+            patched_test = re.sub(
+                rf"\bfrom\s+([a-zA-Z0-9_.]*\.)?{re.escape(original_stem)}\s+import\b",
+                rf"from \g<1>{mutant_stem} import",
+                test_source,
+            )
+            patched_test = re.sub(
+                rf"\bimport\s+([a-zA-Z0-9_.]*\.)?{re.escape(original_stem)}\b",
+                rf"import \g<1>{mutant_stem}",
+                patched_test,
             )
 
             with tempfile.NamedTemporaryFile(

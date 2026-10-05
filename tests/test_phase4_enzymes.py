@@ -16,12 +16,26 @@ ENZYMES_DIR = Path(REPO_ROOT) / "enzymes"
 def test_bump_version_dry_run(tmp_path):
     from enzymes.bump_version import bump_version
 
+    (tmp_path / "soma_sdk").mkdir()
+    (tmp_path / "soma_sdk_js").mkdir()
+    (tmp_path / "docs").mkdir()
+
     (tmp_path / "VERSION").write_text("0.93.0\n", encoding="utf-8")
     (tmp_path / "pyproject.toml").write_text('version = "0.93.0"\n', encoding="utf-8")
+    (tmp_path / "soma_sdk" / "__init__.py").write_text('__version__ = "0.93.0"\n', encoding="utf-8")
+    (tmp_path / "soma_sdk_js" / "package.json").write_text('{\n  "version": "0.93.0"\n}\n', encoding="utf-8")
+    (tmp_path / "README.md").write_text('[![Version](https://img.shields.io/badge/Version-0.93.0-informational)\n', encoding="utf-8")
+    (tmp_path / "docs" / "KNOWN_ISSUES_WINDOWS.md").write_text(
+        "# Known Issues — Windows (v0.93.0)   Open Windows issues as of v0.93.0\n",
+        encoding="utf-8",
+    )
+    (tmp_path / "SECURITY.md").write_text(
+        "| 0.93.x | ✅ |\n| < 0.93 | ❌ |\n",
+        encoding="utf-8",
+    )
 
     rc = bump_version("0.94.0", repo_root=tmp_path, dry_run=True)
-    # Missing other surfaces should report error or fail closed
-    assert rc in (0, 1)
+    assert rc == 0
 
 
 def test_cell_selection_evaluation(tmp_path):
@@ -132,6 +146,29 @@ def test_post_session_hook_execution(tmp_path):
     assert rc == 0
     assert (evidence_dir / "signals.jsonl").exists()
     assert (evidence_dir / "compliance.jsonl").exists()
+
+
+def test_match_cells_windows_backslash_paths(tmp_path):
+    """Verify that match_cells matches Windows backslash paths against POSIX target_paths."""
+    from enzymes.fitness_updater import match_cells
+
+    cells_dir = tmp_path / ".soma" / "cells"
+    walls_dir = cells_dir / "walls"
+    walls_dir.mkdir(parents=True)
+    (walls_dir / "guard.md").write_text(
+        "---\nid: guard\ntype: wall\ntarget_paths:\n  - 'src/**'\n---\nBody\n",
+        encoding="utf-8",
+    )
+
+    # Simulate Windows paths with backslashes
+    repo_root = r"C:\Users\runneradmin\project"
+    modified_files = {r"C:\Users\runneradmin\project\src\main.py"}
+
+    matched = match_cells(modified_files, cells_dir, repo_root=repo_root)
+    assert len(matched) == 1
+    assert matched[0]["cell_id"] == "guard"
+    assert "src/main.py" in matched[0]["matched_files"]
+
 
 
 def test_shell_wrapper_delegation(tmp_path, bash):

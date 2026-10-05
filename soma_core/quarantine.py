@@ -94,8 +94,11 @@ def safe_parse_cell_file(
         if metadata is None:
             quarantine_file(path, reason="unparseable_or_unclosed_frontmatter", workspace=workspace)
             return {}, "", "quarantined"
-        end = content.find("---", 3)
-        body = content[end + 3:].strip() if end != -1 else content
+        if content.startswith("---"):
+            end = content.find("---", 3)
+            body = content[end + 3:].strip() if end != -1 else content
+        else:
+            body = content.strip()
         return metadata, body, "ok"
     except Exception as exc:
         quarantine_file(path, reason=f"frontmatter_parse_error: {exc}", workspace=workspace)
@@ -135,8 +138,8 @@ def safe_read_jsonl(
         quarantine_file(path, reason=f"unreadable_binary: {exc}", workspace=workspace)
         return [], "quarantined"
 
-    # If file had content but zero valid JSON entries, quarantine it
-    if lines and not has_valid_json:
+    # If file had invalid/non-empty content but zero valid JSON entries, quarantine it
+    if invalid_lines > 0 and not has_valid_json:
         quarantine_file(path, reason="corrupted_non_jsonl", workspace=workspace)
         return [], "quarantined"
 

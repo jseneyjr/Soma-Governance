@@ -48,10 +48,14 @@ SAFE_COMMAND_PREFIXES: tuple[str, ...] = (
     "echo",
 )
 
-METACHARACTERS: frozenset[str] = frozenset({";", "&", "|", ">", "<", "`", "$", "\n", "\r"})
-DANGEROUS_FLAGS: tuple[str, ...] = ("-f", "--force", "-D", "-d")
+METACHARACTERS: frozenset[str] = frozenset({";", "&", "|", ">", "<", "`", "$", "\n", "\r", "(", ")"})
+DANGEROUS_FLAGS: tuple[str, ...] = ("-f", "--force", "-D", "-d", "--output", "--ext-cmd")
 
 DESTRUCTIVE_PATTERNS: list[tuple[re.Pattern[str], str]] = [
+    # git branch deletion
+    (re.compile(r'\bgit\s+branch\s+.*-(?:[dD]|-delete)'), "Branch deletion (git branch -d/-D)"),
+    # git diff file write or arbitrary command execution
+    (re.compile(r'\bgit\s+diff\s+.*--(?:output|ext-cmd)'), "git diff write/execute flag detected"),
     # rm: catch -rf, -r -f, -fr, --recursive targeting home, root, current dir or wildcard (including quotes/subshells)
     (
         re.compile(
@@ -238,9 +242,17 @@ def run_safety_gate(
     if any(trimmed.startswith(prefix) for prefix in SAFE_COMMAND_PREFIXES):
         if not any(c in trimmed for c in METACHARACTERS):
             tokens = trimmed.split()
-            if not any(flag in tokens for flag in DANGEROUS_FLAGS):
-                log_gate_event(cmd, "ALLOWED", "", root)
-                return 0, {"decision": "allow"}
+            is_dangerous = any(
+                t in DANGEROUS_FLAGS
+                or t.startswith(("-D", "-d", "--output", "--ext-cmd", "--force"))
+                or (t.startswith("-") and not t.startswith("--") and any(c in t for c in "fDd"))
+                for t in tokens
+            )
+            if not is_dangerous:
+                # Ensure no destructive pattern matches
+                if not any(pattern.search(cmd) for pattern, _ in DESTRUCTIVE_PATTERNS):
+                    log_gate_event(cmd, "ALLOWED", "", root)
+                    return 0, {"decision": "allow"}
 
     for pattern, reason in DESTRUCTIVE_PATTERNS:
         if pattern.search(cmd):
@@ -543,6 +555,8 @@ def run_hook(args: Any) -> int:
 
 def main(argv: list[str] | None = None) -> int:
     """CLI entrypoint for standalone hook runner."""
+    if hasattr(sys.stdout, "reconfigure"):
+        sys.stdout.reconfigure(errors="replace")
     import argparse
 
     parser = argparse.ArgumentParser(
@@ -589,4 +603,6 @@ def main(argv: list[str] | None = None) -> int:
 
 
 if __name__ == "__main__":
+    if hasattr(sys.stdout, "reconfigure"):
+        sys.stdout.reconfigure(errors="replace")
     sys.exit(main())

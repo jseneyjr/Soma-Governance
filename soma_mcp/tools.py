@@ -696,6 +696,13 @@ def execute_tool(name: str, args: dict):
         except ValueError as exc:
             return {"error": str(exc), "status": _STATUS_FAIL}
         file_path = args.get('file_path')
+        if not file_path:
+            return {"error": "file_path is required", "status": _STATUS_FAIL}
+        try:
+            _, rel_path = confine_path(file_path, workspace)
+            file_path = str(rel_path)
+        except ValueError as exc:
+            return {"error": str(exc), "status": _STATUS_FAIL}
         proposed_content = args.get('proposed_content')
         
         # Express JIT rules for the given file to get active playbooks
@@ -867,6 +874,11 @@ def execute_tool(name: str, args: dict):
         except ValueError as exc:
             return {"error": str(exc), "status": _STATUS_FAIL}
         files = args.get('files', None)
+        if files:
+            try:
+                files = [str(confine_path(f, workspace)[1]) for f in files]
+            except ValueError as exc:
+                return {"error": str(exc), "status": _STATUS_FAIL}
         return jit_express(workspace, changed_files=files)
 
     elif name == "soma_report_outcome":

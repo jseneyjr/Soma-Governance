@@ -276,9 +276,23 @@ function Merge-SomaMcpConfig {
     # gets a documented source PYTHONPATH fallback instead of using the
     # checkout as the governed workspace/cwd. Uses isolated mode (-I) and
     # importlib.util.find_spec to check without executing workspace code (BUG-044).
+    # Resolve working Python interpreter
+    $pythonCmd = "python"
+    foreach ($py in @("python", "python3", "py")) {
+        if (Get-Command $py -ErrorAction SilentlyContinue) {
+            try {
+                $null = & $py -c "import sys; sys.exit(0)" 2>$null
+                if ($LASTEXITCODE -eq 0) {
+                    $pythonCmd = $py
+                    break
+                }
+            } catch {}
+        }
+    }
+
     $sourceFallback = $null
     try {
-        & python3 -I -c "import sys, importlib.util; sys.path.append(sys.argv[1]); sys.exit(0 if importlib.util.find_spec('soma_mcp') is not None else 1)" "$Workspace" *> $null
+        & $pythonCmd -I -c "import sys, importlib.util; sys.path.append(sys.argv[1]); sys.exit(0 if importlib.util.find_spec('soma_mcp') is not None else 1)" "$Workspace" *> $null
         if ($LASTEXITCODE -ne 0) { $sourceFallback = $RepoDir }
     } catch {
         $sourceFallback = $RepoDir
@@ -286,7 +300,7 @@ function Merge-SomaMcpConfig {
     $serverEnv = [ordered]@{ "SOMA_WORKSPACE" = $Workspace }
     if ($sourceFallback) { $serverEnv["PYTHONPATH"] = $sourceFallback }
     $somaEntry = [PSCustomObject][ordered]@{
-        "command" = "python3"
+        "command" = $pythonCmd
         "args" = @("-m", "soma_mcp")
         "cwd" = $Workspace
         "env" = [PSCustomObject]$serverEnv
