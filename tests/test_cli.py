@@ -284,3 +284,53 @@ class TestInitIntegration:
         assert mcp_file.exists(), ".mcp.json was not created"
         data = json.loads(mcp_file.read_text())
         assert "soma" in data.get("mcpServers", {})
+
+
+# ── Porcelain CLI Facade Tests ─────────────────────────────────────────────
+
+
+class TestPorcelainCLIFacade:
+    """Verify porcelain subcommands, aliases, and plumbing flags."""
+
+    @pytest.mark.parametrize("cmd", ["rules", "analyze", "prune"])
+    def test_porcelain_subcommand_help_exits_zero(self, cmd):
+        from soma_cli.cli import main
+        with pytest.raises(SystemExit) as exc_info:
+            main([cmd, "--help"])
+        assert exc_info.value.code == 0
+
+    @pytest.mark.parametrize("cmd", ["status", "rules", "genesis", "analyze", "prune", "verify", "checkpoint"])
+    def test_plumbing_flags_parse(self, cmd):
+        from soma_cli.cli import _build_parser
+        parser = _build_parser()
+        args1 = parser.parse_args([cmd, "--plumbing"])
+        assert getattr(args1, "plumbing", False) is True
+        args2 = parser.parse_args([cmd, "--internal"])
+        assert getattr(args2, "plumbing", False) is True
+
+    def test_rules_alias_dispatches_same_as_status(self, monkeypatch):
+        from soma_cli import cli
+        assert cli.COMMANDS["rules"] is cli.COMMANDS["status"]
+        dispatched = []
+        monkeypatch.setitem(cli.COMMANDS, "status", lambda args: dispatched.append(args.command) or 0)
+        monkeypatch.setitem(cli.COMMANDS, "rules", lambda args: dispatched.append(args.command) or 0)
+        assert cli.main(["status"]) == 0
+        assert cli.main(["rules"]) == 0
+        assert dispatched == ["status", "rules"]
+
+    def test_analyze_alias_dispatches_same_as_genesis(self, monkeypatch):
+        from soma_cli import cli
+        assert cli.COMMANDS["analyze"] is cli.COMMANDS["genesis"]
+        dispatched = []
+        monkeypatch.setitem(cli.COMMANDS, "genesis", lambda args: dispatched.append(args.command) or 0)
+        monkeypatch.setitem(cli.COMMANDS, "analyze", lambda args: dispatched.append(args.command) or 0)
+        assert cli.main(["genesis", "--dry-run"]) == 0
+        assert cli.main(["analyze", "--dry-run"]) == 0
+        assert dispatched == ["genesis", "analyze"]
+
+    def test_prune_dispatches_to_lifecycle(self, tmp_path):
+        from soma_cli.cli import main
+        # Run prune against an empty or valid tmp workspace
+        rc = main(["prune", "--workspace", str(tmp_path)])
+        assert rc == 0
+

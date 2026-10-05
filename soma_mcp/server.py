@@ -24,13 +24,44 @@ _session_token = None
 _canonical_workspace = None
 _execution_enabled = False
 
+_CANONICAL_TOOL_MAP = {
+    "soma_create_rule": "soma_create_cell",
+    "soma_list_rules": "soma_list_cells",
+    "soma_rule_fitness": "soma_fitness",
+}
+_CANONICAL_ARG_MAP = {
+    "rule_type": "cell_type",
+    "rule_name": "cell_name",
+    "rules": "cells",
+}
+_TYPE_TRANSLATION_MAP = {
+    "safety-guard": "wall",
+    "learned-trap": "vacuole",
+    "agent-persona": "chloroplast",
+    "escalation-boundary": "membrane",
+    "contract-bridge": "plasmodesmata",
+}
+
+
+def normalize_tool_call(tool_name: str, arguments: Dict[str, Any]) -> tuple[str, Dict[str, Any]]:
+    """Normalize porcelain aliases into canonical plumbing tool name and arguments."""
+    canonical_name = _CANONICAL_TOOL_MAP.get(tool_name, tool_name)
+    normalized_args = {}
+    for k, v in (arguments or {}).items():
+        canon_k = _CANONICAL_ARG_MAP.get(k, k)
+        if canon_k == "cell_type" and isinstance(v, str):
+            v = _TYPE_TRANSLATION_MAP.get(v, v)
+        normalized_args[canon_k] = v
+    return canonical_name, normalized_args
+
+
 _READ_TOOLS = frozenset({
     "soma_scan", "soma_list_cells", "soma_grade", "soma_coverage", "soma_fitness",
     "soma_request_receipt", "soma_audit_security", "soma_audit_performance",
-    "soma_poll_verification",
+    "soma_poll_verification", "soma_list_rules", "soma_rule_fitness",
 })
 _WRITE_TOOLS = frozenset({
-    "soma_report_outcome", "soma_capture_insight", "soma_create_cell"
+    "soma_report_outcome", "soma_capture_insight", "soma_create_cell", "soma_create_rule",
 })
 _EXECUTE_TOOLS = frozenset({
     "soma_propose_change", "soma_verify_changes", "soma_checkpoint",
@@ -205,6 +236,13 @@ def handle_request(request: Dict[str, Any]) -> Dict[str, Any]:
 
         if name == "soma_request_receipt":
             operation = args.get("operation")
+            if operation in _CANONICAL_TOOL_MAP:
+                canonical_op = _CANONICAL_TOOL_MAP[operation]
+                operation = canonical_op
+                args["operation"] = canonical_op
+                if "arguments" in args and isinstance(args["arguments"], dict):
+                    _, args["arguments"] = normalize_tool_call(operation, args["arguments"])
+
             if operation not in _EXECUTE_TOOLS and operation not in _WRITE_TOOLS:
                 return _error(req_id, -32602,
                               f"Tool '{operation}' does not require a receipt or does not exist.")
@@ -245,6 +283,8 @@ def handle_request(request: Dict[str, Any]) -> Dict[str, Any]:
         # strip whatever it sent and dispatch against the canonical one.
         receipt = args.get("receipt")
         args = strip_server_owned(args)
+
+        name, args = normalize_tool_call(name, args)
 
         # Rate limit check BEFORE consuming receipt
         if not _check_rate_limit(name):

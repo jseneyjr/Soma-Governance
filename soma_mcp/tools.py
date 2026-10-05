@@ -133,7 +133,7 @@ def _cell_diagnostic(relative_path, message):
     }
 
 
-def _list_cells_stdlib(workspace):
+def _list_cells_stdlib(workspace, cell_type=None):
     """List cells from one canonical byte snapshot using the shared parser."""
     try:
         inventory = inventory_cells(workspace)
@@ -164,6 +164,13 @@ def _list_cells_stdlib(workspace):
             warn(f'skipped cell {rel}: {message}')
             cells.append(_cell_diagnostic(rel, message))
             continue
+
+        if cell_type:
+            entry_type = fm.get('type')
+            parent_name = os.path.basename(os.path.dirname(rel))
+            if not (entry_type == cell_type or parent_name in (cell_type, cell_type + 's') or f"/{cell_type}/" in rel or f"/{cell_type}s/" in rel):
+                continue
+
         fm['_name'] = os.path.splitext(os.path.basename(rel))[0]
         fm['_path'] = rel
         cells.append(fm)
@@ -317,6 +324,28 @@ TOOL_DEFINITIONS = [
         }
     },
     {
+        "name": "soma_create_rule",
+        "description": "Takes a natural language description and builds a prompt to create a governance rule.",
+        "annotations": {
+            "readOnlyHint": False,
+            "destructiveHint": False,
+            "idempotentHint": True,
+            "openWorldHint": False,
+            "title": "Create Rule"
+        },
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "description": {"type": "string", "description": "Natural language description"},
+                "rule_type": {"type": "string", "description": "Optional rule type hint (learned-trap, safety-guard, agent-persona)"},
+                "domain": {"type": "string", "description": "Optional domain hint"},
+                "dry_run": {"type": "boolean", "description": "Optional dry run flag"},
+                "receipt": {"type": "string", "description": "Execution receipt ID obtained from soma_request_receipt"}
+            },
+            "required": ["description", "receipt"]
+        }
+    },
+    {
         "name": "soma_scan",
         "description": (
             "CALL THIS BEFORE MAKING CHANGES. Returns governance guidance relevant to "
@@ -441,6 +470,40 @@ TOOL_DEFINITIONS = [
         "inputSchema": {
             "type": "object",
             "properties": {}
+        }
+    },
+    {
+        "name": "soma_list_rules",
+        "description": "Lists all governance rules with their type, hypothesis, and fitness data.",
+        "annotations": {
+            "readOnlyHint": True,
+            "destructiveHint": False,
+            "idempotentHint": True,
+            "openWorldHint": False,
+            "title": "List Rules"
+        },
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "rule_type": {"type": "string", "description": "Optional rule type filter"}
+            }
+        }
+    },
+    {
+        "name": "soma_rule_fitness",
+        "description": "Returns fitness landscape showing rule health and evolution.",
+        "annotations": {
+            "readOnlyHint": True,
+            "destructiveHint": False,
+            "idempotentHint": True,
+            "openWorldHint": False,
+            "title": "Rule Fitness"
+        },
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "bayesian": {"type": "boolean", "description": "Use Bayesian smoothing"}
+            }
         }
     },
     {
@@ -633,6 +696,30 @@ TOOL_DEFINITIONS = [
 ]
 
 def execute_tool(name: str, args: dict):
+    _CANONICAL_TOOL_MAP = {
+        "soma_create_rule": "soma_create_cell",
+        "soma_list_rules": "soma_list_cells",
+        "soma_rule_fitness": "soma_fitness",
+    }
+    _CANONICAL_ARG_MAP = {
+        "rule_type": "cell_type",
+        "rule_name": "cell_name",
+        "rules": "cells",
+    }
+    _TYPE_TRANSLATION_MAP = {
+        "safety-guard": "wall",
+        "learned-trap": "vacuole",
+        "agent-persona": "chloroplast",
+        "escalation-boundary": "membrane",
+        "contract-bridge": "plasmodesmata",
+    }
+    name = _CANONICAL_TOOL_MAP.get(name, name)
+    args = {
+        _CANONICAL_ARG_MAP.get(k, k): (
+            _TYPE_TRANSLATION_MAP.get(v, v) if _CANONICAL_ARG_MAP.get(k, k) == "cell_type" and isinstance(v, str) else v
+        )
+        for k, v in (args or {}).items()
+    }
     gov = get_governance(args)
     
     if name == "soma_create_cell":
@@ -651,9 +738,10 @@ def execute_tool(name: str, args: dict):
     
     elif name == "soma_list_cells":
         # Both SDK and stdlib paths use the same fail-closed canonical inventory.
+        cell_type = args.get("cell_type")
         if gov:
             try:
-                return gov.list_cells()
+                return gov.list_cells(cell_type=cell_type)
             except RuntimeError as exc:
                 return {'status': _STATUS_FAIL, 'error': str(exc)}
         try:
@@ -662,7 +750,7 @@ def execute_tool(name: str, args: dict):
             )
         except ValueError as exc:
             return {'status': _STATUS_FAIL, 'error': str(exc)}
-        return _list_cells_stdlib(workspace)
+        return _list_cells_stdlib(workspace, cell_type=cell_type)
 
     elif name == "soma_propose_change":
         if not soma_propose_change:

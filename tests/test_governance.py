@@ -25,3 +25,89 @@ def test_governance_uses_importlib_resources_instead_of_relative_path(tmp_path, 
         cmd_run = mock_run.call_args[0][0]
         # Check that the script being executed is cell_fitness.py
         assert any("cell_fitness.py" in str(arg) for arg in cmd_run)
+
+
+def _populate_governed_workspace(root: Path):
+    cells_dir = root / ".soma" / "cells"
+    for d in ["vacuoles", "walls", "chloroplasts", "membranes", "plasmodesmata"]:
+        (cells_dir / d).mkdir(parents=True, exist_ok=True)
+    (cells_dir / "vacuoles" / "vacuole-test-trap.md").write_text(
+        "---\ntype: vacuole\nhypothesis: test trap\n---\nBody\n", encoding="utf-8"
+    )
+    (cells_dir / "walls" / "wall-test-guard.md").write_text(
+        "---\ntype: wall\nhypothesis: test guard\n---\nBody\n", encoding="utf-8"
+    )
+    (cells_dir / "chloroplasts" / "chloroplast-test-persona.md").write_text(
+        "---\ntype: chloroplast\nhypothesis: test persona\n---\nBody\n", encoding="utf-8"
+    )
+    (cells_dir / "membranes" / "membrane-test-boundary.md").write_text(
+        "---\ntype: membrane\nhypothesis: test boundary\n---\nBody\n", encoding="utf-8"
+    )
+    (cells_dir / "plasmodesmata" / "plasmodesmata-test-bridge.md").write_text(
+        "---\ntype: plasmodesmata\nhypothesis: test bridge\n---\nBody\n", encoding="utf-8"
+    )
+
+
+def test_list_cells_with_cell_type_filter(tmp_path):
+    _populate_governed_workspace(tmp_path)
+    gov = Governance(project_root=tmp_path)
+
+    # 0 args: returns all cells
+    all_cells = gov.list_cells()
+    assert len(all_cells) == 5
+
+    # Filter by canonical type
+    vacuoles = gov.list_cells(cell_type="vacuole")
+    assert len(vacuoles) == 1
+    assert vacuoles[0]["_name"] == "vacuole-test-trap"
+
+    # Filter by porcelain alias
+    traps = gov.list_cells(cell_type="learned-trap")
+    assert len(traps) == 1
+    assert traps[0]["_name"] == "vacuole-test-trap"
+
+
+def test_list_rules_porcelain_facade(tmp_path):
+    _populate_governed_workspace(tmp_path)
+    gov = Governance(project_root=tmp_path)
+
+    all_rules = gov.list_rules()
+    assert len(all_rules) == 5
+
+    guards = gov.list_rules(rule_type="safety-guard")
+    assert len(guards) == 1
+    assert guards[0]["_name"] == "wall-test-guard"
+
+    personas = gov.list_rules(rule_type="agent-persona")
+    assert len(personas) == 1
+    assert personas[0]["_name"] == "chloroplast-test-persona"
+
+    boundaries = gov.list_rules(rule_type="escalation-boundary")
+    assert len(boundaries) == 1
+    assert boundaries[0]["_name"] == "membrane-test-boundary"
+
+    bridges = gov.list_rules(rule_type="contract-bridge")
+    assert len(bridges) == 1
+    assert bridges[0]["_name"] == "plasmodesmata-test-bridge"
+
+
+def test_record_outcome_in_process(tmp_path):
+    import json
+    _populate_governed_workspace(tmp_path)
+    gov = Governance(project_root=tmp_path)
+
+    res = gov.record_outcome(
+        rule_id="vacuole-test-trap",
+        success=True,
+        metric={"test_metric": 99}
+    )
+    assert isinstance(res, dict)
+    assert res.get("signal") == "tp" or res.get("signal_type") == "tp"
+
+    signals_file = tmp_path / ".soma" / "evidence" / "signals.jsonl"
+    assert signals_file.exists()
+    lines = [json.loads(line) for line in signals_file.read_text(encoding="utf-8").strip().splitlines()]
+    assert len(lines) >= 1
+    assert lines[-1]["cell"] == "vacuole-test-trap"
+    assert lines[-1]["signal"] == "tp"
+

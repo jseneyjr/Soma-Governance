@@ -38,10 +38,14 @@ def _build_parser() -> argparse.ArgumentParser:
     )
     parser.add_argument("--version", action="version",
                         version=f"soma {_version()}")
+    common_parser = argparse.ArgumentParser(add_help=False)
+    common_parser.add_argument("--plumbing", "--internal", action="store_true",
+                               help="Display raw internal biological terms")
+
     sub = parser.add_subparsers(dest="command")
 
     # soma init
-    p_init = sub.add_parser("init", help="Set up governance for this project")
+    p_init = sub.add_parser("init", parents=[common_parser], help="Set up governance for this project")
     p_init.add_argument("--dry-run", action="store_true",
                         help="Show what would be installed without doing it")
     p_init.add_argument("--platform", choices=["gemini", "claude", "cursor", "copilot", "kiro"],
@@ -57,15 +61,15 @@ def _build_parser() -> argparse.ArgumentParser:
                         help="Overwrite existing rules")
 
     # soma status
-    sub.add_parser("status", help="Show active rules and stats")
+    p_status = sub.add_parser("status", aliases=["rules"], parents=[common_parser], help="Show active rules and stats")
 
     # soma report
-    p_report = sub.add_parser("report", help="Session report card")
+    p_report = sub.add_parser("report", parents=[common_parser], help="Session report card")
     p_report.add_argument("--session", type=int, default=-1,
                           help="Session index (default: latest)")
 
     # soma doctor
-    p_doctor = sub.add_parser("doctor", help="System health check")
+    p_doctor = sub.add_parser("doctor", parents=[common_parser], help="System health check")
     p_doctor.add_argument("--fix-path", action="store_true",
                           help="Add soma's scripts directory to your shell startup file "
                                "(dry run unless confirmed or --yes; zsh/bash/fish only)")
@@ -73,7 +77,7 @@ def _build_parser() -> argparse.ArgumentParser:
                           help="With --fix-path: apply without asking")
 
     # soma verify
-    p_verify = sub.add_parser("verify", help="Run verification on changed files")
+    p_verify = sub.add_parser("verify", parents=[common_parser], help="Run verification on changed files")
     p_verify.add_argument("--files", nargs="*", default=None,
                           help="Explicit list of files to verify")
     p_verify.add_argument("--layer1-only", action="store_true",
@@ -84,14 +88,14 @@ def _build_parser() -> argparse.ArgumentParser:
                           help="Override repository root path")
 
     # soma sync
-    p_sync = sub.add_parser("sync", help="Reconcile evidence JSONL with cell frontmatter")
+    p_sync = sub.add_parser("sync", parents=[common_parser], help="Reconcile evidence JSONL with cell frontmatter")
     p_sync.add_argument("--dry-run", action="store_true",
                         help="Show what would change without writing")
     p_sync.add_argument("--json", action="store_true",
                         help="Emit machine-readable JSON output")
 
     # soma checkpoint
-    p_checkpoint = sub.add_parser("checkpoint", help="Run deterministic quality checks")
+    p_checkpoint = sub.add_parser("checkpoint", parents=[common_parser], help="Run deterministic quality checks")
     p_checkpoint.add_argument("--pre-commit", action="store_true",
                               help="Warn mode: exit 0 even if issues found (unless --strict)")
     p_checkpoint.add_argument("--strict", action="store_true",
@@ -102,14 +106,14 @@ def _build_parser() -> argparse.ArgumentParser:
                               help="Override target workspace directory")
 
     # soma oracle
-    p_oracle = sub.add_parser("oracle", help="Cell health classification and recommendations")
+    p_oracle = sub.add_parser("oracle", parents=[common_parser], help="Cell health classification and recommendations")
     p_oracle.add_argument("--json", action="store_true",
                           help="Emit machine-readable JSON output")
     p_oracle.add_argument("--session-count", type=int, default=None,
                           help="Override session count for expiry calculation")
 
     # soma promote
-    p_promote = sub.add_parser("promote", help="Evaluate cell promotion candidates")
+    p_promote = sub.add_parser("promote", parents=[common_parser], help="Evaluate cell promotion candidates")
     p_promote.add_argument("--dry-run", action="store_true",
                            help="Show candidates without performing promotions")
     p_promote.add_argument("--json", action="store_true",
@@ -120,7 +124,7 @@ def _build_parser() -> argparse.ArgumentParser:
                            help="Target cell ID for --force promotion")
 
     # soma demote
-    p_demote = sub.add_parser("demote", help="Evaluate cell demotion candidates")
+    p_demote = sub.add_parser("demote", parents=[common_parser], help="Evaluate cell demotion candidates")
     p_demote.add_argument("--dry-run", action="store_true",
                           help="Show candidates without performing demotions")
     p_demote.add_argument("--json", action="store_true",
@@ -131,7 +135,7 @@ def _build_parser() -> argparse.ArgumentParser:
                           help="Target cell ID for --force demotion")
 
     # soma genesis
-    p_genesis = sub.add_parser("genesis", help="Analyze codebase and generate governance cells")
+    p_genesis = sub.add_parser("genesis", aliases=["analyze"], parents=[common_parser], help="Analyze codebase and generate governance cells")
     p_genesis.add_argument("--dry-run", action="store_true",
                            help="Show candidates without writing files")
     p_genesis.add_argument("--json", action="store_true",
@@ -147,12 +151,12 @@ def _build_parser() -> argparse.ArgumentParser:
 
     # soma completion
     from soma_cli.completion import SHELLS
-    p_completion = sub.add_parser("completion", help="Print a shell completion script")
+    p_completion = sub.add_parser("completion", parents=[common_parser], help="Print a shell completion script")
     p_completion.add_argument("shell", choices=list(SHELLS),
                               help="Target shell")
 
     # soma hook
-    p_hook = sub.add_parser("hook", help="Run cross-platform lifecycle hooks")
+    p_hook = sub.add_parser("hook", parents=[common_parser], help="Run cross-platform lifecycle hooks")
     p_hook.add_argument(
         "phase",
         choices=[
@@ -177,23 +181,28 @@ def _build_parser() -> argparse.ArgumentParser:
                         help="Emit JSON output")
 
     # soma transfer
-    p_transfer = sub.add_parser("transfer", help="Transfer a cell to another project with fitness reset")
+    p_transfer = sub.add_parser("transfer", parents=[common_parser], help="Transfer a cell to another project with fitness reset")
     p_transfer.add_argument("cell_id", nargs="?", default="", help="ID of cell to transfer")
     p_transfer.add_argument("--to", dest="target_dir", default="", help="Path to target project")
 
     # soma quarantine
-    p_quarantine = sub.add_parser("quarantine", help="Inspect and manage quarantined corrupt files")
+    p_quarantine = sub.add_parser("quarantine", parents=[common_parser], help="Inspect and manage quarantined corrupt files")
     p_quarantine_sub = p_quarantine.add_subparsers(dest="quarantine_action")
 
-    p_q_list = p_quarantine_sub.add_parser("list", help="List all quarantined files")
+    p_q_list = p_quarantine_sub.add_parser("list", parents=[common_parser], help="List all quarantined files")
     p_q_list.add_argument("--json", action="store_true", help="Emit JSON output")
 
-    p_q_inspect = p_quarantine_sub.add_parser("inspect", help="Inspect a quarantined file")
+    p_q_inspect = p_quarantine_sub.add_parser("inspect", parents=[common_parser], help="Inspect a quarantined file")
     p_q_inspect.add_argument("target", nargs="?", default="", help="Filename or path of quarantined file")
     p_q_inspect.add_argument("--json", action="store_true", help="Emit JSON output")
 
-    p_q_prune = p_quarantine_sub.add_parser("prune", help="Prune old quarantined files")
+    p_q_prune = p_quarantine_sub.add_parser("prune", parents=[common_parser], help="Prune old quarantined files")
     p_q_prune.add_argument("--older-than-days", type=int, default=30, help="Prune files older than N days (default 30)")
+
+    # soma prune
+    p_prune = sub.add_parser("prune", parents=[common_parser], help="Prune extinct or apoptotic rules")
+    p_prune.add_argument("--execute", action="store_true", help="Execute pruning decisions (archive expired rules)")
+    p_prune.add_argument("--workspace", type=str, default="", help="Path to workspace root")
 
     return parser
 
@@ -288,9 +297,18 @@ def cmd_quarantine(args: argparse.Namespace) -> int:
     return run_quarantine(args)
 
 
+def cmd_prune(args: argparse.Namespace) -> int:
+    """Prune extinct or apoptotic rules."""
+    from soma_core.lifecycle import prune_cells
+    execute = getattr(args, "execute", False)
+    workspace = getattr(args, "workspace", None)
+    return prune_cells(workspace=workspace, execute=execute)
+
+
 COMMANDS = {
     "init": cmd_init,
     "status": cmd_status,
+    "rules": cmd_status,
     "report": cmd_report,
     "doctor": cmd_doctor,
     "verify": cmd_verify,
@@ -300,10 +318,12 @@ COMMANDS = {
     "promote": cmd_promote,
     "demote": cmd_demote,
     "genesis": cmd_genesis,
+    "analyze": cmd_genesis,
     "completion": cmd_completion,
     "hook": cmd_hook,
     "transfer": cmd_transfer,
     "quarantine": cmd_quarantine,
+    "prune": cmd_prune,
 }
 
 

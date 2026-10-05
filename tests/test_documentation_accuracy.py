@@ -91,7 +91,7 @@ def test_readme_mcp_tool_inventory_matches_code():
     documented = set(re.findall(r"`(soma_[a-z_]+)`", section))
     expected = _tool_definition_names(ROOT / "soma_mcp" / "tools.py")
     assert documented == expected
-    assert len(expected) == 16
+    assert len(expected) == 19
 
 
 def test_readme_mcp_tiers_match_server_definitions():
@@ -104,7 +104,7 @@ def test_readme_mcp_tiers_match_server_definitions():
     }
     documented = {label: _readme_mcp_row(readme, label) for label in expected}
     assert documented == expected
-    assert len(set().union(*documented.values())) == 16
+    assert len(set().union(*documented.values())) == 19
 
 
 def test_documentation_index_local_links_exist():

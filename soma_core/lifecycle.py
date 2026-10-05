@@ -1459,6 +1459,12 @@ def cli_cell_selection(argv: list[str] | None = None) -> int:
     return run_cell_selection(workspace=ws, execute=args.execute)
 
 
+def prune_cells(workspace: Path | str | None = None, execute: bool = False) -> int:
+    """Evaluate and prune extinct or apoptotic rules."""
+    ws = Path(workspace) if workspace else None
+    return run_cell_selection(workspace=ws, execute=execute)
+
+
 def find_cell(workspace: Path | str, cell_id: str) -> Optional[str]:
     cells_dir = os.path.join(workspace, '.soma', 'cells')
     matches = glob.glob(os.path.join(cells_dir, '**', f'*{cell_id}*'), recursive=True)
@@ -1810,6 +1816,7 @@ __all__ = [
     "adapt_cell",
     "cli_cell_adapt",
     "run_cell_selection",
+    "prune_cells",
     "cli_cell_selection",
     "find_cell",
     "parse_cell",

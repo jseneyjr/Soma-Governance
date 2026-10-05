@@ -11,6 +11,19 @@ from typing import Any, Optional
 from soma_core.cell_inventory import CellInventoryError, inventory_cells
 from soma_core.frontmatter import parse_frontmatter
 
+TYPE_TRANSLATION_MAP: dict[str, str] = {
+    "safety-guard": "wall",
+    "learned-trap": "vacuole",
+    "agent-persona": "chloroplast",
+    "escalation-boundary": "membrane",
+    "contract-bridge": "plasmodesmata",
+    "wall": "wall",
+    "vacuole": "vacuole",
+    "chloroplast": "chloroplast",
+    "membrane": "membrane",
+    "plasmodesmata": "plasmodesmata",
+}
+
 
 class Governance:
     """Soma governance interface.
@@ -70,10 +83,10 @@ class Governance:
                     return {'raw': result.stdout, 'error': 'JSON parse failed'}
             return result.stdout
     
-    # === Cell Management ===
+    # === Cell & Rule Management ===
     
-    def list_cells(self) -> list[dict[str, Any]]:
-        """List all immune cells from one canonical byte snapshot.
+    def list_cells(self, cell_type: Optional[str] = None) -> list[dict[str, Any]]:
+        """List immune cells, optionally filtered by cell_type or porcelain alias.
 
         Invalid cell contents remain visible as diagnostic records. Unsafe or
         unreadable inventory trees fail closed because callers cannot safely
@@ -83,6 +96,8 @@ class Governance:
             inventory = inventory_cells(str(self.root))
         except CellInventoryError as exc:
             raise RuntimeError(str(exc)) from exc
+
+        canonical_filter = TYPE_TRANSLATION_MAP.get(cell_type, cell_type) if cell_type else None
 
         cells = []
         for entry in inventory.entries:
@@ -115,10 +130,54 @@ class Governance:
                     '_error': 'no frontmatter metadata',
                 })
                 continue
+
+            if canonical_filter:
+                entry_type = frontmatter.get('type')
+                parent_name = Path(relative_path).parent.name
+                type_matches = (
+                    entry_type == canonical_filter
+                    or parent_name in (canonical_filter, canonical_filter + 's')
+                    or f"/{canonical_filter}/" in relative_path
+                    or f"/{canonical_filter}s/" in relative_path
+                )
+                if not type_matches:
+                    continue
+
             frontmatter['_name'] = cell_name
             frontmatter['_path'] = relative_path
             cells.append(frontmatter)
         return cells
+
+    def list_rules(self, rule_type: Optional[str] = None) -> list[dict[str, Any]]:
+        """List active rules (porcelain alias for list_cells)."""
+        return self.list_cells(cell_type=rule_type)
+
+    def record_outcome(
+        self,
+        rule_id: str,
+        success: bool,
+        metric: Optional[dict[str, Any]] = None,
+        **kwargs: Any,
+    ) -> dict[str, Any]:
+        """Record an empirical rule outcome (tp/fp) in-process via atomic evidence telemetry.
+        
+        Underlying data updates Wilson confidence scores and Bayesian fitness.
+        """
+        signal_type = "tp" if success else "fp"
+        merged_metric = dict(metric or {})
+        source = kwargs.pop("source", "manual")
+        merged_metric.update(kwargs)
+        try:
+            from soma_core.telemetry import append_signal
+            return append_signal(
+                workspace=str(self.root),
+                cell_name=rule_id,
+                signal_type=signal_type,
+                source=source,
+                metadata={"metric": merged_metric} if merged_metric else {},
+            )
+        except Exception:
+            return self.signal(rule_id, signal_type, metric=merged_metric)
     
     def create_cell(
         self,

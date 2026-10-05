@@ -126,3 +126,90 @@ def test_invalid_receipt_is_rejected():
     resp = handle_request(req)
     assert resp["error"]["code"] == -32600
     assert "Invalid, expired, or mismatched receipt" in resp["error"]["message"]
+
+
+def test_porcelain_create_rule_requires_receipt():
+    req = {
+        "jsonrpc": "2.0",
+        "id": 7,
+        "method": "tools/call",
+        "params": {
+            "name": "soma_create_rule",
+            "arguments": {
+                "description": "Rule without receipt"
+            }
+        }
+    }
+    resp = handle_request(req)
+    assert resp["error"]["code"] == -32600
+    assert "requires a valid 'receipt'" in resp["error"]["message"]
+
+
+def test_porcelain_create_rule_dispatch_flow_with_receipt(tmp_path, monkeypatch):
+    (tmp_path / ".soma" / "cells").mkdir(parents=True)
+    monkeypatch.setattr(server_module, "_canonical_workspace", str(tmp_path))
+    # Request receipt for porcelain tool
+    req1 = {
+        "jsonrpc": "2.0",
+        "id": 8,
+        "method": "tools/call",
+        "params": {
+            "name": "soma_request_receipt",
+            "arguments": {
+                "operation": "soma_create_rule",
+                "arguments": {
+                    "description": "Add security check",
+                    "rule_type": "safety-guard"
+                }
+            }
+        }
+    }
+    resp1 = handle_request(req1)
+    import json
+    receipt_data = json.loads(resp1["result"]["content"][0]["text"])
+    receipt_id = receipt_data["receipt"]
+
+    # Redeem receipt using soma_create_rule
+    req2 = {
+        "jsonrpc": "2.0",
+        "id": 9,
+        "method": "tools/call",
+        "params": {
+            "name": "soma_create_rule",
+            "arguments": {
+                "description": "Add security check",
+                "rule_type": "safety-guard",
+                "receipt": receipt_id
+            }
+        }
+    }
+    resp2 = handle_request(req2)
+    assert "result" in resp2
+    assert not resp2["result"].get("isError")
+    tool_output = json.loads(resp2["result"]["content"][0]["text"])
+    assert "prompt" in tool_output
+    assert "instruction" in tool_output
+
+
+def test_porcelain_list_rules_dispatch(tmp_path, monkeypatch):
+    (tmp_path / ".soma" / "cells" / "walls").mkdir(parents=True)
+    (tmp_path / ".soma" / "cells" / "walls" / "wall-test.md").write_text(
+        "---\ntype: wall\nhypothesis: test\n---\nbody\n", encoding="utf-8"
+    )
+    monkeypatch.setattr(server_module, "_canonical_workspace", str(tmp_path))
+    req = {
+        "jsonrpc": "2.0",
+        "id": 10,
+        "method": "tools/call",
+        "params": {
+            "name": "soma_list_rules",
+            "arguments": {}
+        }
+    }
+    resp = handle_request(req)
+    assert "result" in resp
+    import json
+    cells = json.loads(resp["result"]["content"][0]["text"])
+    assert len(cells) == 1
+    assert cells[0]["_name"] == "wall-test"
+
