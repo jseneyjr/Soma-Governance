@@ -60,6 +60,10 @@ class TestSafetyGate:
             ("del /s /q C:\\*", "Windows command-line recursive"),
             ("del /f /s /q C:\\*", "Windows command-line recursive"),
             ("rmdir /s /q C:\\dir", "Windows command-line recursive"),
+            ("git -C /tmp push -f", "Force push"),
+            ("git --work-tree=. reset --hard", "Hard reset"),
+            ("/bin/rm -rf /", "Recursive delete"),
+            ("/usr/bin/rm -rf ~", "Recursive delete"),
         ],
     )
     def test_blocks_destructive_commands(self, cmd: str, expected_snippet: str, tmp_path: Path):
@@ -74,6 +78,9 @@ class TestSafetyGate:
             "git status",
             "git diff --cached",
             "git log -n 5",
+            "git commit -m \"git reset --hard\"",
+            "git commit -m \"push -f\"",
+            "git log --grep=\"reset --hard\"",
             "python -m pytest tests/",
             "ls -la",
             "echo 'hello world'",
@@ -107,6 +114,48 @@ class TestSafetyGate:
         assert rc == 0
         # Dangerous or bypassing commands must never be fast-path allowed
         assert res["decision"] == "force_ask"
+
+    @pytest.mark.parametrize(
+        "cmd",
+        [
+            "echo $(rm -rf /)",
+            "cat `rm -rf /`",
+            "diff <(cat a) <(rm -rf /)",
+            "ls\nrm -rf /",
+            "ls\r\nrm -rf /",
+            "\\rm -rf /",
+            'r"m" -rf /',
+            "'r'm -rf /",
+            "git diff --o\\utput=foo",
+            "git branch -\\D main",
+            "git branch -\\M main",
+            "git -c alias.st='!rm -rf /' status",
+            "git --exec-path=/tmp status",
+            "git branch -D bug-fix",
+            "git branch -M bug-fix",
+            "git branch -d bug-fix",
+            "git branch --delete bug-fix",
+            "git branch --force bug-fix",
+        ],
+    )
+    def test_evasion_and_destructive_flags_blocked(self, cmd: str, tmp_path: Path):
+        rc, res = run_safety_gate(cmd=cmd, workspace=tmp_path)
+        assert rc == 0
+        assert res["decision"] == "force_ask"
+
+    @pytest.mark.parametrize(
+        "cmd",
+        [
+            "git branch bug-fix",
+            "git branch feature-dashboard",
+            "git branch fix-feature",
+            "git branch my-test-branch",
+        ],
+    )
+    def test_word_boundary_safe_branch_names_allowed(self, cmd: str, tmp_path: Path):
+        rc, res = run_safety_gate(cmd=cmd, workspace=tmp_path)
+        assert rc == 0
+        assert res["decision"] == "allow"
 
 
     def test_redacts_credentials_in_logs(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch):

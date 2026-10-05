@@ -18,6 +18,7 @@ import datetime
 import json
 import os
 import re
+import shlex
 import sys
 from pathlib import Path
 from typing import Any, Tuple
@@ -48,18 +49,30 @@ SAFE_COMMAND_PREFIXES: tuple[str, ...] = (
     "echo",
 )
 
-METACHARACTERS: frozenset[str] = frozenset({";", "&", "|", ">", "<", "`", "$", "\n", "\r", "(", ")"})
-DANGEROUS_FLAGS: tuple[str, ...] = ("-f", "--force", "-D", "-d", "--output", "--ext-cmd")
+METACHARACTERS: frozenset[str] = frozenset({";", "&", "|", ">", "<", "`", "$", "\n", "\r", "(", ")", "\\"})
+DANGEROUS_FLAGS: tuple[str, ...] = ("-f", "--force", "-D", "-d", "-M", "--output", "--ext-cmd")
+
+_GIT_CMD_PREFIX = r'(?:^|[;&|`\(\)\n\r]\s*|(?:sudo|env|time|xargs)\s+)git(?:\.exe)?'
+_GIT_GLOBAL_OPTS = r'(?:\s+(?:-[a-zA-Z0-9_\-]+(?:\s+(?:[^\s\-;&|]+|[\'"][^\'"]*[\'"]))?|--[a-zA-Z0-9_\-]+(?:=(?:[^\s;&|]+|[\'"][^\'"]*[\'"])|\s+(?:[^\s\-;&|]+|[\'"][^\'"]*[\'"]))?))*'
+_GIT_CMD = rf'{_GIT_CMD_PREFIX}{_GIT_GLOBAL_OPTS}\s+'
 
 DESTRUCTIVE_PATTERNS: list[tuple[re.Pattern[str], str]] = [
-    # git branch deletion
-    (re.compile(r'\bgit\s+branch\s+.*-(?:[dD]|-delete)'), "Branch deletion (git branch -d/-D)"),
+    # git branch deletion or forced move/copy
+    (
+        re.compile(rf'{_GIT_CMD}branch\b.*(?:\s+-(?:[a-zA-Z0-9]*[dDMf][a-zA-Z0-9]*|-(?:delete|force))\b)'),
+        "Destructive branch operation (git branch -d/-D/-M/-f/--delete/--force)",
+    ),
+    # git config override / exec-path injection
+    (
+        re.compile(rf'{_GIT_CMD_PREFIX}\b.*(?:\s+-c\b|\s+--exec-path|\s+--config-env)'),
+        "git configuration override / exec-path injection (-c/--exec-path/--config-env)",
+    ),
     # git diff file write or arbitrary command execution
-    (re.compile(r'\bgit\s+diff\s+.*--(?:output|ext-cmd)'), "git diff write/execute flag detected"),
+    (re.compile(rf'{_GIT_CMD}diff\b.*--(?:output|ext-cmd)'), "git diff write/execute flag detected"),
     # rm: catch -rf, -r -f, -fr, --recursive targeting home, root, current dir or wildcard (including quotes/subshells)
     (
         re.compile(
-            r'(?:^|[;&|`\(\)\s\'"])(?:(?:sh|bash|zsh)\s+-c\s+[\'"])?rm\s+(?:-[a-zA-Z0-9_\-]*r[a-zA-Z0-9_\-]*f|-[a-zA-Z0-9_\-]*f[a-zA-Z0-9_\-]*r|-r\s+-f|-f\s+-r|--recursive)\s+.*[\'"]?(?:/|~|/home|\$HOME|\.|\.\.|\*)[\'"]?',
+            r'(?:^|[;&|`\(\)\s\'"])(?:(?:sh|bash|zsh)\s+-c\s+[\'"])?(?:[^\s;`&|\'"\(\)]*[/\\])?rm\s+(?:-[a-zA-Z0-9_\-]*r[a-zA-Z0-9_\-]*f|-[a-zA-Z0-9_\-]*f[a-zA-Z0-9_\-]*r|-r\s+-f|-f\s+-r|--recursive)\s+.*[\'"]?(?:/|~|/home|\$HOME|\.|\.\.|\*)[\'"]?',
             re.IGNORECASE,
         ),
         "Recursive delete targeting home/root directory or wildcard/current directory",
@@ -106,31 +119,31 @@ DESTRUCTIVE_PATTERNS: list[tuple[re.Pattern[str], str]] = [
     ),
     # Git force push
     (
-        re.compile(r'git\s+push\s+.*(?:-f|--force|--force-with-lease)'),
+        re.compile(rf'{_GIT_CMD}push\s+.*(?:-f|--force|--force-with-lease)'),
         "Force push detected — destructive-ops mandate requires confirmation",
     ),
     (
-        re.compile(r'git\s+push\s+[^\s]+\s+\+'),
+        re.compile(rf'{_GIT_CMD}push\s+[^\s]+\s+\+'),
         "Force push via +refspec detected — destructive-ops mandate requires confirmation",
     ),
     # Git reset --hard
     (
-        re.compile(r'git\s+reset\s+.*--hard'),
+        re.compile(rf'{_GIT_CMD}reset\s+.*--hard'),
         "Hard reset — will discard uncommitted changes",
     ),
     # Git checkout -f
     (
-        re.compile(r'git\s+checkout\s+.*(?:-f|--force)\b'),
+        re.compile(rf'{_GIT_CMD}checkout\s+.*(?:-f|--force)\b'),
         "Force checkout — will discard uncommitted changes",
     ),
     # Git clean -f
     (
-        re.compile(r'git\s+clean\s+.*(?:-[a-zA-Z]*f[a-zA-Z]*|--force)'),
+        re.compile(rf'{_GIT_CMD}clean\s+.*(?:-[a-zA-Z]*f[a-zA-Z]*|--force)'),
         "git clean -f — will permanently remove untracked files",
     ),
     # Bulk git staging
     (
-        re.compile(r'git\s+add\s+(?:-A|\.|\./?|\*|--all)(?:\s+|$|[;&|>)])'),
+        re.compile(rf'{_GIT_CMD}add\s+(?:-A|\.|\./?|\*|--all)(?:\s+|$|[;&|>)])'),
         "Bulk staging (git add -A/./*/--all) — run git status first to verify file count",
     ),
     # Database destruction without WHERE
@@ -228,6 +241,7 @@ def run_safety_gate(
     if cmd is None and payload is not None:
         tc = payload.get("toolCall", {})
         args = tc.get("args", {})
+        cmd = args.get("CommandLine", "")
     if not cmd or not isinstance(cmd, str) or not cmd.strip():
         reason = "Unable to parse command — requesting confirmation"
         log_gate_event(cmd or "", "BLOCKED", reason, root)
@@ -238,29 +252,46 @@ def run_safety_gate(
 
     trimmed = cmd.strip()
 
+    # Pre-tokenization normalization & evasion detection
+    candidates = [cmd]
+    unescaped = re.sub(r"\\([a-zA-Z0-9_\-\.\/])", r"\1", cmd)
+    if unescaped != cmd:
+        candidates.append(unescaped)
+    for src in [cmd, unescaped]:
+        try:
+            toks = shlex.split(src)
+            if toks:
+                candidates.append(" ".join(toks))
+        except Exception:
+            pass
+    dequoted = re.sub(r"['\"]([a-zA-Z0-9_\-]+)['\"]", r"\1", unescaped)
+    if dequoted not in candidates:
+        candidates.append(dequoted)
+
     # Fast-path: benign read-only inspection commands without chaining or force flags (<0.01ms)
     if any(trimmed.startswith(prefix) for prefix in SAFE_COMMAND_PREFIXES):
         if not any(c in trimmed for c in METACHARACTERS):
             tokens = trimmed.split()
             is_dangerous = any(
                 t in DANGEROUS_FLAGS
-                or t.startswith(("-D", "-d", "--output", "--ext-cmd", "--force"))
-                or (t.startswith("-") and not t.startswith("--") and any(c in t for c in "fDd"))
+                or t.startswith(("-D", "-d", "-M", "--output", "--ext-cmd", "--force"))
+                or (t.startswith("-") and not t.startswith("--") and any(c in t for c in "fDdM"))
                 for t in tokens
             )
             if not is_dangerous:
-                # Ensure no destructive pattern matches
-                if not any(pattern.search(cmd) for pattern, _ in DESTRUCTIVE_PATTERNS):
+                # Ensure no destructive pattern matches any candidate
+                if not any(pattern.search(cand) for cand in candidates for pattern, _ in DESTRUCTIVE_PATTERNS):
                     log_gate_event(cmd, "ALLOWED", "", root)
                     return 0, {"decision": "allow"}
 
-    for pattern, reason in DESTRUCTIVE_PATTERNS:
-        if pattern.search(cmd):
-            log_gate_event(cmd, "BLOCKED", reason, root)
-            return 0, {
-                "decision": "force_ask",
-                "reason": f"🛡️ Safety Gate: {reason}",
-            }
+    for cand in candidates:
+        for pattern, reason in DESTRUCTIVE_PATTERNS:
+            if pattern.search(cand):
+                log_gate_event(cmd, "BLOCKED", reason, root)
+                return 0, {
+                    "decision": "force_ask",
+                    "reason": f"🛡️ Safety Gate: {reason}",
+                }
 
     log_gate_event(cmd, "ALLOWED", "", root)
     return 0, {"decision": "allow"}
@@ -339,7 +370,8 @@ def run_pre_invocation(
 # ── Session Close / Post-Session ──────────────────────────────────────────────
 
 def run_session_close(workspace: Path | None = None) -> tuple[int, dict[str, Any]]:
-    """Run session close lifecycle tasks (outcome evaluation and cell evolution)."""
+    """Run session close lifecycle tasks (outcome evaluation, cell evolution, and consolidation)."""
+    import random
     import subprocess
 
     root = workspace or Path.cwd()
@@ -366,6 +398,42 @@ def run_session_close(workspace: Path | None = None) -> tuple[int, dict[str, Any
     if cell_fitness.is_file():
         try:
             subprocess.run([sys.executable, str(cell_fitness)], cwd=root, capture_output=True, text=True)
+        except Exception:
+            pass
+
+    # 3. Cell selection pressure (archive extinct cells)
+    cell_selection = scripts_dir / "cell_selection.py"
+    if cell_selection.is_file():
+        try:
+            subprocess.run([sys.executable, str(cell_selection), "--execute"], cwd=root, capture_output=True, text=True)
+        except Exception:
+            pass
+
+    # 4. Probabilistic crossover
+    try:
+        from soma_core.evidence import aggregate_signals
+        evidence_dir = root / ".soma" / "evidence"
+        if evidence_dir.is_dir():
+            signal_counts = aggregate_signals(evidence_dir).counts
+            cell_triggers = {
+                cell_id: counts["triggers"]
+                for cell_id, counts in signal_counts.items()
+                if counts["has_triggers"]
+            }
+            high_fitness = [cid for cid, count in cell_triggers.items() if count >= 5]
+            if len(high_fitness) >= 2:
+                pair = random.sample(high_fitness, 2)
+                cell_crossover = scripts_dir / "cell_crossover.py"
+                if cell_crossover.is_file():
+                    subprocess.run([sys.executable, str(cell_crossover), pair[0], pair[1]], cwd=root, capture_output=True, text=True)
+    except Exception:
+        pass
+
+    # 5. Stochastic genesis
+    cell_genesis = scripts_dir / "cell_genesis_stochastic.py"
+    if cell_genesis.is_file():
+        try:
+            subprocess.run([sys.executable, str(cell_genesis)], cwd=root, capture_output=True, text=True)
         except Exception:
             pass
 

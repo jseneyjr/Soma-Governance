@@ -63,6 +63,14 @@ class TestSomaScan:
         assert result.get('status') == 'FAIL'
         assert 'path traversal blocked' in result.get('error', '').lower()
 
+    def test_scan_rejects_non_list_files(self, tmp_path, monkeypatch):
+        ws = _setup_workspace(tmp_path)
+        monkeypatch.chdir(ws)
+        result = execute_tool('soma_scan', {'files': 'not_a_list'})
+        assert isinstance(result, dict)
+        assert result.get('status') == 'FAIL'
+        assert "'files' must be a list" in result.get('error', '')
+
 
 
 class TestSomaListCells:
@@ -115,6 +123,18 @@ class TestSomaReportOutcome:
         assert isinstance(result, dict)
         assert result.get('status') == 'FAIL'
         assert "Invalid 'outcome'" in result.get('error', '')
+
+    def test_report_outcome_rejects_non_list_cells(self, tmp_path, monkeypatch):
+        ws = _setup_workspace(tmp_path)
+        monkeypatch.chdir(ws)
+        result = execute_tool('soma_report_outcome', {
+            'outcome': 'success',
+            'cells_used': 'not_a_list',
+            'idempotency_key': 'key-1',
+        })
+        assert isinstance(result, dict)
+        assert result.get('status') == 'FAIL'
+        assert "'cells_used' must be a list" in result.get('error', '')
 
 
 class TestSomaProposeChange:
@@ -174,6 +194,33 @@ class TestSomaAuditTools:
         assert isinstance(result, dict)
         assert result.get('status') in ('PASS', 'FAIL')
         assert 'feedback' in result
+
+
+class TestSomaVerifyChanges:
+    """Tests for soma_verify_changes tool."""
+
+    def test_verify_changes_rejects_non_list_files(self, tmp_path, monkeypatch):
+        ws = _setup_workspace(tmp_path)
+        monkeypatch.chdir(ws)
+        result = execute_tool('soma_verify_changes', {'files': 'not_a_list'})
+        assert isinstance(result, dict)
+        assert result.get('status') == 'FAIL'
+        assert "'files' must be a list" in result.get('error', '')
+
+
+class TestSomaCaptureInsight:
+    """Tests for soma_capture_insight tool."""
+
+    def test_capture_insight_rejects_non_list_context_files(self, tmp_path, monkeypatch):
+        ws = _setup_workspace(tmp_path)
+        monkeypatch.chdir(ws)
+        result = execute_tool('soma_capture_insight', {
+            'insight': 'An insight',
+            'context_files': 'not_a_list',
+        })
+        assert isinstance(result, dict)
+        assert result.get('status') == 'FAIL'
+        assert "'context_files' must be a list" in result.get('error', '')
 
 
 class TestToolOutputSerializability:

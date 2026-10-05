@@ -1,9 +1,8 @@
 #!/usr/bin/env bash
 # cell_transfer.sh: Copies a cell to another project with fitness reset.
 # Usage: bash enzymes/cell_transfer.sh <cell_id> --to /path/to/target/project
+set -euo pipefail
 
-# Symlink-safe self-location: a dirname of a symlinked invocation names the
-# link's directory, where soma_python.sh (and the Python helpers) don't exist.
 PRG="${BASH_SOURCE[0]}"
 while [ -h "$PRG" ]; do
   DIR="$(cd -P "$(dirname "$PRG")" && pwd)"
@@ -11,8 +10,9 @@ while [ -h "$PRG" ]; do
   [[ $PRG != /* ]] && PRG="$DIR/$PRG"
 done
 SCRIPT_DIR="$(cd -P "$(dirname "$PRG")" && pwd)"
-source "$SCRIPT_DIR/soma_python.sh"
-soma_resolve_python || true
+source "$SCRIPT_DIR/common.sh"
+STEERING_REPO="$(cd -P "$SCRIPT_DIR/.." && pwd)"
+export SOMA_STEERING_REPO="$STEERING_REPO"
 
 soma_py "$SCRIPT_DIR/cell_transfer.py" "$@"
 exit $?

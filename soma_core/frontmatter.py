@@ -313,6 +313,8 @@ def parse_frontmatter(content: str) -> dict[str, object] | None:
     None-vs-{} distinction matters: callers must be able to tell "this file has
     no metadata" from "this file's metadata is broken and the cell was skipped".
     """
+    if content.startswith('\ufeff'):
+        content = content[1:]
     if not content.startswith('---'):
         return {}
     end = content.find('---', 3)
@@ -346,8 +348,57 @@ def parse_frontmatter(content: str) -> dict[str, object] | None:
 _parse_frontmatter = parse_frontmatter
 
 
+def dump_frontmatter(data: dict) -> str:
+    """Serialize metadata dictionary to YAML frontmatter string without requiring PyYAML."""
+    import json
+    from datetime import date, datetime
+    if yaml is not None:
+        return yaml.dump(data, default_flow_style=False, sort_keys=False)
+
+    def _format_scalar(val: object) -> str:
+        if val is None:
+            return "null"
+        if isinstance(val, bool):
+            return "true" if val else "false"
+        if isinstance(val, (int, float)):
+            return str(val)
+        if isinstance(val, (datetime, date)):
+            return val.isoformat()
+        return json.dumps(str(val))
+
+    def _dump_lines(d: dict, indent: int = 0) -> list[str]:
+        lines: list[str] = []
+        prefix = " " * indent
+        for k, v in d.items():
+            key_str = str(k)
+            if isinstance(v, dict):
+                if not v:
+                    lines.append(f"{prefix}{key_str}: {{}}")
+                else:
+                    lines.append(f"{prefix}{key_str}:")
+                    lines.extend(_dump_lines(v, indent + 2))
+            elif isinstance(v, list):
+                if not v:
+                    lines.append(f"{prefix}{key_str}: []")
+                else:
+                    lines.append(f"{prefix}{key_str}:")
+                    for item in v:
+                        if isinstance(item, dict):
+                            lines.append(f"{prefix}  -")
+                            lines.extend(_dump_lines(item, indent + 4))
+                        else:
+                            lines.append(f"{prefix}  - {_format_scalar(item)}")
+            else:
+                lines.append(f"{prefix}{key_str}: {_format_scalar(v)}")
+        return lines
+
+    return "\n".join(_dump_lines(data)) + "\n"
+
+
 def _get_body(content: str) -> str:
     """Extract the body text after YAML frontmatter."""
+    if content.startswith('\ufeff'):
+        content = content[1:]
     if not content.startswith('---'):
         return content
     end = content.find('---', 3)

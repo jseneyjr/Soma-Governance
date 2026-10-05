@@ -3,6 +3,26 @@
 All notable changes to Soma are documented here.
 This project uses [Semantic Versioning](https://semver.org/).
 
+## [0.95.0] — 2026-10-05 — "Architecture Consolidation, Deep Defense & Storage Resiliency"
+
+### Added
+- **Pure-Python CLI Commands**: Added `soma transfer` (`soma_cli/transfer.py`) for cell transfers with fitness resets and `soma quarantine` (`soma_cli/quarantine.py`) for inspecting, listing, and pruning quarantined corrupt files.
+- **Crash-Resilient Atomic Storage**: Added `soma_core/storage.py` providing `atomic_write_text`, `atomic_write_bytes`, and `async_atomic_write_text` with exponential backoff retry on Windows sharing violations (`WinError 32 ERROR_SHARING_VIOLATION`), directory fsync, and automatic cleanup of partial writes.
+- **Quarantine Lifecycle Management**: Added `list_quarantine`, `inspect_quarantined_file`, and `prune_quarantine` in `soma_core/quarantine.py` with robust timestamp extraction from filenames (`<stem>.<timestamp>.corrupt`) and logs, plus universal UTF-8 BOM (`utf-8-sig`) decoding.
+- **Verification Worker Registry & Bounded Shutdown**: Implemented `_ACTIVE_WORKERS` thread registry tracking and bounded join in `soma_core/verification_jobs.py` `shutdown_verification_engine`, ensuring clean worker termination without zombie processes or orphaned threads.
+
+### Changed
+- **Shell Enzyme Retirement & Consolidation**: Replaced bulky legacy shell implementations in `enzymes/safety_gate.sh`, `enzymes/immune_init.sh`, `enzymes/session_close.sh`, and `enzymes/cell_transfer.sh` with ultra-thin backward-compatible forwarding shims delegating to `soma_cli.hooks` and `soma_cli.transfer`, reducing over 800 lines of brittle shell code.
+- **Scripts Architecture Reference**: Updated `docs/architecture/scripts.md` cataloging 140 executable modules (21 CLI commands, 16 MCP/Core modules).
+- **Single-Sourced Version Synchronization**: Synchronized release version `0.95.0` across all repository surfaces (`VERSION`, `pyproject.toml`, `README.md`, `soma_sdk/__init__.py`, `soma_sdk_js/package.json`, `docs/KNOWN_ISSUES_WINDOWS.md`, and `SECURITY.md`).
+
+### Fixed
+- **Shell Evasion & Metacharacter Bypass**: Enhanced safety gate in `soma_cli/hooks.py` with pre-tokenization sanitization and multi-stage quote/escape dequoting, blocking command obfuscation (`\rm -rf /`, `r"m" -rf /`, `'r'm`, `git diff --o\utput=`).
+- **Word-Bounded Branch Deletion Matching**: Fixed `soma_cli/hooks.py` regexes to require word boundaries and whitespace before flags (`\s+-(?:[a-zA-Z0-9]*[dDMf]...)\b`), preventing benign branch names with hyphens (e.g. `git branch feature-dashboard`) from being falsely blocked.
+- **Git Config & Exec-Path Injection Guard**: Blocked arbitrary command execution via git option injection (`git -c`, `git --exec-path`, `git --config-env`) in `soma_cli/hooks.py`.
+- **Deep Defense Path Traversal & Windows Device Names**: Hardened `confine_path` in `soma_mcp/security.py` and `enzymes/ttc_verifier.py` against null bytes (`\x00`), Windows reserved device names (`CON`, `PRN`, `AUX`, `NUL`, `COM1-9`, `LPT1-9`), NTFS alternate data streams (`:`), and extended device namespaces (`\\?\`, `\\.\`).
+- **Strict Argument Type Validation**: Hardened `verify_receipt` in `soma_core/receipts.py` and MCP dispatch in `soma_mcp/tools.py` (`soma_scan`, `soma_verify_changes`, `soma_report_outcome`, `soma_capture_insight`) to reject non-string and non-list inputs with structured errors rather than unhandled type exceptions.
+
 ## [0.94.1] — 2026-10-05 — "Zero-Flaw Concurrency, Cross-Platform Parity & Sandbox Hardening"
 
 ### Fixed

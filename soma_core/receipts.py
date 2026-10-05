@@ -91,7 +91,8 @@ def compute_file_digest(workspace: str, paths: Iterable[str]) -> str:
     receipt stale. Raises ValueError for paths outside the workspace.
     """
     h = hashlib.sha256(b"soma-file-digest-v1\0")
-    for rel in sorted(set(paths)):
+    normalized_paths = sorted(set(os.path.normpath(p).replace("\\", "/") for p in paths))
+    for rel in normalized_paths:
         resolved = _confined(workspace, rel)
         h.update(rel.encode("utf-8") + b"\0")
         if os.path.isfile(resolved):
@@ -147,9 +148,17 @@ def verify_receipt(
     cell_digest: str,
     consume: bool = False
 ) -> bool:
-    """
-    Verify that a receipt is valid for the given parameters.
-    """
+    if (
+        not isinstance(receipt_id, str)
+        or not isinstance(session_id, str)
+        or not isinstance(workspace, str)
+        or not isinstance(operation, str)
+        or not isinstance(file_digest, str)
+        or not isinstance(cell_digest, str)
+        or not isinstance(args, dict)
+    ):
+        return False
+
     with _receipt_lock:
         _prune_expired_locked(time.time())
         if receipt_id not in _receipt_store:
@@ -172,8 +181,8 @@ def verify_receipt(
             hmac.compare_digest(stored["cell_digest"], cell_digest)
         )
         
-        # Single-use: burn receipt upon redemption attempt when consume=True
-        if consume:
+        # Single-use: burn receipt upon successful redemption when consume=True
+        if consume and is_valid:
             _receipt_store.pop(receipt_id, None)
             
         return is_valid

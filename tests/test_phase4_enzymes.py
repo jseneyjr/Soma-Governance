@@ -187,3 +187,120 @@ def test_shell_wrapper_delegation(tmp_path, bash):
     )
     assert proc.returncode == 0, proc.stderr
     assert "dry run" in proc.stdout.lower()
+
+
+def test_cli_transfer_subcommand(tmp_path):
+    """Verify that 'soma transfer' copies a cell with reset fitness metrics."""
+    from soma_cli.cli import main as cli_main
+
+    # Setup source workspace
+    source_ws = tmp_path / "source_project"
+    source_cells = source_ws / ".soma" / "cells" / "walls"
+    source_cells.mkdir(parents=True)
+    source_cell = source_cells / "sec-guard.md"
+    source_cell.write_text(
+        "---\n"
+        "id: sec-guard\n"
+        "type: wall\n"
+        "target_paths:\n"
+        "  - 'src/**'\n"
+        "fitness:\n"
+        "  score: 0.95\n"
+        "  triggers: 42\n"
+        "  true_positives: 40\n"
+        "  false_positives: 2\n"
+        "lineage:\n"
+        "  generation: 2\n"
+        "---\n"
+        "Wall content\n",
+        encoding="utf-8",
+    )
+
+    # Setup target workspace
+    target_ws = tmp_path / "target_project"
+    (target_ws / ".soma").mkdir(parents=True)
+
+    # Run soma transfer
+    old_cwd = os.getcwd()
+    os.chdir(str(source_ws))
+    try:
+        rc = cli_main(["transfer", "sec-guard", "--to", str(target_ws)])
+        assert rc == 0
+    finally:
+        os.chdir(old_cwd)
+
+    dest_cell = target_ws / ".soma" / "cells" / "walls" / "sec-guard.md"
+    assert dest_cell.exists()
+
+    content = dest_cell.read_text(encoding="utf-8")
+    assert "Wall content" in content
+    # Fitness metrics must be reset
+    assert "score: null" in content or "score: None" in content
+    assert "triggers: 0" in content
+    assert "true_positives: 0" in content
+    assert "false_positives: 0" in content
+    # Lineage incremented
+    assert "generation: 3" in content
+    assert "created_by: transfer" in content
+
+
+def test_shell_shims_forward_to_python_cli(tmp_path, bash):
+    """Verify that enzymes/*.sh forwarding shims execute python cleanly."""
+    env = dict(os.environ)
+    env["SOMA_PYTHON"] = sys.executable
+
+    # 1. safety_gate.sh
+    safety_gate_sh = ENZYMES_DIR / "safety_gate.sh"
+    payload = json.dumps({"toolCall": {"name": "run_command", "args": {"CommandLine": "ls -la"}}})
+    proc_sg = subprocess.run(
+        [bash, str(safety_gate_sh)],
+        input=payload,
+        cwd=str(tmp_path),
+        capture_output=True,
+        text=True,
+        env=env,
+        timeout=10,
+    )
+    assert proc_sg.returncode == 0, proc_sg.stderr
+    out_sg = json.loads(proc_sg.stdout)
+    assert out_sg.get("decision") == "allow"
+
+    # 2. immune_init.sh
+    immune_init_sh = ENZYMES_DIR / "immune_init.sh"
+    proc_ii = subprocess.run(
+        [bash, str(immune_init_sh)],
+        input="{}",
+        cwd=str(tmp_path),
+        capture_output=True,
+        text=True,
+        env=env,
+        timeout=15,
+    )
+    assert proc_ii.returncode == 0, proc_ii.stderr
+
+    # 3. session_close.sh
+    session_close_sh = ENZYMES_DIR / "session_close.sh"
+    proc_sc = subprocess.run(
+        [bash, str(session_close_sh)],
+        input="{}",
+        cwd=str(tmp_path),
+        capture_output=True,
+        text=True,
+        env=env,
+        timeout=15,
+    )
+    assert proc_sc.returncode == 0, proc_sc.stderr
+
+    # 4. cell_transfer.sh help/usage
+    cell_transfer_sh = ENZYMES_DIR / "cell_transfer.sh"
+    proc_ct = subprocess.run(
+        [bash, str(cell_transfer_sh), "--help"],
+        cwd=str(tmp_path),
+        capture_output=True,
+        text=True,
+        env=env,
+        timeout=10,
+    )
+    assert proc_ct.returncode == 0, proc_ct.stderr
+    assert "transfer" in proc_ct.stdout.lower()
+

@@ -92,7 +92,7 @@ def load_all_cells(workspace: str) -> list[dict[str, object]]:
             continue
         rel = os.path.relpath(cell_file, workspace)
         try:
-            with open(cell_file, encoding="utf-8") as f:
+            with open(cell_file, encoding="utf-8-sig") as f:
                 content = f.read()
             fm = parse_frontmatter(content)
             if fm is None:
@@ -278,7 +278,7 @@ def load_genome_rules(workspace: str, changed_files: list[str]) -> list[dict[str
     for rule_file in sorted(glob.glob(os.path.join(genome_dir, '*.md'))):
         rel = os.path.relpath(rule_file, workspace)
         try:
-            with open(rule_file, encoding="utf-8") as f:
+            with open(rule_file, encoding="utf-8-sig") as f:
                 content = f.read()
             fm = parse_frontmatter(content)
             if fm is None:
