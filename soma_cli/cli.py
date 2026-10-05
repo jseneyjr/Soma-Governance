@@ -31,16 +31,29 @@ def _version() -> str:
     return "unknown"
 
 
+class SomaParser(argparse.ArgumentParser):
+    """ArgumentParser ensuring global flags like plumbing default properly."""
+
+    def parse_args(self, args=None, namespace=None):
+        ns = super().parse_args(args=args, namespace=namespace)
+        if not hasattr(ns, "plumbing"):
+            ns.plumbing = False
+        return ns
+
+
 def _build_parser() -> argparse.ArgumentParser:
-    parser = argparse.ArgumentParser(
+    common_parser = argparse.ArgumentParser(add_help=False)
+    common_parser.add_argument("--plumbing", "--internal", action="store_true",
+                               default=argparse.SUPPRESS,
+                               help="Display raw internal biological terms")
+
+    parser = SomaParser(
         prog="soma",
         description="Soma Governance — make AI coding agents trustworthy",
+        parents=[common_parser],
     )
     parser.add_argument("--version", action="version",
                         version=f"soma {_version()}")
-    common_parser = argparse.ArgumentParser(add_help=False)
-    common_parser.add_argument("--plumbing", "--internal", action="store_true",
-                               help="Display raw internal biological terms")
 
     sub = parser.add_subparsers(dest="command")
 
@@ -335,6 +348,8 @@ def main(argv: list[str] | None = None) -> int:
         sys.stdout.reconfigure(errors="replace")
     parser = _build_parser()
     args = parser.parse_args(argv)
+    if not hasattr(args, "plumbing"):
+        args.plumbing = False
 
     if args.command is None:
         parser.print_help()

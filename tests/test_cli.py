@@ -334,3 +334,14 @@ class TestPorcelainCLIFacade:
         rc = main(["prune", "--workspace", str(tmp_path)])
         assert rc == 0
 
+    @pytest.mark.parametrize("flag", ["--plumbing", "--internal"])
+    def test_root_plumbing_flags_parse(self, flag):
+        from soma_cli.cli import _build_parser, main
+        parser = _build_parser()
+        args = parser.parse_args([flag, "rules"])
+        assert getattr(args, "plumbing", False) is True
+
+        # Test main handles root-level flag without crashing
+        assert main([flag, "rules"]) in (0, 1)
+
+

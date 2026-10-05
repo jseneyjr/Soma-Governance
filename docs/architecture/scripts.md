@@ -106,7 +106,7 @@ These 6 scripts provide Bash and PowerShell install/uninstall entrypoints. `inst
 
 ## Utility Scripts
 
-These 57 scripts are the top-level `enzymes/*.py` and `enzymes/*.sh` files not already counted as lifecycle hooks. The subsection counts below are exclusive and sum to 57.
+These 69 scripts are the top-level `enzymes/*.py` and `enzymes/*.sh` files not already counted as lifecycle hooks. The subsection counts below are exclusive and sum to 69.
 
 ### 1. Master Pipeline Orchestrator (removed)
 

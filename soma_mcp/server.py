@@ -9,7 +9,14 @@ import traceback
 from collections import defaultdict
 from typing import Any, Dict
 
-from .tools import TOOL_DEFINITIONS, execute_tool
+from .tools import (
+    TOOL_DEFINITIONS,
+    execute_tool,
+    normalize_tool_call,
+    _CANONICAL_TOOL_MAP,
+    _CANONICAL_ARG_MAP,
+    _TYPE_TRANSLATION_MAP,
+)
 from .security import confine_workspace
 from soma_core.receipts import (
     issue_receipt,
@@ -23,36 +30,6 @@ from soma_core.receipts import (
 _session_token = None
 _canonical_workspace = None
 _execution_enabled = False
-
-_CANONICAL_TOOL_MAP = {
-    "soma_create_rule": "soma_create_cell",
-    "soma_list_rules": "soma_list_cells",
-    "soma_rule_fitness": "soma_fitness",
-}
-_CANONICAL_ARG_MAP = {
-    "rule_type": "cell_type",
-    "rule_name": "cell_name",
-    "rules": "cells",
-}
-_TYPE_TRANSLATION_MAP = {
-    "safety-guard": "wall",
-    "learned-trap": "vacuole",
-    "agent-persona": "chloroplast",
-    "escalation-boundary": "membrane",
-    "contract-bridge": "plasmodesmata",
-}
-
-
-def normalize_tool_call(tool_name: str, arguments: Dict[str, Any]) -> tuple[str, Dict[str, Any]]:
-    """Normalize porcelain aliases into canonical plumbing tool name and arguments."""
-    canonical_name = _CANONICAL_TOOL_MAP.get(tool_name, tool_name)
-    normalized_args = {}
-    for k, v in (arguments or {}).items():
-        canon_k = _CANONICAL_ARG_MAP.get(k, k)
-        if canon_k == "cell_type" and isinstance(v, str):
-            v = _TYPE_TRANSLATION_MAP.get(v, v)
-        normalized_args[canon_k] = v
-    return canonical_name, normalized_args
 
 
 _READ_TOOLS = frozenset({
@@ -70,6 +47,7 @@ _EXECUTE_TOOLS = frozenset({
 
 _tool_call_times = defaultdict(list)
 _RATE_LIMITS = {
+    "soma_request_receipt": (60, 60),
     "soma_propose_change": (5, 60),
     "soma_report_outcome": (20, 60),
     "soma_verify_changes": (5, 60),
@@ -91,6 +69,14 @@ def _check_rate_limit(tool_name: str) -> bool:
         return False
     _tool_call_times[tool_name].append(now)
     return True
+
+
+def _rollback_rate_limit(tool_name: str) -> None:
+    """Revert the most recent rate-limit record if authorization/receipt verification fails."""
+    if tool_name in _RATE_LIMITS:
+        times = _tool_call_times.get(tool_name, [])
+        if times:
+            times.pop()
 
 # Messages that mean "the operation did not happen", regardless of the tool.
 _ERROR_STATUSES = ("FAIL", "FAILED", "ERROR", "REJECTED", "BLOCKED", "ESCALATION_REQUIRED")
@@ -235,20 +221,33 @@ def handle_request(request: Dict[str, Any]) -> Dict[str, Any]:
             return _error(req_id, -32602, "Tool arguments must be an object.")
 
         if name == "soma_request_receipt":
+            if not _check_rate_limit("soma_request_receipt"):
+                limit_info = _RATE_LIMITS.get("soma_request_receipt", (60, 60))
+                return {
+                    "jsonrpc": "2.0",
+                    "id": req_id,
+                    "error": {
+                        "code": -32000,
+                        "message": f"Rate limit exceeded for 'soma_request_receipt': max {limit_info[0]} calls per {limit_info[1]}s"
+                    }
+                }
             operation = args.get("operation")
-            if operation in _CANONICAL_TOOL_MAP:
-                canonical_op = _CANONICAL_TOOL_MAP[operation]
+            if operation:
+                canonical_op = _CANONICAL_TOOL_MAP.get(operation, operation)
                 operation = canonical_op
                 args["operation"] = canonical_op
-                if "arguments" in args and isinstance(args["arguments"], dict):
-                    _, args["arguments"] = normalize_tool_call(operation, args["arguments"])
+            if "arguments" in args and isinstance(args["arguments"], dict):
+                _, args["arguments"] = normalize_tool_call(operation, args["arguments"])
 
             if operation not in _EXECUTE_TOOLS and operation not in _WRITE_TOOLS:
+                _rollback_rate_limit("soma_request_receipt")
                 return _error(req_id, -32602,
                               f"Tool '{operation}' does not require a receipt or does not exist.")
             if operation in _EXECUTE_TOOLS and not _execution_enabled:
+                _rollback_rate_limit("soma_request_receipt")
                 return _error(req_id, -32600, "Execution capabilities are disabled.")
             if not _canonical_workspace:
+                _rollback_rate_limit("soma_request_receipt")
                 return _error(req_id, -32600, "Server workspace is not configured.")
 
             # Bind the receipt to exactly what will be dispatched: the client
@@ -259,7 +258,8 @@ def handle_request(request: Dict[str, Any]) -> Dict[str, Any]:
             op_args = strip_server_owned(args.get("arguments", {}))
             try:
                 file_digest, cell_digest = _state_digests(op_args)
-            except ValueError as exc:
+            except (ValueError, RuntimeError, OSError) as exc:
+                _rollback_rate_limit("soma_request_receipt")
                 return _error(req_id, -32602, str(exc))
             receipt_id = issue_receipt(
                 session_id=_session_token,
@@ -301,17 +301,21 @@ def handle_request(request: Dict[str, Any]) -> Dict[str, Any]:
         # Both EXECUTE and WRITE tools require a valid receipt
         if name in _EXECUTE_TOOLS or name in _WRITE_TOOLS:
             if name in _EXECUTE_TOOLS and not _execution_enabled:
+                _rollback_rate_limit(name)
                 return _error(req_id, -32600, "Execution capabilities are disabled.")
             if not _canonical_workspace:
+                _rollback_rate_limit(name)
                 return _error(req_id, -32600, "Server workspace is not configured.")
             if not receipt or not isinstance(receipt, str):
+                _rollback_rate_limit(name)
                 return _error(req_id, -32600, f"Tool '{name}' requires a valid 'receipt'.")
 
             # Recompute the state digests now; a target file or cell edited
             # since issuance no longer matches and the receipt is consumed.
             try:
                 file_digest, cell_digest = _state_digests(args)
-            except ValueError as exc:
+            except (ValueError, RuntimeError, OSError) as exc:
+                _rollback_rate_limit(name)
                 return _error(req_id, -32602, str(exc))
             if not verify_receipt(
                 receipt_id=receipt,
@@ -323,6 +327,7 @@ def handle_request(request: Dict[str, Any]) -> Dict[str, Any]:
                 cell_digest=cell_digest,
                 consume=True
             ):
+                _rollback_rate_limit(name)
                 return _error(req_id, -32600, "Invalid, expired, or mismatched receipt.")
 
         # Inject the operator-configured workspace only after verification, so

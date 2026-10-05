@@ -24,6 +24,8 @@ TYPE_TRANSLATION_MAP: dict[str, str] = {
     "plasmodesmata": "plasmodesmata",
 }
 
+VALID_SOURCES = ('ci', 'manual', 'mcp', 'session')
+
 
 class Governance:
     """Soma governance interface.
@@ -105,9 +107,22 @@ class Governance:
             cell_name = Path(relative_path).stem
             if Path(relative_path).name == 'README.md':
                 continue
+
+            if canonical_filter:
+                parent_name = Path(relative_path).parent.name
+                path_matches = (
+                    parent_name in (canonical_filter, canonical_filter + 's')
+                    or f"/{canonical_filter}/" in relative_path
+                    or f"/{canonical_filter}s/" in relative_path
+                )
+            else:
+                path_matches = True
+
             try:
                 content = entry.content.decode('utf-8')
             except UnicodeDecodeError as exc:
+                if not path_matches:
+                    continue
                 cells.append({
                     '_name': cell_name,
                     '_path': relative_path,
@@ -117,6 +132,8 @@ class Governance:
 
             frontmatter = parse_frontmatter(content)
             if frontmatter is None:
+                if not path_matches:
+                    continue
                 cells.append({
                     '_name': cell_name,
                     '_path': relative_path,
@@ -124,6 +141,8 @@ class Governance:
                 })
                 continue
             if not frontmatter:
+                if not path_matches:
+                    continue
                 cells.append({
                     '_name': cell_name,
                     '_path': relative_path,
@@ -133,13 +152,7 @@ class Governance:
 
             if canonical_filter:
                 entry_type = frontmatter.get('type')
-                parent_name = Path(relative_path).parent.name
-                type_matches = (
-                    entry_type == canonical_filter
-                    or parent_name in (canonical_filter, canonical_filter + 's')
-                    or f"/{canonical_filter}/" in relative_path
-                    or f"/{canonical_filter}s/" in relative_path
-                )
+                type_matches = (entry_type == canonical_filter) or path_matches
                 if not type_matches:
                     continue
 
@@ -166,6 +179,8 @@ class Governance:
         signal_type = "tp" if success else "fp"
         merged_metric = dict(metric or {})
         source = kwargs.pop("source", "manual")
+        if source not in VALID_SOURCES:
+            raise ValueError(f"Invalid telemetry source '{source}'. Must be one of: {', '.join(VALID_SOURCES)}")
         merged_metric.update(kwargs)
         try:
             from soma_core.telemetry import append_signal
@@ -177,7 +192,14 @@ class Governance:
                 metadata={"metric": merged_metric} if merged_metric else {},
             )
         except Exception:
-            return self.signal(rule_id, signal_type, metric=merged_metric)
+            raw_output = self.signal(rule_id, signal_type, metric=merged_metric)
+            return {
+                "cell": rule_id,
+                "signal": signal_type,
+                "source": source,
+                "status": "fallback_recorded",
+                "raw": str(raw_output),
+            }
     
     def create_cell(
         self,

@@ -133,8 +133,42 @@ def _cell_diagnostic(relative_path, message):
     }
 
 
+_CANONICAL_TOOL_MAP = {
+    "soma_create_rule": "soma_create_cell",
+    "soma_list_rules": "soma_list_cells",
+    "soma_rule_fitness": "soma_fitness",
+}
+_CANONICAL_ARG_MAP = {
+    "rule_type": "cell_type",
+    "rule_name": "cell_name",
+    "rules": "cells_used",
+    "rules_used": "cells_used",
+}
+_TYPE_TRANSLATION_MAP = {
+    "safety-guard": "wall",
+    "learned-trap": "vacuole",
+    "agent-persona": "chloroplast",
+    "escalation-boundary": "membrane",
+    "contract-bridge": "plasmodesmata",
+}
+
+
+def normalize_tool_call(tool_name: str, arguments: dict) -> tuple[str, dict]:
+    """Normalize porcelain aliases into canonical plumbing tool name and arguments."""
+    canonical_name = _CANONICAL_TOOL_MAP.get(tool_name, tool_name)
+    normalized_args = {}
+    for k, v in (arguments or {}).items():
+        canon_k = _CANONICAL_ARG_MAP.get(k, k)
+        if canon_k == "cell_type" and isinstance(v, str):
+            v = _TYPE_TRANSLATION_MAP.get(v, v)
+        normalized_args[canon_k] = v
+    return canonical_name, normalized_args
+
+
 def _list_cells_stdlib(workspace, cell_type=None):
     """List cells from one canonical byte snapshot using the shared parser."""
+    if cell_type:
+        cell_type = _TYPE_TRANSLATION_MAP.get(cell_type, cell_type)
     try:
         inventory = inventory_cells(workspace)
     except CellInventoryError as exc:
@@ -148,6 +182,10 @@ def _list_cells_stdlib(workspace, cell_type=None):
         try:
             content = entry.content.decode('utf-8')
         except UnicodeDecodeError as exc:
+            if cell_type:
+                parent_name = os.path.basename(os.path.dirname(rel))
+                if not (parent_name in (cell_type, cell_type + 's') or f"/{cell_type}/" in rel or f"/{cell_type}s/" in rel):
+                    continue
             message = f'invalid UTF-8: {exc}'
             warn(f'skipped cell {rel}: {message}')
             cells.append(_cell_diagnostic(rel, message))
@@ -155,11 +193,19 @@ def _list_cells_stdlib(workspace, cell_type=None):
 
         fm = _parse_frontmatter(content)
         if fm is None:
+            if cell_type:
+                parent_name = os.path.basename(os.path.dirname(rel))
+                if not (parent_name in (cell_type, cell_type + 's') or f"/{cell_type}/" in rel or f"/{cell_type}s/" in rel):
+                    continue
             message = 'malformed YAML frontmatter'
             warn(f'skipped cell {rel}: {message}')
             cells.append(_cell_diagnostic(rel, message))
             continue
         if not fm:
+            if cell_type:
+                parent_name = os.path.basename(os.path.dirname(rel))
+                if not (parent_name in (cell_type, cell_type + 's') or f"/{cell_type}/" in rel or f"/{cell_type}s/" in rel):
+                    continue
             message = 'no frontmatter metadata'
             warn(f'skipped cell {rel}: {message}')
             cells.append(_cell_diagnostic(rel, message))
@@ -469,7 +515,9 @@ TOOL_DEFINITIONS = [
         },
         "inputSchema": {
             "type": "object",
-            "properties": {}
+            "properties": {
+                "cell_type": {"type": "string", "description": "Optional cell type filter (wall, vacuole, chloroplast, membrane, plasmodesmata)"}
+            }
         }
     },
     {
@@ -696,30 +744,7 @@ TOOL_DEFINITIONS = [
 ]
 
 def execute_tool(name: str, args: dict):
-    _CANONICAL_TOOL_MAP = {
-        "soma_create_rule": "soma_create_cell",
-        "soma_list_rules": "soma_list_cells",
-        "soma_rule_fitness": "soma_fitness",
-    }
-    _CANONICAL_ARG_MAP = {
-        "rule_type": "cell_type",
-        "rule_name": "cell_name",
-        "rules": "cells",
-    }
-    _TYPE_TRANSLATION_MAP = {
-        "safety-guard": "wall",
-        "learned-trap": "vacuole",
-        "agent-persona": "chloroplast",
-        "escalation-boundary": "membrane",
-        "contract-bridge": "plasmodesmata",
-    }
-    name = _CANONICAL_TOOL_MAP.get(name, name)
-    args = {
-        _CANONICAL_ARG_MAP.get(k, k): (
-            _TYPE_TRANSLATION_MAP.get(v, v) if _CANONICAL_ARG_MAP.get(k, k) == "cell_type" and isinstance(v, str) else v
-        )
-        for k, v in (args or {}).items()
-    }
+    name, args = normalize_tool_call(name, args)
     gov = get_governance(args)
     
     if name == "soma_create_cell":
