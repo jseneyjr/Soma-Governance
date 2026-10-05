@@ -36,6 +36,8 @@ def run_checkpoint(args: argparse.Namespace) -> int:
     Returns:
         Exit code: 0 for pass, 1 for failures.
     """
+    if hasattr(sys.stdout, "reconfigure"):
+        sys.stdout.reconfigure(errors="replace")
     workspace = getattr(args, "workspace", None) or os.getcwd()
     root = Path(workspace)
 

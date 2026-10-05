@@ -6,6 +6,7 @@ from pathlib import Path
 from hypothesis import given, settings, strategies as st
 
 from soma_sdk.scoring import laplace_score, wilson_lower_bound, bayesian_posterior
+from soma_sdk.cells import CellFitness
 from enzymes.bayesian_score import bayesian_score
 from soma_core.lifecycle import (
     calculate_fitness_status,
@@ -137,3 +138,23 @@ class TestMathematicalInvariants:
         w_score = wilson_lower_bound(tp, triggers)
         assert isinstance(w_score, float)
         assert 0.0 <= w_score <= 1.0
+
+    @settings(max_examples=100)
+    @given(
+        tp=st.integers(min_value=0, max_value=10_000),
+        fp=st.integers(min_value=0, max_value=10_000),
+    )
+    def test_cell_fitness_snr_invariants(self, tp: int, fp: int):
+        """CellFitness SNR respects signal detection theory boundary conditions."""
+        f = CellFitness(triggers=tp + fp, true_positives=tp, false_positives=fp)
+        snr = f.snr_db
+        if tp > 0 and fp > 0:
+            assert isinstance(snr, float)
+            assert snr == round(10 * __import__("math").log10(tp / fp), 1)
+        elif tp > 0 and fp == 0:
+            assert snr is None  # RFC 8259 JSON-safe positive infinite
+        elif tp == 0 and fp > 0:
+            assert snr == -float("inf")  # Pure noise / zero signal
+        else:
+            assert snr == 0.0
+

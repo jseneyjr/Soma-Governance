@@ -107,6 +107,8 @@ class CellFitness:
             return round(10 * math.log10(tp / fp), 1)
         elif tp > 0:
             return None  # JSON-safe encoding of infinite SNR (RFC 8259)
+        elif fp > 0:
+            return -float("inf")
         return 0.0
     
     def bayesian(self, confidence: float = 0.90) -> dict[str, float | str]:

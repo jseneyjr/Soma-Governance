@@ -172,8 +172,8 @@ def verify_receipt(
             hmac.compare_digest(stored["cell_digest"], cell_digest)
         )
         
-        # Purge receipt only when verification succeeds and consume=True
-        if is_valid and consume:
+        # Single-use: burn receipt upon redemption attempt when consume=True
+        if consume:
             _receipt_store.pop(receipt_id, None)
             
         return is_valid

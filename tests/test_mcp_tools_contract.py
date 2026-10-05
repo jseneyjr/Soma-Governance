@@ -55,6 +55,15 @@ class TestSomaScan:
         result = execute_tool('soma_scan', {'files': ['src/foo.py']})
         assert isinstance(result, dict)
 
+    def test_scan_blocks_path_traversal(self, tmp_path, monkeypatch):
+        ws = _setup_workspace(tmp_path)
+        monkeypatch.chdir(ws)
+        result = execute_tool('soma_scan', {'files': ['../../etc/passwd']})
+        assert isinstance(result, dict)
+        assert result.get('status') == 'FAIL'
+        assert 'path traversal blocked' in result.get('error', '').lower()
+
+
 
 class TestSomaListCells:
     """Tests for soma_list_cells tool."""
@@ -127,6 +136,18 @@ class TestSomaProposeChange:
         assert 'status' in result
         assert 'result' in result
         assert result['status'] in ('PASS', 'FAIL')
+
+    def test_propose_blocks_path_traversal(self, tmp_path, monkeypatch):
+        ws = _setup_workspace(tmp_path)
+        monkeypatch.chdir(ws)
+        result = execute_tool('soma_propose_change', {
+            'file_path': '../../etc/passwd',
+            'proposed_content': 'malicious',
+        })
+        assert isinstance(result, dict)
+        assert result.get('status') == 'FAIL'
+        assert 'path traversal blocked' in result.get('error', '').lower()
+
 
 
 class TestSomaAuditTools:

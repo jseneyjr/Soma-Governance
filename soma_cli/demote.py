@@ -108,6 +108,8 @@ def run_demote(args: argparse.Namespace) -> int:
     
     Returns 0 always (dry-run is advisory).
     """
+    if hasattr(sys.stdout, "reconfigure"):
+        sys.stdout.reconfigure(errors="replace")
     project_root = Path(getattr(args, "_project_root", Path.cwd()))
     use_json = getattr(args, "json", False)
     dry_run = getattr(args, "dry_run", False)
