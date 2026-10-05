@@ -151,6 +151,13 @@ def resolve_workspace(start: Optional[str] = None) -> str:
     return workspace
 
 
+_WINDOWS_DEVICE_NAMES = frozenset(
+    {"CON", "PRN", "AUX", "NUL"}
+    | {f"COM{i}" for i in range(1, 10)}
+    | {f"LPT{i}" for i in range(1, 10)}
+)
+
+
 def _contain_path(file_path: str, workspace: str):
     """Resolve `file_path` inside `workspace`. Returns (resolved, relative).
 
@@ -159,6 +166,27 @@ def _contain_path(file_path: str, workspace: str):
     """
     if not file_path or not str(file_path).strip():
         raise ValueError("no file_path was supplied")
+
+    if "\x00" in file_path:
+        raise ValueError("null bytes are not permitted in file paths")
+
+    if file_path.startswith(("\\\\?\\", "\\\\.\\", "//?/", "//./")):
+        raise ValueError("extended device namespace paths are not permitted")
+
+    # Reject alternate data streams (e.g. file.txt:stream)
+    if ":" in file_path:
+        has_drive = re.match(r"^[a-zA-Z]:[\\/]", file_path)
+        rest = file_path[2:] if has_drive else file_path
+        if ":" in rest:
+            raise ValueError(f"alternate data stream syntax (':') is not permitted: {file_path!r}")
+
+    # Reject reserved Windows device names
+    for seg in re.split(r"[\\/]", file_path):
+        if not seg:
+            continue
+        base = seg.rstrip(". ").split(".")[0].upper()
+        if base in _WINDOWS_DEVICE_NAMES:
+            raise ValueError(f"reserved Windows device name not permitted: {file_path!r}")
 
     workspace_root = Path(workspace).resolve()
     # os.path.join returns file_path unchanged when it is absolute, so an

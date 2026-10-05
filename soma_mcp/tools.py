@@ -767,6 +767,8 @@ def execute_tool(name: str, args: dict):
         except ValueError as exc:
             return {"error": str(exc), "status": _STATUS_FAIL}
         files = args.get('files') or []
+        if not isinstance(files, (list, tuple)) or not all(isinstance(f, str) for f in files):
+            return {"error": "'files' must be a list of file paths", "status": _STATUS_FAIL}
         # Confine each file path within the workspace
         try:
             files = [confine_path(f, workspace)[1] for f in files]
@@ -874,7 +876,9 @@ def execute_tool(name: str, args: dict):
         except ValueError as exc:
             return {"error": str(exc), "status": _STATUS_FAIL}
         files = args.get('files', None)
-        if files:
+        if files is not None:
+            if not isinstance(files, (list, tuple)) or not all(isinstance(f, str) for f in files):
+                return {"error": "'files' must be a list of file paths", "status": _STATUS_FAIL}
             try:
                 files = [str(confine_path(f, workspace)[1]) for f in files]
             except ValueError as exc:
@@ -905,7 +909,16 @@ def execute_tool(name: str, args: dict):
                 "error": "'idempotency_key' must be a nonempty string.",
                 "status": _STATUS_FAIL,
             }
-        cells_used = args.get('cells_used') or []
+        raw_cells_used = args.get('cells_used')
+        if raw_cells_used is not None:
+            if not isinstance(raw_cells_used, (list, tuple)) or not all(isinstance(c, str) for c in raw_cells_used):
+                return {
+                    "error": "'cells_used' must be a list of cell names.",
+                    "status": _STATUS_FAIL,
+                }
+            cells_used = list(raw_cells_used)
+        else:
+            cells_used = []
         # Validate cell names against actual inventory
         if cells_used:
             invalid = validate_cell_names(cells_used, workspace)
@@ -959,6 +972,8 @@ def execute_tool(name: str, args: dict):
             return {"error": "enzymes.insight_capture is not importable."}
         try:
             context_files_arg = args.get('context_files') or []
+            if not isinstance(context_files_arg, (list, tuple)) or not all(isinstance(f, str) for f in context_files_arg):
+                return {"error": "'context_files' must be a list of file paths", "status": _STATUS_FAIL}
             record = capture_insight(
                 workspace=workspace,
                 insight=args.get('insight', ''),

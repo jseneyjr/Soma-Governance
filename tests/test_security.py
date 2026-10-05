@@ -113,6 +113,39 @@ class TestConfinePath:
         resolved, relative = confine_path("a/b/c/file.py", str(soma_workspace))
         assert relative == os.path.join("a", "b", "c", "file.py")
 
+    def test_rejects_null_bytes(self, soma_workspace):
+        with pytest.raises(ValueError, match="null bytes"):
+            confine_path("src/file\x00.py", str(soma_workspace))
+
+    @pytest.mark.parametrize(
+        "dev_name",
+        [
+            "CON", "PRN", "AUX", "NUL", "COM1", "LPT9",
+            "CON.txt", "sub/NUL.json", "aux.md", "com3.py",
+            "CON.", "NUL ", "AUX.tar.gz",
+        ],
+    )
+    def test_rejects_windows_device_names(self, soma_workspace, dev_name):
+        with pytest.raises(ValueError, match="reserved Windows device name"):
+            confine_path(dev_name, str(soma_workspace))
+
+    def test_rejects_alternate_data_streams(self, soma_workspace):
+        with pytest.raises(ValueError, match="alternate data stream"):
+            confine_path("file.txt:stream", str(soma_workspace))
+
+    def test_rejects_extended_device_namespaces(self, soma_workspace):
+        with pytest.raises(ValueError, match="device namespace"):
+            confine_path(r"\\?\C:\secret.txt", str(soma_workspace))
+
+    @pytest.mark.parametrize(
+        "safe_name",
+        ["connect.py", "pronto.md", "components.py", "concurrent.py", "auxiliary.py", "nullify.py"],
+    )
+    def test_accepts_benign_names_with_device_substrings(self, soma_workspace, safe_name):
+        resolved, relative = confine_path(safe_name, str(soma_workspace))
+        assert relative == safe_name
+
+
 
 # ── Cell Name Validation ──────────────────────────────────────────────
 
