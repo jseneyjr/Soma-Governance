@@ -16,12 +16,26 @@ ENZYMES_DIR = Path(REPO_ROOT) / "enzymes"
 def test_bump_version_dry_run(tmp_path):
     from enzymes.bump_version import bump_version
 
+    (tmp_path / "soma_sdk").mkdir()
+    (tmp_path / "soma_sdk_js").mkdir()
+    (tmp_path / "docs").mkdir()
+
     (tmp_path / "VERSION").write_text("0.93.0\n", encoding="utf-8")
     (tmp_path / "pyproject.toml").write_text('version = "0.93.0"\n', encoding="utf-8")
+    (tmp_path / "soma_sdk" / "__init__.py").write_text('__version__ = "0.93.0"\n', encoding="utf-8")
+    (tmp_path / "soma_sdk_js" / "package.json").write_text('{\n  "version": "0.93.0"\n}\n', encoding="utf-8")
+    (tmp_path / "README.md").write_text('[![Version](https://img.shields.io/badge/Version-0.93.0-informational)\n', encoding="utf-8")
+    (tmp_path / "docs" / "KNOWN_ISSUES_WINDOWS.md").write_text(
+        "# Known Issues — Windows (v0.93.0)   Open Windows issues as of v0.93.0\n",
+        encoding="utf-8",
+    )
+    (tmp_path / "SECURITY.md").write_text(
+        "| 0.93.x | ✅ |\n| < 0.93 | ❌ |\n",
+        encoding="utf-8",
+    )
 
     rc = bump_version("0.94.0", repo_root=tmp_path, dry_run=True)
-    # Missing other surfaces should report error or fail closed
-    assert rc in (0, 1)
+    assert rc == 0
 
 
 def test_cell_selection_evaluation(tmp_path):

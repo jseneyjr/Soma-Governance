@@ -192,7 +192,6 @@ def test_identity_str():
         result = check(target, 'identity', test_file)
         assert result.verdict is True
 
-    @pytest.mark.skip(reason='Phase 3.2: PYTHONPATH package hierarchy not yet implemented')
     def test_pythonpath_package_import(self, tmp_path):
         """Package imports (from pkg.mod import X) should work with mutant."""
         pkg_dir = tmp_path / 'mypkg'
@@ -209,3 +208,4 @@ def test_identity_str():
 
         result = check(str(pkg_dir / 'math_utils.py'), 'double', str(test_file))
         assert result.tool == 'mutation_tester'
+        assert result.verdict is True
