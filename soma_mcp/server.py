@@ -26,7 +26,8 @@ _execution_enabled = False
 
 _READ_TOOLS = frozenset({
     "soma_scan", "soma_list_cells", "soma_grade", "soma_coverage", "soma_fitness",
-    "soma_request_receipt", "soma_audit_security", "soma_audit_performance"
+    "soma_request_receipt", "soma_audit_security", "soma_audit_performance",
+    "soma_poll_verification",
 })
 _WRITE_TOOLS = frozenset({
     "soma_report_outcome", "soma_capture_insight", "soma_create_cell"
@@ -42,6 +43,7 @@ _RATE_LIMITS = {
     "soma_report_outcome": (20, 60),
     "soma_verify_changes": (5, 60),
     "soma_checkpoint": (3, 60),
+    "soma_poll_verification": (60, 60),
 }
 
 

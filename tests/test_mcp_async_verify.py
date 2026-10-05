@@ -1,0 +1,172 @@
+"""Tests for Asynchronous MCP Layer 2 Verification and Polling (Phase 3).
+
+Verifies:
+1. Tool definition registration with m8ven metadata (readOnlyHint).
+2. VerificationJob thread-safe store and lifecycle states.
+3. soma_verify_changes async_mode execution returning job receipts.
+4. soma_poll_verification polling, error handling, and completion responses.
+"""
+from __future__ import annotations
+
+import time
+from pathlib import Path
+
+import pytest
+
+from soma_core.verification_jobs import (
+    JOB_STATUS_COMPLETED,
+    JOB_STATUS_FAILED,
+    JOB_STATUS_QUEUED,
+    JOB_STATUS_RUNNING,
+    clear_all_jobs,
+    create_job,
+    get_job,
+    list_jobs,
+    submit_verification_job,
+)
+from soma_mcp.server import _READ_TOOLS
+from soma_mcp.tools import TOOL_DEFINITIONS, execute_tool
+
+
+@pytest.fixture(autouse=True)
+def _reset_jobs():
+    clear_all_jobs()
+    yield
+    clear_all_jobs()
+
+
+class TestAsyncVerificationToolDefinitions:
+    """Verify tool metadata, schemas, and m8ven hints."""
+
+    def test_soma_poll_verification_registered(self):
+        tool = next((t for t in TOOL_DEFINITIONS if t["name"] == "soma_poll_verification"), None)
+        assert tool is not None, "soma_poll_verification must be registered in TOOL_DEFINITIONS"
+        assert tool["annotations"]["readOnlyHint"] is True
+        assert "job_id" in tool["inputSchema"]["properties"]
+        assert "job_id" in tool["inputSchema"]["required"]
+
+    def test_soma_verify_changes_has_async_mode(self):
+        tool = next((t for t in TOOL_DEFINITIONS if t["name"] == "soma_verify_changes"), None)
+        assert tool is not None, "soma_verify_changes must be registered in TOOL_DEFINITIONS"
+        props = tool["inputSchema"]["properties"]
+        assert "async_mode" in props
+        assert props["async_mode"]["type"] == "boolean"
+
+    def test_poll_tool_is_read_tool_in_server(self):
+        assert "soma_poll_verification" in _READ_TOOLS, "soma_poll_verification must be in _READ_TOOLS"
+
+
+class TestVerificationJobStore:
+    """Verify thread-safe job store operations."""
+
+    def test_create_and_get_job(self, tmp_path: Path):
+        job = create_job(workspace=str(tmp_path), files=["app.py"], layer1_only=True)
+        assert job.job_id.startswith("vjob_")
+        assert job.status == JOB_STATUS_QUEUED
+        assert job.workspace == str(tmp_path)
+        assert job.files == ["app.py"]
+
+        fetched = get_job(job.job_id)
+        assert fetched is not None
+        assert fetched.job_id == job.job_id
+
+    def test_list_jobs(self, tmp_path: Path):
+        j1 = create_job(workspace=str(tmp_path), files=["a.py"])
+        j2 = create_job(workspace=str(tmp_path), files=["b.py"])
+        all_jobs = list_jobs()
+        assert len(all_jobs) == 2
+        ids = {j.job_id for j in all_jobs}
+        assert j1.job_id in ids and j2.job_id in ids
+
+    def test_submit_verification_job_runs_background_thread(self, tmp_path: Path):
+        job = submit_verification_job(workspace=str(tmp_path), files=[], layer1_only=True)
+        assert job.job_id.startswith("vjob_")
+
+        # Wait for worker thread to complete
+        timeout = 5.0
+        start = time.time()
+        while time.time() - start < timeout:
+            current = get_job(job.job_id)
+            if current and current.status in (JOB_STATUS_COMPLETED, JOB_STATUS_FAILED):
+                break
+            time.sleep(0.05)
+
+        finished = get_job(job.job_id)
+        assert finished is not None
+        assert finished.status == JOB_STATUS_COMPLETED
+        assert finished.result is not None
+        assert finished.completed_at is not None
+
+
+class TestMcpAsyncExecutionAndPolling:
+    """Verify end-to-end execution of async verification and polling tools."""
+
+    def test_async_verify_and_poll_flow(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
+        monkeypatch.setenv("SOMA_WORKSPACE", str(tmp_path))
+        # Create minimal cell structure so workspace passes
+        (tmp_path / ".soma" / "cells").mkdir(parents=True)
+
+        # 1. Enqueue job via soma_verify_changes
+        res_queue = execute_tool(
+            "soma_verify_changes",
+            {
+                "workspace": str(tmp_path),
+                "files": [],
+                "async_mode": True,
+                "layer1_only": True,
+                "receipt": "mock-receipt-123",
+            },
+        )
+        assert res_queue.get("status") == "QUEUED"
+        job_id = res_queue.get("job_id")
+        assert job_id is not None
+        assert "message" in res_queue
+
+        # 2. Poll job status
+        timeout = 5.0
+        start = time.time()
+        completed = False
+        res_poll = None
+
+        while time.time() - start < timeout:
+            res_poll = execute_tool("soma_poll_verification", {"job_id": job_id})
+            if res_poll.get("status") == "COMPLETED":
+                completed = True
+                break
+            time.sleep(0.05)
+
+        assert completed is True, f"Job did not complete within {timeout}s: {res_poll}"
+        assert res_poll is not None
+        assert res_poll["status"] == "COMPLETED"
+        assert res_poll["job_id"] == job_id
+        assert "result" in res_poll
+        assert "evidence" in res_poll["result"]
+        assert res_poll.get("receipt") == "mock-receipt-123"
+
+    def test_poll_unknown_job_id(self):
+        res = execute_tool("soma_poll_verification", {"job_id": "vjob_nonexistent"})
+        assert res.get("status") == "FAIL"
+        assert "not found" in res.get("error", "").lower()
+
+    def test_poll_missing_job_id_argument(self):
+        res = execute_tool("soma_poll_verification", {})
+        assert res.get("status") == "FAIL"
+        assert "missing required argument" in res.get("error", "").lower()
+
+    def test_sync_mode_still_works_as_default(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
+        monkeypatch.setenv("SOMA_WORKSPACE", str(tmp_path))
+        (tmp_path / ".soma" / "cells").mkdir(parents=True)
+
+        res = execute_tool(
+            "soma_verify_changes",
+            {
+                "workspace": str(tmp_path),
+                "files": [],
+                "layer1_only": True,
+                "receipt": "mock-receipt-sync",
+            },
+        )
+        # Synchronous execution returns immediate PASS/FAIL status, not QUEUED
+        assert res.get("status") in ("PASS", "FAIL")
+        assert "evidence" in res
+        assert "job_id" not in res

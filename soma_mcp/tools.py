@@ -544,9 +544,31 @@ TOOL_DEFINITIONS = [
                     "description": "List of changed files to verify."
                 },
                 "layer1_only": {"type": "boolean", "description": "Only run Layer-1 checks (default true)."},
+                "async_mode": {"type": "boolean", "description": "Run verification asynchronously in background and return job_id for polling (default false)."},
                 "receipt": {"type": "string", "description": "Execution receipt ID obtained from soma_request_receipt"}
             },
             "required": ["receipt"]
+        }
+    },
+    {
+        "name": "soma_poll_verification",
+        "description": "Poll the status and retrieve results of an asynchronous verification job.",
+        "annotations": {
+            "readOnlyHint": True,
+            "destructiveHint": False,
+            "idempotentHint": True,
+            "openWorldHint": False,
+            "title": "Poll Verification Job"
+        },
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "job_id": {
+                    "type": "string",
+                    "description": "Verification job ID returned by soma_verify_changes."
+                }
+            },
+            "required": ["job_id"]
         }
     },
     {
@@ -743,6 +765,22 @@ def execute_tool(name: str, args: dict):
         except ValueError as exc:
             return {"error": str(exc), "status": _STATUS_FAIL}
         layer1_only = args.get('layer1_only', True)
+        async_mode = args.get('async_mode', False)
+        if async_mode:
+            from soma_core.verification_jobs import submit_verification_job
+            job = submit_verification_job(
+                workspace=workspace,
+                files=files,
+                layer1_only=layer1_only,
+                receipt=args.get('receipt'),
+            )
+            return {
+                "status": "QUEUED",
+                "job_id": job.job_id,
+                "message": "Verification job enqueued. Poll with soma_poll_verification.",
+                "created_at": job.created_at,
+            }
+
         try:
             from immune_system.verification import runner
         except ImportError:
@@ -754,7 +792,7 @@ def execute_tool(name: str, args: dict):
             {"tool": r.tool, "target": r.target, "verdict": r.verdict, "detail": r.detail}
             for r in results
         ]
-        # Layer 2 execution is not implemented in MCP tools endpoint; force layer1_only to True
+        # Layer 2 execution is not implemented in synchronous MCP tools endpoint; force layer1_only to True
         # so response accuracy is guaranteed.
         actual_layer1_only = True
         response_payload = {
@@ -764,8 +802,44 @@ def execute_tool(name: str, args: dict):
             "evidence": evidence,
         }
         if not layer1_only:
-            response_payload["note"] = "Layer 2 verification is not supported over MCP transport; fell back to Layer 1."
+            response_payload["note"] = "Synchronous Layer 2 verification is not supported over MCP transport; use async_mode=true or fell back to Layer 1."
         return response_payload
+
+    elif name == "soma_poll_verification":
+        job_id = args.get("job_id")
+        if not job_id:
+            return {"error": "Missing required argument 'job_id'", "status": _STATUS_FAIL}
+        from soma_core.verification_jobs import get_job
+        job = get_job(job_id)
+        if job is None:
+            return {"error": f"Verification job '{job_id}' not found or expired.", "status": _STATUS_FAIL}
+        if job.status == "COMPLETED":
+            return {
+                "status": "COMPLETED",
+                "job_id": job.job_id,
+                "completed_at": job.completed_at,
+                "result": job.result,
+                "receipt": job.receipt,
+            }
+        elif job.status == "FAILED":
+            return {
+                "status": "FAILED",
+                "job_id": job.job_id,
+                "error": job.error,
+                "completed_at": job.completed_at,
+            }
+        elif job.status == "RUNNING":
+            return {
+                "status": "RUNNING",
+                "job_id": job.job_id,
+                "started_at": job.started_at,
+            }
+        else:
+            return {
+                "status": job.status,
+                "job_id": job.job_id,
+                "created_at": job.created_at,
+            }
 
     elif name == "soma_checkpoint":
         try:
