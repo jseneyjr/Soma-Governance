@@ -152,6 +152,20 @@ Windows path backslash-to-slash normalization in `enzymes/fitness_updater.py` un
 **Status**: ✅ Shipped (v0.94.1)  
 Subshell metacharacter protection and destructive command flag detection (`-D`, `--output=`, `--ext-cmd=`) in `soma_cli/hooks.py` safety gate, path traversal confinement across `soma_mcp/tools.py` (`soma_scan`, `soma_propose_change`), atomic single-use cryptographic receipt invalidation on failed verification in `soma_core/receipts.py`, and pure-noise SNR `-inf` boundary invariant.
 
+## Phase 5.4 — v0.95.0 ✅ Shipped
+
+### Architecture Consolidation & Shell Enzyme Retirement
+**Status**: ✅ Shipped (v0.95.0)  
+Replaced bulky legacy shell implementations in `safety_gate.sh`, `immune_init.sh`, `session_close.sh`, and `cell_transfer.sh` with ultra-thin backward-compatible forwarding shims delegating to `soma_cli.hooks` and `soma_cli.transfer`, reducing over 800 lines of shell code with zero regression.
+
+### Deep Defense & Sandbox Hardening
+**Status**: ✅ Shipped (v0.95.0)  
+Pre-tokenization quote/escape dequoting in safety gate blocking evasion bypasses (`\rm`, `r"m"`, `git diff --o\utput=`), word-bounded git branch deletion flags, git configuration/exec-path injection protection, and path confinement rejecting null bytes, Windows device names (`CON`, `PRN`, `AUX`, `NUL`, `COM1-9`, `LPT1-9`), alternate data streams, and extended namespaces.
+
+### Storage Resiliency & Process Lifecycle Hardening
+**Status**: ✅ Shipped (v0.95.0)  
+Crash-resilient atomic storage (`soma_core/storage.py`) with exponential backoff on Windows file locking sharing violations (`WinError 32`), new `soma quarantine` CLI subcommand (`list`, `inspect`, `prune`), universal `utf-8-sig` BOM handling, and worker thread registry tracking with bounded shutdown joins in `soma_core/verification_jobs.py`.
+
 ## Research
 
 ### Antifragile Scaling
