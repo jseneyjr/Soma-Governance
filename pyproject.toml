@@ -41,7 +41,7 @@ gemini = ["google-genai>=1.0"]
 anthropic = ["anthropic>=0.30"]
 openai = ["openai>=1.0"]
 keyring = ["keyring>=23.0.0"]
-dev = ["pytest", "ruff", "hypothesis", "coverage"]
+dev = ["pytest", "pytest-xdist>=3.5.0", "ruff", "hypothesis>=6.100.0", "coverage"]
 
 [project.urls]
 Homepage = "https://github.com/nseney1/Soma-Governance"

@@ -178,10 +178,14 @@ status: ## Show installed vs repo diff
 	  *) echo "  Status check only supported for gemini and kiro platforms" ;; \
 	esac
 
-test: validate ## Run validation tests
+test: validate ## Run validation tests (auto-parallelized when pytest-xdist is installed)
 	@echo "Running test suite..."
 	@if command -v pytest >/dev/null 2>&1; then \
-	  pytest tests/ || exit 1; \
+	  if pytest -h 2>/dev/null | grep -q -- "-n"; then \
+	    pytest -n auto tests/ || exit 1; \
+	  else \
+	    pytest tests/ || exit 1; \
+	  fi; \
 	else \
 	  echo "  ❌  pytest not found. Install with: pip install pytest"; \
 	  exit 1; \
