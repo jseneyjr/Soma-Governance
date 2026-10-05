@@ -849,9 +849,12 @@ def cli_ci_outcome_reporter(argv: Optional[List[str]] = None) -> int:
 
 __all__ = [
     "load_bug_registry",
+    "load_registry",
     "bug_status",
     "verify_bug_schema",
+    "verify_schema",
     "verify_bug_tests",
+    "verify_regression_tests",
     "cli_verify_bug_registry",
     "verify_readme_claims",
     "cli_verify_readme_claims",

@@ -98,4 +98,44 @@ def test_compute_file_digest_path_normalization(tmp_path):
     assert digest_clean == digest_dups
 
 
+def test_verify_receipt_unicode_workspace_and_args():
+    """C-02: verify_receipt must handle non-ASCII / Unicode paths without TypeError."""
+    clear_receipts()
+    try:
+        ws_unicode = "/tmp/söma_test_日本語_workspace"
+        args = {"target": "ファイル.txt", "notes": "René Descartes"}
+        rid = issue_receipt("sess_123", ws_unicode, "op_write", args, "fd_unicode", "cd_unicode")
 
+        # Must verify cleanly without throwing TypeError from hmac.compare_digest
+        assert verify_receipt(rid, "sess_123", ws_unicode, "op_write", args, "fd_unicode", "cd_unicode") is True
+        # Mismatch check must also not raise
+        assert verify_receipt(rid, "sess_123", "/tmp/other_unicode_ путь", "op_write", args, "fd_unicode", "cd_unicode") is False
+    finally:
+        clear_receipts()
+
+
+def test_confined_path_rejects_devices_and_streams(tmp_path):
+    """C-04: _confined must delegate to confine_path and reject Windows devices and ADS."""
+    from soma_core.receipts import _confined
+
+    ws = str(tmp_path)
+    (tmp_path / "valid.txt").write_text("hello", encoding="utf-8")
+
+    # Valid file resolves
+    resolved = _confined(ws, "valid.txt")
+    assert resolved == str(tmp_path / "valid.txt")
+
+    # Windows device name rejected
+    with pytest.raises(ValueError, match="reserved Windows device name"):
+        _confined(ws, "CON")
+
+    with pytest.raises(ValueError, match="reserved Windows device name"):
+        _confined(ws, "nul.txt")
+
+    # Alternate data stream rejected
+    with pytest.raises(ValueError, match="alternate data stream"):
+        _confined(ws, "valid.txt:stream")
+
+    # Path traversal rejected
+    with pytest.raises(ValueError, match="path traversal blocked"):
+        _confined(ws, "../../etc/passwd")

@@ -1060,14 +1060,20 @@ def run_post_session_hook(
     cells_dir = cells_dir or root / ".soma" / "cells"
     evidence_dir = evidence_dir or root / ".soma" / "evidence"
 
-    from enzymes.fitness_updater import (
+    from soma_core.telemetry import (
         detect_platform,
         extract_modified_files,
         match_cells,
         resolve_transcript_id,
         update_fitness,
     )
-    from enzymes.evidence_collector import aggregate_evidence, build_observation, check_compliance
+    try:
+        from enzymes.evidence_collector import aggregate_evidence, build_observation, check_compliance
+    except ImportError:
+        try:
+            from evidence_collector import aggregate_evidence, build_observation, check_compliance
+        except ImportError:
+            aggregate_evidence = build_observation = check_compliance = None
 
     resolved_platform = platform or detect_platform(transcript_path)
     transcript_id = resolve_transcript_id(transcript_path, resolved_platform)

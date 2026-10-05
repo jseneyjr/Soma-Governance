@@ -1039,7 +1039,7 @@ def execute_tool(name: str, args: dict):
             for cell_id in cells_used
         ]
         try:
-            from soma_sdk.telemetry import append_signals, read_generation
+            from soma_core.telemetry import append_signals, read_generation
             generation = read_generation(workspace)
             records = append_signals(
                 workspace, events, expected_generation=generation)

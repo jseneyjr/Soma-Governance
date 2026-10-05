@@ -205,3 +205,50 @@ class TestMcpAsyncExecutionAndPolling:
         assert len(all_current) <= 5
         # Oldest job id should be evicted
         assert get_job(created_ids[0]) is None
+
+    def test_poll_verification_bogus_job_id_does_not_exhaust_rate_limit(self):
+        """C-03: Repeated bogus job_ids must roll back rate limit and not lock out legitimate callers."""
+        from soma_mcp.server import handle_request
+        import soma_mcp.server as s_mod
+
+        # Reset rate limit counter for poll tool
+        s_mod._tool_call_times["soma_poll_verification"].clear()
+
+        # Initialize server session
+        init_req = {
+            "jsonrpc": "2.0",
+            "id": 1,
+            "method": "initialize",
+            "params": {"capabilities": {}}
+        }
+        handle_request(init_req)
+
+        # Flood 70 requests with non-existent job_ids (rate limit is 60/60s)
+        for i in range(70):
+            req = {
+                "jsonrpc": "2.0",
+                "id": 100 + i,
+                "method": "tools/call",
+                "params": {
+                    "name": "soma_poll_verification",
+                    "arguments": {"job_id": f"bogus-job-{i}"}
+                }
+            }
+            res = handle_request(req)
+            assert "error" in res
+            assert res["error"]["code"] == -32602, f"Expected -32602 invalid job_id, got {res}"
+            assert "not found" in res["error"]["message"].lower()
+
+        # Legitimate job can still be polled without hitting rate limit
+        real_job = create_job(workspace="/tmp", files=[])
+        real_req = {
+            "jsonrpc": "2.0",
+            "id": 999,
+            "method": "tools/call",
+            "params": {
+                "name": "soma_poll_verification",
+                "arguments": {"job_id": real_job.job_id}
+            }
+        }
+        real_res = handle_request(real_req)
+        assert "result" in real_res, f"Expected successful poll result, got {real_res}"

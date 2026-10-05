@@ -4,6 +4,7 @@ import json
 import os
 import secrets
 import sys
+import threading
 import time
 import traceback
 from collections import defaultdict
@@ -56,27 +57,32 @@ _RATE_LIMITS = {
 }
 
 
+_rate_limit_lock = threading.Lock()
+
+
 def _check_rate_limit(tool_name: str) -> bool:
     """Return True if the call is within rate limits, False if exceeded."""
     if tool_name not in _RATE_LIMITS:
         return True
     max_calls, window_seconds = _RATE_LIMITS[tool_name]
     now = time.monotonic()
-    timestamps = _tool_call_times[tool_name]
-    # Prune old entries
-    _tool_call_times[tool_name] = [t for t in timestamps if now - t < window_seconds]
-    if len(_tool_call_times[tool_name]) >= max_calls:
-        return False
-    _tool_call_times[tool_name].append(now)
-    return True
+    with _rate_limit_lock:
+        timestamps = _tool_call_times[tool_name]
+        # Prune old entries
+        _tool_call_times[tool_name] = [t for t in timestamps if now - t < window_seconds]
+        if len(_tool_call_times[tool_name]) >= max_calls:
+            return False
+        _tool_call_times[tool_name].append(now)
+        return True
 
 
 def _rollback_rate_limit(tool_name: str) -> None:
     """Revert the most recent rate-limit record if authorization/receipt verification fails."""
     if tool_name in _RATE_LIMITS:
-        times = _tool_call_times.get(tool_name, [])
-        if times:
-            times.pop()
+        with _rate_limit_lock:
+            times = _tool_call_times.get(tool_name, [])
+            if times:
+                times.pop()
 
 # Messages that mean "the operation did not happen", regardless of the tool.
 _ERROR_STATUSES = ("FAIL", "FAILED", "ERROR", "REJECTED", "BLOCKED", "ESCALATION_REQUIRED")
@@ -220,6 +226,12 @@ def handle_request(request: Dict[str, Any]) -> Dict[str, Any]:
         if not isinstance(args, dict):
             return _error(req_id, -32602, "Tool arguments must be an object.")
 
+        client_token = params.get("_sessionToken") or (args.get("_sessionToken") if isinstance(args, dict) else None)
+        if client_token is not None:
+            from soma_core.receipts import _safe_compare
+            if not _safe_compare(client_token, _session_token):
+                return _error(req_id, -32002, "Invalid session token")
+
         if name == "soma_request_receipt":
             if not _check_rate_limit("soma_request_receipt"):
                 limit_info = _RATE_LIMITS.get("soma_request_receipt", (60, 60))
@@ -298,6 +310,18 @@ def handle_request(request: Dict[str, Any]) -> Dict[str, Any]:
                 }
             }
 
+        # Pre-validate read tools with specific requirements (e.g. soma_poll_verification)
+        # to ensure unauthenticated invalid requests do not drain rate limit quotas
+        if name == "soma_poll_verification":
+            job_id = args.get("job_id")
+            if not job_id or not isinstance(job_id, str):
+                _rollback_rate_limit(name)
+                return _error(req_id, -32602, "Missing or invalid 'job_id'")
+            from soma_core.verification_jobs import get_job
+            if get_job(job_id) is None:
+                _rollback_rate_limit(name)
+                return _error(req_id, -32602, f"Verification job '{job_id}' not found or expired.")
+
         # Both EXECUTE and WRITE tools require a valid receipt
         if name in _EXECUTE_TOOLS or name in _WRITE_TOOLS:
             if name in _EXECUTE_TOOLS and not _execution_enabled:
@@ -344,6 +368,8 @@ def handle_request(request: Dict[str, Any]) -> Dict[str, Any]:
             with contextlib.redirect_stdout(sys.stderr):
                 result = execute_tool(name, args)
             is_error = _is_error_result(result)
+            if is_error:
+                _rollback_rate_limit(name)
             return {
                 "jsonrpc": "2.0",
                 "id": req_id,
@@ -358,6 +384,7 @@ def handle_request(request: Dict[str, Any]) -> Dict[str, Any]:
                 }
             }
         except Exception as e:
+            _rollback_rate_limit(name)
             traceback.print_exc(file=sys.stderr)
             return {
                 "jsonrpc": "2.0",
@@ -366,7 +393,7 @@ def handle_request(request: Dict[str, Any]) -> Dict[str, Any]:
                     "content": [
                         {
                             "type": "text",
-                            "text": f"Error: {e!s}"
+                            "text": f"Tool execution failed: {str(e)}"
                         }
                     ],
                     "isError": True

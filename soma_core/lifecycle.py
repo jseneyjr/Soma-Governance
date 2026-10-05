@@ -1790,6 +1790,7 @@ __all__ = [
     "PROMOTION_THRESHOLD",
     "MIN_PROMOTION_TRIGGERS",
     "DEFAULT_DECAY_FACTOR",
+    "DECAY_FACTOR",
     "VALID_TYPES",
     "METAMORPHOSIS_PATHS",
     "calculate_fitness_status",

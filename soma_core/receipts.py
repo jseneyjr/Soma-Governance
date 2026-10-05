@@ -4,9 +4,11 @@ import os
 import time
 import threading
 import hashlib
+import hmac
 from typing import Dict, Any, Iterable, List, Optional
 
 from soma_core.cell_inventory import inventory_cells
+from soma_core.workspace import confine_path
 
 # Argument keys that name workspace files a tool will read or act on. A receipt
 # binds the content of each of these, so editing a target between issuance and
@@ -71,17 +73,19 @@ def target_paths(args: Dict[str, Any]) -> List[str]:
     return sorted(set(p for p in found if p))
 
 
+def _safe_compare(a: Any, b: Any) -> bool:
+    """Safely compare two strings or byte sequences in constant time without non-ASCII crash."""
+    if not isinstance(a, (str, bytes)) or not isinstance(b, (str, bytes)):
+        return False
+    a_bytes = a.encode("utf-8") if isinstance(a, str) else a
+    b_bytes = b.encode("utf-8") if isinstance(b, str) else b
+    return hmac.compare_digest(a_bytes, b_bytes)
+
+
 def _confined(workspace: str, rel_or_abs: str) -> str:
-    """Resolve a path and require it to stay inside the workspace."""
-    root = os.path.realpath(workspace)
-    candidate = os.path.realpath(os.path.join(root, rel_or_abs))
-    try:
-        inside = os.path.commonpath([root, candidate]) == root
-    except ValueError:
-        inside = False
-    if not inside or candidate == root:
-        raise ValueError(f"path escapes the workspace: {rel_or_abs!r}")
-    return candidate
+    """Resolve a path and require it to stay inside the workspace using single-authority confinement."""
+    resolved, _ = confine_path(rel_or_abs, workspace)
+    return resolved
 
 
 def compute_file_digest(workspace: str, paths: Iterable[str]) -> str:
@@ -171,14 +175,13 @@ def verify_receipt(
             _receipt_store.pop(receipt_id, None)
             return False
         
-        import hmac
         is_valid = (
-            hmac.compare_digest(stored["session_id"], session_id) and
-            hmac.compare_digest(stored["workspace"], workspace) and
-            hmac.compare_digest(stored["operation"], operation) and
-            hmac.compare_digest(stored["args_hash"], _hash_args(args)) and
-            hmac.compare_digest(stored["file_digest"], file_digest) and
-            hmac.compare_digest(stored["cell_digest"], cell_digest)
+            _safe_compare(stored["session_id"], session_id) and
+            _safe_compare(stored["workspace"], workspace) and
+            _safe_compare(stored["operation"], operation) and
+            _safe_compare(stored["args_hash"], _hash_args(args)) and
+            _safe_compare(stored["file_digest"], file_digest) and
+            _safe_compare(stored["cell_digest"], cell_digest)
         )
         
         # Single-use: burn receipt upon successful redemption when consume=True

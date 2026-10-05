@@ -472,8 +472,9 @@ def soma_propose_change(
 def _parse_cell(filepath: str) -> Tuple[Dict[str, Any], str]:
     """Parse cell frontmatter and body."""
     try:
-        from soma_sdk.cells import parse_cell_file as _sdk_parse
-        return _sdk_parse(filepath)
+        from soma_core.lifecycle import parse_cell as _core_parse
+        fm, body = _core_parse(filepath)
+        return (fm or {}, body)
     except Exception:
         from soma_core.frontmatter import _parse_frontmatter, _get_body
         with open(filepath, "r", encoding="utf-8") as f:
@@ -546,10 +547,10 @@ def generate_checkpoint(workspace: Optional[str] = None, session_count: Optional
     evidence = _load_fitness_evidence(ws)
 
     try:
-        from enzymes.cell_expiry import audit_expiry
+        from soma_core.defects import audit_expiry
     except ImportError:
         try:
-            from cell_expiry import audit_expiry
+            from enzymes.cell_expiry import audit_expiry
         except ImportError:
             def audit_expiry(*_args, **_kwargs):
                 return []

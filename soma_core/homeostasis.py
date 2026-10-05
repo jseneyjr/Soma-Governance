@@ -515,6 +515,7 @@ __all__ = [
     "cli_soma_interoception",
     "STRESS_THRESHOLD",
     "DRIFT_THRESHOLD",
+    "WEIGHTS",
     "calculate_stress_response",
     "cli_resilience_engine",
 ]
