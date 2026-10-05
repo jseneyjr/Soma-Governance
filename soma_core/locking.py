@@ -156,3 +156,11 @@ def workspace_lock(
             finally:
                 os.close(fd)
         thread_lock.release()
+
+
+__all__ = [
+    "LOCK_DIRNAME",
+    "LockTimeoutError",
+    "workspace_lock",
+]
+

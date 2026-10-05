@@ -152,3 +152,10 @@ def aggregate_signals(evidence_dir: str) -> SignalAggregation:
         entry["tp"] = _plain_number(entry["tp"])
         entry["fp"] = _plain_number(entry["fp"])
     return SignalAggregation(counts, errors, trigger_events)
+
+
+__all__ = [
+    "SignalAggregation",
+    "aggregate_signals",
+]
+

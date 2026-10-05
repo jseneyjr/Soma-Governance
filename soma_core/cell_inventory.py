@@ -241,3 +241,12 @@ def inventory_cells(workspace: str) -> CellInventory:
         aggregate.update(bytes.fromhex(entry.digest))
         aggregate.update(b"\0")
     return CellInventory(entries=tuple(entries), fingerprint=aggregate.hexdigest())
+
+
+__all__ = [
+    "CellInventory",
+    "CellInventoryEntry",
+    "CellInventoryError",
+    "inventory_cells",
+]
+

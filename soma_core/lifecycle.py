@@ -1006,11 +1006,11 @@ def cli_cell_promote(argv: list[str] | None = None, workspace: Optional[str] = N
                 if new_tier != enforcement:
                     print(f"Promoted/Demoted {cell_name}: {enforcement} -> {new_tier} ({reason})")
                     if new_tier in ('mechanical', 'gate'):
-                        enforce_script = os.path.join(os.path.dirname(__file__), '..', 'enzymes', 'cell_enforce.py')
-                        if not os.path.exists(enforce_script):
-                            enforce_script = os.path.join(ws, 'enzymes', 'cell_enforce.py')
-                        if os.path.exists(enforce_script):
-                            subprocess.run([sys.executable, enforce_script, '--cell', cell_name], cwd=ws)
+                        try:
+                            from soma_core.enforcement import cli_cell_enforce
+                            cli_cell_enforce(['--cell', cell_name], workspace=ws)
+                        except Exception as e:
+                            print(f"Error enforcing cell {cell_name}: {e}", file=sys.stderr)
                 else:
                     print(f"No tier change for {cell_name}: already at {enforcement}")
         return 0
@@ -1653,15 +1653,13 @@ def decayed_fitness(raw_score: Optional[float], last_trigger_date: Any, telomere
     return round(raw_score * decay_factor, 4)
 
 
-def cli_cell_fitness(argv: list[str] | None = None, workspace: Optional[str] = None) -> int:
-    parser = argparse.ArgumentParser(description="Compute fitness of immune cells")
-    parser.add_argument("--json", action="store_true", help="Output as JSON")
-    parser.add_argument("--prune", action="store_true", help="List cells recommended for removal")
-    parser.add_argument("--promote", action="store_true", help="List cells ready for cross-repo promotion")
-    parser.add_argument("--cross-repo", action="store_true", help="Aggregate fitness across multiple repos")
-    parser.add_argument("--bayesian", action="store_true", help="Output bayesian estimates")
-    args = parser.parse_args(argv if argv is not None else sys.argv[1:])
-
+def compute_cells_fitness(
+    workspace: Optional[str] = None,
+    bayesian: bool = False,
+    prune: bool = False,
+    promote: bool = False,
+) -> list[dict]:
+    """Compute fitness of immune cells in workspace."""
     ws = workspace or resolve_workspace(start=__file__)
     total_sessions = 30
     conf_path = os.path.join(ws, "soma.conf")
@@ -1752,14 +1750,33 @@ def cli_cell_fitness(argv: list[str] | None = None, workspace: Optional[str] = N
             "enforcement": enforcement,
             "enhanced_fitness": enhanced_score,
         }
-        if args.bayesian:
+        if bayesian:
             res['bayesian'] = bayesian_fitness(tp, fp)
         results.append(res)
 
-    if args.prune:
+    if prune:
         results = [r for r in results if r['status'] in ("EXTINCT", "DORMANT")]
-    elif args.promote:
+    elif promote:
         results = [r for r in results if r['score'] is not None and r['score'] > 0.7 and r.get('triggers', 0) > 0]
+
+    return results
+
+
+def cli_cell_fitness(argv: list[str] | None = None, workspace: Optional[str] = None) -> int:
+    parser = argparse.ArgumentParser(description="Compute fitness of immune cells")
+    parser.add_argument("--json", action="store_true", help="Output as JSON")
+    parser.add_argument("--prune", action="store_true", help="List cells recommended for removal")
+    parser.add_argument("--promote", action="store_true", help="List cells ready for cross-repo promotion")
+    parser.add_argument("--cross-repo", action="store_true", help="Aggregate fitness across multiple repos")
+    parser.add_argument("--bayesian", action="store_true", help="Output bayesian estimates")
+    args = parser.parse_args(argv if argv is not None else sys.argv[1:])
+
+    results = compute_cells_fitness(
+        workspace=workspace,
+        bayesian=args.bayesian,
+        prune=args.prune,
+        promote=args.promote,
+    )
 
     if args.json:
         print(json.dumps(results, indent=2))
@@ -1828,5 +1845,6 @@ __all__ = [
     "antifragile_bonus",
     "format_snr",
     "decayed_fitness",
+    "compute_cells_fitness",
     "cli_cell_fitness",
 ]

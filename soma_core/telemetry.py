@@ -1547,6 +1547,111 @@ def resolve_metrics_dir(workspace: Path | str) -> Path:
     return default
 
 
+def compute_token_census(workspace: Path | str | None = None, model: str = "gemini-2.0-flash") -> dict:
+    """Compute token census across genome rules and organ skills without subprocess."""
+    ws = Path(workspace).resolve() if workspace else Path(resolve_workspace()).resolve()
+    rules_dir = ws / "genome"
+    skills_dir = ws / "organs"
+
+    results = []
+    total_words = 0
+    total_tokens = 0
+    fallback_ratio = 1.35
+
+    def _wc(text: str) -> int:
+        return len(text.split())
+
+    def _extract_fm(text: str) -> str:
+        m = re.match(r"^---\n(.*?)\n---", text, re.DOTALL)
+        return m.group(1) if m else ""
+
+    def _get_trig(fm: str) -> str:
+        m = re.search(r"^trigger:\s*(.*)$", fm, re.MULTILINE)
+        return m.group(1).strip() if m else "unknown"
+
+    if rules_dir.is_dir():
+        for fpath in sorted(rules_dir.glob("*.md")):
+            try:
+                content = fpath.read_text(encoding="utf-8")
+            except OSError:
+                continue
+            fm = _extract_fm(content)
+            trig = _get_trig(fm)
+            w_full = _wc(content)
+            w_fm = _wc(fm)
+
+            if trig == "always_on":
+                c_type = "always_on_rule"
+                t_idle = int(w_full * fallback_ratio)
+                t_active = t_idle
+                w_idle = w_full
+                w_active = w_full
+            else:
+                c_type = "conditional_rule"
+                t_idle = int(w_fm * fallback_ratio)
+                t_active = int(w_full * fallback_ratio)
+                w_idle = w_fm
+                w_active = w_full
+
+            total_words += w_full
+            total_tokens += t_active
+            results.append({
+                "filename": f"genome/{fpath.name}",
+                "type": c_type,
+                "idle_words": w_idle,
+                "idle_tokens": t_idle,
+                "active_words": w_active,
+                "active_tokens": t_active,
+                "ratio": t_active / w_active if w_active else 0,
+            })
+
+    if skills_dir.is_dir():
+        for fpath in sorted(skills_dir.glob("*/SKILL.md")):
+            skill_name = fpath.parent.name
+            try:
+                content = fpath.read_text(encoding="utf-8")
+            except OSError:
+                continue
+            fm = _extract_fm(content)
+            w_full = _wc(content)
+            w_fm = _wc(fm)
+            t_idle = int(w_fm * fallback_ratio)
+            t_active = int(w_full * fallback_ratio)
+            w_idle = w_fm
+            w_active = w_full
+
+            total_words += w_full
+            total_tokens += t_active
+            results.append({
+                "filename": f"organs/{skill_name}/SKILL.md",
+                "type": "skill",
+                "idle_words": w_idle,
+                "idle_tokens": t_idle,
+                "active_words": w_active,
+                "active_tokens": t_active,
+                "ratio": t_active / w_active if w_active else 0,
+            })
+
+    calibrated_ratio = total_tokens / total_words if total_words else fallback_ratio
+    subtotals = {
+        "always_on_rules_idle_tokens": sum(r["idle_tokens"] for r in results if r["type"] == "always_on_rule"),
+        "conditional_rules_idle_tokens": sum(r["idle_tokens"] for r in results if r["type"] == "conditional_rule"),
+        "conditional_rules_active_tokens": sum(r["active_tokens"] for r in results if r["type"] == "conditional_rule"),
+        "skills_idle_tokens": sum(r["idle_tokens"] for r in results if r["type"] == "skill"),
+        "skills_active_tokens": sum(r["active_tokens"] for r in results if r["type"] == "skill"),
+    }
+    grand_total_idle = subtotals["always_on_rules_idle_tokens"] + subtotals["conditional_rules_idle_tokens"] + subtotals["skills_idle_tokens"]
+
+    return {
+        "model": model,
+        "measured_with_sdk": False,
+        "calibrated_ratio": round(calibrated_ratio, 2),
+        "files": results,
+        "subtotals": subtotals,
+        "grand_total_idle": grand_total_idle,
+    }
+
+
 def take_snapshot(
     json_mode: bool = False,
     raw_mode: bool = False,
@@ -1557,14 +1662,9 @@ def take_snapshot(
     ws = Path(workspace).resolve() if workspace else Path(resolve_workspace()).resolve()
     metrics_dir = resolve_metrics_dir(ws)
 
-    census_script = ws / "enzymes" / "token_census.py"
-    if census_script.is_file():
-        result = subprocess.run([sys.executable, str(census_script), "--json"], capture_output=True, text=True)
-        if result.returncode != 0:
-            print("Error running token_census.py", file=sys.stderr)
-            return 1
-        census = json.loads(result.stdout)
-    else:
+    try:
+        census = compute_token_census(ws)
+    except Exception:
         census = {
             "files": [],
             "subtotals": {"always_on_rules_idle_tokens": 0, "conditional_rules_idle_tokens": 0, "skills_idle_tokens": 0},
@@ -2134,6 +2234,7 @@ __all__ = [
     "update_fitness",
     "cli_fitness_updater",
     "resolve_metrics_dir",
+    "compute_token_census",
     "take_snapshot",
     "cli_metrics_snapshot",
     "evaluate_quorum",

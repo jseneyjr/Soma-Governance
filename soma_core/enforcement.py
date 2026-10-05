@@ -536,7 +536,7 @@ def update_cell_enforcement_artifact(cell: Dict[str, Any], artifact_path: str, w
         f.write(new_content)
 
 
-def cli_cell_enforce(argv: Optional[List[str]] = None) -> int:
+def cli_cell_enforce(argv: Optional[List[str]] = None, workspace: Optional[str] = None) -> int:
     parser = argparse.ArgumentParser(description="Auto-generate enforcement artifacts for cells")
     parser.add_argument("--cell", default=None, help="Generate for specific cell")
     parser.add_argument("--dry-run", action="store_true", help="Preview without writing")
@@ -544,7 +544,7 @@ def cli_cell_enforce(argv: Optional[List[str]] = None) -> int:
     parser.add_argument("--json", action="store_true", help="Output JSON")
 
     args = parser.parse_args(argv if argv is not None else sys.argv[1:])
-    ws = resolve_workspace()
+    ws = workspace or resolve_workspace()
     cells_dir = os.path.join(ws, ".soma", "cells")
     cells = load_cells_for_enforcement(cells_dir)
 

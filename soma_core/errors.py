@@ -65,3 +65,13 @@ class LockTimeoutError(SomaError, TimeoutError):
     ) -> None:
         super().__init__(message, code=code, resource=resource, **kwargs)
         self.resource = resource
+
+
+__all__ = [
+    "CellCorruptError",
+    "LockTimeoutError",
+    "ReceiptExpiredError",
+    "SomaError",
+    "SomaValidationError",
+]
+

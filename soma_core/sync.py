@@ -550,35 +550,35 @@ def run_push(repo_dir: Path, team_repo: Path, org_repo: Path | None, member_id: 
     snap_dir.mkdir(parents=True, exist_ok=True)
 
     cells_dir = repo_dir / ".soma" / "cells"
-    cell_fitness_py = repo_dir / "enzymes" / "cell_fitness.py"
 
     try:
-        res = subprocess.run([sys.executable, str(cell_fitness_py), "--json"], capture_output=True, text=True)
-        if res.returncode == 0:
-            data = json.loads(res.stdout)
-            for item in data:
-                if item.get("score") is not None and item.get("score") > 0.85:
-                    cell_name = item["cell"]
-                    src = cells_dir / cell_name
-                    if not src.is_file():
-                        for match in cells_dir.rglob(cell_name):
-                            if match.is_file():
-                                src = match
-                                break
-                    if src.is_file():
-                        shutil.copy2(str(src), str(promoted_dir / cell_name))
-                        print(f"Promoted: {cell_name}")
-                        if org_repo:
-                            org_promoted_dir = org_repo / "cells" / "promoted"
-                            org_promoted_dir.mkdir(parents=True, exist_ok=True)
-                            shutil.copy2(str(src), str(org_promoted_dir / cell_name))
+        from soma_core.lifecycle import compute_cells_fitness
+        data = compute_cells_fitness(workspace=str(repo_dir))
+        for item in data:
+            if item.get("score") is not None and item.get("score") > 0.85:
+                cell_name = item["cell"]
+                src = cells_dir / cell_name
+                if not src.is_file():
+                    for match in cells_dir.rglob(cell_name):
+                        if match.is_file():
+                            src = match
+                            break
+                if src.is_file():
+                    shutil.copy2(str(src), str(promoted_dir / cell_name))
+                    print(f"Promoted: {cell_name}")
+                    if org_repo:
+                        org_promoted_dir = org_repo / "cells" / "promoted"
+                        org_promoted_dir.mkdir(parents=True, exist_ok=True)
+                        shutil.copy2(str(src), str(org_promoted_dir / cell_name))
     except Exception as e:
         print(f"Error syncing cells: {e}", file=sys.stderr)
 
     print("Syncing metrics snapshot...")
-    metrics_snapshot_py = repo_dir / "enzymes" / "metrics_snapshot.py"
-    if metrics_snapshot_py.is_file():
-        subprocess.run([sys.executable, str(metrics_snapshot_py), "--save"], capture_output=True)
+    try:
+        from soma_core.telemetry import take_snapshot
+        take_snapshot(save=True, workspace=repo_dir)
+    except Exception as e:
+        print(f"Error syncing metrics snapshot: {e}", file=sys.stderr)
 
     metrics_repo = repo_dir / "docs" / "snapshots"
     snapshots = sorted(metrics_repo.glob("*.json"), key=os.path.getmtime, reverse=True)

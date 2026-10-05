@@ -204,3 +204,19 @@ def clear_receipts():
     """Clear all receipts (simulates process restart invalidation)."""
     with _receipt_lock:
         _receipt_store.clear()
+
+
+__all__ = [
+    "DEFAULT_TTL_SECONDS",
+    "MAX_RECEIPTS",
+    "SERVER_OWNED_KEYS",
+    "TARGET_PATH_KEYS",
+    "clear_receipts",
+    "compute_cell_digest",
+    "compute_file_digest",
+    "issue_receipt",
+    "strip_server_owned",
+    "target_paths",
+    "verify_receipt",
+]
+

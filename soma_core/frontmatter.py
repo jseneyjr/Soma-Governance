@@ -405,3 +405,12 @@ def _get_body(content: str) -> str:
     if end == -1:
         return content
     return content[end + 3:].strip()
+
+
+__all__ = [
+    "FrontmatterError",
+    "dump_frontmatter",
+    "parse_frontmatter",
+    "parse_yaml_subset",
+]
+

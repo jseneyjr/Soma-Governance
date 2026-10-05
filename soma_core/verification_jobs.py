@@ -322,3 +322,25 @@ def restore_jobs_state(workspace: str) -> list[VerificationJob]:
     except Exception:
         return []
 
+
+__all__ = [
+    "JOB_STATUS_CANCELLED",
+    "JOB_STATUS_COMPLETED",
+    "JOB_STATUS_FAILED",
+    "JOB_STATUS_QUEUED",
+    "JOB_STATUS_RUNNING",
+    "JOB_TTL_SECONDS",
+    "MAX_JOBS",
+    "VerificationJob",
+    "clean_expired_jobs",
+    "clear_all_jobs",
+    "create_job",
+    "get_job",
+    "list_jobs",
+    "persist_jobs_state",
+    "restore_jobs_state",
+    "shutdown_verification_engine",
+    "submit_verification_job",
+]
+
+
