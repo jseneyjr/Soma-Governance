@@ -32,56 +32,9 @@ fi
 
 echo "Bumping version from $OLD_VERSION to $NEW_VERSION..."
 
-source "$(dirname "${BASH_SOURCE[0]}")/soma_python.sh"
+SCRIPT_DIR="$(cd -P "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "$SCRIPT_DIR/soma_python.sh"
 soma_resolve_python || exit 1
 
-soma_py -c '
-import os, sys, re
-
-repo_root = sys.argv[1]
-old = sys.argv[2]
-new = sys.argv[3]
-
-def update_security(c, o, n):
-    o_mm = ".".join(o.split(".")[:2])
-    n_mm = ".".join(n.split(".")[:2])
-    if o_mm == n_mm:
-        return c, 1
-    c1, cnt1 = re.subn(rf"(\|\s*){re.escape(o_mm)}\.x(\s*\|\s*✅\s*\|)", rf"\g<1>{n_mm}.x\g<2>", c)
-    c2, cnt2 = re.subn(rf"(\|\s*<\s*){re.escape(o_mm)}(\s*\|\s*❌\s*\|)", rf"\g<1>{n_mm}\g<2>", c1)
-    return c2, 1 if (cnt1 == 1 and cnt2 == 1) else 0
-
-handlers = {
-    "VERSION": lambda c, o, n: (f"{n}\n", 1 if c.strip() == o else 0),
-    "pyproject.toml": lambda c, o, n: re.subn(r"(?m)^version\s*=\s*\"" + re.escape(o) + r"\"", f"version = \"{n}\"", c),
-    "soma_sdk/__init__.py": lambda c, o, n: re.subn(r"(?m)^__version__\s*=\s*([\"\x27])" + re.escape(o) + r"\1", rf"__version__ = \g<1>{n}\g<1>", c),
-    "soma_sdk_js/package.json": lambda c, o, n: re.subn(r"(?m)^(\s*\"version\"\s*:\s*\")" + re.escape(o) + r"(\")", rf"\g<1>{n}\g<2>", c),
-    "README.md": lambda c, o, n: re.subn(r"(\[!\[Version\]\(https://img\.shields\.io/badge/Version-)" + re.escape(o) + r"(-informational)", rf"\g<1>{n}\g<2>", c),
-    "docs/KNOWN_ISSUES_WINDOWS.md": lambda c, o, n: re.subn(rf"(# Known Issues — Windows \(v){re.escape(o)}(\)\s+Open Windows issues as of v){re.escape(o)}", rf"\g<1>{n}\g<2>{n}", c),
-    "SECURITY.md": update_security,
-}
-
-updates = {}
-for rel, fn in handlers.items():
-    path = os.path.join(repo_root, rel)
-    if not os.path.isfile(path):
-        print(f"  ❌ Error: {rel} not found", file=sys.stderr)
-        sys.exit(1)
-    with open(path, "r", encoding="utf-8") as f:
-        content = f.read()
-    new_content, count = fn(content, old, new)
-    if count == 0:
-        print(f"  ❌ Error: Version pattern for \"{old}\" not found in {rel}", file=sys.stderr)
-        sys.exit(1)
-    elif count > 1:
-        print(f"  ❌ Error: Ambiguous match ({count} occurrences) in {rel}", file=sys.stderr)
-        sys.exit(1)
-    updates[path] = (rel, new_content)
-
-for path, (rel, new_content) in updates.items():
-    with open(path, "w", encoding="utf-8") as f:
-        f.write(new_content)
-    print(f"  ✅ Updated {rel}")
-' "$REPO_ROOT" "$OLD_VERSION" "$NEW_VERSION"
-
-echo "Successfully bumped all surfaces to $NEW_VERSION."
+soma_py "$SCRIPT_DIR/bump_version.py" "$@"
+exit $?
