@@ -119,3 +119,57 @@ def test_run_transfer_argparse_validation(capsys):
     rc = run_transfer(args_empty)
     assert rc == 1
     assert "Missing cell_id or --to directory" in capsys.readouterr().err
+
+
+def test_transfer_cell_plasmodesmata_correct_directory(tmp_path):
+    src = tmp_path / "src"
+    cells = src / ".soma" / "cells" / "plasmodesmata"
+    cells.mkdir(parents=True)
+    (cells / "bridge-contract.md").write_text(
+        "---\n"
+        "id: bridge-contract\n"
+        "type: plasmodesmata\n"
+        "target_paths:\n"
+        "  - \"src/bridge/*.py\"\n"
+        "---\n"
+        "# Plasmodesmata Bridge\n",
+        encoding="utf-8",
+    )
+
+    target = tmp_path / "target"
+    (target / ".soma").mkdir(parents=True)
+
+    rc = transfer_cell("bridge-contract", str(target), source_workspace=src)
+    assert rc == 0
+
+    dest = target / ".soma" / "cells" / "plasmodesmata" / "bridge-contract.md"
+    assert dest.exists(), "Plasmodesmata cell must be placed in plasmodesmata/, not plasmodesmatas/"
+    wrong_dest = target / ".soma" / "cells" / "plasmodesmatas"
+    assert not wrong_dest.exists(), "plasmodesmatas directory should not be created"
+
+
+def test_transfer_cell_without_yaml_module(tmp_path, monkeypatch):
+    import sys
+    monkeypatch.setitem(sys.modules, "yaml", None)
+
+    src = tmp_path / "src"
+    cells = src / ".soma" / "cells" / "walls"
+    cells.mkdir(parents=True)
+    (cells / "stdlib-wall.md").write_text(
+        "---\n"
+        "id: stdlib-wall\n"
+        "type: wall\n"
+        "description: pure stdlib test\n"
+        "---\n"
+        "# Wall Body\n",
+        encoding="utf-8",
+    )
+
+    target = tmp_path / "target"
+    (target / ".soma").mkdir(parents=True)
+
+    rc = transfer_cell("stdlib-wall", str(target), source_workspace=src)
+    assert rc == 0
+    dest = target / ".soma" / "cells" / "walls" / "stdlib-wall.md"
+    assert dest.exists()
+

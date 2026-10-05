@@ -13,10 +13,16 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Optional
 
-try:
-    import yaml
-except ImportError:
-    import json as yaml  # type: ignore
+from soma_core.frontmatter import dump_frontmatter, parse_frontmatter
+
+CELL_TYPE_DIRS: dict[str, str] = {
+    "vacuole": "vacuoles",
+    "chloroplast": "chloroplasts",
+    "wall": "walls",
+    "membrane": "membranes",
+    "plasmodesmata": "plasmodesmata",
+}
+
 
 
 def resolve_workspace() -> Optional[Path]:
@@ -71,23 +77,22 @@ def transfer_cell(
         print(f"Error reading {source_cell}: {e}", file=sys.stderr)
         return 1
 
-    if not content.startswith("---"):
+    clean_content = content.lstrip("\ufeff")
+    if not clean_content.startswith("---"):
         print("Error: Cell does not have YAML frontmatter.", file=sys.stderr)
         return 1
 
-    end_idx = content.find("---", 3)
+    end_idx = clean_content.find("---", 3)
     if end_idx == -1:
         print("Error: Cell has malformed YAML frontmatter.", file=sys.stderr)
         return 1
 
-    frontmatter_str = content[3:end_idx].strip()
-    body_str = content[end_idx + 3:]
-
-    try:
-        metadata = yaml.safe_load(frontmatter_str) or {}
-    except Exception as e:
-        print(f"Error parsing YAML: {e}", file=sys.stderr)
+    metadata = parse_frontmatter(clean_content)
+    if metadata is None:
+        print("Error: Cell has malformed YAML frontmatter.", file=sys.stderr)
         return 1
+
+    body_str = clean_content[end_idx + 3:]
 
     cell_type = metadata.get("type")
     if not cell_type:
@@ -105,7 +110,10 @@ def transfer_cell(
         else:
             cell_type = "vacuole"
 
-    plural_type = f"{cell_type}s" if not cell_type.endswith("s") else cell_type
+    plural_type = CELL_TYPE_DIRS.get(
+        str(cell_type),
+        str(cell_type) if str(cell_type).endswith("s") else f"{cell_type}s",
+    )
     target_cell_dir = target_dir / ".soma" / "cells" / plural_type
     target_cell_dir.mkdir(parents=True, exist_ok=True)
     dest_file = target_cell_dir / filename
@@ -134,7 +142,7 @@ def transfer_cell(
     }
 
     try:
-        new_frontmatter = yaml.dump(metadata, default_flow_style=False, sort_keys=False)
+        new_frontmatter = dump_frontmatter(metadata)
         clean_body = body_str[1:] if body_str.startswith("\n") else body_str
         dest_file.write_text(f"---\n{new_frontmatter}---\n{clean_body}", encoding="utf-8")
     except Exception as e:

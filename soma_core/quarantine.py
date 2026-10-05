@@ -13,9 +13,8 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Optional, Tuple
 
-import yaml
-
 from soma_core.frontmatter import parse_frontmatter
+from soma_core.storage import atomic_write_text
 
 QUARANTINE_DIR = "quarantine"
 QUARANTINE_LOG = "quarantine_log.jsonl"
@@ -152,9 +151,17 @@ def _extract_timestamp(filename: str, log_ts_str: Optional[str] = None, fallback
     # Check filename pattern <stem>.<timestamp>.corrupt
     m = re.search(r"\.(\d+)\.corrupt$", filename)
     if m:
-        ts = int(m.group(1))
-        iso_str = datetime.fromtimestamp(ts, tz=timezone.utc).isoformat()
-        return ts, iso_str
+        digits = m.group(1)
+        if len(digits) >= 9:
+            try:
+                val = int(digits)
+                if len(digits) in (12, 13) or val > 100_000_000_000:
+                    val //= 1000
+                if 946684800 <= val <= 4102444800:
+                    iso_str = datetime.fromtimestamp(val, tz=timezone.utc).isoformat()
+                    return val, iso_str
+            except (OverflowError, ValueError, OSError):
+                pass
     if log_ts_str:
         try:
             dt = datetime.fromisoformat(log_ts_str.replace("Z", "+00:00"))
@@ -274,7 +281,7 @@ def prune_quarantine(older_than_days: int = 30, workspace: Optional[Path | str] 
                         entry = json.loads(line)
                         if entry.get("quarantined_file") not in deleted_names:
                             kept.append(line)
-                log_file.write_text("\n".join(kept) + ("\n" if kept else ""), encoding="utf-8")
+                atomic_write_text(log_file, "\n".join(kept) + ("\n" if kept else ""))
             except Exception:
                 pass
 

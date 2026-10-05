@@ -9,6 +9,7 @@ import datetime
 import os
 import sys
 import threading
+import time
 import uuid
 from dataclasses import asdict, dataclass, field
 from typing import Any, Callable, Optional
@@ -238,7 +239,16 @@ def submit_verification_job(
     )
     with _ACTIVE_WORKERS_LOCK:
         _ACTIVE_WORKERS[job.job_id] = thread
-    thread.start()
+    try:
+        thread.start()
+    except Exception as exc:
+        with _ACTIVE_WORKERS_LOCK:
+            _ACTIVE_WORKERS.pop(job.job_id, None)
+        with _JOBS_LOCK:
+            job.status = JOB_STATUS_FAILED
+            job.error = f"thread_spawn_error: {exc}"
+            job.completed_at = _utc_now_iso()
+        raise
     return job
 
 
@@ -256,10 +266,11 @@ def shutdown_verification_engine(grace_period: float = 2.0) -> None:
         threads = list(_ACTIVE_WORKERS.values())
 
     if threads and grace_period > 0:
-        per_thread_timeout = grace_period / len(threads)
+        deadline = time.monotonic() + grace_period
         for t in threads:
             if t.is_alive():
-                t.join(timeout=per_thread_timeout)
+                remaining = max(0.0, deadline - time.monotonic())
+                t.join(timeout=remaining)
 
     with _ACTIVE_WORKERS_LOCK:
         _ACTIVE_WORKERS.clear()
@@ -300,6 +311,11 @@ def restore_jobs_state(workspace: str) -> list[VerificationJob]:
             for jid, d in data.items():
                 if jid not in _JOBS:
                     job = VerificationJob(**d)
+                    if job.status in (JOB_STATUS_QUEUED, JOB_STATUS_RUNNING):
+                        job.status = JOB_STATUS_FAILED
+                        job.error = "interrupted: process terminated before job completion"
+                        if not job.completed_at:
+                            job.completed_at = _utc_now_iso()
                     _JOBS[jid] = job
                 restored.append(_JOBS[jid])
         return restored

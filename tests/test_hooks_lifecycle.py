@@ -60,6 +60,10 @@ class TestSafetyGate:
             ("del /s /q C:\\*", "Windows command-line recursive"),
             ("del /f /s /q C:\\*", "Windows command-line recursive"),
             ("rmdir /s /q C:\\dir", "Windows command-line recursive"),
+            ("git -C /tmp push -f", "Force push"),
+            ("git --work-tree=. reset --hard", "Hard reset"),
+            ("/bin/rm -rf /", "Recursive delete"),
+            ("/usr/bin/rm -rf ~", "Recursive delete"),
         ],
     )
     def test_blocks_destructive_commands(self, cmd: str, expected_snippet: str, tmp_path: Path):
@@ -74,6 +78,9 @@ class TestSafetyGate:
             "git status",
             "git diff --cached",
             "git log -n 5",
+            "git commit -m \"git reset --hard\"",
+            "git commit -m \"push -f\"",
+            "git log --grep=\"reset --hard\"",
             "python -m pytest tests/",
             "ls -la",
             "echo 'hello world'",

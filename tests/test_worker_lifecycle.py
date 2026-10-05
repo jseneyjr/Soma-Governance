@@ -82,3 +82,43 @@ class TestWorkerLifecycleAndPersistence:
         assert updated.status == JOB_STATUS_FAILED
         assert "server_shutdown" in (updated.error or "")
 
+    def test_restore_in_flight_jobs_transitions_to_failed(self, tmp_path: Path):
+        """Restoring persisted jobs that were queued or running must mark them failed to prevent infinite hangs."""
+        from soma_core.verification_jobs import _JOBS, _JOBS_LOCK
+        soma_dir = tmp_path / ".soma"
+        soma_dir.mkdir(parents=True, exist_ok=True)
+        state_file = soma_dir / "jobs_state.json"
+
+        # Simulate state saved by a process before it was killed
+        state_file.write_text(
+            json.dumps({
+                "job-interrupted-1": {
+                    "job_id": "job-interrupted-1",
+                    "status": "QUEUED",
+                    "created_at": "2026-10-05T12:00:00Z",
+                    "workspace": str(tmp_path),
+                },
+                "job-interrupted-2": {
+                    "job_id": "job-interrupted-2",
+                    "status": "RUNNING",
+                    "created_at": "2026-10-05T12:00:01Z",
+                    "workspace": str(tmp_path),
+                },
+            }),
+            encoding="utf-8",
+        )
+
+        with _JOBS_LOCK:
+            _JOBS.pop("job-interrupted-1", None)
+            _JOBS.pop("job-interrupted-2", None)
+
+        restored = restore_jobs_state(str(tmp_path))
+        j1 = next(j for j in restored if j.job_id == "job-interrupted-1")
+        j2 = next(j for j in restored if j.job_id == "job-interrupted-2")
+
+        assert j1.status == JOB_STATUS_FAILED
+        assert "interrupted" in (j1.error or "")
+        assert j2.status == JOB_STATUS_FAILED
+        assert "interrupted" in (j2.error or "")
+
+

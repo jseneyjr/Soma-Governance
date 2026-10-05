@@ -52,23 +52,27 @@ SAFE_COMMAND_PREFIXES: tuple[str, ...] = (
 METACHARACTERS: frozenset[str] = frozenset({";", "&", "|", ">", "<", "`", "$", "\n", "\r", "(", ")", "\\"})
 DANGEROUS_FLAGS: tuple[str, ...] = ("-f", "--force", "-D", "-d", "-M", "--output", "--ext-cmd")
 
+_GIT_CMD_PREFIX = r'(?:^|[;&|`\(\)\n\r]\s*|(?:sudo|env|time|xargs)\s+)git(?:\.exe)?'
+_GIT_GLOBAL_OPTS = r'(?:\s+(?:-[a-zA-Z0-9_\-]+(?:\s+(?:[^\s\-;&|]+|[\'"][^\'"]*[\'"]))?|--[a-zA-Z0-9_\-]+(?:=(?:[^\s;&|]+|[\'"][^\'"]*[\'"])|\s+(?:[^\s\-;&|]+|[\'"][^\'"]*[\'"]))?))*'
+_GIT_CMD = rf'{_GIT_CMD_PREFIX}{_GIT_GLOBAL_OPTS}\s+'
+
 DESTRUCTIVE_PATTERNS: list[tuple[re.Pattern[str], str]] = [
     # git branch deletion or forced move/copy
     (
-        re.compile(r'\bgit\s+branch\b.*(?:\s+-(?:[a-zA-Z0-9]*[dDMf][a-zA-Z0-9]*|-(?:delete|force))\b)'),
+        re.compile(rf'{_GIT_CMD}branch\b.*(?:\s+-(?:[a-zA-Z0-9]*[dDMf][a-zA-Z0-9]*|-(?:delete|force))\b)'),
         "Destructive branch operation (git branch -d/-D/-M/-f/--delete/--force)",
     ),
     # git config override / exec-path injection
     (
-        re.compile(r'\bgit\b.*(?:\s+-c\b|\s+--exec-path|\s+--config-env)'),
+        re.compile(rf'{_GIT_CMD_PREFIX}\b.*(?:\s+-c\b|\s+--exec-path|\s+--config-env)'),
         "git configuration override / exec-path injection (-c/--exec-path/--config-env)",
     ),
     # git diff file write or arbitrary command execution
-    (re.compile(r'\bgit\s+diff\b.*--(?:output|ext-cmd)'), "git diff write/execute flag detected"),
+    (re.compile(rf'{_GIT_CMD}diff\b.*--(?:output|ext-cmd)'), "git diff write/execute flag detected"),
     # rm: catch -rf, -r -f, -fr, --recursive targeting home, root, current dir or wildcard (including quotes/subshells)
     (
         re.compile(
-            r'(?:^|[;&|`\(\)\s\'"])(?:(?:sh|bash|zsh)\s+-c\s+[\'"])?rm\s+(?:-[a-zA-Z0-9_\-]*r[a-zA-Z0-9_\-]*f|-[a-zA-Z0-9_\-]*f[a-zA-Z0-9_\-]*r|-r\s+-f|-f\s+-r|--recursive)\s+.*[\'"]?(?:/|~|/home|\$HOME|\.|\.\.|\*)[\'"]?',
+            r'(?:^|[;&|`\(\)\s\'"])(?:(?:sh|bash|zsh)\s+-c\s+[\'"])?(?:[^\s;`&|\'"\(\)]*[/\\])?rm\s+(?:-[a-zA-Z0-9_\-]*r[a-zA-Z0-9_\-]*f|-[a-zA-Z0-9_\-]*f[a-zA-Z0-9_\-]*r|-r\s+-f|-f\s+-r|--recursive)\s+.*[\'"]?(?:/|~|/home|\$HOME|\.|\.\.|\*)[\'"]?',
             re.IGNORECASE,
         ),
         "Recursive delete targeting home/root directory or wildcard/current directory",
@@ -115,31 +119,31 @@ DESTRUCTIVE_PATTERNS: list[tuple[re.Pattern[str], str]] = [
     ),
     # Git force push
     (
-        re.compile(r'git\s+push\s+.*(?:-f|--force|--force-with-lease)'),
+        re.compile(rf'{_GIT_CMD}push\s+.*(?:-f|--force|--force-with-lease)'),
         "Force push detected — destructive-ops mandate requires confirmation",
     ),
     (
-        re.compile(r'git\s+push\s+[^\s]+\s+\+'),
+        re.compile(rf'{_GIT_CMD}push\s+[^\s]+\s+\+'),
         "Force push via +refspec detected — destructive-ops mandate requires confirmation",
     ),
     # Git reset --hard
     (
-        re.compile(r'git\s+reset\s+.*--hard'),
+        re.compile(rf'{_GIT_CMD}reset\s+.*--hard'),
         "Hard reset — will discard uncommitted changes",
     ),
     # Git checkout -f
     (
-        re.compile(r'git\s+checkout\s+.*(?:-f|--force)\b'),
+        re.compile(rf'{_GIT_CMD}checkout\s+.*(?:-f|--force)\b'),
         "Force checkout — will discard uncommitted changes",
     ),
     # Git clean -f
     (
-        re.compile(r'git\s+clean\s+.*(?:-[a-zA-Z]*f[a-zA-Z]*|--force)'),
+        re.compile(rf'{_GIT_CMD}clean\s+.*(?:-[a-zA-Z]*f[a-zA-Z]*|--force)'),
         "git clean -f — will permanently remove untracked files",
     ),
     # Bulk git staging
     (
-        re.compile(r'git\s+add\s+(?:-A|\.|\./?|\*|--all)(?:\s+|$|[;&|>)])'),
+        re.compile(rf'{_GIT_CMD}add\s+(?:-A|\.|\./?|\*|--all)(?:\s+|$|[;&|>)])'),
         "Bulk staging (git add -A/./*/--all) — run git status first to verify file count",
     ),
     # Database destruction without WHERE
