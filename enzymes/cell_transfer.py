@@ -1,35 +1,40 @@
 #!/usr/bin/env python3
-"""cell_transfer.py: Copies a cell to another project with fitness reset.
+"""Backward-compatible forwarding shim for enzymes.cell_transfer.
 
-Backward-compatible forwarding layer to soma_cli.transfer.
-Usage:
-    python enzymes/cell_transfer.py <cell_id> --to /path/to/target/project
+Delegates cell transfer across workspaces to soma_core.lifecycle.
 """
 from __future__ import annotations
 
-import argparse
 import sys
 from pathlib import Path
 
-REPO_ROOT = Path(__file__).resolve().parent.parent
-if str(REPO_ROOT) not in sys.path:
-    sys.path.insert(0, str(REPO_ROOT))
+_REPO_ROOT = Path(__file__).resolve().parent.parent
+if str(_REPO_ROOT) not in sys.path:
+    sys.path.insert(0, str(_REPO_ROOT))
 
-from soma_cli.transfer import transfer_cell, resolve_workspace, run_transfer  # noqa: F401
+from soma_core.lifecycle import (
+    cli_cell_transfer,
+    transfer_cell,
+)
+from soma_core.workspace import resolve_workspace
+
+__all__ = [
+    "transfer_cell",
+    "resolve_workspace",
+    "main",
+]
+
+
+def __getattr__(name: str):
+    """Fallback delegation for dynamically queried attributes."""
+    import soma_core.lifecycle as _lc
+    return getattr(_lc, name)
 
 
 def main(argv: list[str] | None = None) -> int:
-    parser = argparse.ArgumentParser(description="Copies a cell to another project with fitness reset")
-    parser.add_argument("cell_id", nargs="?", default="", help="ID of cell to transfer")
-    parser.add_argument("--to", dest="target_dir", default="", help="Path to target project")
-    args = parser.parse_args(argv)
-
-    if not args.cell_id or not args.target_dir:
-        print("Error: Missing cell_id or --to directory", file=sys.stderr)
-        print("Usage: cell_transfer.py <cell_id> --to /path/to/target/project", file=sys.stderr)
-        return 1
-
-    return transfer_cell(cell_id=args.cell_id, target_dir_str=args.target_dir)
+    if hasattr(sys.stdout, "reconfigure"):
+        sys.stdout.reconfigure(errors="replace")
+    return cli_cell_transfer(argv)
 
 
 if __name__ == "__main__":
