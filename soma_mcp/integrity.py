@@ -204,13 +204,13 @@ def verify_signature(manifest: dict, key: bytes) -> bool:
     """Verify the manifest signature against the stored HMAC.
 
     Returns True if the signature matches, False if mismatch or missing.
-    Uses ``hmac.compare_digest`` for constant-time comparison.
+    Uses ``hmac.compare_digest`` on UTF-8 bytes for constant-time comparison.
     """
     stored_sig = manifest.get("signature")
-    if not stored_sig:
+    if not stored_sig or not isinstance(stored_sig, str):
         return False
     expected = sign_manifest(manifest, key)
-    return hmac.compare_digest(stored_sig, expected)
+    return hmac.compare_digest(stored_sig.encode("utf-8"), expected.encode("utf-8"))
 
 
 # ── Manifest I/O ─────────────────────────────────────────────────────

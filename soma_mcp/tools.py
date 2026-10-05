@@ -228,7 +228,7 @@ _STATUS_PASS = "PASS"
 _STATUS_FAIL = "FAIL"
 
 # Mirrors the "outcome" enum advertised in TOOL_DEFINITIONS for soma_report_outcome.
-_VALID_OUTCOMES = ("success", "partial", "failure", "tp", "fp")
+_VALID_OUTCOMES = ("success", "partial", "failure", "tp", "fp", "pass", "fail")
 
 
 _VERDICT_RE = re.compile(r'^\s*VERDICT:\s*([A-Z_]+)')
@@ -440,7 +440,7 @@ TOOL_DEFINITIONS = [
                 },
                 "outcome": {
                     "type": "string",
-                    "enum": ["success", "partial", "failure", "tp", "fp"],
+                    "enum": ["success", "partial", "failure", "tp", "fp", "pass", "fail"],
                     "description": "Overall outcome of the task"
                 },
                 "tests_passed": {"type": "boolean", "description": "Did tests pass?"},
@@ -1020,7 +1020,7 @@ def execute_tool(name: str, args: dict):
         rework_count = args.get('rework_count', 0)
         notes = args.get('notes', '')
         signal_map = {'success': 'tp', 'tp': 'tp', 'failure': 'fp',
-                      'fp': 'fp', 'partial': 'trigger'}
+                      'fp': 'fp', 'partial': 'trigger', 'pass': 'tp', 'fail': 'fp'}
         metadata = {
             'notes': notes,
             'tests_passed': tests_passed,

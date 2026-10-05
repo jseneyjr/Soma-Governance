@@ -192,15 +192,20 @@ class Governance:
 
         signal_type = "tp" if success else "fp"
         merged_metric = dict(metric or {})
+        session_id = kwargs.pop("session_id", None)
         source = kwargs.pop("source", "manual")
         principal = kwargs.pop("principal", "unknown")
-        idempotency_scope = kwargs.pop("idempotency_scope", "global")
+        idempotency_scope = kwargs.pop("idempotency_scope", None)
+        if idempotency_scope is None:
+            idempotency_scope = session_id if session_id else "global"
         idempotency_key = kwargs.pop("idempotency_key", "")
         expected_generation = kwargs.pop("expected_generation", None)
 
         if source not in VALID_SOURCES:
             raise ValueError(f"Invalid telemetry source '{source}'. Must be one of: {', '.join(VALID_SOURCES)}")
         merged_metric.update(kwargs)
+        if session_id:
+            merged_metric["session_id"] = session_id
         try:
             from soma_core.telemetry import append_signal
             return append_signal(
