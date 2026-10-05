@@ -13,6 +13,7 @@ if str(_REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(_REPO_ROOT))
 
 from soma_core.lifecycle import (
+    DECAY_FACTOR,
     apply_decay,
     cli_cell_promote,
     normalize_fitness,
@@ -20,6 +21,7 @@ from soma_core.lifecycle import (
 )
 
 __all__ = [
+    "DECAY_FACTOR",
     "apply_decay",
     "normalize_fitness",
     "resolve_metrics_dir",

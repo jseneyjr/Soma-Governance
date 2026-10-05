@@ -458,8 +458,23 @@ class Gate_{class_suffix}:
 
     @classmethod
     def enforce(cls, condition, message=None):
+        """Assert a condition. Halt on failure."""
         if not condition:
             msg = message or f"Gate violation: {{cls.HYPOTHESIS}}"
+            escaped_script = os.path.join(
+                os.path.dirname(__file__), '..', '..', 'vendor', 'soma',
+                'enzymes', 'cell_escaped_defects.py'
+            )
+            if not os.path.exists(escaped_script):
+                escaped_script = os.path.join(
+                    os.path.dirname(__file__), '..', '..', 'enzymes', 'cell_escaped_defects.py'
+                )
+            if os.path.exists(escaped_script) and cls.TARGET_PATHS:
+                subprocess.run(
+                    [sys.executable, escaped_script, '--event', 'crash',
+                     '--files'] + cls.TARGET_PATHS + ['--severity', 'critical'],
+                    capture_output=True
+                )
             raise RuntimeError(f"\U0001f6d1 GATE VIOLATION [{{cls.CELL_NAME}}]: {{msg}}")
 '''
     return assertion
