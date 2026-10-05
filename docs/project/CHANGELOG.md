@@ -3,6 +3,28 @@
 All notable changes to Soma are documented here.
 This project uses [Semantic Versioning](https://semver.org/).
 
+## [0.93.0] — 2026-10-05 — "Autonomous Lifecycle & Multi-Platform Parity"
+
+### Added
+- **Unified Cell Lifecycle State Machine** (Phase 1): Added `soma_core/lifecycle.py` defining canonical lifecycle states (`NEW`, `SURVIVE`, `ADAPT`, `EXTINCT`, `APOPTOSIS`, `WALL`, `GENOME`), Laplace-smoothed score calculations with Wilson bounds, protected rule invariants, and automated promotion/demotion evaluation.
+- **Cross-Platform Lifecycle Hook Runner** (Phase 2, BUG-014, BUG-032): Added `soma_cli/hooks.py` and registered `soma hook <phase>` (`python -m soma_cli.hooks <phase>`), enabling native, pure-Python lifecycle hook execution (`pre-commit`, `safety-gate`, `pre-invocation`, `session-close`) on Windows without bash dependencies.
+- **Native PowerShell Hook Deployment** (Phase 2): Added `-Hooks` switch and `Install-Hooks` function to `install/install.ps1`, replacing legacy bash warnings with native hook configuration for Gemini and Kiro platforms, and cross-platform pre-commit hook installation.
+- **Asynchronous Verification Engine & Job Polling** (Phase 3): Added `soma_core/verification_jobs.py` with in-memory thread-safe job state machine (`QUEUED`, `RUNNING`, `COMPLETED`, `FAILED`), TTL cleanup, and background worker threads. Added `soma_poll_verification` read-only MCP tool with annotations for non-blocking Layer 2 verification polling and receipt issuance.
+- **Arbitration Cycle 4 Evidence**: Added `.soma/evidence/arbitration_cycle_4.json` recording 0 divergences, 100% convergence across 4 files, and clean `SHIP` arbiter verdict.
+
+### Changed
+- **MCP Verification Async Mode**: Updated `soma_verify_changes` in `soma_mcp/tools.py` with optional `async_mode` parameter, returning immediate job tracking tokens when requested.
+- **MCP Server Capabilities**: Expanded read tools to 9 (16 total advertised tools) in `soma_mcp/server.py` and updated rate limiting (`soma_poll_verification` up to 60 calls/min).
+- **Scripts Architecture Reference**: Updated `docs/architecture/scripts.md` cataloging 122 scripts across all 7 categories (19 CLI commands, 12 MCP/Core modules).
+- **Single-Sourced Version Synchronization**: Synchronized release version `0.93.0` across all repository surfaces (`VERSION`, `pyproject.toml`, `README.md`, `soma_sdk/__init__.py`, `soma_sdk_js/package.json`, and `docs/KNOWN_ISSUES_WINDOWS.md`).
+
+### Fixed
+- **PowerShell Rule Encoding & BOM Parity** (BUG-014): Explicit UTF-8 decoding and encoding in `install/install.ps1`, preserving UTF-8 BOM across Windows PowerShell 5.1 and PowerShell 7.
+- **PowerShell Lifecycle Hook Parity** (BUG-032): Resolved absence of lifecycle hooks on native Windows environments via `soma hook` integration in `install/install.ps1`.
+- **Pre-Commit Checkpoint Noise Elimination**: Added `SOURCE_TO_TEST_MAP` (57 mappings) and directory-aware candidate test discovery in `immune_system/verification/checkpoint_checks.py`, eliminating 67 false-positive `Missing test file for...` warnings during pre-commit checks.
+- **Cross-Platform Temp Directory Portability**: Replaced hardcoded `/tmp` paths in `enzymes/ttc_verifier.py` with standard `tempfile.gettempdir()`.
+- **Bug Registry Full Resolution**: Verified all 69 registered bugs in `docs/project/BUG_REGISTRY.json` are fixed and verified (0 open bugs remaining).
+
 ## [0.92.3] — 2026-10-05 — "Maelstrom & Adaptive Remediation"
 
 ### Added

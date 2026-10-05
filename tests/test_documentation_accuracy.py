@@ -91,7 +91,7 @@ def test_readme_mcp_tool_inventory_matches_code():
     documented = set(re.findall(r"`(soma_[a-z_]+)`", section))
     expected = _tool_definition_names(ROOT / "soma_mcp" / "tools.py")
     assert documented == expected
-    assert len(expected) == 15
+    assert len(expected) == 16
 
 
 def test_readme_mcp_tiers_match_server_definitions():
@@ -104,7 +104,7 @@ def test_readme_mcp_tiers_match_server_definitions():
     }
     documented = {label: _readme_mcp_row(readme, label) for label in expected}
     assert documented == expected
-    assert len(set().union(*documented.values())) == 15
+    assert len(set().union(*documented.values())) == 16
 
 
 def test_documentation_index_local_links_exist():
@@ -137,7 +137,7 @@ def test_windows_issue_sections_match_bug_registry():
     windows = read(str(ROOT / "docs" / "KNOWN_ISSUES_WINDOWS.md"))
     assert windows.startswith(f"# Known Issues — Windows (v{version})")
     fixed, open_issues = windows.split("## Open issues", 1)
-    for bug_id in ("BUG-008", "BUG-009", "BUG-011"):
+    for bug_id in ("BUG-008", "BUG-009", "BUG-011", "BUG-014", "BUG-032"):
         assert bugs[bug_id]["fixed_in"] in (f"v{version}", "v0.89.0")
         assert f"### {bug_id}:" in fixed
         assert f"### {bug_id}:" not in open_issues
@@ -145,9 +145,7 @@ def test_windows_issue_sections_match_bug_registry():
         assert bugs[bug_id]["status"] == "fixed"
         assert f"### {bug_id}:" in fixed
         assert f"### {bug_id}:" not in open_issues
-    for bug_id in ("BUG-014",):
-        assert bugs[bug_id]["status"] == "open"
-        assert f"### {bug_id}:" in open_issues
+    assert "### BUG-" not in open_issues
 
 
 def test_scripts_reference_counts_match_unique_source_paths():

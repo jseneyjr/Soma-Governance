@@ -27,6 +27,7 @@ _EXPECTED = {
     "soma_report_outcome": (False, False, True, False),
     "soma_capture_insight": (False, False, False, False),
     "soma_generate_manifest": (False, True, True, False),
+    "soma_poll_verification": (True, False, True, False),
 }
 
 

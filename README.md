@@ -5,7 +5,7 @@
 [![Agent Skills](https://img.shields.io/badge/Agent_Skills-15-purple?style=flat-square)](#-agent-skills)
 [![Automation Scripts](https://img.shields.io/badge/Automation_Scripts-63-red?style=flat-square)](#%EF%B8%8F-automation-scripts)
 [![Adaptive Rules](https://img.shields.io/badge/Adaptive_Rules-5_Types-orange?style=flat-square)](#-adaptive-rules)
-[![Version](https://img.shields.io/badge/Version-0.92.3-informational?style=flat-square)](docs/project/CHANGELOG.md)
+[![Version](https://img.shields.io/badge/Version-0.93.0-informational?style=flat-square)](docs/project/CHANGELOG.md)
 [![Blog Post](https://img.shields.io/badge/Blog-dev.to-black?style=flat-square&logo=devdotto)](https://dev.to/nseney1/your-ai-agents-rules-file-is-a-gentlemans-agreement-heres-what-happens-when-you-build-2dml)
 [![M8ven Score](https://m8ven.ai/badge/mcp/nseney1-soma-governance-yv4xbk)](https://m8ven.ai/mcp/nseney1/soma-governance?s=readme)
 
@@ -84,11 +84,11 @@ Add Soma as an MCP server in your AI agent's config. Set `SOMA_WORKSPACE` to the
 
 Works with Gemini Antigravity, Claude Code, Cursor, and any MCP-compatible agent.
 
-**Capabilities:** With `SOMA_EXECUTION_ENABLED` omitted, the server exposes eight read tools and three write tools. Write tools are discoverable but require a receipt. Setting `SOMA_EXECUTION_ENABLED=1` additionally exposes four execute tools, which also require receipts.
+**Capabilities:** With `SOMA_EXECUTION_ENABLED` omitted, the server exposes nine read tools and three write tools. Write tools are discoverable but require a receipt. Setting `SOMA_EXECUTION_ENABLED=1` additionally exposes four execute tools, which also require receipts.
 
 | Tier | Available tools |
 |:-----|:----------------|
-| Read (default) | `soma_request_receipt`, `soma_scan`, `soma_list_cells`, `soma_grade`, `soma_coverage`, `soma_fitness`, `soma_audit_security`, `soma_audit_performance` |
+| Read (default) | `soma_request_receipt`, `soma_scan`, `soma_list_cells`, `soma_grade`, `soma_coverage`, `soma_fitness`, `soma_audit_security`, `soma_audit_performance`, `soma_poll_verification` |
 | Write (default; receipt required) | `soma_report_outcome`, `soma_capture_insight`, `soma_create_cell` |
 | Execute (opt-in; receipt required) | `soma_propose_change`, `soma_verify_changes`, `soma_checkpoint`, `soma_generate_manifest` |
 
@@ -98,6 +98,8 @@ Works with Gemini Antigravity, Claude Code, Cursor, and any MCP-compatible agent
 2. Call that tool with the same arguments plus the returned `receipt`.
 
 Receipts expire after 300 seconds and are single-use. They are bound to the current MCP session, canonical workspace, operation, exact arguments, target-file state, and governance-cell state. If a target file or any cell changes before redemption, request a new receipt. Receipts authorize a specific state-bound operation; they do not authenticate a person. Reusing the same `soma_report_outcome` idempotency key with the same payload is a no-op; changing the payload for that key fails closed.
+
+**Asynchronous verification:** For long-running adversarial Layer 2 checks, `soma_verify_changes` accepts `async_mode: true`. The tool immediately returns a `job_token`, executing verification in a background worker thread. Host agents can poll job status and retrieve signed receipts via the read-only `soma_poll_verification` tool without blocking.
 
 ### SDK
 
@@ -138,6 +140,7 @@ All governance workflows are available via the `soma` CLI:
 | `soma doctor` | System health check — verifies installation integrity |
 | `soma verify` | Layer 1 AST analysis on changed files (`--layer1-only` available) |
 | `soma checkpoint` | Quality checks (`--pre-commit` for git hooks) |
+| `soma hook` | Native lifecycle hooks (`pre-commit`, `safety-gate`, `pre-invocation`, `session-close`) |
 | `soma sync` | Reconcile evidence JSONL with cell frontmatter (`--dry-run`, `--json`) |
 | `soma oracle` | Cell health classification — healthy, noisy, expired, unobserved |
 | `soma promote` | Evaluate cells for promotion (vacuole → wall → genome). `--force --cell <id>` for manual |
@@ -167,7 +170,7 @@ Soma models governance as a layered system of rules, skills, and automation. Eve
 ┌──────────────────────────────────────────────────────────────────────┐
 │  📐 CORE RULES (genome/)          18 Rules — inherited defaults      │
 │  🔧 AGENT SKILLS (organs/)       15 Skills — complex behaviors       │
-│  ⚙️  AUTOMATION (enzymes/)        62 Scripts — task automation        │
+│  ⚙️  AUTOMATION (enzymes/)        63 Scripts — task automation        │
 ├──────────────────────────────────────────────────────────────────────┤
 │  🛡️ VERIFICATION                  AST analysis tools                  │
 │     Layer 1: AST-based checks (import guards, complexity, coverage)  │
@@ -181,7 +184,7 @@ Soma models governance as a layered system of rules, skills, and automation. Eve
 |:------|:----------|:-----------------|
 | **Core Rules** | `genome/` | 18 rules — inherited behavioral defaults, rarely changed. |
 | **Agent Skills** | `organs/` | 15 skills — complex multi-step behaviors like adaptive-reviewer, genesis, security-audit. |
-| **Automation Scripts** | `enzymes/` | 62 scripts — task-specific automation (fitness scoring, rule creation, evidence pipeline). |
+| **Automation Scripts** | `enzymes/` | 63 scripts — task-specific automation (fitness scoring, rule creation, evidence pipeline). |
 | **Verification** | `immune_system/` | AST analysis tools for code checking. |
 | **Adaptive Rules** | `.soma/cells/` | Per-repo adaptive invariants. Generated, tested, evolved, or retired. |
 
@@ -307,10 +310,10 @@ Copy [`soma.conf.example`](install/soma.conf.example) → `soma.conf` to customi
 | **Linux** | Bash | `make install` | `bash install/uninstall.sh` | ✅ | ✅ | ✅ |
 | **macOS** | Zsh / Bash | `make install` | `bash install/uninstall.sh` | ✅ | ✅ | ✅ |
 | **WSL** | Bash | `make install` | `bash install/uninstall.sh` | ✅ | ✅ | ✅ |
-| **Windows (Git Bash)** | Bash | `make install` | `bash install/uninstall.sh` | ✅ | ✅ | ⚠️ |
-| **Windows (PowerShell)** | PowerShell | `.\install.ps1` | `.\install\uninstall.ps1` | ⚠️ | ⚠️ | ❌ |
+| **Windows (Git Bash)** | Bash | `make install` | `bash install/uninstall.sh` | ✅ | ✅ | ✅ |
+| **Windows (PowerShell)** | PowerShell | `.\install.ps1` | `.\install\uninstall.ps1` | ✅ | ✅ | ✅ |
 
-> **⚠ Windows known issues (open):** Under Windows PowerShell 5.1, the default for `.\install.ps1`, the installer writes mojibake into the generated rules ([BUG-014](docs/project/BUG_REGISTRY.json)); use `pwsh` to avoid it. Details and workarounds: [Known Issues — Windows](docs/KNOWN_ISSUES_WINDOWS.md).
+> **Windows Support:** As of v0.93.0, Windows PowerShell 5.1, PowerShell 7, and Git Bash have full parity with native lifecycle hooks (`soma hook`) and UTF-8 encoding ([BUG-014](docs/project/BUG_REGISTRY.json), [BUG-032](docs/project/BUG_REGISTRY.json)). Details: [Known Issues — Windows](docs/KNOWN_ISSUES_WINDOWS.md).
 
 ---
 

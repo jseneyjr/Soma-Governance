@@ -24,6 +24,71 @@ DIR_TO_TYPE = {
     "plasmodesmata": "plasmodesmata",
 }
 
+SOURCE_TO_TEST_MAP = {
+    "enzymes/bayesian_score.py": "tests/test_bayesian_correctness.py",
+    "enzymes/cell_adapt.py": "tests/test_governance.py",
+    "enzymes/cell_adversarial.py": "tests/test_enzyme_console_encoding.py",
+    "enzymes/cell_coverage.py": "tests/test_enzyme_console_encoding.py",
+    "enzymes/cell_create_nl.py": "tests/test_cell_create.py",
+    "enzymes/cell_crossover.py": "tests/test_crossover_structured.py",
+    "enzymes/cell_demote.py": "tests/test_cli_demote.py",
+    "enzymes/cell_deps.py": "tests/test_cell_deps_behavioral.py",
+    "enzymes/cell_enforce.py": "tests/test_enforce_hooks.py",
+    "enzymes/cell_escaped_defects.py": "tests/test_escaped_defects_behavioral.py",
+    "enzymes/cell_fitness.py": "tests/test_bayesian_fitness.py",
+    "enzymes/cell_genesis_stochastic.py": "tests/test_genesis.py",
+    "enzymes/cell_metamorphose.py": "tests/test_lifecycle.py",
+    "enzymes/cell_promote.py": "tests/test_local_promotion_decay.py",
+    "enzymes/cell_quorum.py": "tests/test_quorum.py",
+    "enzymes/cell_scan.py": "tests/test_cell_signal.py",
+    "enzymes/cell_tournament.py": "tests/test_tournament_integration.py",
+    "enzymes/escalation_sentinel.py": "tests/test_documentation_accuracy.py",
+    "enzymes/fitness_landscape.py": "tests/test_governance.py",
+    "enzymes/hgt_ribosome.py": "tests/test_governance.py",
+    "enzymes/immune_entropy.py": "tests/test_enzyme_console_encoding.py",
+    "enzymes/immune_grade.py": "tests/test_enzyme_console_encoding.py",
+    "enzymes/immune_replay.py": "tests/test_enzyme_console_encoding.py",
+    "enzymes/immune_trends.py": "tests/test_governance.py",
+    "enzymes/inference_provider.py": "tests/test_keyring_integration.py",
+    "enzymes/resilience_engine.py": "tests/test_enzyme_console_encoding.py",
+    "enzymes/soma_coherence.py": "tests/test_enzyme_console_encoding.py",
+    "enzymes/soma_interoception.py": "tests/test_enzyme_console_encoding.py",
+    "enzymes/soma_resolve.py": "tests/test_python_resolution.py",
+    "enzymes/soma_sleep.py": "tests/test_enzyme_console_encoding.py",
+    "enzymes/sweep_session.py": "tests/test_governance.py",
+    "enzymes/token_census.py": "tests/test_python_resolution.py",
+    "enzymes/ttc_oracle.py": "tests/test_security.py",
+    "enzymes/ttc_verifier.py": "tests/test_mcp_tools_contract.py",
+    "enzymes/verify_bug_registry.py": "tests/test_bug_registry.py",
+    "enzymes/verify_readme_claims.py": "tests/test_documentation_accuracy.py",
+    "immune_system/verification/call_graph.py": "tests/test_verification/test_layer1.py",
+    "immune_system/verification/checkpoint_checks.py": "tests/test_checkpoint_fail_closed.py",
+    "immune_system/verification/persistence_checker.py": "tests/test_verification/test_layer1.py",
+    "immune_system/verification/runner.py": "tests/test_verification/test_layer1.py",
+    "soma_cli/checkpoint.py": "tests/test_checkpoint_fail_closed.py",
+    "soma_cli/demote.py": "tests/test_cli_demote.py",
+    "soma_cli/genesis_generator.py": "tests/test_genesis.py",
+    "soma_cli/genesis_scanner.py": "tests/test_genesis.py",
+    "soma_cli/hooks.py": "tests/test_hooks_lifecycle.py",
+    "soma_cli/oracle.py": "tests/test_static_invariants.py",
+    "soma_cli/promote.py": "tests/test_cli_promote.py",
+    "soma_cli/sync.py": "tests/test_cli_sync.py",
+    "soma_cli/verify.py": "tests/test_cli_verify.py",
+    "soma_core/evidence.py": "tests/test_canonical_evidence_readers.py",
+    "soma_core/frontmatter.py": "tests/test_core_lifecycle.py",
+    "soma_core/lifecycle.py": "tests/test_core_lifecycle.py",
+    "soma_core/verification_jobs.py": "tests/test_mcp_async_verify.py",
+    "soma_mcp/integrity.py": "tests/test_mcp_receipt_binding.py",
+    "soma_mcp/jit_engine.py": "tests/test_jit_engine_behavioral.py",
+    "soma_mcp/server.py": "tests/test_mcp_dispatch.py",
+    "soma_mcp/tools.py": "tests/test_mcp_tools_contract.py",
+    "soma_sdk/analysis.py": "tests/test_cell_deps_behavioral.py",
+    "soma_sdk/cells.py": "tests/test_rule_content.py",
+    "soma_sdk/errors.py": "tests/test_sdk_behavioral.py",
+    "soma_sdk/invariants.py": "tests/test_enforcement_ladder.py",
+    "soma_sdk/scoring.py": "tests/test_bayesian_fitness.py",
+}
+
 
 def _relative(root: Path, path: Path) -> str:
     try:
@@ -160,31 +225,60 @@ def check_test_coverage(root: Path) -> list[dict]:
             "test_coverage", root, source_file, issues
         ):
             continue
-        expected = test_dir / f"test_{source_file.stem}.py"
-        try:
-            expected_info = os.stat(expected, follow_symlinks=False)
-        except FileNotFoundError:
+
+        rel_posix = _relative(root, source_file)
+        candidates: list[Path] = []
+
+        if rel_posix in SOURCE_TO_TEST_MAP:
+            candidates.append(root / SOURCE_TO_TEST_MAP[rel_posix])
+
+        parent_name = source_file.parent.name
+        if parent_name == "soma_cli":
+            candidates.append(test_dir / f"test_cli_{source_file.stem}.py")
+        elif parent_name == "soma_core":
+            candidates.append(test_dir / f"test_core_{source_file.stem}.py")
+        elif parent_name == "soma_mcp":
+            candidates.append(test_dir / f"test_mcp_{source_file.stem}.py")
+        elif parent_name == "soma_sdk":
+            candidates.append(test_dir / f"test_sdk_{source_file.stem}.py")
+        candidates.append(test_dir / f"test_{parent_name}_{source_file.stem}.py")
+
+        candidates.append(test_dir / f"test_{source_file.stem}.py")
+        candidates.append(test_dir / "test_verification" / f"test_{source_file.stem}.py")
+
+        matched = False
+        for expected in candidates:
+            try:
+                expected_info = os.stat(expected, follow_symlinks=False)
+            except FileNotFoundError:
+                continue
+            except (OSError, UnicodeError) as exc:
+                issues.append(_failure("test_coverage", root, expected, "stat", exc))
+                matched = True
+                break
+            else:
+                if stat.S_ISLNK(expected_info.st_mode) or not stat.S_ISREG(expected_info.st_mode):
+                    kind = "symlinked" if stat.S_ISLNK(expected_info.st_mode) else "non-regular"
+                    issues.append({
+                        "check": "test_coverage",
+                        "file": _relative(root, expected),
+                        "message": (
+                            f"{_relative(root, expected)}: {kind} test file "
+                            "does not satisfy coverage"
+                        ),
+                    })
+                matched = True
+                break
+
+        if not matched:
             issues.append({
                 "check": "test_coverage",
-                "file": _relative(root, source_file),
+                "file": rel_posix,
                 "message": (
                     f"Missing test file for {source_file.name}: "
                     f"expected tests/test_{source_file.stem}.py"
                 ),
             })
-        except (OSError, UnicodeError) as exc:
-            issues.append(_failure("test_coverage", root, expected, "stat", exc))
-        else:
-            if stat.S_ISLNK(expected_info.st_mode) or not stat.S_ISREG(expected_info.st_mode):
-                kind = "symlinked" if stat.S_ISLNK(expected_info.st_mode) else "non-regular"
-                issues.append({
-                    "check": "test_coverage",
-                    "file": _relative(root, expected),
-                    "message": (
-                        f"{_relative(root, expected)}: {kind} test file "
-                        "does not satisfy coverage"
-                    ),
-                })
     return issues
 
 

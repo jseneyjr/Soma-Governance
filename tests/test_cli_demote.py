@@ -232,3 +232,22 @@ class TestDemoteCLI:
             output = capsys.readouterr().out
             assert "Cannot demote core rule" in output
 
+    def test_force_demote_with_md_extension(self, tmp_path, capsys):
+        """--cell ending in .md should be found and demoted cleanly."""
+        from soma_cli.demote import run_demote
+
+        cells_dir = tmp_path / ".soma" / "cells"
+        walls_dir = cells_dir / "walls"
+        vacuoles_dir = cells_dir / "vacuoles"
+        walls_dir.mkdir(parents=True)
+        vacuoles_dir.mkdir(parents=True)
+
+        make_cell(str(walls_dir), "ext-wall", cell_type="wall", created_days_ago=30)
+        args = argparse.Namespace(
+            force=True, cell="ext-wall.md", dry_run=False, json=False,
+            _project_root=tmp_path,
+        )
+        exit_code = run_demote(args)
+        assert exit_code == 0
+        assert (vacuoles_dir / "ext-wall.md").exists()
+

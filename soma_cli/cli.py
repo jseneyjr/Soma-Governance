@@ -151,6 +151,31 @@ def _build_parser() -> argparse.ArgumentParser:
     p_completion.add_argument("shell", choices=list(SHELLS),
                               help="Target shell")
 
+    # soma hook
+    p_hook = sub.add_parser("hook", help="Run cross-platform lifecycle hooks")
+    p_hook.add_argument(
+        "phase",
+        choices=[
+            "pre-commit",
+            "safety-gate",
+            "pre-invocation",
+            "session-close",
+            "post-session",
+            "governance-monitor",
+            "immune-init",
+            "stop",
+        ],
+        help="Hook lifecycle phase to execute",
+    )
+    p_hook.add_argument("--cmd", type=str, default=None,
+                        help="Command line string for safety-gate check")
+    p_hook.add_argument("--strict", action="store_true",
+                        help="In pre-commit, exit 1 on issues")
+    p_hook.add_argument("--workspace", default=None,
+                        help="Target workspace path")
+    p_hook.add_argument("--json", action="store_true",
+                        help="Emit JSON output")
+
     return parser
 
 
@@ -226,6 +251,12 @@ def cmd_completion(args: argparse.Namespace) -> int:
     return run_completion(args)
 
 
+def cmd_hook(args: argparse.Namespace) -> int:
+    """Run lifecycle hooks natively across platforms."""
+    from soma_cli.hooks import run_hook
+    return run_hook(args)
+
+
 COMMANDS = {
     "init": cmd_init,
     "status": cmd_status,
@@ -239,6 +270,7 @@ COMMANDS = {
     "demote": cmd_demote,
     "genesis": cmd_genesis,
     "completion": cmd_completion,
+    "hook": cmd_hook,
 }
 
 
