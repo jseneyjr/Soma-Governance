@@ -181,24 +181,26 @@ def find_python_files(root: Path, subdir: str) -> list[Path]:
 
 def _source_dirs(root: Path, check: str, issues: list[dict]) -> list[str]:
     try:
-        candidates = sorted(root.iterdir())
+        with os.scandir(root) as it:
+            candidates = sorted(it, key=lambda e: e.name)
     except (OSError, UnicodeError) as exc:
         issues.append(_failure(check, root, root, "list", exc))
         return []
 
     names = []
-    for candidate in candidates:
-        name = candidate.name
+    for entry in candidates:
+        name = entry.name
         if name.startswith(".") or name in SKIP_DIRS or name == "tests":
             continue
         try:
-            info = os.stat(candidate, follow_symlinks=False)
+            info = entry.stat(follow_symlinks=False)
         except FileNotFoundError as exc:
-            issues.append(_failure(check, root, candidate, "stat", exc))
+            issues.append(_failure(check, root, Path(entry.path), "stat", exc))
             continue
         except (OSError, UnicodeError) as exc:
-            issues.append(_failure(check, root, candidate, "stat", exc))
+            issues.append(_failure(check, root, Path(entry.path), "stat", exc))
             continue
+        candidate = Path(entry.path)
         if stat.S_ISLNK(info.st_mode):
             issues.append({
                 "check": check,
@@ -553,8 +555,12 @@ def check_arbitration_evidence(root: Path) -> list[dict]:
             "file": _relative(root, evidence_dir),
             "message": f"{_relative(root, evidence_dir)}: expected a directory",
         }]
+    files: list[Path] = []
     try:
-        files = list(evidence_dir.glob("arbitration_cycle_*.json"))
+        with os.scandir(evidence_dir) as it:
+            for entry in it:
+                if entry.name.startswith("arbitration_cycle_") and entry.name.endswith(".json") and entry.is_file():
+                    files.append(Path(entry.path))
     except (OSError, UnicodeError) as exc:
         return [_failure(
             "arbitration_evidence", root, evidence_dir, "list", exc

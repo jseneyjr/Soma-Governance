@@ -14,21 +14,42 @@ Can be invoked as:
 """
 from __future__ import annotations
 
-import argparse
 import datetime
-import fnmatch
-import glob
 import json
 import os
 import re
-import shlex
-import stat
-import subprocess
 import sys
 from pathlib import Path
 from typing import Any, Tuple
 
-# ── Safety Gate: Destructive Patterns ──────────────────────────────────────────
+# ── Safety Gate: Fast-Path & Destructive Patterns ─────────────────────────────
+
+SAFE_COMMAND_PREFIXES: tuple[str, ...] = (
+    "git status",
+    "git diff",
+    "git log",
+    "git show",
+    "git branch",
+    "git rev-parse",
+    "git check-ref-format",
+    "ls",
+    "dir",
+    "cat",
+    "head",
+    "tail",
+    "wc",
+    "pwd",
+    "date",
+    "whoami",
+    "pytest",
+    "python -m pytest",
+    "cargo test",
+    "npm test",
+    "echo",
+)
+
+METACHARACTERS: frozenset[str] = frozenset({";", "&", "|", ">", "<", "`", "$", "\n", "\r"})
+DANGEROUS_FLAGS: tuple[str, ...] = ("-f", "--force", "-D", "-d")
 
 DESTRUCTIVE_PATTERNS: list[tuple[re.Pattern[str], str]] = [
     # rm: catch -rf, -r -f, -fr, --recursive targeting home, root, current dir or wildcard (including quotes/subshells)
@@ -203,8 +224,6 @@ def run_safety_gate(
     if cmd is None and payload is not None:
         tc = payload.get("toolCall", {})
         args = tc.get("args", {})
-        cmd = args.get("CommandLine") or args.get("command") or args.get("cmd") or ""
-
     if not cmd or not isinstance(cmd, str) or not cmd.strip():
         reason = "Unable to parse command — requesting confirmation"
         log_gate_event(cmd or "", "BLOCKED", reason, root)
@@ -212,6 +231,16 @@ def run_safety_gate(
             "decision": "force_ask",
             "reason": f"🛡️ Safety Gate: {reason}",
         }
+
+    trimmed = cmd.strip()
+
+    # Fast-path: benign read-only inspection commands without chaining or force flags (<0.01ms)
+    if any(trimmed.startswith(prefix) for prefix in SAFE_COMMAND_PREFIXES):
+        if not any(c in trimmed for c in METACHARACTERS):
+            tokens = trimmed.split()
+            if not any(flag in tokens for flag in DANGEROUS_FLAGS):
+                log_gate_event(cmd, "ALLOWED", "", root)
+                return 0, {"decision": "allow"}
 
     for pattern, reason in DESTRUCTIVE_PATTERNS:
         if pattern.search(cmd):
@@ -299,6 +328,8 @@ def run_pre_invocation(
 
 def run_session_close(workspace: Path | None = None) -> tuple[int, dict[str, Any]]:
     """Run session close lifecycle tasks (outcome evaluation and cell evolution)."""
+    import subprocess
+
     root = workspace or Path.cwd()
     scripts_dir = root / "enzymes"
     if not (scripts_dir / "outcome_engine.py").is_file():
@@ -337,6 +368,9 @@ def run_pre_commit(
     use_json: bool = False,
 ) -> int:
     """Run pre-commit checks: checkpoint quality, cell triggers, and enforcement."""
+    import fnmatch
+    import subprocess
+
     root = workspace or Path.cwd()
     repo_root = root
 
@@ -460,7 +494,7 @@ def run_pre_commit(
 
 # ── Unified Hook Dispatcher ────────────────────────────────────────────────────
 
-def run_hook(args: argparse.Namespace) -> int:
+def run_hook(args: Any) -> int:
     """Dispatch hook commands based on phase argument."""
     phase = args.phase
     workspace = Path(args.workspace) if getattr(args, "workspace", None) else Path.cwd()
@@ -509,6 +543,8 @@ def run_hook(args: argparse.Namespace) -> int:
 
 def main(argv: list[str] | None = None) -> int:
     """CLI entrypoint for standalone hook runner."""
+    import argparse
+
     parser = argparse.ArgumentParser(
         prog="soma hook",
         description="Run cross-platform Soma lifecycle hooks",

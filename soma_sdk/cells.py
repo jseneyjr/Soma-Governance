@@ -310,48 +310,61 @@ def load_cell(
                 f"Cannot find .soma/cells/ from {cwd}"
             )
 
-    # Search for cell_id.md recursively in cells_dir
-    for root, _dirs, files in os.walk(cells_dir):
-        for fname in files:
-            if fname == f"{cell_id}.md":
-                filepath = os.path.join(root, fname)
-                # Verify resolved path is within cells_dir
-                real_path = os.path.realpath(filepath)
-                real_cells = os.path.realpath(cells_dir)
-                if not real_path.startswith(real_cells):
-                    raise CellPathTraversalError(
-                        f"Resolved path escapes cells dir: {filepath}"
-                    )
-                frontmatter, _body = parse_cell_file(filepath)
-                fitness_data = frontmatter.get('fitness', {})
-                if isinstance(fitness_data, (int, float)):
-                    fitness_data = {'score': float(fitness_data)}
-                elif not isinstance(fitness_data, dict):
-                    fitness_data = {}
-                cell_inst = Cell(
-                    name=frontmatter.get('name', cell_id),
-                    type=frontmatter.get('type', 'vacuole'),
-                    hypothesis=frontmatter.get('hypothesis', ''),
-                    prediction=frontmatter.get('prediction', ''),
-                    falsification=frontmatter.get('falsification', ''),
-                    target_paths=frontmatter.get('target_paths', []),
-                    minimum_mode=frontmatter.get('minimum_mode', 'breeze'),
-                    tags=frontmatter.get('tags', []),
-                    fitness=CellFitness(
-                        triggers=fitness_data.get('triggers', 0),
-                        true_positives=fitness_data.get('true_positives', 0),
-                        false_positives=fitness_data.get('false_positives', 0),
-                        score=fitness_data.get('score'),
-                        stress_survived=fitness_data.get('stress_survived', 0),
-                    ),
-                    created_date=frontmatter.get('created_date') or frontmatter.get('created'),
-                )
-                if not cell_inst.created_date and os.path.exists(filepath):
-                    try:
-                        cell_inst.created_date = datetime.fromtimestamp(os.path.getctime(filepath), tz=timezone.utc)
-                    except Exception:
-                        pass
-                return cell_inst
+    # Fast-path: check standard cell subdirectories directly before recursive walk
+    target_fname = f"{cell_id}.md"
+    found_path = None
+    for subdir in ("walls", "vacuoles", "membranes", "chloroplasts", "plasmodesmata", "ribosomes", "nuclei", ""):
+        candidate_file = os.path.join(cells_dir, subdir, target_fname) if subdir else os.path.join(cells_dir, target_fname)
+        if os.path.isfile(candidate_file):
+            found_path = candidate_file
+            break
+
+    # Fallback: Search for cell_id.md recursively in cells_dir
+    if not found_path:
+        for root, _dirs, files in os.walk(cells_dir):
+            if target_fname in files:
+                found_path = os.path.join(root, target_fname)
+                break
+
+    if found_path:
+        filepath = found_path
+        # Verify resolved path is within cells_dir
+        real_path = os.path.realpath(filepath)
+        real_cells = os.path.realpath(cells_dir)
+        if not real_path.startswith(real_cells):
+            raise CellPathTraversalError(
+                f"Resolved path escapes cells dir: {filepath}"
+            )
+        frontmatter, _body = parse_cell_file(filepath)
+        fitness_data = frontmatter.get('fitness', {})
+        if isinstance(fitness_data, (int, float)):
+            fitness_data = {'score': float(fitness_data)}
+        elif not isinstance(fitness_data, dict):
+            fitness_data = {}
+        cell_inst = Cell(
+            name=frontmatter.get('name', cell_id),
+            type=frontmatter.get('type', 'vacuole'),
+            hypothesis=frontmatter.get('hypothesis', ''),
+            prediction=frontmatter.get('prediction', ''),
+            falsification=frontmatter.get('falsification', ''),
+            target_paths=frontmatter.get('target_paths', []),
+            minimum_mode=frontmatter.get('minimum_mode', 'breeze'),
+            tags=frontmatter.get('tags', []),
+            fitness=CellFitness(
+                triggers=fitness_data.get('triggers', 0),
+                true_positives=fitness_data.get('true_positives', 0),
+                false_positives=fitness_data.get('false_positives', 0),
+                score=fitness_data.get('score'),
+                stress_survived=fitness_data.get('stress_survived', 0),
+            ),
+            created_date=frontmatter.get('created_date') or frontmatter.get('created'),
+        )
+        if not cell_inst.created_date and os.path.exists(filepath):
+            try:
+                cell_inst.created_date = datetime.fromtimestamp(os.path.getctime(filepath), tz=timezone.utc)
+            except Exception:
+                pass
+        return cell_inst
 
     raise CellNotFoundError(f"Cell not found: {cell_id}")
 
