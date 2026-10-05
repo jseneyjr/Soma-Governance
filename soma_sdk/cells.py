@@ -12,36 +12,20 @@ try:
 except ImportError:
     yaml = None
 
-def _stdlib_parse_frontmatter(yaml_text: str) -> dict:
-    import json
-    out = {}
-    for line in yaml_text.splitlines():
-        line = line.strip()
-        if not line or line.startswith('#'):
-            continue
-        if ':' in line:
-            k, v = line.split(':', 1)
-            k = k.strip()
-            v = v.strip()
-            if (v.startswith('"') and v.endswith('"')) or (v.startswith("'") and v.endswith("'")):
-                v = v[1:-1]
-            elif v.lower() == 'true':
-                v = True
-            elif v.lower() == 'false':
-                v = False
-            else:
-                try:
-                    v = int(v)
-                except ValueError:
-                    try:
-                        v = float(v)
-                    except ValueError:
-                        pass
-            out[k] = v
-    return out
-
 from soma_sdk.errors import CellParseError, CellNotFoundError, CellPathTraversalError
 from soma_sdk.scoring import bayesian_posterior, laplace_score
+
+
+def _stdlib_parse_frontmatter(yaml_text: str) -> dict:
+    from soma_core.frontmatter import parse_yaml_subset, FrontmatterError
+    try:
+        res = parse_yaml_subset(yaml_text)
+        if not isinstance(res, dict):
+            raise CellParseError("Frontmatter is not a mapping")
+        return res
+    except FrontmatterError as e:
+        raise CellParseError(f"Invalid YAML frontmatter: {e}") from e
+
 
 
 @dataclass

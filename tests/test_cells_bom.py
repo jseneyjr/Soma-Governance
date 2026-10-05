@@ -16,3 +16,23 @@ def test_bomless_cell_unchanged(tmp_path):
     fm, body = parse_cell_file(str(f))
     assert fm["id"] == "plain"
     assert "# Body" in body
+
+
+def test_stdlib_parse_frontmatter_nested(monkeypatch):
+    import pytest
+    import soma_sdk.cells as sdk_cells
+    monkeypatch.setattr(sdk_cells, "yaml", None)
+    yaml_text = "id: test\ntags:\n  - a\n  - b\nfitness:\n  tp: 1\n"
+    res = sdk_cells._stdlib_parse_frontmatter(yaml_text)
+    assert res["id"] == "test"
+    assert res["tags"] == ["a", "b"]
+    assert res["fitness"] == {"tp": 1}
+
+
+def test_stdlib_parse_frontmatter_invalid(monkeypatch):
+    import pytest
+    import soma_sdk.cells as sdk_cells
+    monkeypatch.setattr(sdk_cells, "yaml", None)
+    with pytest.raises(sdk_cells.CellParseError):
+        sdk_cells._stdlib_parse_frontmatter("\tkey: invalid tab")
+

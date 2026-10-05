@@ -625,9 +625,8 @@ def run_hook(args: Any) -> int:
             rc = run_post_session_hook(transcript_path=transcript_path, repo_root=workspace)
             return rc
         else:
-            rc, res = run_session_close(workspace=workspace)
-            print(json.dumps(res))
-            return rc
+            print("Skipping post-session hook: transcript file not provided or does not exist", file=sys.stderr)
+            return 0
 
     elif phase in ("session-close", "stop"):
         rc, res = run_session_close(workspace=workspace)

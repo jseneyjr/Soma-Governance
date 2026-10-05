@@ -271,6 +271,36 @@ class TestSessionClose:
         assert res == {}
 
 
+class TestPostSessionHook:
+    """Test post-session hook execution."""
+
+    def test_skips_when_transcript_missing(self, tmp_path: Path, capsys):
+        from argparse import Namespace
+        args = Namespace(phase="post-session", workspace=str(tmp_path), transcript=None)
+        rc = run_hook(args)
+        assert rc == 0
+        captured = capsys.readouterr()
+        assert "skipping post-session hook" in captured.err.lower()
+
+    def test_invokes_post_session_hook_with_file(self, tmp_path: Path, monkeypatch):
+        from argparse import Namespace
+        transcript_file = tmp_path / "transcript.jsonl"
+        transcript_file.write_text('{"event": "test"}\n', encoding="utf-8")
+
+        called = []
+
+        def fake_hook(transcript_path, repo_root):
+            called.append((transcript_path, repo_root))
+            return 0
+
+        monkeypatch.setattr("soma_core.sync.run_post_session_hook", fake_hook)
+        args = Namespace(phase="post-session", workspace=str(tmp_path), transcript=str(transcript_file))
+        rc = run_hook(args)
+        assert rc == 0
+        assert len(called) == 1
+        assert called[0][0] == transcript_file
+
+
 class TestPreCommitHook:
     """Test pre-commit hook."""
 

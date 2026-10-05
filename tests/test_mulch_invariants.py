@@ -21,7 +21,12 @@ import pytest
 
 from soma_core.receipts import issue_receipt, verify_receipt, _safe_compare
 from soma_core.workspace import confine_path, resolve_workspace
-from soma_core.enforcement import load_bug_registry, verify_bug_schema, verify_bug_tests
+from soma_core.enforcement import (
+    load_bug_registry,
+    verify_bug_schema,
+    verify_bug_tests,
+    verify_unique_ids,
+)
 import soma_mcp.server as mcp_server
 
 
@@ -248,10 +253,15 @@ class TestInvariant6_BugRegistryIntegrity:
 
     def test_registry_schema_and_regression_tests_pass(self):
         bugs = load_bug_registry(str(REPO_ROOT))
-        assert len(bugs) > 0, "No bugs found in bug registry"
+        bug_list = bugs.get("bugs", [])
+        assert len(bug_list) > 50, f"Expected >50 bug entries, got {len(bug_list)}"
+
+        unique_errors = verify_unique_ids(bugs)
+        assert not unique_errors, f"Bug ID uniqueness errors: {unique_errors}"
 
         schema_errors = verify_bug_schema(bugs)
         assert not schema_errors, f"Bug schema validation errors: {schema_errors}"
 
         test_errors = verify_bug_tests(bugs, str(REPO_ROOT))
         assert not test_errors, f"Bug regression test verification errors: {test_errors}"
+
