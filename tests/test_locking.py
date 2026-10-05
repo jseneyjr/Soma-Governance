@@ -76,3 +76,10 @@ class TestWorkspaceLock:
         with workspace_lock(tmp_path, "cells", timeout_sec=1.0):
             with workspace_lock(tmp_path, "evidence", timeout_sec=1.0):
                 assert True
+
+    def test_reentrant_acquire_same_thread(self, tmp_path: Path):
+        """Reentrant lock acquisition within the same thread succeeds immediately."""
+        with workspace_lock(tmp_path, "cells", timeout_sec=1.0) as lock1:
+            with workspace_lock(tmp_path, "cells", timeout_sec=1.0) as lock2:
+                assert lock1 == lock2
+

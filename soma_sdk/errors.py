@@ -11,8 +11,7 @@ from typing import Generic, Optional, TypeVar
 T = TypeVar('T')
 
 
-class SomaError(Exception):
-    """Base exception for all soma errors."""
+from soma_core.errors import SomaError
 
 
 class CellParseError(SomaError):

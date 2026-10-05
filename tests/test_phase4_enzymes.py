@@ -134,6 +134,29 @@ def test_post_session_hook_execution(tmp_path):
     assert (evidence_dir / "compliance.jsonl").exists()
 
 
+def test_match_cells_windows_backslash_paths(tmp_path):
+    """Verify that match_cells matches Windows backslash paths against POSIX target_paths."""
+    from enzymes.fitness_updater import match_cells
+
+    cells_dir = tmp_path / ".soma" / "cells"
+    walls_dir = cells_dir / "walls"
+    walls_dir.mkdir(parents=True)
+    (walls_dir / "guard.md").write_text(
+        "---\nid: guard\ntype: wall\ntarget_paths:\n  - 'src/**'\n---\nBody\n",
+        encoding="utf-8",
+    )
+
+    # Simulate Windows paths with backslashes
+    repo_root = r"C:\Users\runneradmin\project"
+    modified_files = {r"C:\Users\runneradmin\project\src\main.py"}
+
+    matched = match_cells(modified_files, cells_dir, repo_root=repo_root)
+    assert len(matched) == 1
+    assert matched[0]["cell_id"] == "guard"
+    assert "src/main.py" in matched[0]["matched_files"]
+
+
+
 def test_shell_wrapper_delegation(tmp_path, bash):
     """Verify that thin .sh wrappers delegate to their .py counterparts."""
     script_sh = ENZYMES_DIR / "bump_version.sh"

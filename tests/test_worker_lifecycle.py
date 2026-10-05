@@ -46,3 +46,24 @@ class TestWorkerLifecycleAndPersistence:
 
         loaded_jobs = restore_jobs_state(str(tmp_path))
         assert any(j.job_id == job.job_id for j in loaded_jobs)
+
+    def test_shutdown_during_running_pipeline_preserves_failed_status(self, tmp_path: Path):
+        """Worker thread completing pipeline cannot overwrite status if shutdown already occurred."""
+        from soma_core.verification_jobs import submit_verification_job
+
+        job = submit_verification_job(workspace=str(tmp_path), files=[], layer1_only=True)
+        # Immediate shutdown while worker thread is executing
+        shutdown_verification_engine(grace_period=0.1)
+
+        # Wait for worker thread to complete
+        for _ in range(50):
+            time.sleep(0.05)
+            j = get_job(job.job_id)
+            if j and j.completed_at:
+                break
+
+        updated = get_job(job.job_id)
+        assert updated is not None
+        assert updated.status == JOB_STATUS_FAILED
+        assert "server_shutdown" in (updated.error or "")
+

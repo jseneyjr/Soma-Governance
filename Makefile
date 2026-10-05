@@ -181,7 +181,7 @@ status: ## Show installed vs repo diff
 test: validate ## Run validation tests (auto-parallelized when pytest-xdist is installed)
 	@echo "Running test suite..."
 	@if command -v pytest >/dev/null 2>&1; then \
-	  if pytest -h 2>/dev/null | grep -q -- "-n"; then \
+	  if pytest -h 2>/dev/null | grep -q -- "--numprocesses"; then \
 	    pytest -n auto tests/ || exit 1; \
 	  else \
 	    pytest tests/ || exit 1; \

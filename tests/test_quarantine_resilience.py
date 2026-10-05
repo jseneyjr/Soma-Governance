@@ -80,3 +80,26 @@ class TestCorruptFileQuarantine:
         assert not corrupt_jsonl.exists()
         quarantine_dir = tmp_path / ".soma" / QUARANTINE_DIR
         assert any(quarantine_dir.glob("corrupted_ledger.*.corrupt"))
+
+    def test_safe_read_jsonl_whitespace_only_not_quarantined(self, tmp_path: Path):
+        """Whitespace-only or blank JSONL files are not falsely quarantined."""
+        jsonl_file = tmp_path / "empty_ledger.jsonl"
+        jsonl_file.write_text("\n\n   \n", encoding="utf-8")
+        records, status = safe_read_jsonl(jsonl_file, workspace=tmp_path)
+        assert status == "ok"
+        assert records == []
+        assert jsonl_file.exists()
+        assert not (tmp_path / ".soma" / QUARANTINE_DIR).exists()
+
+    def test_safe_parse_cell_without_frontmatter_preserves_thematic_breaks(self, tmp_path: Path):
+        """Markdown cell without frontmatter preserves entire body including thematic breaks."""
+        cell = tmp_path / "raw_cell.md"
+        raw_content = "# Header\n\nIntro paragraph\n\n---\n\nBody paragraph"
+        cell.write_text(raw_content, encoding="utf-8")
+        meta, body, status = safe_parse_cell_file(cell, workspace=tmp_path)
+        assert status == "ok"
+        assert meta == {}
+        assert "Intro paragraph" in body
+        assert "Body paragraph" in body
+        assert cell.exists()
+

@@ -189,12 +189,14 @@ def match_cells(modified_files, cells_dir, repo_root=""):
 
     # Relativize modified files against repo root
     rel_modified = set()
+    norm_root = str(repo_root).replace("\\", "/").rstrip("/") if repo_root else ""
     for abs_path in modified_files:
-        if repo_root and abs_path.startswith(repo_root):
-            rel = abs_path[len(repo_root):].lstrip("/")
+        norm_abs = str(abs_path).replace("\\", "/")
+        if norm_root and norm_abs.startswith(norm_root):
+            rel = norm_abs[len(norm_root):].lstrip("/")
             rel_modified.add(rel)
         else:
-            rel_modified.add(abs_path)
+            rel_modified.add(norm_abs.lstrip("/"))
 
     results = []
     for md_file in cells_dir.rglob("*.md"):
@@ -218,7 +220,7 @@ def match_cells(modified_files, cells_dir, repo_root=""):
                     break
 
         if matched:
-            rel_cell = str(md_file.relative_to(cells_dir))
+            rel_cell = str(md_file.relative_to(cells_dir)).replace("\\", "/")
             results.append({
                 "cell_id": cell_id,
                 "cell_path": rel_cell,
