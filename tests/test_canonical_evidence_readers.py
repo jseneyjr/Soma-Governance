@@ -230,3 +230,21 @@ def test_invalid_present_credit_weight_is_a_structured_error(tmp_path):
     assert result.counts["bad-weight"]["has_outcomes"] is True
     assert result.errors[0]["line"] == 1
     assert "credit_weight" in result.errors[0]["error"]
+
+
+def test_negative_or_excessive_credit_weight_rejected(tmp_path):
+    from soma_core.evidence import aggregate_signals
+
+    evidence = tmp_path / ".soma" / "evidence"
+    _write_jsonl(evidence / "signals.jsonl", [
+        _signal("cell-neg", "tp", weight=-1.5),
+        _signal("cell-huge", "tp", weight=50),
+    ])
+
+    result = aggregate_signals(str(evidence))
+    assert result.counts["cell-neg"]["tp"] == 0
+    assert result.counts["cell-huge"]["tp"] == 0
+    assert len(result.errors) == 2
+    assert "credit_weight" in result.errors[0]["error"]
+    assert "credit_weight" in result.errors[1]["error"]
+

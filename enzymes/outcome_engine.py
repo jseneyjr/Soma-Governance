@@ -289,16 +289,41 @@ def capture_mcp_outcomes(workspace):
     try:
         with open(signals_file, 'r', encoding='utf-8') as f:
             for line in f:
-                if line.strip():
-                    record = json.loads(line)
-                    # Filter for outcomes (either legacy outcome field or new signal field)
-                    if record.get('outcome') or record.get('signal') in ('tp', 'fp', 'success', 'failure'):
-                        # Map signal back to outcome for backward compatibility in compute_fitness_signals
-                        if 'signal' in record and 'outcome' not in record:
-                            record['outcome'] = record['signal']
-                        outcomes.append(record)
-    except Exception:
-        pass
+                line_str = line.strip()
+                if not line_str:
+                    continue
+                try:
+                    record = json.loads(line_str)
+                except Exception:
+                    continue
+
+                # Filter for outcomes (supporting MCP schema, signal field, or legacy outcome)
+                sig_type = record.get('signal_type') or record.get('signal') or record.get('outcome')
+                if not sig_type:
+                    continue
+
+                outcome = record.get('outcome')
+                if not outcome:
+                    if sig_type in ('tp', 'success'):
+                        outcome = 'success'
+                    elif sig_type in ('fp', 'failure'):
+                        outcome = 'failure'
+                    elif sig_type in ('trigger', 'partial'):
+                        outcome = 'partial'
+                    else:
+                        outcome = str(sig_type)
+                record['outcome'] = outcome
+
+                # Normalize cell references
+                cell_id = record.get('cell_id') or record.get('cell_name') or record.get('cell')
+                if cell_id and 'cell_id' not in record:
+                    record['cell_id'] = cell_id
+                if cell_id and 'cells_used' not in record:
+                    record['cells_used'] = [cell_id]
+
+                outcomes.append(record)
+    except Exception as exc:
+        print(f"    ! failed to read signals file: {exc}", file=sys.stderr)
     return outcomes
 
 
@@ -684,12 +709,15 @@ def compute_fitness_signals(triggered_cells, outcomes, changed_files=None):
 
         # 5. MCP self-report — WEAKEST (agent grading itself)
         for mcp_entry in mcp:
-            # Support both schemas: {cells_used: [list]} and {cell_id: str}
-            cells_used = mcp_entry.get('cells_used', [])
-            cell_id = mcp_entry.get('cell_id', '')
-            if cell['_name'] in cells_used or cell['_name'] == cell_id:
+            # Support both schemas: {cells_used: [list]}, {cell_id: str}, {cell_name: str}, {cell: str}
+            cells_used = list(mcp_entry.get('cells_used', []))
+            cell_id = mcp_entry.get('cell_id') or mcp_entry.get('cell_name') or mcp_entry.get('cell')
+            if cell_id and cell_id not in cells_used:
+                cells_used.append(cell_id)
+
+            if cell['_name'] in cells_used:
                 outcome = mcp_entry.get('outcome', '')
-                if outcome == 'success':
+                if outcome in ('success', 'tp'):
                     # OVERCONFIDENCE PENALTY
                     if test_outcome.get('verified') and test_outcome.get('passed') is False:
                         signal -= 2.0
@@ -700,7 +728,7 @@ def compute_fitness_signals(triggered_cells, outcomes, changed_files=None):
                     else:
                         signal += 0.2
                         reasons.append("agent reported success")
-                elif outcome == 'failure':
+                elif outcome in ('failure', 'fp'):
                     signal -= 0.2
                     reasons.append("agent reported failure")
 

@@ -9,7 +9,7 @@ from pathlib import Path
 from typing import Any, Optional
 
 from soma_core.cell_inventory import CellInventoryError, inventory_cells
-from soma_mcp.jit_engine import parse_frontmatter
+from soma_core.frontmatter import parse_frontmatter
 
 
 class Governance:

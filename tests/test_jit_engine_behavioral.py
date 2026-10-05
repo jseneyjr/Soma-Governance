@@ -276,7 +276,7 @@ class TestMandatoryCellsFitnessScore:
 
     def test_mandatory_cells_have_nonzero_fitness(self, populated_workspace):
         """Wall cells must have their fitness computed, not default to 0."""
-        from jit_engine import express
+        from soma_mcp.jit_engine import express
         result = express(populated_workspace, changed_files=["app.py"], budget=5)
 
         for cell in result['relevant_cells']:
@@ -287,7 +287,7 @@ class TestMandatoryCellsFitnessScore:
 
     def test_all_expressed_cells_have_fitness(self, populated_workspace):
         """Every expressed cell (mandatory or candidate) must have fitness."""
-        from jit_engine import express
+        from soma_mcp.jit_engine import express
         result = express(populated_workspace, changed_files=["app.py"], budget=5)
 
         for cell in result['relevant_cells']:
