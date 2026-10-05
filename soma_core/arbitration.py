@@ -10,7 +10,7 @@ Strictly layered: uses soma_core primitives (workspace, evidence) and stdlib.
 from __future__ import annotations
 
 import collections
-from datetime import datetime
+from datetime import datetime, timezone
 import difflib
 import glob
 import json
@@ -599,11 +599,21 @@ def generate_checkpoint(workspace: Optional[str] = None, session_count: Optional
                 "message": f"{unobserved_count}/{len(cells)} cells ({pct:.0f}%) have no fitness evidence. Run post-session hook to collect data.",
             })
 
+    healthy_count = len(classifications.get("healthy", [])) + len(classifications.get("active", []))
+    warning_count = len(classifications.get("noisy", []))
+    expired_count = len(classifications.get("expired", []))
+    dormant_count = len(classifications.get("unobserved", []))
+
     return {
+        "workspace": ws,
         "total_cells": len(cells),
+        "healthy_count": healthy_count,
+        "warning_count": warning_count,
+        "expired_count": expired_count,
+        "dormant_count": dormant_count,
         "classifications": dict(classifications),
         "recommendations": recommendations,
-        "timestamp": datetime.now().strftime("%Y-%m-%dT%H:%M:%SZ"),
+        "timestamp": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
     }
 
 
@@ -642,9 +652,16 @@ def cli_checkpoint(argv: Optional[List[str]] = None) -> int:
     if parsed.json:
         print(json.dumps(report, indent=2, default=str))
     else:
-        print(f"Soma Oracle Checkpoint ({report['timestamp']})")
-        print(f"Workspace: {report['workspace']}")
-        print(f"Cells: {report['total_cells']} (Healthy: {report['healthy_count']}, Warning: {report['warning_count']}, Expired: {report['expired_count']}, Dormant: {report['dormant_count']})")
+        ts = report.get("timestamp", datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"))
+        ws_str = report.get("workspace", parsed.workspace or "")
+        tot = report.get("total_cells", 0)
+        h = report.get("healthy_count", 0)
+        w = report.get("warning_count", 0)
+        e = report.get("expired_count", 0)
+        d = report.get("dormant_count", 0)
+        print(f"Soma Oracle Checkpoint ({ts})")
+        print(f"Workspace: {ws_str}")
+        print(f"Cells: {tot} (Healthy: {h}, Warning: {w}, Expired: {e}, Dormant: {d})")
     return 0
 
 

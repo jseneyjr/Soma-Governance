@@ -230,7 +230,7 @@ These 25 modules implement the MCP server, state-bound authorization, safe cell 
 | Module | Location | Purpose |
 |:-------|:---------|:--------|
 | **`server.py`** | `soma_mcp/server.py` | JSON-RPC transport, capability filtering, canonical `SOMA_WORKSPACE` injection, and receipt issuance/redemption. |
-| **`tools.py`** | `soma_mcp/tools.py` | Canonical 16-tool definitions and implementations for read, write, and execute operations. |
+| **`tools.py`** | `soma_mcp/tools.py` | Canonical 19-tool definitions and implementations for read, write, and execute operations. |
 | **`security.py`** | `soma_mcp/security.py` | Workspace/path confinement and cell-name validation. |
 | **`integrity.py`** | `soma_mcp/integrity.py` | Cell manifest generation, signing, and verification. |
 | **`cell_cache.py`** | `soma_mcp/cell_cache.py` | Content-fingerprinted parsed-cell cache using the canonical race-detecting inventory; stale or unsafe trees fail closed. |

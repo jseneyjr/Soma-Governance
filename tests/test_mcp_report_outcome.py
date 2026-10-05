@@ -31,3 +31,36 @@ def test_report_outcome_writes_only_canonical_signal(tmp_path, monkeypatch):
     assert signal["event_id"], "MCP outcome signal is not idempotent"
     assert not (ev / "outcomes.jsonl").exists()
 
+
+def test_report_outcome_accepts_tp_and_fp(tmp_path, monkeypatch):
+    from soma_mcp.tools import execute_tool, TOOL_DEFINITIONS
+    ws = _workspace_with_cell(tmp_path, cell="trap-tp")
+    monkeypatch.setenv("SOMA_WORKSPACE", str(ws))
+
+    # Verify tool definition enum
+    tool_def = next(t for t in TOOL_DEFINITIONS if t["name"] == "soma_report_outcome")
+    enum_vals = tool_def["inputSchema"]["properties"]["outcome"]["enum"]
+    assert "tp" in enum_vals
+    assert "fp" in enum_vals
+
+    # Execute with tp
+    res_tp = execute_tool(
+        "soma_report_outcome",
+        {"outcome": "tp", "cells_used": ["trap-tp"], "workspace": str(ws), "idempotency_key": "k-tp"},
+    )
+    assert res_tp["status"] == "recorded"
+
+    # Execute with fp
+    res_fp = execute_tool(
+        "soma_report_outcome",
+        {"outcome": "fp", "cells_used": ["trap-tp"], "workspace": str(ws), "idempotency_key": "k-fp"},
+    )
+    assert res_fp["status"] == "recorded"
+
+
+def test_soma_create_cell_description_clarifies_advisory():
+    from soma_mcp.tools import TOOL_DEFINITIONS
+    tool_def = next(t for t in TOOL_DEFINITIONS if t["name"] == "soma_create_cell")
+    assert "advisory" in tool_def["description"].lower()
+
+

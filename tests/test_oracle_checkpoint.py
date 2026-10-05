@@ -157,3 +157,21 @@ class TestOracleCheckpointRecommendations:
         report = generate_checkpoint(str(workspace))
         critical = [r for r in report.get('recommendations', []) if r.get('severity') == 'critical']
         assert len(critical) == 0
+
+    def test_checkpoint_returns_required_keys(self, workspace):
+        from oracle_checkpoint import generate_checkpoint
+        report = generate_checkpoint(str(workspace))
+        assert "workspace" in report
+        assert "healthy_count" in report
+        assert "warning_count" in report
+        assert "expired_count" in report
+        assert "dormant_count" in report
+
+    def test_cli_checkpoint_terminal_mode(self, workspace, capsys):
+        from soma_core.arbitration import cli_checkpoint
+        rc = cli_checkpoint([str(workspace)])
+        assert rc == 0
+        captured = capsys.readouterr()
+        assert "Soma Oracle Checkpoint" in captured.out
+        assert f"Workspace: {workspace}" in captured.out
+        assert "Cells:" in captured.out

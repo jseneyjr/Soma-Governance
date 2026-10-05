@@ -606,7 +606,30 @@ def run_hook(args: Any) -> int:
         print(json.dumps(res))
         return rc
 
-    elif phase in ("session-close", "post-session", "stop"):
+    elif phase == "post-session":
+        from soma_core.sync import run_post_session_hook
+        transcript_arg = getattr(args, "transcript", None)
+        transcript_path = Path(transcript_arg) if transcript_arg else None
+        if not transcript_path and not sys.stdin.isatty():
+            try:
+                raw = sys.stdin.read().strip()
+                if raw:
+                    data = json.loads(raw)
+                    t_str = data.get("transcript_path") or data.get("transcript")
+                    if t_str:
+                        transcript_path = Path(t_str)
+            except Exception:
+                pass
+
+        if transcript_path and transcript_path.is_file():
+            rc = run_post_session_hook(transcript_path=transcript_path, repo_root=workspace)
+            return rc
+        else:
+            rc, res = run_session_close(workspace=workspace)
+            print(json.dumps(res))
+            return rc
+
+    elif phase in ("session-close", "stop"):
         rc, res = run_session_close(workspace=workspace)
         print(json.dumps(res))
         return rc
@@ -665,6 +688,11 @@ def main(argv: list[str] | None = None) -> int:
         "--json",
         action="store_true",
         help="Emit JSON output",
+    )
+    parser.add_argument(
+        "--transcript",
+        default=None,
+        help="Path to transcript.jsonl for post-session hook",
     )
     args = parser.parse_args(argv)
     return run_hook(args)

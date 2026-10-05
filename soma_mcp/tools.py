@@ -349,7 +349,7 @@ TOOL_DEFINITIONS = [
     },
     {
         "name": "soma_create_cell",
-        "description": "Takes a natural language description and builds a prompt to create a governance cell.",
+        "description": "Takes a natural language description and builds an advisory prompt proposal to create a governance cell (does not directly modify the filesystem).",
         "annotations": {
             "readOnlyHint": False,
             "destructiveHint": False,
@@ -440,7 +440,7 @@ TOOL_DEFINITIONS = [
                 },
                 "outcome": {
                     "type": "string",
-                    "enum": ["success", "partial", "failure"],
+                    "enum": ["success", "partial", "failure", "tp", "fp"],
                     "description": "Overall outcome of the task"
                 },
                 "tests_passed": {"type": "boolean", "description": "Did tests pass?"},

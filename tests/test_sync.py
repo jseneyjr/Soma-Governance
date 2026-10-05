@@ -84,3 +84,19 @@ def test_sync_sentinel_exports(tmp_path):
     assert hasattr(fu_shim, "PLATFORMS")
     assert hasattr(fu_shim, "DEFAULT_PLATFORM")
 
+
+def test_sync_liveness_check_naive_datetime():
+    # W-07: Ensure offset-naive datetime string does not raise TypeError
+    payload = json.dumps({
+        "agents": [
+            {
+                "name": "worker-naive",
+                "dispatched": "2026-10-05T12:00:00",
+                "timeout_seconds": 3600,
+            }
+        ]
+    })
+    rc = check_liveness(payload)
+    assert rc == 0
+
+

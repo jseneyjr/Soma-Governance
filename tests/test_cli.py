@@ -344,4 +344,32 @@ class TestPorcelainCLIFacade:
         # Test main handles root-level flag without crashing
         assert main([flag, "rules"]) in (0, 1)
 
+    def test_prune_dry_run_flag(self, tmp_path, monkeypatch):
+        from soma_cli import cli
+        passed_execute = []
+        monkeypatch.setattr(
+            "soma_core.lifecycle.prune_cells",
+            lambda workspace=None, execute=False: passed_execute.append(execute) or 0
+        )
+        rc = cli.main(["prune", "--dry-run", "--workspace", str(tmp_path)])
+        assert rc == 0
+        assert passed_execute == [False]
+
+    def test_global_flags_verbose_quiet_format(self):
+        from soma_cli.cli import _build_parser
+        parser = _build_parser()
+        args = parser.parse_args(["rules", "--format", "json", "-v", "-q"])
+        assert args.format == "json"
+        assert args.verbose is True
+        assert args.quiet is True
+
+    def test_subparsers_use_soma_parser_class(self):
+        from soma_cli.cli import _build_parser, SomaParser
+        parser = _build_parser()
+        for action in parser._actions:
+            if hasattr(action, "choices") and isinstance(action.choices, dict):
+                for subparser in action.choices.values():
+                    assert isinstance(subparser, SomaParser)
+
+
 

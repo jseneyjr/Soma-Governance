@@ -43,6 +43,8 @@ def check_liveness(payload_str: str) -> int:
                 if dispatch_str.endswith("Z"):
                     dispatch_str = dispatch_str[:-1] + "+00:00"
                 dispatch_time = datetime.fromisoformat(dispatch_str)
+                if dispatch_time.tzinfo is None:
+                    dispatch_time = dispatch_time.replace(tzinfo=timezone.utc)
             except ValueError:
                 print(f"[{name}] INVALID_DATE: {dispatch_str}")
                 continue

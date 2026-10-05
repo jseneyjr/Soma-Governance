@@ -1777,12 +1777,17 @@ def cli_cell_quorum(argv: Optional[List[str]] = None) -> int:
 
 # ── Cell Coverage ──────────────────────────────────────────────────────────
 
-def calculate_coverage(workspace: str) -> dict:
+def calculate_coverage(workspace: str, exclude: Optional[Union[List[str], str]] = None) -> dict:
     """Calculate cell coverage mapping and directory tier breakdown."""
     cells_dir = os.path.join(workspace, '.soma', 'cells')
     result = subprocess.run(['git', 'ls-files'], capture_output=True, text=True, cwd=workspace)
     all_files = [f for f in result.stdout.strip().split('\n') if f]
     EXCLUDE_PATTERNS = ['.soma/', 'vendor/', '.git/', 'node_modules/']
+    if exclude:
+        if isinstance(exclude, str):
+            EXCLUDE_PATTERNS.append(exclude)
+        else:
+            EXCLUDE_PATTERNS.extend(exclude)
     all_files = [f for f in all_files if not any(p in f for p in EXCLUDE_PATTERNS)]
 
     cell_patterns = []
@@ -1865,10 +1870,11 @@ calculate_cell_coverage = calculate_coverage
 def cli_cell_coverage(argv: Optional[List[str]] = None, workspace: Optional[str] = None) -> int:
     parser = argparse.ArgumentParser(description='Cell coverage map: visualize governance blind spots')
     parser.add_argument('--json', action='store_true', help='JSON output')
+    parser.add_argument('--exclude', action='append', default=[], help='Pattern(s) to exclude from coverage calculation')
     args = parser.parse_args(argv if argv is not None else sys.argv[1:])
 
     ws = workspace or resolve_workspace(start=__file__)
-    cov = calculate_coverage(ws)
+    cov = calculate_coverage(ws, exclude=args.exclude)
 
     if args.json:
         res = dict(cov)

@@ -38,6 +38,12 @@ class SomaParser(argparse.ArgumentParser):
         ns = super().parse_args(args=args, namespace=namespace)
         if not hasattr(ns, "plumbing"):
             ns.plumbing = False
+        if not hasattr(ns, "verbose"):
+            ns.verbose = False
+        if not hasattr(ns, "quiet"):
+            ns.quiet = False
+        if not hasattr(ns, "format"):
+            ns.format = None
         return ns
 
 
@@ -46,6 +52,15 @@ def _build_parser() -> argparse.ArgumentParser:
     common_parser.add_argument("--plumbing", "--internal", action="store_true",
                                default=argparse.SUPPRESS,
                                help="Display raw internal biological terms")
+    common_parser.add_argument("--format", choices=["text", "json", "mermaid"],
+                               default=argparse.SUPPRESS,
+                               help="Output format")
+    common_parser.add_argument("-v", "--verbose", action="store_true",
+                               default=argparse.SUPPRESS,
+                               help="Verbose diagnostic output")
+    common_parser.add_argument("-q", "--quiet", action="store_true",
+                               default=argparse.SUPPRESS,
+                               help="Suppress informational messages")
 
     parser = SomaParser(
         prog="soma",
@@ -55,7 +70,7 @@ def _build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--version", action="version",
                         version=f"soma {_version()}")
 
-    sub = parser.add_subparsers(dest="command")
+    sub = parser.add_subparsers(dest="command", parser_class=SomaParser)
 
     # soma init
     p_init = sub.add_parser("init", parents=[common_parser], help="Set up governance for this project")
@@ -192,6 +207,8 @@ def _build_parser() -> argparse.ArgumentParser:
                         help="Target workspace path")
     p_hook.add_argument("--json", action="store_true",
                         help="Emit JSON output")
+    p_hook.add_argument("--transcript", default=None,
+                        help="Path to transcript.jsonl for post-session hook")
 
     # soma transfer
     p_transfer = sub.add_parser("transfer", parents=[common_parser], help="Transfer a cell to another project with fitness reset")
@@ -200,7 +217,7 @@ def _build_parser() -> argparse.ArgumentParser:
 
     # soma quarantine
     p_quarantine = sub.add_parser("quarantine", parents=[common_parser], help="Inspect and manage quarantined corrupt files")
-    p_quarantine_sub = p_quarantine.add_subparsers(dest="quarantine_action")
+    p_quarantine_sub = p_quarantine.add_subparsers(dest="quarantine_action", parser_class=SomaParser)
 
     p_q_list = p_quarantine_sub.add_parser("list", parents=[common_parser], help="List all quarantined files")
     p_q_list.add_argument("--json", action="store_true", help="Emit JSON output")
@@ -215,6 +232,7 @@ def _build_parser() -> argparse.ArgumentParser:
     # soma prune
     p_prune = sub.add_parser("prune", parents=[common_parser], help="Prune extinct or apoptotic rules")
     p_prune.add_argument("--execute", action="store_true", help="Execute pruning decisions (archive expired rules)")
+    p_prune.add_argument("--dry-run", action="store_true", help="Simulate pruning decisions without archiving files")
     p_prune.add_argument("--workspace", type=str, default="", help="Path to workspace root")
 
     return parser
@@ -313,7 +331,10 @@ def cmd_quarantine(args: argparse.Namespace) -> int:
 def cmd_prune(args: argparse.Namespace) -> int:
     """Prune extinct or apoptotic rules."""
     from soma_core.lifecycle import prune_cells
+    dry_run = getattr(args, "dry_run", False)
     execute = getattr(args, "execute", False)
+    if dry_run:
+        execute = False
     workspace = getattr(args, "workspace", None)
     return prune_cells(workspace=workspace, execute=execute)
 
