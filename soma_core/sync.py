@@ -756,17 +756,11 @@ def run_sweep(active_only: bool = False, soma_data_dir: Path | None = None) -> i
     from collections import Counter
     import time
     try:
-        import importlib
-        _mod = importlib.import_module("enzymes.sweep_session")
-        scan_transcript, to_session_metrics = _mod.scan_transcript, _mod.to_session_metrics
+        from soma_core.sweep_session import scan_transcript, to_session_metrics
     except ImportError:
-        try:
-            import importlib
-            _mod = importlib.import_module("sweep_session")
-            scan_transcript, to_session_metrics = _mod.scan_transcript, _mod.to_session_metrics
-        except ImportError:
-            scan_transcript = None
-            to_session_metrics = None
+        scan_transcript = None
+        to_session_metrics = None
+
 
     resolved_home = resolve_home()
 
@@ -1234,20 +1228,14 @@ def run_post_session_hook(
         update_fitness,
     )
     try:
-        import importlib
-        _mod = importlib.import_module("enzymes.evidence_collector")
-        collector_aggregate = _mod.aggregate_evidence
-        build_observation = _mod.build_observation
-        check_compliance = _mod.check_compliance
+        from soma_core.evidence_collector import (
+            aggregate_evidence as collector_aggregate,
+            build_observation,
+            check_compliance,
+        )
     except ImportError:
-        try:
-            import importlib
-            _mod = importlib.import_module("evidence_collector")
-            collector_aggregate = _mod.aggregate_evidence
-            build_observation = _mod.build_observation
-            check_compliance = _mod.check_compliance
-        except ImportError:
-            collector_aggregate = build_observation = check_compliance = None
+        collector_aggregate = build_observation = check_compliance = None
+
 
     resolved_platform = platform or detect_platform(transcript_path)
     transcript_id = resolve_transcript_id(transcript_path, resolved_platform)

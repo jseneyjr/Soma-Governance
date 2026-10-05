@@ -1,7 +1,9 @@
 from __future__ import annotations
 
 import contextlib
+import contextvars
 import hmac
+
 import json
 import os
 import secrets
@@ -61,6 +63,7 @@ _RATE_LIMITS = {
 
 
 _rate_limit_lock = threading.Lock()
+_mcp_last_lease = contextvars.ContextVar("mcp_last_lease", default=None)
 _mcp_tls = threading.local()
 
 
@@ -71,6 +74,7 @@ def _check_rate_limit(tool_name: str) -> bool:
     max_calls, window_seconds = _RATE_LIMITS[tool_name]
     now = time.monotonic()
     lease_id = uuid.uuid4().hex
+    _mcp_last_lease.set((tool_name, lease_id))
     _mcp_tls.last_lease = (tool_name, lease_id)
     with _rate_limit_lock:
         entries = _tool_call_times[tool_name]
@@ -91,20 +95,30 @@ def _rollback_rate_limit(tool_name: str, lease_id: Optional[str] = None) -> None
     if tool_name in _RATE_LIMITS:
         target_lease = lease_id
         if not target_lease:
+            last = _mcp_last_lease.get()
+            if last and last[0] == tool_name:
+                target_lease = last[1]
+        if not target_lease:
             last = getattr(_mcp_tls, "last_lease", None)
             if last and last[0] == tool_name:
                 target_lease = last[1]
+        if target_lease is None:
+            return
         with _rate_limit_lock:
             entries = _tool_call_times.get(tool_name, [])
             if not entries:
                 return
-            if target_lease is not None:
-                for i in range(len(entries) - 1, -1, -1):
-                    e = entries[i]
-                    if isinstance(e, tuple) and e[0] == target_lease:
-                        entries.pop(i)
-                        return
-            entries.pop()
+            for i in range(len(entries) - 1, -1, -1):
+                e = entries[i]
+                if isinstance(e, tuple) and e[0] == target_lease:
+                    entries.pop(i)
+                    break
+        last = _mcp_last_lease.get()
+        if last and last == (tool_name, target_lease):
+            _mcp_last_lease.set(None)
+        if hasattr(_mcp_tls, "last_lease") and _mcp_tls.last_lease == (tool_name, target_lease):
+            _mcp_tls.last_lease = None
+
 
 # Messages that mean "the operation did not happen", regardless of the tool.
 _ERROR_STATUSES = ("FAIL", "FAILED", "ERROR", "REJECTED", "BLOCKED", "ESCALATION_REQUIRED")
@@ -293,7 +307,6 @@ def handle_request(request: Dict[str, Any]) -> Dict[str, Any]:
             try:
                 file_digest, cell_digest = _state_digests(op_args)
             except (ValueError, RuntimeError, OSError) as exc:
-                _rollback_rate_limit("soma_request_receipt")
                 return _error(req_id, -32602, str(exc))
             receipt_id = issue_receipt(
                 session_id=_session_token,
@@ -360,7 +373,19 @@ def handle_request(request: Dict[str, Any]) -> Dict[str, Any]:
             # since issuance no longer matches and the receipt is consumed.
             try:
                 file_digest, cell_digest = _state_digests(args)
-            except (ValueError, RuntimeError, OSError) as exc:
+            except ValueError as exc:
+                verify_receipt(
+                    receipt_id=receipt,
+                    session_id=_session_token,
+                    workspace=_canonical_workspace,
+                    operation=name,
+                    args=args,
+                    file_digest="",
+                    cell_digest="",
+                    consume=True,
+                )
+                return _error(req_id, -32602, str(exc))
+            except (RuntimeError, OSError) as exc:
                 _rollback_rate_limit(name)
                 return _error(req_id, -32602, str(exc))
             if not verify_receipt(
@@ -375,6 +400,8 @@ def handle_request(request: Dict[str, Any]) -> Dict[str, Any]:
             ):
                 _rollback_rate_limit(name)
                 return _error(req_id, -32600, "Invalid, expired, or mismatched receipt.")
+
+
 
         # Inject the operator-configured workspace only after verification, so
         # the hashed arguments match issuance and dispatch cannot be redirected.

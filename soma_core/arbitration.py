@@ -178,41 +178,12 @@ def _classify_protocol_python(file_path: str, workspace: str) -> str:
 
 def get_escalation_protocol(file_path: str, workspace: str) -> str:
     """Determine the review protocol for a file path (fails closed)."""
-    sentinel = os.path.join(workspace, "enzymes", "escalation_sentinel.sh")
-    if not shutil.which("bash") or not os.path.exists(sentinel):
-        protocol = _classify_protocol_python(file_path, workspace)
-        if protocol in ESCALATION_PROTOCOLS:
-            return protocol
-        _log(f"[TTC] Python fallback could not determine protocol for {file_path}; failing closed.")
-        return PROTOCOL_UNKNOWN
-
-    try:
-        result = subprocess.run(
-            ["bash", sentinel, file_path],
-            capture_output=True,
-            text=True,
-            check=False,
-            timeout=SENTINEL_TIMEOUT,
-            cwd=workspace,
-        )
-    except (FileNotFoundError, OSError) as exc:
-        _log(f"[TTC] bash execution failed ({exc!r}); falling back to Python classifier.")
-        protocol = _classify_protocol_python(file_path, workspace)
-        return protocol if protocol in ESCALATION_PROTOCOLS else PROTOCOL_UNKNOWN
-    except Exception as exc:
-        _log(f"[TTC] escalation sentinel failed ({exc!r}); failing closed.")
-        return PROTOCOL_UNKNOWN
-
-    for line in result.stdout.splitlines():
-        if line.startswith("PROTOCOL="):
-            protocol = line.split("=", 1)[1].strip().lower()
-            if protocol in ESCALATION_PROTOCOLS:
-                return protocol
-            _log(f"[TTC] sentinel returned unrecognised protocol {protocol!r}; failing closed.")
-            return PROTOCOL_UNKNOWN
-
-    _log(f"[TTC] sentinel emitted no PROTOCOL= line; failing closed. stderr={result.stderr.strip()[:200]!r}")
+    protocol = _classify_protocol_python(file_path, workspace)
+    if protocol in ESCALATION_PROTOCOLS:
+        return protocol
+    _log(f"[TTC] Python protocol classifier could not determine protocol for {file_path}; failing closed.")
     return PROTOCOL_UNKNOWN
+
 
 
 # ── Oracle Evaluation ─────────────────────────────────────────────────────
@@ -231,27 +202,24 @@ def load_oracles(workspace: str) -> List[Tuple[str, str]]:
     return oracles
 
 
-def evaluate_change(workspace: str, target_file: str, proposed_content: str) -> str:
+def evaluate_change(workspace: str, target_file: str, proposed_content: str, strict: bool = False) -> str:
     """Evaluate proposed content against hidden oracles using inference provider."""
     oracles = load_oracles(workspace)
     if not oracles:
         return "APPROVED: No oracles defined."
 
     try:
-        import importlib
-        _inf = importlib.import_module("enzymes.inference_provider")
-        resolve_provider = _inf.resolve_provider
+        from soma_core.inference_provider import resolve_provider, PromptOnlyProvider
     except ImportError:
-        try:
-            import importlib
-            _inf = importlib.import_module("inference_provider")
-            resolve_provider = _inf.resolve_provider
-        except ImportError:
-            return "APPROVED: No inference provider available to run TTC Oracle."
+        resolve_provider = None
+        PromptOnlyProvider = None
 
-    provider = resolve_provider(workspace)
-    if not provider:
+    provider = resolve_provider(workspace) if resolve_provider else None
+    if not provider or (PromptOnlyProvider and isinstance(provider, PromptOnlyProvider)):
+        if strict:
+            return "BLOCKED: No inference provider available to run TTC Oracle."
         return "APPROVED: No inference provider available to run TTC Oracle."
+
 
     rulebook = ""
     for name, content in oracles:
@@ -629,9 +597,9 @@ def cli_oracle(argv: Optional[List[str]] = None) -> int:
     else:
         proposed_content = sys.stdin.read()
 
-    result = evaluate_change(workspace, target_file, proposed_content)
+    result = evaluate_change(workspace, target_file, proposed_content, strict=True)
     print(result)
-    return 1 if result.startswith("REJECTED") else 0
+    return 1 if (result.startswith("REJECTED") or result.startswith("BLOCKED")) else 0
 
 
 def cli_checkpoint(argv: Optional[List[str]] = None) -> int:
@@ -659,7 +627,11 @@ def cli_checkpoint(argv: Optional[List[str]] = None) -> int:
         print(f"Soma Oracle Checkpoint ({ts})")
         print(f"Workspace: {ws_str}")
         print(f"Cells: {tot} (Healthy: {h}, Warning: {w}, Expired: {e}, Dormant: {d})")
-    return 0
+    has_critical = any(
+        r.get("severity") == "critical"
+        for r in report.get("recommendations", [])
+    )
+    return 1 if has_critical else 0
 
 
 def self_test_verifier() -> int:

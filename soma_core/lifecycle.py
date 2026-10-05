@@ -629,6 +629,72 @@ lineage:
     return file_path
 
 
+def create_cell_from_description(
+    description: str,
+    domain_hint: Optional[str] = None,
+    cell_type: Optional[str] = None,
+    provider_name: Optional[str] = None,
+    workspace: Optional[str] = None,
+) -> str:
+    """Use AI inference provider to generate cell YAML from natural language."""
+    import glob
+    from soma_core.workspace import resolve_workspace
+    from soma_core.inference_provider import resolve_provider
+
+    ws = workspace or resolve_workspace()
+    provider = resolve_provider(ws, provider_name)
+
+    examples = []
+    cells_dir = os.path.join(ws, ".soma", "cells")
+    if os.path.isdir(cells_dir):
+        for cell_file in glob.glob(os.path.join(cells_dir, "**", "*.md"), recursive=True):
+            if os.path.basename(cell_file) == "README.md":
+                continue
+            try:
+                with open(cell_file, encoding="utf-8") as f:
+                    content = f.read()
+                if content.startswith("---"):
+                    examples.append(content[:500])
+            except Exception:
+                pass
+
+    example_text = "\n---\n".join(examples[:3]) if examples else "No existing cells found."
+    domain_context = f"\nDomain hint: {domain_hint}" if domain_hint else ""
+    type_hint = f"\nPreferred cell type: {cell_type}" if cell_type else ""
+
+    prompt = f"""You are a governance cell generator for Soma.
+
+Given a natural language description of a concern, generate a governance cell in markdown with YAML frontmatter.
+
+Cell types:
+- wall: Non-negotiable invariant (hard safety gate). Use for things that must ALWAYS hold.
+- vacuole: Learned anti-pattern trap. Use for known failure modes to watch for.
+- membrane: Escalation gate. Use when sensitive areas need elevated review.
+- chloroplast: Domain persona/accelerator. Use for idiomatic patterns to follow.
+- plasmodesmata: Cross-service contract. Use for API/data shape agreements.
+
+YAML fields required:
+- id: (filename stem, e.g. 'trap-missing-tests' for trap-missing-tests.md)
+- type: (one of above)
+- domain: (one of: efficiency, correctness, security, style, governance)
+- hypothesis: (clear, testable statement)
+- prediction: (what will happen if the hypothesis is violated)
+- falsification: (how to prove this cell is no longer needed)
+- target_paths: (list of file glob patterns this cell monitors)
+- minimum_mode: (breeze | gale | trident | maelstrom | tempest)
+- tags: (list of relevant tags)
+
+Existing cells in this project for reference:
+{example_text}
+{domain_context}{type_hint}
+
+User description: "{description}"
+
+Generate ONLY the complete markdown cell file content. Start with --- for the YAML frontmatter. After the closing ---, include a brief description paragraph explaining the cell's purpose. Do not include any other text."""
+
+    return provider.generate(prompt).strip()
+
+
 def cli_cell_create(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description="Programmatic Cell Creation for Soma", add_help=False)
     parser.add_argument("--help", action="store_true", default=False)
@@ -662,18 +728,59 @@ def cli_cell_create(argv: list[str] | None = None) -> int:
             return 1
 
     if args.description:
-        script_dir = Path(__file__).resolve().parent.parent / "enzymes"
-        nl_script = script_dir / "cell_create_nl.py"
-        extra_args = []
-        if args.cell_id:
-            extra_args.extend(["--id", args.cell_id])
-        if args.cell_type:
-            extra_args.extend(["--type", args.cell_type])
-        if args.domain:
-            extra_args.extend(["--domain", args.domain])
-        cmd = [sys.executable, str(nl_script), args.description, *extra_args]
-        res = subprocess.run(cmd)
-        return res.returncode
+        ws = resolve_workspace()
+        try:
+            cell_content = create_cell_from_description(
+                description=args.description,
+                domain_hint=args.domain,
+                cell_type=args.cell_type or None,
+                workspace=ws,
+            )
+            if cell_content.startswith("```"):
+                cell_content = cell_content.split("\n", 1)[1]
+                if cell_content.rstrip().endswith("```"):
+                    cell_content = cell_content.rstrip()[:-3].rstrip()
+            fm = {}
+            if cell_content.startswith("---"):
+                try:
+                    yaml_block = cell_content[3:cell_content.find("---", 3)]
+                    import yaml
+                    fm = yaml.safe_load(yaml_block) or {}
+                except Exception:
+                    pass
+            raw_cell_type = str(fm.get("type", args.cell_type or "vacuole"))
+            cell_type = re.sub(r"[^a-zA-Z0-9_\-]", "", os.path.basename(raw_cell_type)) or "vacuole"
+            hypothesis = fm.get("hypothesis", args.description)
+            if args.cell_id:
+                slug = re.sub(r"[^a-zA-Z0-9_\-]", "", os.path.basename(args.cell_id))
+            else:
+                slug = re.sub(r"[^a-z0-9]+", "-", hypothesis.lower())[:50].strip("-")
+            filename = f"{cell_type}-{slug}.md" if not slug.startswith(cell_type) else f"{slug}.md"
+            filename = os.path.basename(filename)
+            type_dirs = {
+                "wall": "walls", "membrane": "membranes", "vacuole": "vacuoles",
+                "chloroplast": "chloroplasts", "plasmodesmata": "plasmodesmata"
+            }
+            target_dir = os.path.join(ws, ".soma", "cells", type_dirs.get(cell_type, "vacuoles"))
+            os.makedirs(target_dir, exist_ok=True)
+            filepath = os.path.realpath(os.path.join(target_dir, filename))
+            if not filepath.startswith(os.path.realpath(target_dir) + os.sep):
+                print(f"Error: Path traversal detected for filename '{filename}'", file=sys.stderr)
+                return 1
+            try:
+                os.unlink(filepath)
+            except OSError:
+                pass
+            fd = os.open(filepath, os.O_CREAT | os.O_EXCL | os.O_WRONLY, 0o644)
+            with open(fd, "w", encoding="utf-8") as f:
+                f.write(cell_content)
+            rel_path = os.path.relpath(filepath, ws)
+            print(f"Created: {rel_path}")
+            return 0
+        except Exception as exc:
+            print(f"Error generating cell from description: {exc}", file=sys.stderr)
+            return 1
+
 
     if not args.cell_type or not args.hypothesis:
         print("Error: Missing required arguments --type and --hypothesis", file=sys.stderr)
@@ -1821,6 +1928,7 @@ __all__ = [
     "validate_cell_id",
     "generate_slug",
     "create_cell",
+    "create_cell_from_description",
     "cli_cell_create",
     "transfer_cell",
     "cli_cell_transfer",

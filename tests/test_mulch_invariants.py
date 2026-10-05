@@ -15,6 +15,7 @@ import glob
 import importlib
 import os
 import threading
+import time
 from pathlib import Path
 
 import pytest
@@ -53,8 +54,16 @@ class TestInvariant1_LayerDecoupling:
                 elif isinstance(node, ast.ImportFrom):
                     if node.module and node.module.startswith(forbidden):
                         violations.append((py_file.name, node.lineno, node.module))
+                elif isinstance(node, ast.Call):
+                    if isinstance(node.func, ast.Attribute) and node.func.attr == "import_module":
+                        if node.args and isinstance(node.args[0], ast.Constant) and str(node.args[0].value).startswith(forbidden):
+                            violations.append((py_file.name, node.lineno, node.args[0].value))
+                    elif isinstance(node.func, ast.Name) and node.func.id == "__import__":
+                        if node.args and isinstance(node.args[0], ast.Constant) and str(node.args[0].value).startswith(forbidden):
+                            violations.append((py_file.name, node.lineno, node.args[0].value))
 
         assert not violations, f"Forbidden upward imports found in soma_core: {violations}"
+
 
 
 class TestInvariant2_SymbolAuthority:
@@ -197,6 +206,30 @@ class TestInvariant3_ReceiptSafety:
             cell_digest="cd",
         ) is False
 
+    def test_tripartite_negative_burn_on_malformed_payload(self, tmp_path):
+        workspace = str(tmp_path)
+        session_id = "session-tripartite"
+        op = "soma_verify_changes"
+        args = {"files": ["src/main.py"]}
+        file_digest = "digest-file-123"
+        cell_digest = "digest-cell-456"
+
+        # 1. Non-string / malformed payload burns receipt
+        r1 = issue_receipt(session_id, workspace, op, args, file_digest, cell_digest, 60)
+        assert verify_receipt(r1, 123, workspace, op, args, file_digest, cell_digest, consume=True) is False
+        assert verify_receipt(r1, session_id, workspace, op, args, file_digest, cell_digest, consume=True) is False
+
+        # 2. Mixed-type dictionary keys burn receipt
+        r2 = issue_receipt(session_id, workspace, op, args, file_digest, cell_digest, 60)
+        assert verify_receipt(r2, session_id, workspace, op, {1: "a", "b": 2}, file_digest, cell_digest, consume=True) is False
+        assert verify_receipt(r2, session_id, workspace, op, args, file_digest, cell_digest, consume=True) is False
+
+        # 3. Surrogate characters in comparison
+        r3 = issue_receipt(session_id, workspace, op, args, file_digest, cell_digest, 60)
+        assert verify_receipt(r3, "surrogate-\ud800", workspace, op, args, file_digest, cell_digest, consume=True) is False
+        assert verify_receipt(r3, session_id, workspace, op, args, file_digest, cell_digest, consume=True) is False
+
+
 
 class TestInvariant4_FailClosedConfinement:
     """Invariant 4: Path confinement rejects traversals, device names, and streams."""
@@ -246,6 +279,18 @@ class TestInvariant5_IngressConcurrency:
         # Counter should not be charged
         with mcp_server._rate_limit_lock:
             assert len(mcp_server._tool_call_times.get("soma_poll_verification", [])) == 0
+
+    def test_rate_limit_rollback_zero_sibling_lease_eviction(self):
+        tool = "soma_verify_changes"
+        with mcp_server._rate_limit_lock:
+            mcp_server._tool_call_times[tool] = [("lease-sibling-1", time.monotonic())]
+
+        # Rolling back with non-matching lease MUST NOT evict sibling
+        mcp_server._rollback_rate_limit(tool, lease_id="nonexistent-lease-xyz")
+        with mcp_server._rate_limit_lock:
+            assert len(mcp_server._tool_call_times[tool]) == 1
+            assert mcp_server._tool_call_times[tool][0][0] == "lease-sibling-1"
+
 
 
 class TestInvariant6_BugRegistryIntegrity:

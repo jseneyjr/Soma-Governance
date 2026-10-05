@@ -7,6 +7,8 @@ import sys
 from datetime import datetime, timezone
 
 from soma_core.cell_inventory import CellInventoryError, inventory_cells
+from soma_core.workspace import resolve_workspace
+
 
 # pyyaml is an OPTIONAL dependency of soma_mcp. The server must start on a bare
 # interpreter (see .soma/cells/walls/wall-mcp-zero-deps.md), so we only use
@@ -1112,9 +1114,53 @@ def execute_tool(name: str, args: dict):
         
     elif name == "soma_coverage":
         return gov.coverage_report()
-        
+
     elif name == "soma_fitness":
         return gov.fitness_landscape(bayesian=args.get("bayesian", False))
-        
+
+    elif name == "soma_request_receipt":
+        operation = args.get("operation")
+        if not operation:
+            return {"error": "Missing required argument 'operation'", "status": _STATUS_FAIL}
+        op_args = args.get("arguments", {})
+        if not isinstance(op_args, dict):
+            return {"error": "arguments must be an object", "status": _STATUS_FAIL}
+        from soma_core.receipts import (
+
+            issue_receipt,
+            compute_file_digest,
+            compute_cell_digest,
+            target_paths,
+            strip_server_owned,
+        )
+        workspace = (
+            args.get("workspace")
+            or (str(gov.repo_root) if (gov and hasattr(gov, "repo_root")) else resolve_workspace())
+        )
+
+        clean_args = strip_server_owned(op_args)
+        session_id = args.get("session_id") or args.get("_sessionToken") or "local-session"
+        try:
+            file_digest = compute_file_digest(workspace, target_paths(clean_args))
+            cell_digest = compute_cell_digest(workspace)
+        except (ValueError, RuntimeError, OSError) as exc:
+            return {"error": str(exc), "status": _STATUS_FAIL}
+
+        receipt_id = issue_receipt(
+            session_id=session_id,
+            workspace=workspace,
+            operation=operation,
+            args=clean_args,
+            file_digest=file_digest,
+            cell_digest=cell_digest,
+            ttl_seconds=300,
+        )
+        return {
+            "receipt": receipt_id,
+            "operation": operation,
+            "status": "ISSUED",
+        }
+
     else:
         raise ValueError(f"Unknown tool: {name}")
+
