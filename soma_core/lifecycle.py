@@ -183,12 +183,11 @@ def find_cell_file(workspace: Path, cell_id: str) -> Tuple[Optional[Path], Optio
     return None, None
 
 
-def _update_frontmatter_type(file_path: Path, new_type: str) -> None:
+def _transform_frontmatter_type(content: str, new_type: str) -> str:
     """Update type field in cell frontmatter preserving body and comments."""
-    content = file_path.read_text(encoding="utf-8")
     end_idx = content.find("---", 3)
     if end_idx == -1:
-        return
+        return content
 
     frontmatter = content[3:end_idx]
     body = content[end_idx:]
@@ -213,8 +212,50 @@ def _update_frontmatter_type(file_path: Path, new_type: str) -> None:
     if new_type == "wall" and not enforcement_updated:
         lines.append("enforcement: gate")
 
-    new_content = "---\n" + "\n".join(lines).strip() + "\n" + body
+    return "---\n" + "\n".join(lines).strip() + "\n" + body
+
+
+def _update_frontmatter_type(file_path: Path, new_type: str) -> None:
+    """Update type field in cell frontmatter preserving body and comments."""
+    content = file_path.read_text(encoding="utf-8")
+    new_content = _transform_frontmatter_type(content, new_type)
     file_path.write_text(new_content, encoding="utf-8")
+
+
+def _atomic_write_and_unlink(
+    source_path: Path,
+    target_path: Path,
+    new_content: str,
+) -> None:
+    """Write new_content to target_path atomically and unlink source_path with rollback."""
+    target_path.parent.mkdir(parents=True, exist_ok=True)
+    tmp_target = target_path.with_name(f"{target_path.name}.tmp.{os.getpid()}")
+    try:
+        with open(tmp_target, "w", encoding="utf-8") as fh:
+            fh.write(new_content)
+            fh.flush()
+            os.fsync(fh.fileno())
+        try:
+            os.replace(tmp_target, target_path)
+        except OSError:
+            shutil.move(str(tmp_target), str(target_path))
+        try:
+            if source_path != target_path and source_path.exists():
+                source_path.unlink()
+        except Exception:
+            if target_path.exists() and source_path.exists():
+                try:
+                    os.remove(target_path)
+                except Exception as ex:
+                    raise RuntimeError(f"Rollback failed: duplicate cell remains at {target_path}") from ex
+            raise
+    except Exception:
+        if tmp_target.exists():
+            try:
+                os.remove(tmp_target)
+            except OSError:
+                pass
+        raise
 
 
 def promote_cell(
@@ -280,9 +321,9 @@ def promote_cell(
             "target_path": str(target_path),
         }
 
-    target_dir.mkdir(parents=True, exist_ok=True)
-    _update_frontmatter_type(cell_path, next_type)
-    shutil.move(str(cell_path), str(target_path))
+    content = cell_path.read_text(encoding="utf-8")
+    new_content = _transform_frontmatter_type(content, next_type)
+    _atomic_write_and_unlink(cell_path, target_path, new_content)
 
     return {
         "status": "promoted",
@@ -342,9 +383,9 @@ def demote_cell(
             "target_path": str(target_path),
         }
 
-    target_dir.mkdir(parents=True, exist_ok=True)
-    _update_frontmatter_type(cell_path, next_type)
-    shutil.move(str(cell_path), str(target_path))
+    content = cell_path.read_text(encoding="utf-8")
+    new_content = _transform_frontmatter_type(content, next_type)
+    _atomic_write_and_unlink(cell_path, target_path, new_content)
 
     return {
         "status": "demoted",
