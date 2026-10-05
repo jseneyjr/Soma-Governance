@@ -6,8 +6,8 @@ Only the current minor release line receives security fixes. Fixes land on `deve
 
 | Version | Supported |
 |:--------|:---------:|
-| 0.95.x  | ✅ |
-| < 0.95  | ❌ |
+| 0.96.x  | ✅ |
+| < 0.96  | ❌ |
 
 ## Reporting a Vulnerability
 

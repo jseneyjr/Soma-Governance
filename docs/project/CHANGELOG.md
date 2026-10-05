@@ -3,6 +3,25 @@
 All notable changes to Soma are documented here.
 This project uses [Semantic Versioning](https://semver.org/).
 
+## [0.96.0] — 2026-10-05 — "Core Domain Consolidation, Common Method Centralization & 1.0.0 Release Prep"
+
+### Added
+- **Pure-Stdlib Layer 0 Foundations**: Added `soma_core/scoring.py` and `soma_core/workspace.py` providing zero-dependency Wilson confidence interval scoring, SNR computation, and deterministic workspace root resolution decoupled from higher-level SDK packages.
+- **Domain-Specific Core Engines**: Consolidated fragmented enzyme logic into cohesive Layer 0 modules under `soma_core/`:
+  - `soma_core/arbitration.py`: Test-to-code (TTC) verification, deterministic oracle scoring, and checkpoint validation.
+  - `soma_core/enforcement.py`: Pre-commit cell enforcement, CI outcome reporting, bug registry integrity, and documentation claim verification.
+  - `soma_core/defects.py`: Escaped defect reporting, cell expiry pruning, and hot-zone diagnosis.
+  - `soma_core/insights.py`: Structured insight capture and correlation engine.
+  - `soma_core/homeostasis.py`: Session sleep memory consolidation, system coherence checking, interoception health reporting, and resilience engine.
+  - `soma_core/sync.py`: Escalation sentinel, subagent liveness monitoring, team sync, HGT ribosome, immune sweep, and post-session hooks.
+  - `soma_core/telemetry.py`: Telemetry signal processing, outcome engine, fitness updater, metrics snapshotting, cell quorum, cell coverage, and immune grading.
+  - `soma_core/lifecycle.py`: Complete cell genetics and lifecycle domain (cell creation, promotion, demotion, transfer, metamorphosis, adaptation, selection, crossover, and fitness evaluation).
+
+### Changed
+- **Enzyme Forwarding Shims**: Converted 58 top-level enzymes into thin, backward-compatible dual-mode forwarding shims delegating to `soma_core/` while preserving full CLI parity, exit codes, monkeypatch hooks, and AST console encoding invariants.
+- **Scripts Architecture Reference**: Updated `docs/architecture/scripts.md` cataloging 149 executable modules (25 MCP/Core modules).
+- **Single-Sourced Version Synchronization**: Synchronized release version `0.96.0` across all repository surfaces (`VERSION`, `pyproject.toml`, `README.md`, `soma_sdk/__init__.py`, `soma_sdk_js/package.json`, `docs/KNOWN_ISSUES_WINDOWS.md`, and `SECURITY.md`).
+
 ## [0.95.0] — 2026-10-05 — "Architecture Consolidation, Deep Defense & Storage Resiliency"
 
 ### Added

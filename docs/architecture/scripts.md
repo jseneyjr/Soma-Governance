@@ -1,10 +1,10 @@
 # Scripts Reference
 
-This document catalogs 140 executable scripts, command modules, SDK modules, and MCP/core modules in the Soma governance framework.
+This document catalogs 149 executable scripts, command modules, SDK modules, and MCP/core modules in the Soma governance framework.
 
 ## Counting Method
 
-Counts are generated from the v0.95.0 source tree with mutually exclusive categories: package initializers (`__init__.py`, `__main__.py`) are excluded; the six lifecycle enzymes plus `install/hooks/pre-commit` are counted only as lifecycle scripts; all remaining top-level `enzymes/*.py` and `enzymes/*.sh` files are utilities; installer wrappers are counted separately; and all non-initializer `soma_core/*.py` modules are grouped with the MCP modules. This produces 140 unique paths with no double counting.
+Counts are generated from the v0.96.0 source tree with mutually exclusive categories: package initializers (`__init__.py`, `__main__.py`) are excluded; the six lifecycle enzymes plus `install/hooks/pre-commit` are counted only as lifecycle scripts; all remaining top-level `enzymes/*.py` and `enzymes/*.sh` files are utilities; installer wrappers are counted separately; and all non-initializer `soma_core/*.py` modules are grouped with the MCP modules. This produces 149 unique paths with no double counting.
 
 ## Summary by Category
 
@@ -16,8 +16,8 @@ Counts are generated from the v0.95.0 source tree with mutually exclusive catego
 | [Install Scripts](#install-scripts--bash-and-powershell) | Bash and PowerShell (`install/`, root) | 6 | Platform installers, uninstallers, and root wrappers |
 | [Utility Scripts](#utility-scripts) | Python and bash (`enzymes/`) | 69 | Cell genetics, runtime engines, evidence, telemetry, and shared utilities |
 | [SDK Modules](#sdk-modules--python-soma_sdk) | Python (`soma_sdk/`) | 8 | Canonical scoring, parsing, telemetry, hot-zone, and governance APIs |
-| [MCP and Core Modules](#mcp-and-core-modules) | Python (`soma_mcp/`, `soma_core/`) | 16 | MCP transport, dispatch, confinement, content inventory, canonical evidence, cache, errors, receipts, and atomic storage |
-| **Total** | | **140** | Unique paths under the method above |
+| [MCP and Core Modules](#mcp-and-core-modules) | Python (`soma_mcp/`, `soma_core/`) | 25 | MCP transport, dispatch, confinement, content inventory, canonical evidence, cache, errors, receipts, and atomic storage |
+| **Total** | | **149** | Unique paths under the method above |
 
 ---
 
@@ -225,7 +225,7 @@ These 8 non-initializer modules provide the canonical Python APIs used by the CL
 
 ## MCP and Core Modules
 
-These 16 modules implement the MCP server, state-bound authorization, safe cell inventory, frontmatter parsing, lifecycle state machine, verification job orchestration, canonical evidence reading, transactional resource locking, self-healing quarantine, atomic storage, and standardized domain errors. Package initializers and `soma_mcp/__main__.py` are excluded from the count.
+These 25 modules implement the MCP server, state-bound authorization, safe cell inventory, frontmatter parsing, lifecycle state machine, verification job orchestration, canonical evidence reading, transactional resource locking, self-healing quarantine, atomic storage, and standardized domain errors. Package initializers and `soma_mcp/__main__.py` are excluded from the count.
 
 | Module | Location | Purpose |
 |:-------|:---------|:--------|
@@ -235,6 +235,15 @@ These 16 modules implement the MCP server, state-bound authorization, safe cell 
 | **`integrity.py`** | `soma_mcp/integrity.py` | Cell manifest generation, signing, and verification. |
 | **`cell_cache.py`** | `soma_mcp/cell_cache.py` | Content-fingerprinted parsed-cell cache using the canonical race-detecting inventory; stale or unsafe trees fail closed. |
 | **`jit_engine.py`** | `soma_mcp/jit_engine.py` | JIT cell matching, frontmatter parsing, and governance expression. |
+| **`scoring.py`** | `soma_core/scoring.py` | Zero-dependency Wilson interval lower bound and SNR confidence calculations. |
+| **`workspace.py`** | `soma_core/workspace.py` | Zero-dependency workspace root discovery from any filesystem path. |
+| **`arbitration.py`** | `soma_core/arbitration.py` | Test-to-code (TTC) verification, deterministic oracle scoring, and checkpoint validation. |
+| **`enforcement.py`** | `soma_core/enforcement.py` | Cell enforcement, CI outcome reporting, bug registry integrity, and documentation claim verification. |
+| **`defects.py`** | `soma_core/defects.py` | Escaped defect tracking, cell expiry pruning, and hot zone diagnosis. |
+| **`insights.py`** | `soma_core/insights.py` | Structured insight capture and correlation engine. |
+| **`homeostasis.py`** | `soma_core/homeostasis.py` | Session sleep consolidation, system coherence, interoception health check, and resilience engine. |
+| **`sync.py`** | `soma_core/sync.py` | Escalation sentinel, liveness sentinel, team sync, HGT ribosome, immune sweep, and post-session hooks. |
+| **`telemetry.py`** | `soma_core/telemetry.py` | Telemetry signal collection, outcome processing, fitness updating, metrics snapshots, cell quorum, coverage, and immune grading. |
 | **`receipts.py`** | `soma_core/receipts.py` | In-memory single-use receipts bound to session, workspace, operation, exact arguments, target-file digest, canonical cell fingerprint, and expiry. |
 | **`cell_inventory.py`** | `soma_core/cell_inventory.py` | Captures stable cell bytes and content fingerprints without following symlinks; detects concurrent changes and unsafe trees. |
 | **`evidence.py`** | `soma_core/evidence.py` | Standard-library canonical reader for weighted `signals.jsonl` evidence, independent trigger/outcome dimensions, and structured parse errors. |
