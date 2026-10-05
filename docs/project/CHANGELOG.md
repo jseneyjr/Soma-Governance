@@ -3,13 +3,50 @@
 All notable changes to Soma are documented here.
 This project uses [Semantic Versioning](https://semver.org/).
 
+## [0.92.3] — 2026-10-05 — "Maelstrom & Adaptive Remediation"
+
+### Added
+- **Kiro Platform Support** (BUG-066, C-08): Added platform detection, steering rules directory mapping (`.kiro/steering/`), installed skill discovery, and CLI help choices for the Kiro agent environment.
+- **Standalone Frontmatter Parser** (BUG-064, C-06): Added `soma_core/frontmatter.py` as a zero-dependency frontmatter and metadata parser, decoupling `soma_sdk/governance.py` from the MCP JIT runtime engine and eliminating layer inversion.
+- **Protected Rules Demotion Guard** (BUG-067, C-09): Added `PROTECTED_RULES` protection in `soma_cli/demote.py`, strictly prohibiting demotion of foundational governance rules (`cost-optimization`, `providence`, `git-workflow`, `architectural-tenets`, `testing`, `tdd-protocol`).
+- **Cryptographic Receipt Capacity & Expiry** (W-01): Added TTL expiration pruning and capacity capping (`MAX_RECEIPTS = 1000`) in `soma_core/receipts.py` to prevent memory exhaustion and replay attacks.
+- **MCP Layer Transparency** (W-07): Added explicit transparency notifications when Layer 2 adversarial verification is requested over MCP, clarifying that MCP execution defaults to Layer 1 verification.
+
+### Changed
+- **Threshold & Extinction Alignment** (I-06): Realigned cell fitness status boundaries in `enzymes/cell_fitness.py` (`0.15 <= dec_score <= 0.7` for `ADAPT`, `< 0.15` for `EXTINCT`), establishing mathematical consistency with `soma_sdk/cells.py` and `tests/test_threshold_recalibration.py`.
+- **Escalation Sentinel Diff Metric** (BUG-068, C-10): Rewrote `get_diff_size` in `enzymes/escalation_sentinel.sh` to calculate inserted plus deleted lines via `git diff --numstat` instead of counting changed files, and prevented subsequent Rule 6 checks from downgrading prior high-severity escalations.
+- **Evidence Credit Weights** (W-06): Bound `credit_weight` within `[0.0, 10.0]` in `soma_core/evidence.py` to prevent unbounded telemetry manipulation of fitness scoring ledgers.
+- **MCP Cell Cache Protection** (W-04): Prevented in-place cache mutation in `soma_mcp/jit_engine.py` by performing defensive copies of cell dictionaries before attaching runtime scoring metadata.
+- **Single-Sourced Version Synchronization** (I-04): Synchronized release version `0.92.3` across all 6 repository surfaces (`VERSION`, `pyproject.toml`, `README.md`, `soma_sdk/__init__.py`, `soma_sdk_js/package.json`, and `docs/KNOWN_ISSUES_WINDOWS.md`).
+
+### Fixed
+- **Shell Injection & Unicode Escapes in Hook** (BUG-059, C-01): Quoted heredocs and escaped Git log parameters in `enzymes/post_session_hook.sh`, preventing shell code execution and `\U` unicode syntax crashes on arbitrary commit messages.
+- **MCP Fail-Closed Integrity Verification** (BUG-060, C-02): Enforced fail-closed exception handling (`CellCacheError`) in `soma_mcp/cell_cache.py` when HMAC or manifest signatures fail, eliminating silent bypasses.
+- **Telemetry Contract Normalization Drift** (BUG-061, C-03): Unified symmetric normalization across `enzymes/outcome_engine.py` and `soma_sdk/telemetry.py` readers and writers, preventing dropped outcome events during replay.
+- **Infinite Root-Walk Loops on Windows and Container Roots** (BUG-062, C-04): Hardened upward traversal in `enzymes/cell_create.sh`, `enzymes/cell_signal.sh`, `enzymes/team_sync.sh`, and `enzymes/cell_transfer.sh` to check for both `/` and `dirname "$curr" == "$curr"`, preventing infinite loops on Windows drives (`C:`) and container mount points.
+- **Uninstall Rule Truncation in CLAUDE.md** (BUG-063, C-05): Replaced brittle regex cuts in `install/uninstall.sh` with safe delimiter parsing to prevent orphaning rule bodies or truncating user files to EOF.
+- **Packaged Module Import Failures** (BUG-065, C-07): Resolved bare sibling imports in `enzymes/oracle_checkpoint.py` with dynamic `sys.path` injection and package-relative resolution.
+- **ZeroDivisionError on Telomere Days** (BUG-069, C-11): Added type and zero guards in `enzymes/cell_fitness.py` and `enzymes/fitness_landscape.py` against invalid, zero, or `None` `telomere_days` attributes.
+- **Test Tautology and Duplication Elimination** (T-01 to T-04):
+  - *T-01*: Removed shadowed duplicate definitions of `test_retry_after_partial_append` in `tests/test_outcome_engine_insights.py`, truncated file body duplicates in `tests/test_mcp_report_outcome.py`, and redundant tests in `tests/test_outcome_engine.py`.
+  - *T-02*: Replaced circular self-arithmetic assertions in `tests/test_local_promotion_decay.py` with true behavioral integration tests verifying `evaluate_promotions`.
+  - *T-03*: Tightened vacuous `isinstance(result, dict)` assertions to concrete status and schema contract validations in `tests/test_mcp_tools_contract.py`.
+  - *T-04*: Removed `execute_tool` monkeypatching in `tests/test_mcp_dispatch.py` to test actual MCP dispatch flows end-to-end.
+- **Safety Gate Hardening** (W-02): Removed `STEERING_SAFETY_GATE=disabled` bypass in `enzymes/safety_gate.sh`, anchored command regular expressions, and added explicit protection against `rm -rf .` and `shutil.rmtree`.
+- **CRLF Safety in Installer** (W-03): Added `\r*$` anchoring to Kiro trigger transformation regexes in `install/install.sh` to prevent trailing carriage return corruption.
+- **MCP Optional Argument Null Guards** (W-05): Guarded optional arguments (`files`, `cells_used`, `context_files`, `proposed_content`, `file_path`) in `soma_mcp/tools.py` against `None` values passed by clients.
+- **Makefile Pipeline Subshell Exit Masking** (I-01): Replaced masked pipeline subshells (`ls ... | while read ...; done || echo`) with conditional checks and fixed `echo="  (none)"` syntax error in `Makefile`.
+- **Outcome Engine Logging Hygiene** (I-02): Replaced bare `except Exception: pass` blocks in `enzymes/outcome_engine.py` with structured debug logging.
+- **Bug Registry Verification** (I-05): Registered BUG-059 through BUG-069 with root-cause categorization, pattern analyses, and passing regression test links.
+
 ## [0.91.1] — 2026-10-04 — "Temp Artifact Clean & Release Hygiene"
 
 ### Fixed
 - **Temporary Artifact Cleanup**: Removed accidental temporary test coverage file (`coverage_baseline.txt`) from git tracking.
 - **`.gitignore` Hardening**: Added `coverage_baseline.txt` to `.gitignore` to prevent re-introduction.
+- **Release Hygiene**: Synchronized version strings across documentation and manifests.
 
-## [0.91.0] — 2026-10-04 — "Test Suite & Maelstrom Remediation"
+## [0.91.0] — 2026-10-04 — "Tempest Review Remediations & Governance Hardening"
 
 ### Added
 - **MCP Tool Annotations**: Added required `readOnlyHint`, `destructiveHint`, `idempotentHint`, `openWorldHint`, and `title` annotations to all 15 MCP tools to comply with m8ven trust score requirements.
@@ -23,9 +60,19 @@ This project uses [Semantic Versioning](https://semver.org/).
 - **Docs Drift**: Reconciled the total script count in architecture documentation to 118, accounting for recent utility script additions, and marked v0.90 bugs fixed in Bug Registry.
 
 ### Fixed
+- **Consumer Workspace Fallback for Escalation Sentinel** (BUG-048): Fixed `enzymes/ttc_verifier.py` failing to resolve `escalation_sentinel.sh` in external consumer projects lacking an `enzymes/` folder.
+- **Cell Creation Path Traversal** (BUG-049): Sanitized `cell_type` parameter in `enzymes/cell_create_nl.py` with basename extraction, preventing directory traversal outside `.soma/cells/`.
+- **Version Bump Shell Parameter Injection** (BUG-050): Hardened `enzymes/bump_version.sh` regex substitutions against unvalidated shell parameter injection into executable code templates.
+- **Workspace Parameter Loss in MCP Proposal Router** (BUG-051): Restored missing `workspace` parameter in `soma_mcp/tools.py::soma_propose_change` so path confinement resolves against `_canonical_workspace`.
+- **Silent Exception Swallowing in Core Enzymes** (BUG-052): Replaced bare `except Exception: pass` with structured error logging across `cell_scan.py`, `cell_deps.py`, `cell_coverage.py`, and `immune_grade.py`.
+- **Layer 2 Verification Attestation Integrity** (BUG-053): Corrected `soma_verify_changes` in `soma_mcp/tools.py` which falsely attested `layer1_only: false` without executing Layer 2 adversarial verification.
+- **Zero-Dependency Boundary Protection** (BUG-054): Removed top-level `import yaml` in `soma_sdk/cells.py`, restoring zero-dependency conformance on bare Python runtimes.
+- **Session Close Git Sync Order Inversion** (BUG-055): Reordered `enzymes/session_close.sh` so git commit and push occur after outcome engine and cell fitness updates complete.
+- **Cryptographic Cache HMAC Verification Fail-Closed** (BUG-056): Enforced fail-closed raising of `CellCacheError` in `soma_mcp/cell_cache.py` on HMAC signature mismatches.
+- **Timing Side Channel & Non-Destructive Token Checking** (BUG-057): Used constant-time comparisons in `soma_core/receipts.py` and prevented deletion of receipts during non-consuming verification checks.
+- **Evidence Arbiter Import Guard Category Mapping** (BUG-058): Added missing `import_guard` mapping to `immune_system/verification/arbiter.py::TOOL_TO_CATEGORY`.
 - **Tautological Mocks**: Rewrote `tests/test_mcp_dispatch.py` to remove brittle mock-heavy tautological tests. Tests now verify functional boundaries instead of strict 1-to-1 implementation assertions.
 - **Maelstrom Remediation**: Resolved tautological test assertions across `tests/test_local_promotion_decay.py` and `tests/test_outcome_engine.py` by converting to real subprocess integration tests and tightening signal thresholds.
-- **Script Robustness**: Hardened `enzymes/bump_version.sh` against clobbering by using regex anchoring and adding a fail-loud validation step before writing.
 
 ## [0.90.0] — 2026-10-03 — "Security & Hardening"
 

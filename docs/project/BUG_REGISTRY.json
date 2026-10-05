@@ -1057,6 +1057,187 @@
       "regression_test": "tests/test_verification/test_arbiter.py",
       "pattern": "Tool omitted from category dictionary in evidence arbiter",
       "changelog_ref": "v0.91.0"
+    },
+    {
+      "id": "BUG-059",
+      "status": "fixed",
+      "title": "enzymes/post_session_hook.sh shell code injection & \\U unicode crash",
+      "discovered_in": "v0.92.3",
+      "fixed_in": "v0.92.3",
+      "root_cause": "schema_drift",
+      "severity": "critical",
+      "description": "Unquoted heredoc in enzymes/post_session_hook.sh interpolated git commit logs directly into inline python script, enabling shell/python injection and crashing on git commit messages containing unicode escapes like \\U or bash syntax.",
+      "affected_files": [
+        "enzymes/post_session_hook.sh"
+      ],
+      "regression_test": "tests/test_shell_isolation_behavioral.py",
+      "pattern": "Unquoted heredoc interpolates unescaped shell variables into inline script",
+      "changelog_ref": "v0.92.3"
+    },
+    {
+      "id": "BUG-060",
+      "status": "fixed",
+      "title": "soma_mcp/cell_cache.py fail-closed HMAC & verify_manifest bypass",
+      "discovered_in": "v0.92.3",
+      "fixed_in": "v0.92.3",
+      "root_cause": "silent_failure",
+      "severity": "critical",
+      "description": "CellCache._verify_integrity raised CellCacheError on HMAC failure but caller caught and ignored it or loaded empty cache instead of failing closed; get_cells() returned tampered state when manifest verification failed.",
+      "affected_files": [
+        "soma_mcp/cell_cache.py"
+      ],
+      "regression_test": "tests/test_cell_cache.py",
+      "pattern": "Cryptographic integrity verification error caught and downgraded to empty or partial state",
+      "changelog_ref": "v0.92.3"
+    },
+    {
+      "id": "BUG-061",
+      "status": "fixed",
+      "title": "enzymes/outcome_engine.py telemetry mapping contract drift",
+      "discovered_in": "v0.92.3",
+      "fixed_in": "v0.92.3",
+      "root_cause": "schema_drift",
+      "severity": "critical",
+      "description": "outcome_engine.py expected events in signals.jsonl to carry legacy field names while soma_sdk/telemetry.py serialized canonical normalized event schemas, dropping outcome events during replay.",
+      "affected_files": [
+        "enzymes/outcome_engine.py"
+      ],
+      "regression_test": "tests/test_outcome_engine.py",
+      "pattern": "Telemetry reader field mapping drifts from canonical telemetry writer schema",
+      "changelog_ref": "v0.92.3"
+    },
+    {
+      "id": "BUG-062",
+      "status": "fixed",
+      "title": "enzymes/cell_*.sh infinite root-walk loop on container/Windows drive roots",
+      "discovered_in": "v0.92.3",
+      "fixed_in": "v0.92.3",
+      "root_cause": "platform_compat",
+      "severity": "critical",
+      "description": "Upward directory traversal in cell_create.sh, cell_signal.sh, team_sync.sh, and cell_transfer.sh checked [[ \"$curr\" == \"/\" ]] but looped infinitely on Windows drive roots (C:) or container boundaries where dirname returned current path.",
+      "affected_files": [
+        "enzymes/cell_create.sh",
+        "enzymes/cell_signal.sh",
+        "enzymes/team_sync.sh",
+        "enzymes/cell_transfer.sh"
+      ],
+      "regression_test": "tests/test_shell_isolation_behavioral.py",
+      "pattern": "Directory walk loop termination condition assumes POSIX root slash only",
+      "changelog_ref": "v0.92.3"
+    },
+    {
+      "id": "BUG-063",
+      "status": "fixed",
+      "title": "install/uninstall.sh orphaned rule bodies in CLAUDE.md",
+      "discovered_in": "v0.92.3",
+      "fixed_in": "v0.92.3",
+      "root_cause": "silent_failure",
+      "severity": "critical",
+      "description": "install/uninstall.sh used sed to delete Soma rules from CLAUDE.md by matching start marker but failed to remove trailing rule bodies or truncated to EOF if end marker was missing, corrupting user CLAUDE.md.",
+      "affected_files": [
+        "install/uninstall.sh"
+      ],
+      "regression_test": "tests/test_uninstall_confinement.py",
+      "pattern": "Multiline section deletion regex truncates past section boundary or orphans content",
+      "changelog_ref": "v0.92.3"
+    },
+    {
+      "id": "BUG-064",
+      "status": "fixed",
+      "title": "soma_sdk/governance.py layer inversion import of MCP JIT engine",
+      "discovered_in": "v0.92.3",
+      "fixed_in": "v0.92.3",
+      "root_cause": "platform_compat",
+      "severity": "critical",
+      "description": "soma_sdk/governance.py imported parse_frontmatter from soma_mcp.jit_engine, creating an architectural layer inversion where base SDK depended on MCP server implementation and triggered cyclic imports.",
+      "affected_files": [
+        "soma_sdk/governance.py",
+        "soma_core/frontmatter.py"
+      ],
+      "regression_test": "tests/test_verification/test_import_guard.py",
+      "pattern": "Base SDK imports higher-layer MCP server implementation module",
+      "changelog_ref": "v0.92.3"
+    },
+    {
+      "id": "BUG-065",
+      "status": "fixed",
+      "title": "enzymes/oracle_checkpoint.py bare sibling imports breaking packaged module",
+      "discovered_in": "v0.92.3",
+      "fixed_in": "v0.92.3",
+      "root_cause": "platform_compat",
+      "severity": "critical",
+      "description": "oracle_checkpoint.py used bare import ttc_oracle and import cell_fitness which failed when executed as a module or imported outside enzymes/ directory without sys.path injection.",
+      "affected_files": [
+        "enzymes/oracle_checkpoint.py"
+      ],
+      "regression_test": "tests/test_oracle_checkpoint.py",
+      "pattern": "Direct sibling script import without package-relative or sys.path resolution",
+      "changelog_ref": "v0.92.3"
+    },
+    {
+      "id": "BUG-066",
+      "status": "fixed",
+      "title": "soma_cli/init.py missing kiro platform support",
+      "discovered_in": "v0.92.3",
+      "fixed_in": "v0.92.3",
+      "root_cause": "mapping_error",
+      "severity": "critical",
+      "description": "soma init lacked detection, steering directory resolution, and help choices for the kiro agent platform, rejecting initialization on valid kiro environments.",
+      "affected_files": [
+        "soma_cli/init.py"
+      ],
+      "regression_test": "tests/test_init.py",
+      "pattern": "Platform enumeration omitted newly supported agent environment",
+      "changelog_ref": "v0.92.3"
+    },
+    {
+      "id": "BUG-067",
+      "status": "fixed",
+      "title": "soma_cli/demote.py core rules demotion vulnerability",
+      "discovered_in": "v0.92.3",
+      "fixed_in": "v0.92.3",
+      "root_cause": "silent_failure",
+      "severity": "critical",
+      "description": "soma demote permitted users to demote protected core genome rules (such as cost-optimization, providence, and git-workflow) into inactive cells, evading governance safeguards.",
+      "affected_files": [
+        "soma_cli/demote.py"
+      ],
+      "regression_test": "tests/test_cli_demote.py",
+      "pattern": "Destructive mutation command lacks validation guard on protected core rules",
+      "changelog_ref": "v0.92.3"
+    },
+    {
+      "id": "BUG-068",
+      "status": "fixed",
+      "title": "enzymes/escalation_sentinel.sh file count vs line count & Rule 6 downgrade",
+      "discovered_in": "v0.92.3",
+      "fixed_in": "v0.92.3",
+      "root_cause": "mapping_error",
+      "severity": "critical",
+      "description": "get_diff_size in escalation_sentinel.sh counted changed file lines instead of added/deleted diff lines, under-reporting changeset size, and Rule 6 downgraded prior high-severity escalations back to LOW.",
+      "affected_files": [
+        "enzymes/escalation_sentinel.sh"
+      ],
+      "regression_test": "tests/test_review_intensity.py",
+      "pattern": "Escalation threshold evaluates wrong metric and permits later rules to downgrade severity",
+      "changelog_ref": "v0.92.3"
+    },
+    {
+      "id": "BUG-069",
+      "status": "fixed",
+      "title": "enzymes/cell_fitness.py ZeroDivisionError on telomere_days",
+      "discovered_in": "v0.92.3",
+      "fixed_in": "v0.92.3",
+      "root_cause": "mapping_error",
+      "severity": "critical",
+      "description": "decayed_fitness calculation crashed with ZeroDivisionError when cell telomere_days was set to 0 or None, blocking fitness evaluations across the entire repository.",
+      "affected_files": [
+        "enzymes/cell_fitness.py",
+        "enzymes/fitness_landscape.py"
+      ],
+      "regression_test": "tests/test_bayesian_fitness.py",
+      "pattern": "Division by unvalidated zero or None metadata configuration value",
+      "changelog_ref": "v0.92.3"
     }
   ]
 }
