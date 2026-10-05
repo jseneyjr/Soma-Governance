@@ -122,20 +122,44 @@ def _os_unlock(fh: Any) -> None:
             pass
 
 
+_lock_tls = threading.local()
+
+
 @contextmanager
 def evidence_lock(workspace: str):
-    """Context manager acquiring both the per-process thread lock and the OS file lock."""
+    """Context manager acquiring both the per-process thread lock and the OS file lock.
+
+    Reentrant within the same thread to prevent POSIX flock self-deadlock.
+    """
     evidence_dir = os.path.join(workspace, '.soma', 'evidence')
     os.makedirs(evidence_dir, exist_ok=True)
-    lock_path = os.path.join(evidence_dir, LOCK_FILENAME)
+    lock_path = os.path.realpath(os.path.join(evidence_dir, LOCK_FILENAME))
     thread_lock = _thread_lock_for(lock_path)
     with thread_lock:
-        with open(lock_path, 'a+') as fh:
-            _os_lock(fh)
+        if not hasattr(_lock_tls, "held"):
+            _lock_tls.held = {}
+        depth, fh = _lock_tls.held.get(lock_path, (0, None))
+        if depth > 0 and fh is not None:
+            _lock_tls.held[lock_path] = (depth + 1, fh)
             try:
                 yield lock_path
             finally:
-                _os_unlock(fh)
+                d, h = _lock_tls.held.get(lock_path, (1, fh))
+                if d <= 1:
+                    _lock_tls.held.pop(lock_path, None)
+                else:
+                    _lock_tls.held[lock_path] = (d - 1, h)
+        else:
+            with open(lock_path, 'a+') as new_fh:
+                _os_lock(new_fh)
+                _lock_tls.held[lock_path] = (1, new_fh)
+                try:
+                    yield lock_path
+                finally:
+                    try:
+                        _os_unlock(new_fh)
+                    finally:
+                        _lock_tls.held.pop(lock_path, None)
 
 
 def read_generation(workspace: str) -> int:
@@ -1476,13 +1500,13 @@ def cli_fitness_updater(argv: Optional[List[str]] = None) -> int:
     print(f"  Fitness updated: {evidence_dir / 'signals.jsonl'}")
 
     try:
-        from soma_cli.sync import aggregate_evidence, sync_frontmatter
+        from soma_core.sync import aggregate_evidence, sync_frontmatter
         counts = aggregate_evidence(str(evidence_dir))
         if counts:
             changes = sync_frontmatter(str(cells_dir), counts)
             if changes:
                 print(f"  Frontmatter synced: {len(changes)} cells updated")
-    except ImportError:
+    except Exception:
         pass
     return 0
 

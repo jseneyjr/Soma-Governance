@@ -7,6 +7,7 @@ import sys
 import threading
 import time
 import traceback
+import uuid
 from collections import defaultdict
 from typing import Any, Dict
 
@@ -58,6 +59,7 @@ _RATE_LIMITS = {
 
 
 _rate_limit_lock = threading.Lock()
+_mcp_tls = threading.local()
 
 
 def _check_rate_limit(tool_name: str) -> bool:
@@ -66,23 +68,41 @@ def _check_rate_limit(tool_name: str) -> bool:
         return True
     max_calls, window_seconds = _RATE_LIMITS[tool_name]
     now = time.monotonic()
+    lease_id = uuid.uuid4().hex
+    _mcp_tls.last_lease = (tool_name, lease_id)
     with _rate_limit_lock:
-        timestamps = _tool_call_times[tool_name]
-        # Prune old entries
-        _tool_call_times[tool_name] = [t for t in timestamps if now - t < window_seconds]
-        if len(_tool_call_times[tool_name]) >= max_calls:
+        entries = _tool_call_times[tool_name]
+        valid_entries = []
+        for e in entries:
+            ts = e[1] if isinstance(e, tuple) else e
+            if now - ts < window_seconds:
+                valid_entries.append(e)
+        _tool_call_times[tool_name] = valid_entries
+        if len(valid_entries) >= max_calls:
             return False
-        _tool_call_times[tool_name].append(now)
+        _tool_call_times[tool_name].append((lease_id, now))
         return True
 
 
-def _rollback_rate_limit(tool_name: str) -> None:
-    """Revert the most recent rate-limit record if authorization/receipt verification fails."""
+def _rollback_rate_limit(tool_name: str, lease_id: str | None = None) -> None:
+    """Revert the specific rate-limit lease if authorization/receipt verification fails."""
     if tool_name in _RATE_LIMITS:
+        target_lease = lease_id
+        if not target_lease:
+            last = getattr(_mcp_tls, "last_lease", None)
+            if last and last[0] == tool_name:
+                target_lease = last[1]
         with _rate_limit_lock:
-            times = _tool_call_times.get(tool_name, [])
-            if times:
-                times.pop()
+            entries = _tool_call_times.get(tool_name, [])
+            if not entries:
+                return
+            if target_lease is not None:
+                for i in range(len(entries) - 1, -1, -1):
+                    e = entries[i]
+                    if isinstance(e, tuple) and e[0] == target_lease:
+                        entries.pop(i)
+                        return
+            entries.pop()
 
 # Messages that mean "the operation did not happen", regardless of the tool.
 _ERROR_STATUSES = ("FAIL", "FAILED", "ERROR", "REJECTED", "BLOCKED", "ESCALATION_REQUIRED")
@@ -368,8 +388,6 @@ def handle_request(request: Dict[str, Any]) -> Dict[str, Any]:
             with contextlib.redirect_stdout(sys.stderr):
                 result = execute_tool(name, args)
             is_error = _is_error_result(result)
-            if is_error:
-                _rollback_rate_limit(name)
             return {
                 "jsonrpc": "2.0",
                 "id": req_id,

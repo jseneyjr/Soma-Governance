@@ -1047,6 +1047,166 @@ def cli_immune_sweep(argv: Optional[List[str]] = None) -> int:
     return run_sweep(active_only=args.active_only)
 
 
+# ── Evidence Aggregation & Frontmatter Sync ───────────────────────────────
+
+
+def aggregate_evidence(evidence_dir: str) -> dict[str, dict]:
+    """Preserve the established counts-only return shape for callers."""
+    from soma_core.evidence import aggregate_signals
+    return aggregate_signals(evidence_dir).counts
+
+
+def _fsync_dir(directory: str) -> None:
+    """Best-effort directory fsync after a replace on POSIX."""
+    if os.name != "posix":
+        return
+    try:
+        fd = os.open(directory, os.O_RDONLY)
+    except OSError:
+        return
+    try:
+        os.fsync(fd)
+    except OSError:
+        pass
+    finally:
+        os.close(fd)
+
+
+def _atomic_write_cell(path: str, content: str) -> None:
+    """Atomically replace path using a durable same-directory temp file."""
+    import tempfile
+    directory = os.path.dirname(path) or "."
+    fd, tmp_path = tempfile.mkstemp(
+        dir=directory,
+        prefix=f".{os.path.basename(path)}.",
+        suffix=".tmp",
+    )
+    try:
+        with os.fdopen(fd, "w", encoding="utf-8") as f:
+            f.write(content)
+            f.flush()
+            os.fsync(f.fileno())
+        os.replace(tmp_path, path)
+    except BaseException:
+        try:
+            os.unlink(tmp_path)
+        except OSError:
+            pass
+        raise
+    _fsync_dir(directory)
+
+
+def sync_frontmatter(
+    cells_dir: str,
+    counts: dict[str, dict],
+    dry_run: bool = False,
+    errors: Optional[list[dict]] = None,
+) -> list[dict]:
+    """Update cell frontmatter from aggregated evidence without PyYAML requirement."""
+    changes = []
+    error_sink = errors if errors is not None else []
+
+    for cell_file in glob.glob(
+        os.path.join(cells_dir, "**", "*.md"), recursive=True
+    ):
+        if os.path.basename(cell_file) == "README.md":
+            continue
+
+        cid = os.path.splitext(os.path.basename(cell_file))[0]
+        try:
+            content = Path(cell_file).read_text(encoding="utf-8")
+            fm = parse_frontmatter(content) or {}
+            body = _get_body(content)
+            cid = fm.get("id", cid)
+            if cid not in counts:
+                continue
+
+            evidence = counts[cid]
+            fitness = fm.get("fitness", {})
+            if not isinstance(fitness, dict):
+                fitness = {"score": None, "impact_weight": 1.0}
+
+            old_triggers = fitness.get("triggers", 0)
+            old_tp = fitness.get("true_positives", 0)
+            old_fp = fitness.get("false_positives", 0)
+            old_score = fitness.get("score")
+            old_last_trigger = fitness.get("last_trigger_date")
+
+            has_triggers = evidence.get("has_triggers", "triggers" in evidence)
+            has_outcomes = evidence.get("has_outcomes")
+            has_tp = (
+                False if has_outcomes is False else evidence.get("has_tp", "tp" in evidence)
+            )
+            has_fp = (
+                False if has_outcomes is False else evidence.get("has_fp", "fp" in evidence)
+            )
+            triggers = evidence.get("triggers", 0) if has_triggers else old_triggers
+            tp = evidence.get("tp", 0) if has_tp else old_tp
+            fp = evidence.get("fp", 0) if has_fp else old_fp
+
+            score = old_score
+            if tp + fp > 0:
+                score = round(tp / triggers, 4) if triggers > 0 else None
+            elif triggers == 0:
+                score = None
+
+            last_trigger = old_last_trigger
+            if has_triggers and evidence.get("last_trigger") is not None:
+                last_trigger = str(evidence["last_trigger"])
+
+            updated = dict(fitness)
+            updated["triggers"] = triggers
+            updated["true_positives"] = tp
+            updated["false_positives"] = fp
+            updated["score"] = score
+            if last_trigger is not None:
+                updated["last_trigger_date"] = last_trigger
+
+            compared_keys = (
+                "triggers", "true_positives", "false_positives", "score",
+                "last_trigger_date",
+            )
+            if all(fitness.get(key) == updated.get(key) for key in compared_keys):
+                continue
+
+            change = {
+                "cell_id": cid,
+                "triggers": f"{old_triggers} → {triggers}",
+                "tp": f"{old_tp} → {tp}",
+                "fp": f"{old_fp} → {fp}",
+                "score": score,
+            }
+
+            if dry_run:
+                changes.append(change)
+                continue
+
+            fm["fitness"] = updated
+            try:
+                import yaml
+                new_fm = yaml.safe_dump(
+                    fm,
+                    sort_keys=False,
+                    default_flow_style=False,
+                    allow_unicode=True,
+                )
+                new_content = f"---\n{new_fm}---\n{body}"
+            except ImportError:
+                new_fm = dump_frontmatter(fm)
+                new_content = f"---\n{new_fm}\n---\n{body}"
+
+            _atomic_write_cell(cell_file, new_content)
+            changes.append(change)
+        except Exception as exc:  # noqa: BLE001
+            error_sink.append({
+                "cell_id": cid,
+                "file": cell_file,
+                "error": str(exc),
+            })
+
+    return changes
+
+
 # ── Post-Session Hook ──────────────────────────────────────────────────────
 
 
@@ -1076,18 +1236,18 @@ def run_post_session_hook(
     try:
         import importlib
         _mod = importlib.import_module("enzymes.evidence_collector")
-        aggregate_evidence = _mod.aggregate_evidence
+        collector_aggregate = _mod.aggregate_evidence
         build_observation = _mod.build_observation
         check_compliance = _mod.check_compliance
     except ImportError:
         try:
             import importlib
             _mod = importlib.import_module("evidence_collector")
-            aggregate_evidence = _mod.aggregate_evidence
+            collector_aggregate = _mod.aggregate_evidence
             build_observation = _mod.build_observation
             check_compliance = _mod.check_compliance
         except ImportError:
-            aggregate_evidence = build_observation = check_compliance = None
+            collector_aggregate = build_observation = check_compliance = None
 
     resolved_platform = platform or detect_platform(transcript_path)
     transcript_id = resolve_transcript_id(transcript_path, resolved_platform)
@@ -1105,17 +1265,11 @@ def run_post_session_hook(
     update_fitness(triggered, transcript_id, evidence_dir)
     print(f"  Fitness updated: {evidence_dir / 'signals.jsonl'}")
 
-    try:
-        from soma_cli.sync import aggregate_evidence as sync_aggregate_evidence
-        from soma_cli.sync import sync_frontmatter
-
-        counts = sync_aggregate_evidence(str(evidence_dir))
-        if counts:
-            changes = sync_frontmatter(str(cells_dir), counts)
-            if changes:
-                print(f"  Frontmatter synced: {len(changes)} cells updated")
-    except ImportError:
-        pass
+    counts = aggregate_evidence(str(evidence_dir))
+    if counts:
+        changes = sync_frontmatter(str(cells_dir), counts)
+        if changes:
+            print(f"  Frontmatter synced: {len(changes)} cells updated")
 
     rules = ["read-before-write", "test-before-implementation", "no-hardcoded-paths"]
     observations = []
@@ -1125,8 +1279,8 @@ def run_post_session_hook(
         if obs is not None:
             observations.append(obs)
 
-    if observations:
-        summary = aggregate_evidence(observations)
+    if observations and collector_aggregate is not None:
+        summary = collector_aggregate(observations)
         evidence_dir.mkdir(parents=True, exist_ok=True)
         outfile = evidence_dir / "compliance.jsonl"
         try:
@@ -1185,4 +1339,6 @@ __all__ = [
     "cli_immune_sweep",
     "run_post_session_hook",
     "cli_post_session_hook",
+    "aggregate_evidence",
+    "sync_frontmatter",
 ]

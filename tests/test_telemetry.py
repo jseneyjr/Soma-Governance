@@ -392,3 +392,15 @@ def test_telemetry_credit_weights():
     weights = compute_credit_weights(cells, ["src/app.py"])
     assert weights["cell-a"] == 1.0
     assert weights["cell-b"] == 0.0
+
+
+def test_evidence_lock_reentrancy(tmp_path):
+    """C-02: evidence_lock must allow reentrant acquisition in the same thread without deadlock."""
+    from soma_core.telemetry import evidence_lock, increment_generation
+    ws = str(tmp_path)
+    with evidence_lock(ws):
+        gen1 = increment_generation(ws)
+        assert gen1 == 2
+        with evidence_lock(ws):
+            gen2 = increment_generation(ws)
+            assert gen2 == 3

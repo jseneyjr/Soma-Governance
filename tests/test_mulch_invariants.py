@@ -37,15 +37,16 @@ class TestInvariant1_LayerDecoupling:
         assert len(python_files) > 0, "soma_core files not found"
 
         violations = []
+        forbidden = ("soma_sdk", "enzymes", "soma_cli", "soma_mcp")
         for py_file in python_files:
             tree = ast.parse(py_file.read_text(encoding="utf-8"), filename=str(py_file))
             for node in ast.walk(tree):
                 if isinstance(node, ast.Import):
                     for alias in node.names:
-                        if alias.name.startswith(("soma_sdk", "enzymes")):
+                        if alias.name.startswith(forbidden):
                             violations.append((py_file.name, node.lineno, alias.name))
                 elif isinstance(node, ast.ImportFrom):
-                    if node.module and node.module.startswith(("soma_sdk", "enzymes")):
+                    if node.module and node.module.startswith(forbidden):
                         violations.append((py_file.name, node.lineno, node.module))
 
         assert not violations, f"Forbidden upward imports found in soma_core: {violations}"
