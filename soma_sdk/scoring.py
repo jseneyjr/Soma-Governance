@@ -10,6 +10,8 @@ from soma_core.scoring import (
     _wilson_interval,
     bayesian_posterior,
     bayesian_score,
+    calculate_composite_fitness,
+    calculate_snr,
     compute_cell_fitness,
     laplace_score,
     wilson_lower_bound,
@@ -23,4 +25,6 @@ __all__ = [
     "laplace_score",
     "bayesian_score",
     "compute_cell_fitness",
+    "calculate_composite_fitness",
+    "calculate_snr",
 ]

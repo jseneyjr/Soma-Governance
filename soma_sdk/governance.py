@@ -5,6 +5,7 @@ import json
 import subprocess
 import sys
 import re
+import warnings
 from pathlib import Path
 from typing import Any, Optional
 
@@ -176,9 +177,27 @@ class Governance:
         
         Underlying data updates Wilson confidence scores and Bayesian fitness.
         """
+        # I-03: Validate rule_id against active inventory (advisory warning)
+        try:
+            inventory = inventory_cells(str(self.root))
+            known_cells = {
+                Path(entry.relative_path).stem
+                for entry in inventory.entries
+                if Path(entry.relative_path).name != 'README.md'
+            }
+            if known_cells and rule_id not in known_cells:
+                warnings.warn(f"Cell '{rule_id}' not found in active inventory", UserWarning, stacklevel=2)
+        except Exception:
+            pass
+
         signal_type = "tp" if success else "fp"
         merged_metric = dict(metric or {})
         source = kwargs.pop("source", "manual")
+        principal = kwargs.pop("principal", "unknown")
+        idempotency_scope = kwargs.pop("idempotency_scope", "global")
+        idempotency_key = kwargs.pop("idempotency_key", "")
+        expected_generation = kwargs.pop("expected_generation", None)
+
         if source not in VALID_SOURCES:
             raise ValueError(f"Invalid telemetry source '{source}'. Must be one of: {', '.join(VALID_SOURCES)}")
         merged_metric.update(kwargs)
@@ -190,6 +209,10 @@ class Governance:
                 signal_type=signal_type,
                 source=source,
                 metadata={"metric": merged_metric} if merged_metric else {},
+                principal=principal,
+                idempotency_scope=idempotency_scope,
+                idempotency_key=idempotency_key,
+                expected_generation=expected_generation,
             )
         except Exception:
             raw_output = self.signal(rule_id, signal_type, metric=merged_metric)
@@ -213,8 +236,9 @@ class Governance:
         """Create a new immune cell."""
         raw_slug = cell_id or hypothesis[:40]
         safe_slug = re.sub(r'[^a-zA-Z0-9_.-]', '-', raw_slug).strip('-')
+        canonical_type = TYPE_TRANSLATION_MAP.get(type, type)
         
-        args = ['--id', safe_slug, '--type', type,
+        args = ['--id', safe_slug, '--type', canonical_type,
                 '--hypothesis', hypothesis]
         if target_paths:
             args.extend(['--target-paths', ','.join(target_paths)])
@@ -223,7 +247,26 @@ class Governance:
         if tags:
             args.extend(['--tags', ','.join(tags)])
         
-        return self._run_script('cell_create.sh', *args, json_output=False)
+        return self._run_script('cell_create.py', *args, json_output=False)
+
+    def create_rule(
+        self,
+        hypothesis: str,
+        type: str = 'vacuole',
+        target_paths: Optional[list[str]] = None,
+        minimum_mode: str = 'breeze',
+        tags: Optional[list[str]] = None,
+        cell_id: Optional[str] = None,
+    ) -> dict[str, Any] | str:
+        """Create a new immune rule (porcelain alias for create_cell)."""
+        return self.create_cell(
+            hypothesis=hypothesis,
+            type=type,
+            target_paths=target_paths,
+            minimum_mode=minimum_mode,
+            tags=tags,
+            cell_id=cell_id,
+        )
     
     def create_cell_from_description(
         self, description: str, domain: Optional[str] = None, cell_type: Optional[str] = None,
@@ -233,7 +276,8 @@ class Governance:
         if domain:
             args.extend(['--domain', domain])
         if cell_type:
-            args.extend(['--type', cell_type])
+            canonical_type = TYPE_TRANSLATION_MAP.get(cell_type, cell_type)
+            args.extend(['--type', canonical_type])
         return self._run_script('cell_create_nl.py', *args, json_output=False)
     
     def signal(
@@ -251,7 +295,7 @@ class Governance:
             for k, v in metric.items():
                 args.extend(['--metric', f'{k}={v}'])
         
-        return self._run_script('cell_signal.sh', *args, json_output=False)
+        return self._run_script('cell_signal.py', *args, json_output=False)
     
     # === Analysis ===
     
@@ -261,6 +305,10 @@ class Governance:
         if bayesian:
             args.append('--bayesian')
         return self._run_script('cell_fitness.py', *args)
+
+    def rule_fitness(self, bayesian: bool = False) -> dict[str, Any] | str:
+        """Get fitness scores for all rules (porcelain alias for fitness_landscape)."""
+        return self.fitness_landscape(bayesian=bayesian)
     
     def coverage_report(self, exclude: Optional[str] = None) -> dict[str, Any] | str:
         """Get cell coverage report."""

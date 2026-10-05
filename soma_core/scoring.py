@@ -212,6 +212,8 @@ def calculate_snr(tp: int | float, fp: int | float) -> float | None:
     return 0.0
 
 
+calculate_composite_fitness = compute_cell_fitness
+
 __all__ = [
     "_wilson_interval",
     "_to_num",
@@ -220,5 +222,6 @@ __all__ = [
     "laplace_score",
     "bayesian_score",
     "compute_cell_fitness",
+    "calculate_composite_fitness",
     "calculate_snr",
 ]

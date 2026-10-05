@@ -102,14 +102,8 @@ class CellFitness:
     @property
     def snr_db(self) -> float | None:
         """Signal-to-noise ratio in decibels."""
-        tp, fp = self.true_positives, self.false_positives
-        if tp > 0 and fp > 0:
-            return round(10 * math.log10(tp / fp), 1)
-        elif tp > 0:
-            return None  # JSON-safe encoding of infinite SNR (RFC 8259)
-        elif fp > 0:
-            return -99.0  # JSON-safe encoding of zero signal / pure noise (RFC 8259)
-        return 0.0
+        from soma_core.scoring import calculate_snr
+        return calculate_snr(self.true_positives, self.false_positives)
     
     def bayesian(self, confidence: float = 0.90) -> dict[str, float | str]:
         """Wilson-bounded posterior with Jeffrey's prior.
@@ -254,18 +248,23 @@ def write_cell_frontmatter(
         frontmatter: Dict to serialize as YAML frontmatter.
         body: Markdown body text.
     """
-    yaml_text = yaml.dump(
-        frontmatter,
-        default_flow_style=False,
-        sort_keys=False,
-        allow_unicode=True,
-    )
+    if yaml is not None:
+        yaml_text = yaml.dump(
+            frontmatter,
+            default_flow_style=False,
+            sort_keys=False,
+            allow_unicode=True,
+        )
+    else:
+        from soma_core.frontmatter import dump_frontmatter
+        yaml_text = dump_frontmatter(frontmatter)
+
+    content = f"---\n{yaml_text.strip()}\n---\n"
+    if body:
+        content += body
+
     with open(filepath, 'w', encoding='utf-8') as f:
-        f.write('---\n')
-        f.write(yaml_text)
-        f.write('---\n')
-        if body:
-            f.write(body)
+        f.write(content)
 
     _post_write_hook(filepath)
 

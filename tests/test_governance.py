@@ -158,3 +158,110 @@ def test_list_cells_corrupted_isolation(tmp_path):
     assert wall_cells[0]["_name"] == "wall-test-guard"
 
 
+def test_record_outcome_idempotency_forwarding(tmp_path):
+    import json
+    _populate_governed_workspace(tmp_path)
+    gov = Governance(project_root=tmp_path)
+
+    res = gov.record_outcome(
+        rule_id="vacuole-test-trap",
+        success=True,
+        metric={"test_metric": 42},
+        principal="test-agent",
+        idempotency_scope="session-1",
+        idempotency_key="msg-100",
+    )
+    assert res.get("event_id") is not None
+    assert res.get("payload_digest") is not None
+
+    signals_file = tmp_path / ".soma" / "evidence" / "signals.jsonl"
+    lines = [json.loads(line) for line in signals_file.read_text(encoding="utf-8").strip().splitlines()]
+    last = lines[-1]
+    assert last["cell"] == "vacuole-test-trap"
+    assert last["event_id"] == res["event_id"]
+    assert last["payload_digest"] == res["payload_digest"]
+
+
+def test_record_outcome_unknown_rule_warning(tmp_path):
+    import warnings
+    _populate_governed_workspace(tmp_path)
+    gov = Governance(project_root=tmp_path)
+
+    with warnings.catch_warnings(record=True) as recorded:
+        warnings.simplefilter("always")
+        res = gov.record_outcome("non-existent-cell", success=True)
+        assert res.get("signal") == "tp"
+        assert any("not found in active inventory" in str(w.message) for w in recorded)
+
+
+def test_create_rule_and_type_translation(tmp_path, monkeypatch):
+    _populate_governed_workspace(tmp_path)
+    gov = Governance(project_root=tmp_path)
+
+    captured_cmds = []
+    def fake_run(script_name, *args, **kwargs):
+        captured_cmds.append((script_name, args))
+        return "created"
+
+    monkeypatch.setattr(gov, "_run_script", fake_run)
+    gov.create_rule("Safety check test", type="safety-guard")
+    assert len(captured_cmds) == 1
+    script_name, args = captured_cmds[0]
+    assert script_name == "cell_create.py"
+    type_idx = args.index("--type")
+    assert args[type_idx + 1] == "wall"
+
+
+def test_rule_fitness_alias(tmp_path, monkeypatch):
+    gov = Governance(project_root=tmp_path)
+    called = []
+    monkeypatch.setattr(gov, "fitness_landscape", lambda bayesian=False: called.append(bayesian) or {})
+    gov.rule_fitness(bayesian=True)
+    assert called == [True]
+
+
+def test_sdk_exports():
+    from soma_sdk import Governance, Cell, CellFitness, SomaError
+    assert Governance is not None
+    assert Cell is not None
+    assert CellFitness is not None
+    assert issubclass(SomaError, Exception)
+
+
+def test_sdk_scoring_reexports():
+    from soma_sdk.scoring import calculate_snr, calculate_composite_fitness, compute_cell_fitness
+    assert calculate_snr(10, 2) is not None
+    assert calculate_composite_fitness is compute_cell_fitness
+
+
+def test_cell_fitness_snr_db_delegation():
+    from soma_sdk.cells import CellFitness
+    from soma_core.scoring import calculate_snr
+
+    cf = CellFitness(true_positives=10, false_positives=2)
+    assert cf.snr_db == calculate_snr(10, 2)
+
+    cf_inf = CellFitness(true_positives=5, false_positives=0)
+    assert cf_inf.snr_db is None
+
+    cf_zero = CellFitness(true_positives=0, false_positives=5)
+    assert cf_zero.snr_db == -99.0
+
+
+def test_write_cell_frontmatter_zero_dep_fallback(tmp_path, monkeypatch):
+    import soma_sdk.cells as sdk_cells
+    monkeypatch.setattr(sdk_cells, "yaml", None)
+
+    target_file = tmp_path / "cell_zero_dep.md"
+    sdk_cells.write_cell_frontmatter(
+        str(target_file),
+        {"name": "test-cell", "type": "wall"},
+        "## Hypothesis\nZero dep fallback.\n",
+    )
+    content = target_file.read_text(encoding="utf-8")
+    assert "name: test-cell" in content
+    assert "type: wall" in content
+    assert "Zero dep fallback" in content
+
+
+
