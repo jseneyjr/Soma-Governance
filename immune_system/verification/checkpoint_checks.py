@@ -76,6 +76,7 @@ SOURCE_TO_TEST_MAP = {
     "soma_cli/verify.py": "tests/test_cli_verify.py",
     "soma_core/evidence.py": "tests/test_canonical_evidence_readers.py",
     "soma_core/frontmatter.py": "tests/test_core_lifecycle.py",
+    "soma_core/lifecycle.py": "tests/test_core_lifecycle.py",
     "soma_core/verification_jobs.py": "tests/test_mcp_async_verify.py",
     "soma_mcp/integrity.py": "tests/test_mcp_receipt_binding.py",
     "soma_mcp/jit_engine.py": "tests/test_jit_engine_behavioral.py",
@@ -230,14 +231,8 @@ def check_test_coverage(root: Path) -> list[dict]:
 
         if rel_posix in SOURCE_TO_TEST_MAP:
             candidates.append(root / SOURCE_TO_TEST_MAP[rel_posix])
-        if source_file.name in SOURCE_TO_TEST_MAP:
-            candidates.append(root / SOURCE_TO_TEST_MAP[source_file.name])
-
-        candidates.append(test_dir / f"test_{source_file.stem}.py")
-        candidates.append(test_dir / "test_verification" / f"test_{source_file.stem}.py")
 
         parent_name = source_file.parent.name
-        candidates.append(test_dir / f"test_{parent_name}_{source_file.stem}.py")
         if parent_name == "soma_cli":
             candidates.append(test_dir / f"test_cli_{source_file.stem}.py")
         elif parent_name == "soma_core":
@@ -246,6 +241,10 @@ def check_test_coverage(root: Path) -> list[dict]:
             candidates.append(test_dir / f"test_mcp_{source_file.stem}.py")
         elif parent_name == "soma_sdk":
             candidates.append(test_dir / f"test_sdk_{source_file.stem}.py")
+        candidates.append(test_dir / f"test_{parent_name}_{source_file.stem}.py")
+
+        candidates.append(test_dir / f"test_{source_file.stem}.py")
+        candidates.append(test_dir / "test_verification" / f"test_{source_file.stem}.py")
 
         matched = False
         for expected in candidates:

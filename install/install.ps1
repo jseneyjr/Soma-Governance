@@ -907,7 +907,7 @@ if ($Hooks -or $env:INSTALL_GIT_HOOKS -eq "true") {
         } else {
             Backup-FileItem -FilePath $preCommitPath
             $hookBody = @'
-#!/usr/bin/env bash
+#!/bin/sh
 # Soma Git Pre-Commit Hook (cross-platform runner)
 if command -v soma >/dev/null 2>&1; then
   soma hook pre-commit || exit $?
@@ -922,7 +922,11 @@ else
   exit 1
 fi
 '@
-            Write-Utf8File -Path $preCommitPath -Content ($hookBody + "`n")
+            $cleanHookBody = $hookBody.Replace("`r`n", "`n") + "`n"
+            Write-Utf8File -Path $preCommitPath -Content $cleanHookBody
+            if ($IsLinux -or $IsMacOS) {
+                try { chmod +x $preCommitPath 2>$null } catch {}
+            }
             Record-InstalledHook -Path $preCommitPath
             Write-Host "Installed git pre-commit hook."
         }

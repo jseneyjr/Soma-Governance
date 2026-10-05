@@ -218,3 +218,39 @@ class TestCellPromoteAndDemote:
             _create_cell_file(workspace / "genome" / f"{rule}.md", rule, "genome")
             with pytest.raises(ValueError, match="Cannot demote protected core rule"):
                 demote_cell(workspace, rule)
+
+    def test_promote_protected_rule_blocked(self, workspace: Path):
+        _create_cell_file(
+            workspace / ".soma" / "cells" / "walls" / "providence.md",
+            "providence", "wall", triggers=30, tp=29, fp=1
+        )
+        res = promote_cell(workspace, "providence", force=True)
+        assert res["status"] == "protected_rule_immutable"
+        assert "protected core rule" in res["message"].lower()
+
+    def test_apoptosis_triggers_for_zero_tp(self):
+        status = calculate_fitness_status("vacuole", tp=0, fp=5, triggers=5, dec_score=0.1)
+        assert status == STATUS_APOPTOSIS
+
+        status_wall = calculate_fitness_status("wall", tp=0, fp=5, triggers=5, dec_score=0.1)
+        assert status_wall == STATUS_APOPTOSIS_WARNING
+
+    def test_extinction_boundary_parity(self):
+        # dec_score == 0.15 should be EXTINCT, matching is_extinct
+        status = calculate_fitness_status("vacuole", tp=1, fp=1, triggers=2, dec_score=0.15)
+        assert status == STATUS_EXTINCT
+
+    def test_demote_wall_cleans_enforcement_artifacts(self, workspace: Path):
+        wall = _create_cell_file(
+            workspace / ".soma" / "cells" / "walls" / "guarded-cell.md",
+            "guarded-cell", "wall"
+        )
+        # Create gate enforcement artifact
+        enf_dir = workspace / ".soma" / "enforcement"
+        enf_dir.mkdir(parents=True)
+        gate_script = enf_dir / "gate-guarded-cell.sh"
+        gate_script.write_text("#!/bin/sh\nexit 0\n", encoding="utf-8")
+
+        res = demote_cell(workspace, "guarded-cell")
+        assert res["status"] == "demoted"
+        assert not gate_script.exists()

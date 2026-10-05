@@ -170,3 +170,38 @@ class TestMcpAsyncExecutionAndPolling:
         assert res.get("status") in ("PASS", "FAIL")
         assert "evidence" in res
         assert "job_id" not in res
+
+    def test_layer2_fails_closed_when_missing_plan(self, tmp_path: Path):
+        job = submit_verification_job(
+            workspace=str(tmp_path),
+            files=[],
+            layer1_only=False,
+            task_plan="",
+        )
+        timeout = 5.0
+        start = time.time()
+        while time.time() - start < timeout:
+            current = get_job(job.job_id)
+            if current and current.status in (JOB_STATUS_COMPLETED, JOB_STATUS_FAILED):
+                break
+            time.sleep(0.05)
+
+        finished = get_job(job.job_id)
+        assert finished is not None
+        assert finished.status == JOB_STATUS_COMPLETED
+        assert finished.result is not None
+        assert finished.result["status"] == "FAIL"
+        assert "missing" in finished.result.get("layer2_error", "").lower()
+
+    def test_max_jobs_prunes_oldest(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
+        from soma_core import verification_jobs
+        monkeypatch.setattr(verification_jobs, "MAX_JOBS", 5)
+        created_ids = []
+        for i in range(7):
+            j = create_job(workspace=str(tmp_path), files=[f"file_{i}.py"])
+            created_ids.append(j.job_id)
+
+        all_current = list_jobs()
+        assert len(all_current) <= 5
+        # Oldest job id should be evicted
+        assert get_job(created_ids[0]) is None

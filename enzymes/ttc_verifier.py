@@ -19,6 +19,8 @@ transport, and a stray print() there corrupts the framing.
 
 import difflib
 import os
+import re
+import shutil
 import subprocess
 import sys
 import tempfile
@@ -175,6 +177,49 @@ def _contain_path(file_path: str, workspace: str):
     return str(candidate), str(relative)
 
 
+def _classify_protocol_python(file_path: str, workspace: str) -> str:
+    """Pure Python escalation sentinel fallback when bash is unavailable (e.g. Windows)."""
+    norm_path = file_path.replace("\\", "/").lstrip("./")
+
+    high_patterns = [
+        r"enzymes/.*\.sh$",
+        r"install\.sh$",
+        r"install\.ps1$",
+        r"Makefile$",
+        r"hooks\.json",
+        r"\.github/workflows/",
+        r"auth|credential|secret|token|password",
+        r"docker|Dockerfile",
+        r"requirements\.txt$|package\.json$|go\.mod$",
+    ]
+    test_patterns = [
+        r"\.test\.",
+        r"_test\.",
+        r"^tests/",
+    ]
+    low_patterns = [
+        r"(?:^|/)docs/",
+        r"README\.md$",
+        r"LICENSE$",
+        r"CHANGELOG|EVOLUTION|METRICS|EXPERIMENTS",
+        r"\.txt$|\.csv$|\.json$",
+    ]
+
+    for pat in high_patterns:
+        if re.search(pat, norm_path, re.IGNORECASE):
+            return "trident"
+
+    for pat in test_patterns:
+        if re.search(pat, norm_path, re.IGNORECASE):
+            return "gale"
+
+    for pat in low_patterns:
+        if re.search(pat, norm_path, re.IGNORECASE):
+            return "breeze"
+
+    return "gale"
+
+
 def get_escalation_protocol(file_path: str, workspace: str) -> str:
     """Ask the escalation sentinel which review protocol this file needs.
 
@@ -186,8 +231,13 @@ def get_escalation_protocol(file_path: str, workspace: str) -> str:
     sentinel = os.path.join(engine_dir, "escalation_sentinel.sh")
     if not os.path.exists(sentinel):
         sentinel = os.path.join(workspace, "enzymes", "escalation_sentinel.sh")
-    if not os.path.exists(sentinel):
-        _log(f"[TTC] escalation sentinel missing at {sentinel}; failing closed.")
+
+    # If bash is not available (e.g. native Windows without Git Bash), use Python fallback
+    if not shutil.which("bash") or not os.path.exists(sentinel):
+        protocol = _classify_protocol_python(file_path, workspace)
+        if protocol in ESCALATION_PROTOCOLS:
+            return protocol
+        _log(f"[TTC] Python fallback could not determine protocol for {file_path}; failing closed.")
         return PROTOCOL_UNKNOWN
 
     try:
@@ -199,6 +249,12 @@ def get_escalation_protocol(file_path: str, workspace: str) -> str:
             capture_output=True, text=True, check=False,
             timeout=SENTINEL_TIMEOUT, cwd=workspace,
         )
+    except (FileNotFoundError, OSError) as exc:
+        _log(f"[TTC] bash execution failed ({exc!r}); falling back to Python classifier.")
+        protocol = _classify_protocol_python(file_path, workspace)
+        if protocol in ESCALATION_PROTOCOLS:
+            return protocol
+        return PROTOCOL_UNKNOWN
     except Exception as exc:                      # noqa: BLE001 - reported, not swallowed
         _log(f"[TTC] escalation sentinel failed ({exc!r}); failing closed.")
         return PROTOCOL_UNKNOWN
@@ -430,7 +486,7 @@ def _self_test() -> int:
     tmp_dir = tempfile.gettempdir()
     abs_escape = os.path.join(tmp_dir, "soma-ttc-abs.txt")
     escape_target = os.path.join(tmp_dir, "soma-ttc-escape.txt")
-    rel_escape = os.path.join("..", "..", "..", "..", tmp_dir.lstrip("/\\"), "soma-ttc-escape.txt")
+    rel_escape = os.path.join("..", "..", "..", "..", os.path.splitdrive(tmp_dir)[1].lstrip("/\\"), "soma-ttc-escape.txt")
 
     cases = [
         ("playbook rejection (class component)", target, bad_proposal),

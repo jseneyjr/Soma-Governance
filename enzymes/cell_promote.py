@@ -9,12 +9,15 @@ import yaml
 from datetime import datetime
 from datetime import timezone
 from pathlib import Path
-from bayesian_score import bayesian_score
-from soma_resolve import resolve_workspace
 
 _project_root = str(Path(__file__).resolve().parent.parent)
-if _project_root not in sys.path:
-    sys.path.insert(0, _project_root)
+_enzymes_dir = str(Path(__file__).resolve().parent)
+for _p in (_project_root, _enzymes_dir):
+    if _p not in sys.path:
+        sys.path.insert(0, _p)
+
+from bayesian_score import bayesian_score
+from soma_resolve import resolve_workspace
 from soma_sdk.cells import parse_cell_file
 from soma_core.lifecycle import apply_exponential_decay as apply_decay_core, DEFAULT_DECAY_FACTOR
 

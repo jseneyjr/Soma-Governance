@@ -58,6 +58,8 @@ class TestSafetyGate:
             ("Format-Volume -DriveLetter D", "Disk partition format"),
             ("Remove-Item -Path C:\\ -Recurse -Force", "PowerShell recursive"),
             ("del /s /q C:\\*", "Windows command-line recursive"),
+            ("del /f /s /q C:\\*", "Windows command-line recursive"),
+            ("rmdir /s /q C:\\dir", "Windows command-line recursive"),
         ],
     )
     def test_blocks_destructive_commands(self, cmd: str, expected_snippet: str, tmp_path: Path):
@@ -97,9 +99,13 @@ class TestSafetyGate:
         fake_sk = "sk-" + ("b" * 30)
         fake_aiza = "AIza" + "Sy" + ("c" * 33)
         fake_bearer = "token_" + ("d" * 20)
+        fake_asia = "ASIA" + "IOSFODNN7EXAMPLE"
+        fake_sk_proj = "sk-" + "proj-" + ("x" * 25)
+        fake_sk_ant = "sk-" + "ant-" + ("y" * 25)
+        fake_gho = "gho_" + ("z" * 36)
         sensitive_cmd = (
-            f"AWS={fake_akia} GHP={fake_ghp} "
-            f"SK={fake_sk} AIZA={fake_aiza} "
+            f"AWS={fake_akia} ASIA={fake_asia} GHP={fake_ghp} GHO={fake_gho} "
+            f"SK={fake_sk} SKP={fake_sk_proj} SKA={fake_sk_ant} AIZA={fake_aiza} "
             f"GEMINI_API_KEY=my_key Bearer {fake_bearer}"
         )
         rc, res = run_safety_gate(cmd=sensitive_cmd, workspace=tmp_path)
@@ -110,15 +116,39 @@ class TestSafetyGate:
         content = log_file.read_text(encoding="utf-8")
         assert fake_akia not in content
         assert "AKIA_REDACTED" in content
+        assert fake_asia not in content
+        assert "ASIA_REDACTED" in content
         assert fake_ghp not in content
         assert "ghp_REDACTED" in content
+        assert fake_gho not in content
+        assert "gh_token_REDACTED" in content
         assert fake_sk not in content
+        assert fake_sk_proj not in content
+        assert fake_sk_ant not in content
         assert "sk-REDACTED" in content
         assert fake_aiza not in content
         assert "AIzaSy_REDACTED" in content
         assert "my_key" not in content
         assert "GEMINI_API_KEY=REDACTED" in content
         assert "Bearer REDACTED" in content
+
+    @pytest.mark.parametrize(
+        "cmd,expected_snippet",
+        [
+            ('bash -c "rm -rf /"', "Recursive delete"),
+            ('rm -rf "/"', "Recursive delete"),
+            ('rm -Recurse -Force C:\\', "PowerShell recursive"),
+            ('rmdir /s /q C:\\test', "Windows command-line recursive"),
+            ('chmod -R 777 /var/www', "chmod 777"),
+            ('git checkout --force main', "Force checkout"),
+            ('git reset -q --hard', "Hard reset"),
+        ],
+    )
+    def test_blocks_subshell_and_escaped_destructive_commands(self, cmd: str, expected_snippet: str, tmp_path: Path):
+        rc, res = run_safety_gate(cmd=cmd, workspace=tmp_path)
+        assert rc == 0
+        assert res["decision"] == "force_ask"
+        assert expected_snippet.lower() in res["reason"].lower()
 
 
 class TestPreInvocation:
@@ -138,7 +168,9 @@ class TestPreInvocation:
             workspace=tmp_path,
         )
         assert rc == 0
-        steps = res.get("steps", [])
+        assert "injectSteps" in res
+        assert "steps" in res
+        steps = res.get("injectSteps", [])
         assert len(steps) >= 1
         msg = steps[0].get("ephemeralMessage", "")
         assert "Coding project detected" in msg

@@ -170,7 +170,7 @@ Soma models governance as a layered system of rules, skills, and automation. Eve
 ┌──────────────────────────────────────────────────────────────────────┐
 │  📐 CORE RULES (genome/)          18 Rules — inherited defaults      │
 │  🔧 AGENT SKILLS (organs/)       15 Skills — complex behaviors       │
-│  ⚙️  AUTOMATION (enzymes/)        62 Scripts — task automation        │
+│  ⚙️  AUTOMATION (enzymes/)        63 Scripts — task automation        │
 ├──────────────────────────────────────────────────────────────────────┤
 │  🛡️ VERIFICATION                  AST analysis tools                  │
 │     Layer 1: AST-based checks (import guards, complexity, coverage)  │
@@ -184,7 +184,7 @@ Soma models governance as a layered system of rules, skills, and automation. Eve
 |:------|:----------|:-----------------|
 | **Core Rules** | `genome/` | 18 rules — inherited behavioral defaults, rarely changed. |
 | **Agent Skills** | `organs/` | 15 skills — complex multi-step behaviors like adaptive-reviewer, genesis, security-audit. |
-| **Automation Scripts** | `enzymes/` | 62 scripts — task-specific automation (fitness scoring, rule creation, evidence pipeline). |
+| **Automation Scripts** | `enzymes/` | 63 scripts — task-specific automation (fitness scoring, rule creation, evidence pipeline). |
 | **Verification** | `immune_system/` | AST analysis tools for code checking. |
 | **Adaptive Rules** | `.soma/cells/` | Per-repo adaptive invariants. Generated, tested, evolved, or retired. |
 

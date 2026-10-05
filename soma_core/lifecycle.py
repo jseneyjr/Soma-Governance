@@ -19,7 +19,7 @@ from pathlib import Path
 from typing import Any, Dict, Optional, Tuple
 
 from soma_core.frontmatter import parse_frontmatter
-from soma_sdk.scoring import bayesian_posterior, laplace_score
+from soma_sdk.scoring import laplace_score
 
 STATUS_NEW = "NEW"
 STATUS_SURVIVE = "SURVIVE"
@@ -65,14 +65,14 @@ def calculate_fitness_status(
     expiry_days: Optional[int] = None,
 ) -> str:
     """Evaluate canonical cell lifecycle status from observations, score, and age."""
-    # Apoptosis: immediate eviction or warning if false positives dominate
-    if fp > 0 and tp > 0 and fp > 2 * tp:
+    # Apoptosis: immediate eviction or warning if false positives dominate (including tp == 0)
+    if fp > 0 and (tp == 0 or fp > 2 * tp):
         return STATUS_APOPTOSIS_WARNING if cell_type == "wall" else STATUS_APOPTOSIS
 
     if not is_unobserved and dec_score is not None:
         if dec_score > 0.7:
             return STATUS_SURVIVE
-        elif EXTINCTION_THRESHOLD <= dec_score <= 0.7:
+        elif dec_score > EXTINCTION_THRESHOLD:
             return STATUS_ADAPT
         else:
             return STATUS_EXTINCT
@@ -193,26 +193,41 @@ def _transform_frontmatter_type(content: str, new_type: str) -> str:
     body = content[end_idx:]
 
     lines = frontmatter.splitlines()
+    new_lines = []
     type_updated = False
     enforcement_updated = False
-    for i, line in enumerate(lines):
-        if line.strip().startswith("type:"):
+    for line in lines:
+        stripped = line.strip()
+        if stripped.startswith("type:"):
             indent = line[:len(line) - len(line.lstrip())]
-            lines[i] = f"{indent}type: {new_type}"
+            new_lines.append(f"{indent}type: {new_type}")
             type_updated = True
-        elif line.strip().startswith("enforcement:"):
+        elif stripped.startswith("enforcement:"):
             if new_type == "wall":
                 indent = line[:len(line) - len(line.lstrip())]
-                lines[i] = f"{indent}enforcement: gate"
+                new_lines.append(f"{indent}enforcement: gate")
                 enforcement_updated = True
+            elif new_type == "vacuole":
+                # Strip enforcement when demoting to vacuole
+                pass
+            else:
+                new_lines.append(line)
+        elif stripped.startswith("enforcement_artifact:"):
+            if new_type == "vacuole":
+                # Strip enforcement artifact when demoting to vacuole
+                pass
+            else:
+                new_lines.append(line)
+        else:
+            new_lines.append(line)
 
     if not type_updated:
-        lines.append(f"type: {new_type}")
+        new_lines.append(f"type: {new_type}")
 
     if new_type == "wall" and not enforcement_updated:
-        lines.append("enforcement: gate")
+        new_lines.append("enforcement: gate")
 
-    return "---\n" + "\n".join(lines).strip() + "\n" + body
+    return "---\n" + "\n".join(new_lines).strip() + "\n" + body
 
 
 def _update_frontmatter_type(file_path: Path, new_type: str) -> None:
@@ -300,6 +315,15 @@ def promote_cell(
             }
 
     clean_id = sanitize_cell_id(cell_id) or cell_path.stem
+    rule_base = clean_id[:-3] if clean_id.endswith(".md") else clean_id
+    if rule_base.startswith("rule-"):
+        rule_base = rule_base[5:]
+    if clean_id in PROTECTED_RULES or rule_base in PROTECTED_RULES:
+        return {
+            "status": "protected_rule_immutable",
+            "message": f"Cannot promote cell into protected core rule namespace: '{cell_id}'",
+        }
+
     if next_type == "genome":
         target_dir = workspace / "genome"
     else:
@@ -386,6 +410,17 @@ def demote_cell(
     content = cell_path.read_text(encoding="utf-8")
     new_content = _transform_frontmatter_type(content, next_type)
     _atomic_write_and_unlink(cell_path, target_path, new_content)
+
+    # Clean up gate enforcement artifacts when demoting from wall to vacuole
+    if current_type == "wall" and next_type == "vacuole":
+        for pfx in ("check-", "gate-"):
+            for sfx in (".sh", ".py"):
+                art = workspace / ".soma" / "enforcement" / f"{pfx}{clean_id}{sfx}"
+                if art.exists():
+                    try:
+                        art.unlink()
+                    except Exception:
+                        pass
 
     return {
         "status": "demoted",

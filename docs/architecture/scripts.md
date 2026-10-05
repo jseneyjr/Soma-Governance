@@ -96,7 +96,7 @@ These 6 scripts provide Bash and PowerShell install/uninstall entrypoints. `inst
 | **`install.sh`** | `install/install.sh` | Unified Bash installer for Gemini, Kiro, Copilot, Claude Code, and generic MCP; this is the installer that migrates `.prism/` to `.soma/`. |
 | **`uninstall.sh`** | `install/uninstall.sh` | Bash uninstaller driven by the install manifest, with confinement, backup restoration, opt-in data purge, and exact removal of `soma doctor --fix-path` rc lines. |
 | **`install.sh`** | `install.sh` | Root Bash wrapper delegating to `install/install.sh`. |
-| **`install.ps1`** | `install/install.ps1` | PowerShell installer for native Windows; parsing is covered on Windows PowerShell 5.1, but open encoding and hook-parity limitations remain. |
+| **`install.ps1`** | `install/install.ps1` | PowerShell installer for native Windows; verified across PowerShell 7 and Windows PowerShell 5.1 with UTF-8 BOM encoding and full hook installation parity. |
 | **`uninstall.ps1`** | `install/uninstall.ps1` | Native PowerShell uninstaller with manifest path confinement. |
 | **`install.ps1`** | `install.ps1` | Root PowerShell wrapper delegating to `install/install.ps1`. |
 

@@ -23,6 +23,7 @@ from typing import Any, Optional
 import yaml
 
 from soma_core.evidence import aggregate_signals
+from soma_core.lifecycle import PROTECTED_RULES
 
 
 # ── Constants ───────────────────────────────────────────────────────────────
@@ -213,6 +214,12 @@ def evaluate_demotions(workspace: str) -> list[dict]:
 
         # Only demotable types
         if cell_type not in DEMOTION_PATH:
+            continue
+
+        clean_id = cell_id[:-3] if cell_id.endswith(".md") else cell_id
+        if clean_id.startswith("rule-"):
+            clean_id = clean_id[5:]
+        if clean_id in PROTECTED_RULES or cell_id in PROTECTED_RULES:
             continue
 
         ev = evidence.get(cell_id, {

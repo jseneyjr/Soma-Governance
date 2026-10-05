@@ -289,6 +289,8 @@ def handle_request(request: Dict[str, Any]) -> Dict[str, Any]:
         # the hashed arguments match issuance and dispatch cannot be redirected.
         if _canonical_workspace:
             args["workspace"] = _canonical_workspace
+        if receipt is not None:
+            args["receipt"] = receipt
 
         try:
             # Tool implementations (and the enzymes they call) may print progress

@@ -545,6 +545,7 @@ TOOL_DEFINITIONS = [
                 },
                 "layer1_only": {"type": "boolean", "description": "Only run Layer-1 checks (default true)."},
                 "async_mode": {"type": "boolean", "description": "Run verification asynchronously in background and return job_id for polling (default false)."},
+                "task_plan": {"type": "string", "description": "Task plan or specification used for Layer-2 adversarial verification."},
                 "receipt": {"type": "string", "description": "Execution receipt ID obtained from soma_request_receipt"}
             },
             "required": ["receipt"]
@@ -772,6 +773,7 @@ def execute_tool(name: str, args: dict):
                 workspace=workspace,
                 files=files,
                 layer1_only=layer1_only,
+                task_plan=args.get('task_plan', ''),
                 receipt=args.get('receipt'),
             )
             return {

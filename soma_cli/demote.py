@@ -13,6 +13,8 @@ from soma_core.lifecycle import (
     DEMOTION_PATH,
     PROTECTED_RULES,
     TYPE_TO_DIR,
+    demote_cell,
+    find_cell_file,
 )
 
 
@@ -21,15 +23,9 @@ def _find_cell(cells_dir: Path, genome_dir: Path, cell_id: str) -> tuple[Path | 
     # Sanitize cell_id to prevent path traversal
     if not cell_id or "/" in cell_id or "\\" in cell_id or ".." in cell_id:
         return None, None
-    for type_dir in ("walls", "vacuoles"):
-        candidate = cells_dir / type_dir / f"{cell_id}.md"
-        if candidate.is_file():
-            return candidate, type_dir
-    # Check genome directory (top-level, not under .soma/cells)
-    candidate = genome_dir / f"{cell_id}.md"
-    if candidate.is_file():
-        return candidate, "genome"
-    return None, None
+    clean_id = cell_id[:-3] if cell_id.endswith(".md") else cell_id
+    workspace = cells_dir.parent.parent
+    return find_cell_file(workspace, clean_id)
 
 
 def _current_type_from_dir(dir_name: str) -> str:
@@ -40,152 +36,71 @@ def _current_type_from_dir(dir_name: str) -> str:
 
 def _force_demote(project_root: Path, cell_id: str, dry_run: bool, use_json: bool) -> int:
     """Force-demote a specific cell, bypassing evidence thresholds."""
-    rule_base = cell_id[:-3] if cell_id.endswith(".md") else cell_id
-    if rule_base.startswith("rule-"):
-        rule_base = rule_base[5:]
-
-    if rule_base in PROTECTED_RULES or cell_id in PROTECTED_RULES:
+    try:
+        res = demote_cell(project_root, cell_id, dry_run=dry_run)
+    except ValueError as exc:
         msg = f"Cannot demote core rule: {cell_id}. Only promoted cells can be demoted."
         if use_json:
             print(json.dumps({"error": msg}))
         else:
             print(f"  ❌ {msg}")
         return 1
-
-    cells_dir = project_root / ".soma" / "cells"
-    genome_dir = project_root / "genome"
-    cell_path, current_dir = _find_cell(cells_dir, genome_dir, cell_id)
-
-    if cell_path is None:
-        msg = f"Cell '{cell_id}' not found in {cells_dir} or {genome_dir}"
+    except Exception as exc:
+        msg = f"Demotion error: {exc}"
         if use_json:
             print(json.dumps({"error": msg}))
         else:
             print(f"  ❌ {msg}")
         return 1
 
-    current_type = _current_type_from_dir(current_dir)
-    next_type = DEMOTION_PATH.get(current_type)
+    status = res.get("status")
+    if status == "not_found":
+        msg = f"Cell '{cell_id}' not found in {project_root / '.soma' / 'cells'} or {project_root / 'genome'}"
+        if use_json:
+            print(json.dumps({"error": msg}))
+        else:
+            print(f"  ❌ {msg}")
+        return 1
 
-    if next_type is None:
-        msg = f"Cell '{cell_id}' is already at '{current_type}' (minimum tier, cannot demote)"
+    if status == "already_base":
+        msg = f"Cell '{cell_id}' is already at '{res.get('current_type')}' (minimum tier, cannot demote)"
         if use_json:
             print(json.dumps({"error": msg}))
         else:
             print(f"  ⚠️  {msg}")
         return 1
 
-    next_dir = TYPE_TO_DIR[next_type]
-    target_path = cells_dir / next_dir / f"{cell_id}.md"
-
-    if dry_run:
-        if use_json:
-            print(json.dumps({"action": "demote", "cell_id": cell_id,
-                             "from": current_type, "to": next_type, "dry_run": True}))
-        else:
-            print(f"  🧬 Would demote: {cell_id}: {current_type} → {next_type}")
-            print(f"     {cell_path} → {target_path}")
-        return 0
-
-    # Read content and update frontmatter type
-    content = cell_path.read_text(encoding="utf-8")
-    content = re.sub(
-        r"^type:\s*\S+",
-        f"type: {next_type}",
-        content,
-        count=1,
-        flags=re.MULTILINE,
-    )
-
-    # Add enforcement:gate when demoting to wall
-    if next_type == "wall":
-        content = re.sub(
-            r"^enforcement:\s*\S+",
-            "enforcement: gate",
-            content,
-            count=1,
-            flags=re.MULTILINE,
-        )
-        # Check frontmatter only, not body
-        fm_end = content.find('---', 3)
-        frontmatter = content[:fm_end] if fm_end > 0 else content
-        if 'enforcement:' not in frontmatter:
-            content = re.sub(
-                r"^(type:\s*\S+)",
-                r"\1\nenforcement: gate",
-                content,
-                count=1,
-                flags=re.MULTILINE,
-            )
-
-    # Remove enforcement:gate and enforcement_artifact when demoting from wall to vacuole
-    if current_type == "wall" and next_type == "vacuole":
-        content = re.sub(
-            r"^enforcement:\s*gate\n?",
-            "",
-            content,
-            count=1,
-            flags=re.MULTILINE,
-        )
-        content = re.sub(
-            r"^enforcement_artifact:\s*\S+\n?",
-            "",
-            content,
-            count=1,
-            flags=re.MULTILINE,
-        )
-        for pfx in ("check-", "gate-"):
-            for sfx in (".sh", ".py"):
-                art = project_root / ".soma" / "enforcement" / f"{pfx}{cell_id}{sfx}"
-                if art.exists():
-                    try:
-                        art.unlink()
-                    except Exception:
-                        pass
-
-    # Guard against silent overwrite
-    if target_path.exists():
-        msg = f"Target already exists: {target_path}"
+    if status == "target_exists":
+        msg = res.get("message", "Target already exists")
         if use_json:
             print(json.dumps({"error": msg}))
         else:
             print(msg)
         return 1
 
-    # Write to new location atomically and remove old
-    target_path.parent.mkdir(parents=True, exist_ok=True)
-    tmp_path = target_path.with_name(f"{target_path.name}.tmp.{os.getpid()}")
-    try:
-        with open(tmp_path, "w", encoding="utf-8") as fh:
-            fh.write(content)
-            fh.flush()
-            os.fsync(fh.fileno())
-        try:
-            os.replace(tmp_path, target_path)
-        except OSError:
-            import shutil
-            shutil.move(str(tmp_path), str(target_path))
-        try:
-            if cell_path != target_path and cell_path.exists():
-                cell_path.unlink()
-        except Exception:
-            if target_path.exists() and cell_path.exists():
-                try:
-                    os.remove(target_path)
-                except Exception as ex:
-                    raise RuntimeError(f"Rollback failed: duplicate cell remains at {target_path}") from ex
-            raise
-    except Exception:
-        if tmp_path.exists():
-            tmp_path.unlink()
-        raise
+    if status == "dry_run":
+        if use_json:
+            print(json.dumps({"action": "demote", "cell_id": cell_id,
+                             "from": res["from_type"], "to": res["to_type"], "dry_run": True}))
+        else:
+            print(f"  🧬 Would demote: {cell_id}: {res['from_type']} → {res['to_type']}")
+            print(f"     {res['source_path']} → {res['target_path']}")
+        return 0
 
+    if status == "demoted":
+        if use_json:
+            print(json.dumps({"action": "demote", "cell_id": cell_id,
+                             "from": res["from_type"], "to": res["to_type"]}))
+        else:
+            print(f"  ✅ Demoted: {cell_id}: {res['from_type']} → {res['to_type']}")
+        return 0
+
+    msg = res.get("message", "Demotion failed")
     if use_json:
-        print(json.dumps({"action": "demote", "cell_id": cell_id,
-                         "from": current_type, "to": next_type}))
+        print(json.dumps({"error": msg}))
     else:
-        print(f"  ✅ Demoted: {cell_id}: {current_type} → {next_type}")
-    return 0
+        print(f"  ❌ {msg}")
+    return 1
 
 
 def run_demote(args: argparse.Namespace) -> int:

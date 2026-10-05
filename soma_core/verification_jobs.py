@@ -44,6 +44,7 @@ class VerificationJob:
 _JOBS: dict[str, VerificationJob] = {}
 _JOBS_LOCK = threading.Lock()
 JOB_TTL_SECONDS = 3600  # 1 hour TTL
+MAX_JOBS = 1000
 
 
 def _utc_now_iso() -> str:
@@ -72,6 +73,12 @@ def create_job(
         receipt=receipt,
     )
     with _JOBS_LOCK:
+        if len(_JOBS) >= MAX_JOBS:
+            # Evict oldest jobs
+            sorted_jobs = sorted(_JOBS.items(), key=lambda item: item[1].created_at)
+            to_remove = len(_JOBS) - MAX_JOBS + 1
+            for jid, _ in sorted_jobs[:to_remove]:
+                _JOBS.pop(jid, None)
         _JOBS[job_id] = job
     return job
 
@@ -157,25 +164,33 @@ def _run_verification_pipeline(job: VerificationJob, llm_backend: Optional[Calla
             "evidence": l1_evidence,
         }
 
-        # Run Layer 2 if requested and backend is available
-        if not job.layer1_only and llm_backend is not None and job.task_plan:
-            try:
-                l2_res = runner.run_layer2(
-                    changed_files=job.files,
-                    repo_root=job.workspace,
-                    task_plan=job.task_plan,
-                    layer1_evidence=layer1_results,
-                    llm_backend=llm_backend,
-                )
-                result_payload["layer2"] = {
-                    "verdict": l2_res.verdict.name,
-                    "divergences": [d.to_dict() if hasattr(d, "to_dict") else str(d) for d in l2_res.divergences],
-                    "convergences": [c.to_dict() if hasattr(c, "to_dict") else str(c) for c in l2_res.convergences],
-                }
-                if l2_res.verdict.name != "SHIP":
+        # Run Layer 2 if requested
+        if not job.layer1_only:
+            if not job.task_plan:
+                result_payload["status"] = "FAIL"
+                result_payload["layer2_error"] = "Layer 2 verification requested but task_plan is missing"
+            elif llm_backend is None:
+                result_payload["status"] = "FAIL"
+                result_payload["layer2_error"] = "Layer 2 verification requested but llm_backend is not configured"
+            else:
+                try:
+                    l2_res = runner.run_layer2(
+                        changed_files=job.files,
+                        repo_root=job.workspace,
+                        task_plan=job.task_plan,
+                        layer1_evidence=layer1_results,
+                        llm_backend=llm_backend,
+                    )
+                    result_payload["layer2"] = {
+                        "verdict": l2_res.verdict.name,
+                        "divergences": [d.to_dict() if hasattr(d, "to_dict") else str(d) for d in l2_res.divergences],
+                        "convergences": [c.to_dict() if hasattr(c, "to_dict") else str(c) for c in l2_res.convergences],
+                    }
+                    if l2_res.verdict.name != "SHIP":
+                        result_payload["status"] = "FAIL"
+                except Exception as exc:
+                    result_payload["layer2_error"] = str(exc)
                     result_payload["status"] = "FAIL"
-            except Exception as exc:
-                result_payload["layer2_error"] = str(exc)
 
         with _JOBS_LOCK:
             job.status = JOB_STATUS_COMPLETED

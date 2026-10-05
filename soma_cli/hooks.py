@@ -31,10 +31,11 @@ from typing import Any, Tuple
 # ── Safety Gate: Destructive Patterns ──────────────────────────────────────────
 
 DESTRUCTIVE_PATTERNS: list[tuple[re.Pattern[str], str]] = [
-    # rm: catch -rf, -r -f, -fr, --recursive targeting home, root, current dir or wildcard
+    # rm: catch -rf, -r -f, -fr, --recursive targeting home, root, current dir or wildcard (including quotes/subshells)
     (
         re.compile(
-            r'(?:^|[;&|`\(\)\s])rm\s+(?:-[a-zA-Z]*r[a-zA-Z]*f|-[a-zA-Z]*f[a-zA-Z]*r|-r\s+-f|-f\s+-r|--recursive)\s+(?:/|~|/home|\$HOME|\.|\.\.|\*|\s*/|\s*~)'
+            r'(?:^|[;&|`\(\)\s\'"])(?:(?:sh|bash|zsh)\s+-c\s+[\'"])?rm\s+(?:-[a-zA-Z0-9_\-]*r[a-zA-Z0-9_\-]*f|-[a-zA-Z0-9_\-]*f[a-zA-Z0-9_\-]*r|-r\s+-f|-f\s+-r|--recursive)\s+.*[\'"]?(?:/|~|/home|\$HOME|\.|\.\.|\*)[\'"]?',
+            re.IGNORECASE,
         ),
         "Recursive delete targeting home/root directory or wildcard/current directory",
     ),
@@ -55,9 +56,9 @@ DESTRUCTIVE_PATTERNS: list[tuple[re.Pattern[str], str]] = [
         re.compile(r'(?:^|[^a-zA-Z0-9_])dd\s+.*if='),
         "Raw disk write (dd) detected — destructive operation",
     ),
-    # chmod 777: overly permissive
+    # chmod 777: overly permissive (including flags like -R and octal 0777)
     (
-        re.compile(r'chmod\s+777'),
+        re.compile(r'chmod\s+(?:-[a-zA-Z]+\s+)?0?777'),
         "chmod 777 — overly permissive, potential security risk",
     ),
     # kill -9 -1: kill all processes
@@ -73,7 +74,7 @@ DESTRUCTIVE_PATTERNS: list[tuple[re.Pattern[str], str]] = [
     # Piping remote content to shell
     (
         re.compile(
-            r'curl\s+.*\|\s*(?:sh|bash)|wget\s+.*\|\s*(?:sh|bash)|iwr\s+.*\|\s*iex|irm\s+.*\|\s*iex',
+            r'(?:curl|wget|iwr|irm|Invoke-WebRequest|Invoke-RestMethod)\s+.*\|\s*(?:sh|bash|iex|Invoke-Expression)',
             re.IGNORECASE,
         ),
         "Piping remote content to shell — potential code execution risk",
@@ -89,17 +90,17 @@ DESTRUCTIVE_PATTERNS: list[tuple[re.Pattern[str], str]] = [
     ),
     # Git reset --hard
     (
-        re.compile(r'git\s+reset\s+--hard'),
+        re.compile(r'git\s+reset\s+.*--hard'),
         "Hard reset — will discard uncommitted changes",
     ),
     # Git checkout -f
     (
-        re.compile(r'git\s+checkout\s+-f'),
+        re.compile(r'git\s+checkout\s+.*(?:-f|--force)\b'),
         "Force checkout — will discard uncommitted changes",
     ),
     # Git clean -f
     (
-        re.compile(r'git\s+clean\s+.*-[a-zA-Z]*f'),
+        re.compile(r'git\s+clean\s+.*(?:-[a-zA-Z]*f[a-zA-Z]*|--force)'),
         "git clean -f — will permanently remove untracked files",
     ),
     # Bulk git staging
@@ -120,26 +121,28 @@ DESTRUCTIVE_PATTERNS: list[tuple[re.Pattern[str], str]] = [
         re.compile(r'(?:Format-Volume|Initialize-Disk|Clear-Disk)', re.IGNORECASE),
         "Disk partition format detected — destructive operation",
     ),
-    # Windows PowerShell destructive delete
+    # Windows PowerShell destructive delete (cmdlet and aliases rm, del, erase, rd, ri, with -r/-fo short flags)
     (
         re.compile(
-            r'Remove-Item\s+.*-Recurse\s+.*-Force|Remove-Item\s+.*-Force\s+.*-Recurse',
+            r'(?:Remove-Item|rm|del|erase|rd|ri)\s+.*-(?:Recurse|r)\b.*-(?:Force|fo)\b|(?:Remove-Item|rm|del|erase|rd|ri)\s+.*-(?:Force|fo)\b.*-(?:Recurse|r)\b',
             re.IGNORECASE,
         ),
         "PowerShell recursive force delete detected",
     ),
     # Windows cmd destructive delete
     (
-        re.compile(r'(?:del|rmdir)\s+/(?:s|q)\s+.*[/\\]', re.IGNORECASE),
+        re.compile(r'(?:del|rmdir)\b(?=.*[/\\]s\b)(?=.*[/\\]q\b)', re.IGNORECASE),
         "Windows command-line recursive delete (/s /q) detected",
     ),
 ]
 
 SECRET_REPLACEMENTS: list[tuple[re.Pattern[str], str]] = [
     (re.compile(r"AKIA[0-9A-Z]{16}"), "AKIA_REDACTED"),
+    (re.compile(r"ASIA[0-9A-Z]{16}"), "ASIA_REDACTED"),
     (re.compile(r"ghp_[a-zA-Z0-9]{36}"), "ghp_REDACTED"),
+    (re.compile(r"gh[ousr]_[a-zA-Z0-9]{36}"), "gh_token_REDACTED"),
     (re.compile(r"github_pat_[a-zA-Z0-9_]{20,}"), "github_pat_REDACTED"),
-    (re.compile(r"sk-[a-zA-Z0-9]{20,}"), "sk-REDACTED"),
+    (re.compile(r"sk-(?:proj-|ant-)?[a-zA-Z0-9_-]{20,}"), "sk-REDACTED"),
     (re.compile(r"AIzaSy[a-zA-Z0-9_-]{33}"), "AIzaSy_REDACTED"),
     (re.compile(r"Bearer [a-zA-Z0-9._-]{20,}"), "Bearer REDACTED"),
     (re.compile(r"GEMINI_API_KEY=[^\s]*"), "GEMINI_API_KEY=REDACTED"),
@@ -286,6 +289,7 @@ def run_pre_invocation(
             pass
 
     if steps:
+        response["injectSteps"] = steps
         response["steps"] = steps
 
     return 0, response
@@ -297,6 +301,14 @@ def run_session_close(workspace: Path | None = None) -> tuple[int, dict[str, Any
     """Run session close lifecycle tasks (outcome evaluation and cell evolution)."""
     root = workspace or Path.cwd()
     scripts_dir = root / "enzymes"
+    if not (scripts_dir / "outcome_engine.py").is_file():
+        steering_env = os.environ.get("SOMA_STEERING_REPO")
+        if steering_env and (Path(steering_env) / "enzymes" / "outcome_engine.py").is_file():
+            scripts_dir = Path(steering_env) / "enzymes"
+        else:
+            package_enzymes = Path(__file__).resolve().parent.parent / "enzymes"
+            if (package_enzymes / "outcome_engine.py").is_file():
+                scripts_dir = package_enzymes
 
     # 1. Outcome engine if available
     outcome_engine = scripts_dir / "outcome_engine.py"
