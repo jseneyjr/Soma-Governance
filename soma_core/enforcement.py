@@ -53,18 +53,20 @@ def bug_status(bug: Dict[str, Any]) -> str:
     return bug.get("status", "fixed")
 
 
-def _failed_node_ids(pytest_stdout: str) -> List[str]:
-    """Node IDs from pytest's summary lines."""
+def _failed_node_ids(pytest_output: str) -> List[str]:
+    """Node IDs from pytest's summary lines and error output."""
     nodes = []
-    for line in pytest_stdout.splitlines():
+    for line in pytest_output.splitlines():
         parts = line.split()
         if len(parts) >= 2 and parts[0] in ("FAILED", "ERROR"):
             nodes.append(parts[1])
+        elif "ERROR: not found:" in line:
+            nodes.append(line.split("ERROR: not found:")[-1].strip())
     return nodes
 
 
 def _node_matches(node: str, test_ref: str) -> bool:
-    if node == test_ref or node.startswith((test_ref + "[", test_ref + "::")):
+    if node == test_ref or node.endswith(test_ref) or node.startswith((test_ref + "[", test_ref + "::")):
         return True
     return "::" not in node and test_ref.split("::")[0] == node
 
@@ -157,10 +159,15 @@ def verify_regression_tests(registry: Dict[str, Any], workspace: str) -> List[st
             )
             if result.returncode != 0:
                 errors.append(f"Regression tests failed (exit code {result.returncode})")
-                failed = _failed_node_ids(result.stdout)
+                failed = _failed_node_ids((result.stdout or "") + "\n" + (result.stderr or ""))
+                matched_failure = False
                 for bug_id, test_ref in test_ids:
                     if any(_node_matches(node, test_ref) for node in failed):
                         errors.append(f"{bug_id}: regression test failed: {test_ref}")
+                        matched_failure = True
+                if not matched_failure and result.stderr and result.stderr.strip():
+                    for line in result.stderr.strip().splitlines()[:5]:
+                        errors.append(f"  pytest: {line}")
         except subprocess.TimeoutExpired:
             errors.append(f"Timeout running {len(all_refs)} regression tests (limit {budget} s)")
         except Exception as e:
