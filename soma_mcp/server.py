@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import contextlib
 import hmac
 import json
@@ -9,7 +11,7 @@ import time
 import traceback
 import uuid
 from collections import defaultdict
-from typing import Any, Dict
+from typing import Any, Dict, Optional
 
 from .tools import (
     TOOL_DEFINITIONS,
@@ -84,7 +86,7 @@ def _check_rate_limit(tool_name: str) -> bool:
         return True
 
 
-def _rollback_rate_limit(tool_name: str, lease_id: str | None = None) -> None:
+def _rollback_rate_limit(tool_name: str, lease_id: Optional[str] = None) -> None:
     """Revert the specific rate-limit lease if authorization/receipt verification fails."""
     if tool_name in _RATE_LIMITS:
         target_lease = lease_id

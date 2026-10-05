@@ -6,6 +6,12 @@ This project uses [Semantic Versioning](https://semver.org/).
 ## [0.96.0] — 2026-10-05 — "Core Domain Consolidation, Common Method Centralization & 1.0.0 Release Prep"
 
 ### Added
+- **Developer Porcelain Facade & Ergonomics**:
+  - Added `soma rules` (`soma_cli/rules.py`): Query and search genome rules with regex pattern matching, status filters, and multi-format output (`text`, `json`, `markdown`).
+  - Added `soma analyze` (`soma_cli/analyze.py`): Holistic workspace telemetry, waste rate trajectory, and cell fitness health analysis.
+  - Added `soma prune` (`soma_cli/prune.py`): Interactive and batch pruning of extinct and dormant governance cells with safety confirmations.
+  - Added `soma_sdk.governance.Governance` porcelain methods: High-level Python facade exposing `record_outcome`, `create_cell`, `create_rule`, and `rule_fitness`.
+  - Added in-process helper functions `compute_cells_fitness` (`soma_core/lifecycle.py`) and `compute_token_census` (`soma_core/telemetry.py`) eliminating external subprocess overhead.
 - **Pure-Stdlib Layer 0 Foundations**: Added `soma_core/scoring.py` and `soma_core/workspace.py` providing zero-dependency Wilson confidence interval scoring, SNR computation, and deterministic workspace root resolution decoupled from higher-level SDK packages.
 - **Domain-Specific Core Engines**: Consolidated fragmented enzyme logic into cohesive Layer 0 modules under `soma_core/`:
   - `soma_core/arbitration.py`: Test-to-code (TTC) verification, deterministic oracle scoring, and checkpoint validation.
@@ -18,9 +24,25 @@ This project uses [Semantic Versioning](https://semver.org/).
   - `soma_core/lifecycle.py`: Complete cell genetics and lifecycle domain (cell creation, promotion, demotion, transfer, metamorphosis, adaptation, selection, crossover, and fitness evaluation).
 
 ### Changed
+- **Core Layer Decoupling & In-Process Execution**: Strictly enforced unidirectional architecture ensuring `soma_core` maintains zero upward imports into `soma_sdk`, `soma_cli`, `soma_mcp`, or `enzymes`. Replaced subprocess script forks in core sync and telemetry with direct module calls.
+- **Public API Surface Definitions**: Added explicit `__all__` exports to 9 core helper modules (`receipts`, `locking`, `storage`, `frontmatter`, `evidence`, `quarantine`, `errors`, `verification_jobs`, `cell_inventory`).
 - **Enzyme Forwarding Shims**: Converted 58 top-level enzymes into thin, backward-compatible dual-mode forwarding shims delegating to `soma_core/` while preserving full CLI parity, exit codes, monkeypatch hooks, and AST console encoding invariants.
+- **CLI Flag Inheritance**: Attached `common_parser` parent to `soma completion` subcommand, allowing global options (`--plumbing`, `-v`, `-q`, `--format`) to be passed cleanly.
 - **Scripts Architecture Reference**: Updated `docs/architecture/scripts.md` cataloging 149 executable modules (25 MCP/Core modules).
 - **Single-Sourced Version Synchronization**: Synchronized release version `0.96.0` across all repository surfaces (`VERSION`, `pyproject.toml`, `README.md`, `soma_sdk/__init__.py`, `soma_sdk_js/package.json`, `docs/KNOWN_ISSUES_WINDOWS.md`, and `SECURITY.md`).
+
+### Fixed
+- **POSIX Flock Reentrancy Self-Deadlock**: Tracked lock acquisition depth via thread-local storage (`_lock_tls`) in `soma_core/telemetry.py::evidence_lock`, preventing reentrant POSIX flock self-deadlocks on Linux/macOS.
+- **Single-Use Token Burn Timing**: Enforced unconditional single-use token invalidation upon redemption attempt (`consume=True`) in `soma_core/receipts.py`, eliminating brute-force parameter probing.
+- **Rate Limiting Lease Isolation & Rollback Policy**: Implemented thread-local rate limit leases (`_mcp_tls`) and eliminated artificial rollbacks on tool execution failure, preventing token starvation while tracking genuine invocation attempts.
+- **Python 3.9 Compatibility in MCP Server**: Added `from __future__ import annotations` and `Optional[str]` annotations to `soma_mcp/server.py`, preventing `TypeError: unsupported operand type(s) for |` during wheel smoke tests on Python 3.9 runners.
+- **Canonical Relative Path Hashing in File Digests**: Normalized file paths relative to workspace root using POSIX forward slashes in `compute_file_digest`, preventing digest mismatch on relocated directories or Windows runners.
+- **Constant-Time Byte-Safe HMAC Comparison**: Verified string types and encoded signatures to UTF-8 bytes before `hmac.compare_digest` in `soma_mcp/integrity.py::verify_signature`.
+- **Outcome Session ID Scoping**: Defaulted `idempotency_scope` in `soma_sdk.governance.Governance.record_outcome` to `session_id if session_id else "global"` and forwarded `session_id` into telemetry signals.
+- **Deduplicated YAML Frontmatter Parsing**: Delegated `soma_sdk/cells.py::_stdlib_parse_frontmatter` to `soma_core.frontmatter.parse_yaml_subset`.
+- **Safe Post-Session Hook Execution**: Prevented `post-session` hook from triggering mutating `session-close` when transcript is missing, cleanly returning code 0 with a diagnostic message.
+- **MCP Outcome Enum Parity**: Added `"pass"` and `"fail"` to `soma_report_outcome` input schema enum and mapped to `tp`/`fp`.
+- **Invariant 6 Verification Rigor**: Strengthened Invariant 6 in `tests/test_mulch_invariants.py` to assert bug registry record count (`len(bugs["bugs"]) > 50`) and verify ID uniqueness via `verify_unique_ids`.
 
 ## [0.95.0] — 2026-10-05 — "Architecture Consolidation, Deep Defense & Storage Resiliency"
 
