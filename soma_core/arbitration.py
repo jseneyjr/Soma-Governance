@@ -238,10 +238,14 @@ def evaluate_change(workspace: str, target_file: str, proposed_content: str) -> 
         return "APPROVED: No oracles defined."
 
     try:
-        from enzymes.inference_provider import resolve_provider
+        import importlib
+        _inf = importlib.import_module("enzymes.inference_provider")
+        resolve_provider = _inf.resolve_provider
     except ImportError:
         try:
-            from inference_provider import resolve_provider
+            import importlib
+            _inf = importlib.import_module("inference_provider")
+            resolve_provider = _inf.resolve_provider
         except ImportError:
             return "APPROVED: No inference provider available to run TTC Oracle."
 
@@ -546,14 +550,7 @@ def generate_checkpoint(workspace: Optional[str] = None, session_count: Optional
     cells = _load_cells(ws)
     evidence = _load_fitness_evidence(ws)
 
-    try:
-        from soma_core.defects import audit_expiry
-    except ImportError:
-        try:
-            from enzymes.cell_expiry import audit_expiry
-        except ImportError:
-            def audit_expiry(*_args, **_kwargs):
-                return []
+    from soma_core.defects import audit_expiry
 
     expiry_results = audit_expiry(ws, session_count=session_count)
     expired_ids = {

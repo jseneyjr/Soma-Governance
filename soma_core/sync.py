@@ -756,10 +756,14 @@ def run_sweep(active_only: bool = False, soma_data_dir: Path | None = None) -> i
     from collections import Counter
     import time
     try:
-        from enzymes.sweep_session import scan_transcript, to_session_metrics
+        import importlib
+        _mod = importlib.import_module("enzymes.sweep_session")
+        scan_transcript, to_session_metrics = _mod.scan_transcript, _mod.to_session_metrics
     except ImportError:
         try:
-            from sweep_session import scan_transcript, to_session_metrics
+            import importlib
+            _mod = importlib.import_module("sweep_session")
+            scan_transcript, to_session_metrics = _mod.scan_transcript, _mod.to_session_metrics
         except ImportError:
             scan_transcript = None
             to_session_metrics = None
@@ -1070,10 +1074,18 @@ def run_post_session_hook(
         update_fitness,
     )
     try:
-        from enzymes.evidence_collector import aggregate_evidence, build_observation, check_compliance
+        import importlib
+        _mod = importlib.import_module("enzymes.evidence_collector")
+        aggregate_evidence = _mod.aggregate_evidence
+        build_observation = _mod.build_observation
+        check_compliance = _mod.check_compliance
     except ImportError:
         try:
-            from evidence_collector import aggregate_evidence, build_observation, check_compliance
+            import importlib
+            _mod = importlib.import_module("evidence_collector")
+            aggregate_evidence = _mod.aggregate_evidence
+            build_observation = _mod.build_observation
+            check_compliance = _mod.check_compliance
         except ImportError:
             aggregate_evidence = build_observation = check_compliance = None
 

@@ -6,6 +6,10 @@ in soma_core.telemetry.
 """
 from __future__ import annotations
 
+import sys
+import types
+from typing import Any
+
 from soma_core.telemetry import (
     DEFAULT_GENERATION,
     EPOCH_FILENAME,
@@ -24,6 +28,7 @@ from soma_core.telemetry import (
     increment_generation,
     read_generation,
     read_signals,
+    _validate_event,
 )
 
 __all__ = [
@@ -44,4 +49,21 @@ __all__ = [
     "append_signal",
     "append_signals",
     "read_signals",
+    "_validate_event",
 ]
+
+
+class _TelemetryFacadeModule(types.ModuleType):
+    """Module proxy that mirrors attribute mutations down to canonical soma_core.telemetry."""
+
+    def __setattr__(self, name: str, value: Any) -> None:
+        super().__setattr__(name, value)
+        try:
+            import soma_core.telemetry as _core
+            if hasattr(_core, name):
+                setattr(_core, name, value)
+        except Exception:
+            pass
+
+
+sys.modules[__name__].__class__ = _TelemetryFacadeModule

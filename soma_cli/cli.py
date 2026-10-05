@@ -179,7 +179,7 @@ def _build_parser() -> argparse.ArgumentParser:
 
     # soma completion
     from soma_cli.completion import SHELLS
-    p_completion = sub.add_parser("completion", parents=[common_parser], help="Print a shell completion script")
+    p_completion = sub.add_parser("completion", help="Print a shell completion script")
     p_completion.add_argument("shell", choices=list(SHELLS),
                               help="Target shell")
 
