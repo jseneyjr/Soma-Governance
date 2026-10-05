@@ -13,6 +13,8 @@ if str(_REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(_REPO_ROOT))
 
 from soma_core.telemetry import (
+    INSIGHT_PRINCIPAL,
+    INSIGHT_SCOPE,
     VERIFY_TIMEOUT,
     append_fitness_log,
     capture_build_outcome,
@@ -31,11 +33,14 @@ from soma_core.telemetry import (
     to_fraction,
     update_cell_fitness,
     _get_changed_files,
+    _parse_frontmatter,
     _read_insight_cursor,
     _run_verify,
 )
 
 __all__ = [
+    "INSIGHT_PRINCIPAL",
+    "INSIGHT_SCOPE",
     "VERIFY_TIMEOUT",
     "detect_test_runner",
     "capture_test_outcome",
@@ -53,6 +58,7 @@ __all__ = [
     "append_fitness_log",
     "run_outcome_engine",
     "_get_changed_files",
+    "_parse_frontmatter",
     "_read_insight_cursor",
     "_run_verify",
     "main",
@@ -68,6 +74,13 @@ def __getattr__(name: str):
 def main(*args, **kwargs) -> int:
     if hasattr(sys.stdout, "reconfigure"):
         sys.stdout.reconfigure(errors="replace")
+    if args and isinstance(args[0], (list, tuple)):
+        return cli_outcome_engine(list(args[0]), mod=sys.modules[__name__])
+    ws = kwargs.get("workspace")
+    if ws is not None:
+        return run_outcome_engine(ws, mod=sys.modules[__name__])
+    if len(sys.argv) > 1 and sys.argv[0].endswith("outcome_engine.py"):
+        return cli_outcome_engine(sys.argv[1:], mod=sys.modules[__name__])
     return run_outcome_engine(mod=sys.modules[__name__])
 
 

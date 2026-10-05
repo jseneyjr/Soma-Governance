@@ -273,7 +273,7 @@ def load_cells_for_enforcement(cells_dir: str) -> List[Dict[str, Any]]:
         if os.path.basename(cell_file) == "README.md":
             continue
         try:
-            with open(cell_file, "r", encoding="utf-8") as f:
+            with open(cell_file, "r", encoding="utf-8-sig") as f:
                 content = f.read()
             fm = _parse_frontmatter(content) or {}
             body = _get_body(content)
@@ -286,6 +286,9 @@ def load_cells_for_enforcement(cells_dir: str) -> List[Dict[str, Any]]:
     return cells
 
 
+load_cells = load_cells_for_enforcement
+
+
 def generate_precommit_check(cell: Dict[str, Any], workspace: str) -> str:
     """Generate a pre-commit check script for a 'mechanical' cell."""
     name = cell.get("_name") or cell.get("id") or cell.get("name", "unnamed")
@@ -293,15 +296,18 @@ def generate_precommit_check(cell: Dict[str, Any], workspace: str) -> str:
     hypothesis = cell.get("hypothesis", "")
     target_paths = cell.get("target_paths") or []
 
+    clean_name = re.sub(r"[\r\n]+", " ", str(name)).strip()
+    clean_hyp = re.sub(r"[\r\n]+", " ", str(hypothesis)).strip()
+
     quoted_name = shlex.quote(name)
     quoted_hyp = shlex.quote(hypothesis[:80])
     quoted_patterns = " ".join(shlex.quote(p) for p in target_paths)
 
     if cell_type == "wall":
         check = f"""#!/bin/bash
-# Auto-generated enforcement artifact for: {name}
+# Auto-generated enforcement artifact for: {clean_name}
 # Type: {cell_type} | Tier: mechanical
-# Hypothesis: {hypothesis}
+# Hypothesis: {clean_hyp}
 # Generated: {datetime.now(timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ')}
 #
 # This check runs as part of the pre-commit hook.
@@ -342,9 +348,9 @@ exit 0  # No match: allow commit
 """
     elif cell_type == "membrane":
         check = f"""#!/bin/bash
-# Auto-generated enforcement artifact for: {name}
+# Auto-generated enforcement artifact for: {clean_name}
 # Type: {cell_type} | Tier: mechanical
-# Hypothesis: {hypothesis}
+# Hypothesis: {clean_hyp}
 # Generated: {datetime.now(timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ')}
 
 set -uo pipefail
@@ -379,9 +385,9 @@ exit 0  # No match: allow commit
 """
     else:
         check = f"""#!/bin/bash
-# Auto-generated enforcement artifact for: {name}
+# Auto-generated enforcement artifact for: {clean_name}
 # Type: {cell_type} | Tier: mechanical
-# Hypothesis: {hypothesis}
+# Hypothesis: {clean_hyp}
 # Generated: {datetime.now(timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ')}
 
 set -uo pipefail
@@ -423,14 +429,18 @@ def generate_gate_assertion(cell: Dict[str, Any], workspace: str) -> str:
     hypothesis = cell.get("hypothesis", "")
     target_paths = cell.get("target_paths") or []
 
+    clean_name = re.sub(r"[\r\n]+", " ", str(name)).strip()
+    clean_hyp = re.sub(r"[\r\n]+", " ", str(hypothesis)).strip()
+    clean_hyp_doc = clean_hyp[:100].replace('"""', "'''")
+
     class_suffix = re.sub(r"[^a-zA-Z0-9]", "_", name)
     json_name = json.dumps(name)
     json_hyp = json.dumps(hypothesis)
     json_targets = json.dumps(target_paths)
 
-    assertion = f'''# Auto-generated gate assertion for: {name}
+    assertion = f'''# Auto-generated gate assertion for: {clean_name}
 # Type: {cell_type} | Tier: gate
-# Hypothesis: {hypothesis}
+# Hypothesis: {clean_hyp}
 # Generated: {datetime.now(timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ')}
 
 import os
@@ -439,7 +449,7 @@ import sys
 
 
 class Gate_{class_suffix}:
-    """Runtime gate for: {hypothesis[:100]}"""
+    """Runtime gate for: {clean_hyp_doc}"""
 
     CELL_NAME = {json_name}
     HYPOTHESIS = {json_hyp}
@@ -838,7 +848,11 @@ __all__ = [
     "cli_verify_bug_registry",
     "verify_readme_claims",
     "cli_verify_readme_claims",
+    "load_cells",
+    "load_cells_for_enforcement",
     "generate_precommit_check",
+    "generate_gate_assertion",
+    "update_cell_enforcement_artifact",
     "cli_cell_enforce",
     "generate_ci_report",
     "_match_cells",

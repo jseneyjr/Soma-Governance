@@ -13,6 +13,8 @@ if str(_REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(_REPO_ROOT))
 
 from soma_core.telemetry import (
+    PLATFORMS,
+    DEFAULT_PLATFORM,
     cli_fitness_updater,
     detect_platform,
     extract_modified_files,
@@ -22,6 +24,8 @@ from soma_core.telemetry import (
 )
 
 __all__ = [
+    "PLATFORMS",
+    "DEFAULT_PLATFORM",
     "detect_platform",
     "resolve_transcript_id",
     "extract_modified_files",

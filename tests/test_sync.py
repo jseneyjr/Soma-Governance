@@ -34,3 +34,53 @@ def test_sync_classification():
 def test_sync_hgt_mock_translation():
     res = prompt_llm_translation("draft all combat-capable pawns", mock=True)
     assert "Resource Consolidation" in res
+
+
+def test_run_push_member_id_traversal_rejected(tmp_path):
+    from soma_core.sync import run_push
+
+    team_repo = tmp_path / "team"
+    repo = tmp_path / "repo"
+    team_repo.mkdir()
+    repo.mkdir()
+
+    with pytest.raises(ValueError, match="Invalid member_id"):
+        run_push(repo, team_repo, None, "../../traversal")
+
+    with pytest.raises(ValueError, match="Invalid member_id"):
+        run_push(repo, team_repo, None, "")
+
+
+def test_sync_sentinel_exports(tmp_path):
+    from pathlib import Path
+    from soma_core.sync import set_review_mode, write_frontmatter, resolve_home
+    from soma_core.telemetry import _parse_frontmatter
+    import enzymes.escalation_sentinel as es_shim
+    import enzymes.immune_sweep as is_shim
+    import enzymes.fitness_updater as fu_shim
+
+    # Test set_review_mode
+    conf = tmp_path / "steering.conf"
+    conf.write_text("REVIEW_MODE=breeze\nOTHER=true\n", encoding="utf-8")
+    set_review_mode(str(tmp_path), "maelstrom")
+    assert "REVIEW_MODE=maelstrom\n" in conf.read_text(encoding="utf-8")
+
+    # Test write_frontmatter
+    out_cell = tmp_path / "cell.md"
+    write_frontmatter(str(out_cell), {"id": "test-cell", "type": "gene"}, "Cell body text\n")
+    assert out_cell.exists()
+    parsed = _parse_frontmatter(out_cell.read_text(encoding="utf-8"))
+    assert parsed.get("id") == "test-cell"
+
+    # Test resolve_home
+    home = resolve_home()
+    assert isinstance(home, Path)
+    assert home.exists()
+
+    # Test forwarding shims have re-exports
+    assert hasattr(es_shim, "set_review_mode")
+    assert hasattr(es_shim, "write_frontmatter")
+    assert hasattr(is_shim, "resolve_home")
+    assert hasattr(fu_shim, "PLATFORMS")
+    assert hasattr(fu_shim, "DEFAULT_PLATFORM")
+

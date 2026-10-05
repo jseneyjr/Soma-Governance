@@ -89,11 +89,14 @@ def _os_lock(fh: Any) -> None:
         fcntl.flock(fh.fileno(), fcntl.LOCK_EX)
     elif msvcrt is not None:
         fh.seek(0)
+        deadline = time.monotonic() + 10.0
         while True:
             try:
                 msvcrt.locking(fh.fileno(), msvcrt.LK_NBLCK, 1)
                 return
             except OSError:
+                if time.monotonic() > deadline:
+                    raise TimeoutError("Timed out waiting for file lock")
                 time.sleep(_MSVCRT_RETRY_SECONDS)
 
 
@@ -755,6 +758,42 @@ def _get_changed_files(workspace: str) -> list[str]:
         return []
 
 
+def _parse_frontmatter(content: str, filepath: Optional[str] = None) -> dict:
+    """Parse YAML frontmatter robustly using parse_cell_file or parse_frontmatter.
+
+    When *filepath* is provided, delegates to the canonical parser.
+    Falls back to inline parsing when only raw *content* is available.
+    """
+    if filepath is not None:
+        try:
+            from soma_sdk.cells import parse_cell_file
+            fm, _body = parse_cell_file(str(filepath))
+            return fm if isinstance(fm, dict) else {}
+        except Exception:
+            return {}
+    if not content:
+        return {}
+    try:
+        res = parse_frontmatter(content)
+        if isinstance(res, dict):
+            return res
+    except Exception:
+        pass
+    if not content.startswith('---'):
+        return {}
+    end = content.find('---', 3)
+    if end == -1:
+        return {}
+    fm_text = content[3:end].strip()
+    try:
+        if yaml is not None:
+            loaded = yaml.safe_load(fm_text)
+            return loaded if isinstance(loaded, dict) else {}
+    except Exception:
+        pass
+    return {}
+
+
 def match_cells_to_changes(workspace: str, changed_files: list[str]) -> list[dict]:
     cells_dir = os.path.join(workspace, '.soma', 'cells')
     if not os.path.isdir(cells_dir):
@@ -774,8 +813,10 @@ def match_cells_to_changes(workspace: str, changed_files: list[str]) -> list[dic
 
             matched = False
             for pattern in target_paths:
+                pat_norm = pattern.replace("\\", "/")
                 for changed in changed_files:
-                    if fnmatch.fnmatch(changed, pattern) or fnmatch.fnmatch(os.path.basename(changed), pattern):
+                    ch_norm = changed.replace("\\", "/")
+                    if fnmatch.fnmatch(ch_norm, pat_norm) or fnmatch.fnmatch(os.path.basename(ch_norm), pat_norm):
                         matched = True
                         break
                 if matched:
@@ -1180,10 +1221,10 @@ def run_outcome_engine(workspace: Optional[str] = None, mod: Any = None) -> int:
 
 
 
-def cli_outcome_engine(argv: Optional[List[str]] = None) -> int:
+def cli_outcome_engine(argv: Optional[List[str]] = None, mod: Any = None) -> int:
     """CLI outcome engine handler."""
     if argv is None and len(sys.argv) <= 1:
-        return run_outcome_engine()
+        return run_outcome_engine(mod=mod)
     parser = argparse.ArgumentParser(description="Outcome Engine")
     parser.add_argument("--workspace", default=None)
     parser.add_argument("--apply", action="store_true")
@@ -1191,7 +1232,7 @@ def cli_outcome_engine(argv: Optional[List[str]] = None) -> int:
     args = parser.parse_args(argv if argv is not None else sys.argv[1:])
 
     ws = args.workspace or resolve_workspace()
-    return run_outcome_engine(ws)
+    return run_outcome_engine(ws, mod=mod)
 
 
 # ── Fitness Updater ────────────────────────────────────────────────────────
@@ -1642,8 +1683,10 @@ def evaluate_quorum(cells_dir: Path | str, changed_files: list[str], threshold: 
 
             matched = False
             for tp in target_paths:
+                tp_norm = tp.replace("\\", "/")
                 for cf in changed_files:
-                    if fnmatch.fnmatch(cf, tp):
+                    cf_norm = cf.replace("\\", "/")
+                    if fnmatch.fnmatch(cf_norm, tp_norm):
                         matched = True
                         break
                 if matched:
@@ -2037,6 +2080,13 @@ __all__ = [
     "append_fitness_log",
     "run_outcome_engine",
     "cli_outcome_engine",
+    "INSIGHT_PRINCIPAL",
+    "INSIGHT_SCOPE",
+    "VERIFY_TIMEOUT",
+    "_get_changed_files",
+    "_parse_frontmatter",
+    "_read_insight_cursor",
+    "_run_verify",
     "PLATFORMS",
     "DEFAULT_PLATFORM",
     "detect_platform",

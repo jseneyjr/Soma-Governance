@@ -17,10 +17,12 @@ _NON_ASCII_MARKER = "🔄"
 
 from soma_core.sync import (
     cli_immune_sweep,
+    resolve_home,
     run_sweep,
 )
 
 __all__ = [
+    "resolve_home",
     "run_sweep",
     "main",
 ]

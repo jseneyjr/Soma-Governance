@@ -29,6 +29,8 @@ from soma_core.sync import (
     get_diff_size,
     is_test_file,
     recommend_protocol,
+    set_review_mode,
+    write_frontmatter,
     run_last_gasp,
 )
 
@@ -45,6 +47,8 @@ __all__ = [
     "detect_branch_ops",
     "check_membrane_overrides",
     "recommend_protocol",
+    "set_review_mode",
+    "write_frontmatter",
     "run_last_gasp",
     "main",
 ]

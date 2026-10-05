@@ -15,10 +15,16 @@ if str(_REPO_ROOT) not in sys.path:
 from soma_core.enforcement import (
     cli_cell_enforce,
     generate_precommit_check,
+    generate_gate_assertion,
+    update_cell_enforcement_artifact,
+    load_cells,
 )
 
 __all__ = [
+    "load_cells",
     "generate_precommit_check",
+    "generate_gate_assertion",
+    "update_cell_enforcement_artifact",
     "main",
 ]
 

@@ -91,7 +91,7 @@ def bayesian_posterior(
         'upper': upper,
         'upper_90': upper,    # Backward compat alias
         'certainty': 'low' if total < 5 else 'medium' if total < 20 else 'high',
-        'n': total if float(total).is_integer() else round(total, 2),
+        'n': int(total) if float(total).is_integer() else round(total, 2),
     }
 
 
@@ -192,6 +192,26 @@ def compute_cell_fitness(cell: Dict[str, Any]) -> float:
         return 0.5 * impact_weight
 
 
+def calculate_snr(tp: int | float, fp: int | float) -> float | None:
+    """Calculate Signal-to-Noise Ratio in decibels (dB).
+
+    Returns:
+        - 10 * log10(tp / fp) rounded to 1 decimal if tp > 0 and fp > 0
+        - None if tp > 0 and fp == 0 (infinite SNR, RFC 8259 compliant)
+        - -99.0 if tp == 0 and fp > 0 (zero signal / pure noise, RFC 8259 compliant)
+        - 0.0 if tp == 0 and fp == 0
+    """
+    tp_val = float(tp) if tp is not None else 0.0
+    fp_val = float(fp) if fp is not None else 0.0
+    if tp_val > 0 and fp_val > 0:
+        return round(10.0 * math.log10(tp_val / fp_val), 1)
+    elif tp_val > 0:
+        return None
+    elif fp_val > 0:
+        return -99.0
+    return 0.0
+
+
 __all__ = [
     "_wilson_interval",
     "_to_num",
@@ -200,4 +220,5 @@ __all__ = [
     "laplace_score",
     "bayesian_score",
     "compute_cell_fitness",
+    "calculate_snr",
 ]

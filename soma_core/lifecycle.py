@@ -40,7 +40,7 @@ except ImportError:
 from soma_core.workspace import resolve_workspace
 from soma_core.frontmatter import parse_frontmatter, dump_frontmatter
 from soma_core.locking import workspace_lock
-from soma_core.scoring import laplace_score, bayesian_score, bayesian_posterior
+from soma_core.scoring import laplace_score, bayesian_score, bayesian_posterior, calculate_snr
 
 STATUS_NEW = "NEW"
 STATUS_SURVIVE = "SURVIVE"
@@ -224,6 +224,7 @@ def find_cell_file(workspace: Path, cell_id: str) -> Tuple[Optional[Path], Optio
 
 def _transform_frontmatter_type(content: str, new_type: str) -> str:
     """Update type field in cell frontmatter preserving body and comments."""
+    content = content.lstrip("\ufeff")
     end_idx = content.find("---", 3)
     if end_idx == -1:
         return content
@@ -1412,7 +1413,7 @@ def run_cell_selection(workspace: Path | str | None = None, execute: bool = Fals
                     category = "APOPTOSIS_WARNING" if cell_type == "wall" else "APOPTOSIS"
                 elif score > 0.7:
                     category = "SURVIVE"
-                elif score >= 0.3:
+                elif score >= EXTINCTION_THRESHOLD:
                     category = "ADAPT"
                 else:
                     category = "EXTINCT"
@@ -1705,12 +1706,7 @@ def cli_cell_fitness(argv: list[str] | None = None, workspace: Optional[str] = N
                 score = score * specificity_penalty
             score = score * antifragile_bonus(metadata)
 
-            if tp > 0 and fp > 0:
-                snr_db = round(10 * math.log10(tp / fp), 1)
-            elif tp > 0:
-                snr_db = None
-            else:
-                snr_db = 0.0
+            snr_db = calculate_snr(tp, fp)
 
         last_trigger_date_str = fitness.get('last_trigger_date')
         last_trigger_date = None

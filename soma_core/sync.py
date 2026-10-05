@@ -376,6 +376,44 @@ def recommend_protocol(mode: str, file_args: list[str], workspace: Path | None =
     return 0
 
 
+def set_review_mode(workspace: str, mode: str) -> None:
+    conf_path = os.path.join(workspace, "steering.conf")
+    if not os.path.exists(conf_path):
+        return
+
+    with open(conf_path, "r", encoding="utf-8") as f:
+        lines = f.readlines()
+
+    with open(conf_path, "w", encoding="utf-8") as f:
+        for line in lines:
+            if line.startswith("REVIEW_MODE="):
+                f.write(f"REVIEW_MODE={mode}\n")
+            else:
+                f.write(line)
+    print(f"[Sentinel] Escalated REVIEW_MODE to {mode}")
+
+
+def write_frontmatter(filepath: str, metadata: dict[str, Any], body: str) -> None:
+    try:
+        import yaml
+        with open(filepath, "w", encoding="utf-8") as f:
+            f.write("---\n")
+            yaml.dump(metadata, f, default_flow_style=False, sort_keys=False)
+            f.write("---\n")
+            if body.startswith("\n"):
+                f.write(body[1:])
+            else:
+                f.write(body)
+    except ImportError:
+        dumped = dump_frontmatter(metadata)
+        with open(filepath, "w", encoding="utf-8") as f:
+            f.write(f"---\n{dumped}\n---\n")
+            if body.startswith("\n"):
+                f.write(body[1:])
+            else:
+                f.write(body)
+
+
 def run_last_gasp(workspace: Path | None = None) -> int:
     ws = str(workspace or Path.cwd())
     cells_dir = os.path.join(ws, ".soma", "cells")
@@ -499,10 +537,14 @@ def load_soma_config(repo_dir: Path) -> dict[str, str]:
 
 
 def run_push(repo_dir: Path, team_repo: Path, org_repo: Path | None, member_id: str) -> int:
+    clean_id = re.sub(r"[^a-zA-Z0-9._-]", "_", str(member_id)).lstrip("-")
+    if not clean_id or ".." in str(member_id):
+        raise ValueError(f"Invalid member_id: {member_id}")
+
     print(f"Syncing local promoted cells to team repo ({team_repo})...")
     promoted_dir = team_repo / "cells" / "promoted"
     promoted_dir.mkdir(parents=True, exist_ok=True)
-    snap_dir = team_repo / "snapshots" / member_id
+    snap_dir = team_repo / "snapshots" / clean_id
     snap_dir.mkdir(parents=True, exist_ok=True)
 
     cells_dir = repo_dir / ".soma" / "cells"
@@ -542,16 +584,16 @@ def run_push(repo_dir: Path, team_repo: Path, org_repo: Path | None, member_id: 
         shutil.copy2(str(snapshots[0]), str(snap_dir / snapshots[0].name))
 
     if (team_repo / ".git").is_dir():
-        subprocess.run(["git", "add", "cells/promoted", f"snapshots/{member_id}"], cwd=str(team_repo))
+        subprocess.run(["git", "add", "--", "cells/promoted", f"snapshots/{clean_id}"], cwd=str(team_repo))
         subprocess.run(
-            ["git", "commit", "-m", f"chore(sync): update promoted cells and metrics for {member_id}"],
+            ["git", "commit", "-m", f"chore(sync): update promoted cells and metrics for {clean_id}"],
             cwd=str(team_repo),
             capture_output=True,
         )
         subprocess.run(["git", "push"], cwd=str(team_repo), capture_output=True)
 
     if org_repo and (org_repo / ".git").is_dir():
-        subprocess.run(["git", "add", "cells/promoted"], cwd=str(org_repo))
+        subprocess.run(["git", "add", "--", "cells/promoted"], cwd=str(org_repo))
         subprocess.run(
             ["git", "commit", "-m", f"chore(sync): update org promoted cells from {member_id}"],
             cwd=str(org_repo),
@@ -700,6 +742,13 @@ def cli_hgt_ribosome(argv: Optional[List[str]] = None) -> int:
 # ── Immune Sweep ───────────────────────────────────────────────────────────
 
 
+def resolve_home() -> Path:
+    home_str = os.environ.get("USERPROFILE") or os.environ.get("HOME")
+    if home_str:
+        return Path(home_str)
+    return Path.home()
+
+
 def run_sweep(active_only: bool = False, soma_data_dir: Path | None = None) -> int:
     """Run periodic governance sweep."""
     from collections import Counter
@@ -713,8 +762,7 @@ def run_sweep(active_only: bool = False, soma_data_dir: Path | None = None) -> i
             scan_transcript = None
             to_session_metrics = None
 
-    home_str = os.environ.get("USERPROFILE") or os.environ.get("HOME")
-    resolved_home = Path(home_str) if home_str else Path.home()
+    resolved_home = resolve_home()
 
     if soma_data_dir is None:
         env_data = os.environ.get("SOMA_DATA_DIR")
@@ -1087,11 +1135,22 @@ def cli_post_session_hook(argv: Optional[List[str]] = None) -> int:
 
 
 __all__ = [
+    "HIGH_PATTERNS",
+    "MEDIUM_PATTERNS",
+    "LOW_PATTERNS",
+    "TEST_PATTERNS",
+    "PROTOCOL_RANKS",
     "check_liveness",
     "cli_liveness_sentinel",
     "classify_file",
     "is_test_file",
+    "gather_files",
+    "get_diff_size",
+    "detect_branch_ops",
+    "check_membrane_overrides",
     "recommend_protocol",
+    "set_review_mode",
+    "write_frontmatter",
     "run_last_gasp",
     "cli_escalation_sentinel",
     "load_soma_config",
@@ -1101,6 +1160,7 @@ __all__ = [
     "cli_team_sync",
     "prompt_llm_translation",
     "cli_hgt_ribosome",
+    "resolve_home",
     "run_sweep",
     "cli_immune_sweep",
     "run_post_session_hook",

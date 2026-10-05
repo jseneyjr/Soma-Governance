@@ -237,3 +237,17 @@ class TestQuorumEdgeCases:
         assert result['quorum'] is False
         assert result['cells_triggered'] == 0
 
+    def test_windows_path_separators(self, tmp_path):
+        ws = str(tmp_path)
+        _make_cell(ws, 'vacuoles', 'cell-a', target_paths=['src/*.py'])
+        from soma_core.telemetry import evaluate_quorum
+        win_changed = [r'src\main.py']
+        result = evaluate_quorum(
+            cells_dir=os.path.join(ws, '.soma', 'cells'),
+            changed_files=win_changed,
+            threshold=1
+        )
+        assert result['cells_triggered'] == 1
+        assert result['quorum'] is True
+
+
