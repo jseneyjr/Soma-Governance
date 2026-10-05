@@ -16,8 +16,8 @@ Counts are generated from the v0.89.0 source tree with mutually exclusive catego
 | [Install Scripts](#install-scripts--bash-and-powershell) | Bash and PowerShell (`install/`, root) | 6 | Platform installers, uninstallers, and root wrappers |
 | [Utility Scripts](#utility-scripts) | Python and bash (`enzymes/`) | 57 | Cell genetics, runtime engines, evidence, telemetry, and shared utilities |
 | [SDK Modules](#sdk-modules--python-soma_sdk) | Python (`soma_sdk/`) | 8 | Canonical scoring, parsing, telemetry, hot-zone, and governance APIs |
-| [MCP and Core Modules](#mcp-and-core-modules) | Python (`soma_mcp/`, `soma_core/`) | 9 | MCP transport, dispatch, confinement, content inventory, canonical evidence, cache, and receipts |
-| **Total** | | **118** | Unique paths under the method above |
+| [MCP and Core Modules](#mcp-and-core-modules) | Python (`soma_mcp/`, `soma_core/`) | 10 | MCP transport, dispatch, confinement, content inventory, canonical evidence, cache, and receipts |
+| **Total** | | **119** | Unique paths under the method above |
 
 ---
 
@@ -210,7 +210,7 @@ These 8 non-initializer modules provide the canonical Python APIs used by the CL
 
 ## MCP and Core Modules
 
-These 9 modules implement the MCP server, state-bound authorization, safe cell inventory, and canonical evidence reading. Package initializers and `soma_mcp/__main__.py` are excluded from the count.
+These 10 modules implement the MCP server, state-bound authorization, safe cell inventory, frontmatter parsing, and canonical evidence reading. Package initializers and `soma_mcp/__main__.py` are excluded from the count.
 
 | Module | Location | Purpose |
 |:-------|:---------|:--------|
@@ -223,6 +223,7 @@ These 9 modules implement the MCP server, state-bound authorization, safe cell i
 | **`receipts.py`** | `soma_core/receipts.py` | In-memory single-use receipts bound to session, workspace, operation, exact arguments, target-file digest, canonical cell fingerprint, and expiry. |
 | **`cell_inventory.py`** | `soma_core/cell_inventory.py` | Captures stable cell bytes and content fingerprints without following symlinks; detects concurrent changes and unsafe trees. |
 | **`evidence.py`** | `soma_core/evidence.py` | Standard-library canonical reader for weighted `signals.jsonl` evidence, independent trigger/outcome dimensions, and structured parse errors. |
+| **`frontmatter.py`** | `soma_core/frontmatter.py` | Standalone zero-dependency frontmatter parsing and YAML header extraction decoupled from MCP runtime. |
 
 ---
 

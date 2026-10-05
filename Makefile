@@ -104,13 +104,19 @@ doctor: ## Verify installation health & dependencies
 	@echo ""
 	@echo "Installed genome ($(SOMA_PLATFORM)):"
 	@case "$(SOMA_PLATFORM)" in \
-	  gemini) ls $(HOME)/.gemini/config/rules/*.md 2>/dev/null | while read f; do echo "  ✅ $$(basename $$f)"; done || echo "  (none)"; \
+	  gemini) if ls $(HOME)/.gemini/config/rules/*.md >/dev/null 2>&1; then \
+	      for f in $(HOME)/.gemini/config/rules/*.md; do echo "  ✅ $$(basename $$f)"; done; \
+	    else echo "  (none)"; fi; \
 	    if [ -f $(HOME)/.gemini/config/plugins/governance/hooks.json ]; then echo "  ✅ hooks.json installed"; else echo "  ⚠️  hooks.json not installed"; fi ;; \
-	  kiro) ls $(HOME)/.kiro/steering/*.md 2>/dev/null | while read f; do echo "  ✅ $$(basename $$f)"; done || echo "  (none)"; \
+	  kiro) if ls $(HOME)/.kiro/steering/*.md >/dev/null 2>&1; then \
+	      for f in $(HOME)/.kiro/steering/*.md; do echo "  ✅ $$(basename $$f)"; done; \
+	    else echo "  (none)"; fi; \
 	    echo ""; \
 	    echo "Installed skills (kiro):"; \
 	    if [ -d $(HOME)/.kiro/skills ]; then \
-	      ls -d $(HOME)/.kiro/skills/*/ 2>/dev/null | while read d; do echo "  ✅ $$(basename $$d)"; done || echo="  (none)"; \
+	      if ls -d $(HOME)/.kiro/skills/*/ >/dev/null 2>&1; then \
+	        for d in $(HOME)/.kiro/skills/*/; do echo "  ✅ $$(basename $$d)"; done; \
+	      else echo "  (none)"; fi; \
 	    else echo "  (none — $(HOME)/.kiro/skills/ not found)"; fi ;; \
 	  copilot) if [ -f $(HOME)/copilot-instructions.md ]; then echo "  ✅ $(HOME)/copilot-instructions.md"; else echo "  (none)"; fi ;; \
 	  claude) if [ -f $(HOME)/.claude/CLAUDE.md ]; then echo "  ✅ $(HOME)/.claude/CLAUDE.md"; else echo "  (none)"; fi ;; \

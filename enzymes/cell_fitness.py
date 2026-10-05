@@ -174,7 +174,7 @@ def main():
         elif not is_unobserved and dec_score is not None:
             if dec_score > 0.7:
                 status = "SURVIVE"
-            elif 0.3 <= dec_score <= 0.7:
+            elif 0.15 <= dec_score <= 0.7:
                 status = "ADAPT"
             else:
                 status = "EXTINCT"
