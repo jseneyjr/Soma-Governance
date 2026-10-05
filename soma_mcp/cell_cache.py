@@ -163,4 +163,11 @@ class CellCache:
         except CellCacheError:
             raise
         except Exception as exc:
+            if key is not None:
+                raise CellCacheError(
+                    "integrity",
+                    manifest_path,
+                    f"HMAC integrity verification failed unexpectedly: {exc}",
+                ) from exc
             warn(f"integrity check failed (non-fatal): {exc}")
+

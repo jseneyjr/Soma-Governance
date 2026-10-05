@@ -15,10 +15,11 @@ import re
 from typing import Any, List, Optional, Tuple, Union
 
 _WINDOWS_DEVICE_NAMES = frozenset(
-    {"CON", "PRN", "AUX", "NUL"}
+    {"CON", "PRN", "AUX", "NUL", "CONIN$", "CONOUT$"}
     | {f"COM{i}" for i in range(1, 10)}
     | {f"LPT{i}" for i in range(1, 10)}
 )
+
 
 
 def resolve_workspace(

@@ -78,8 +78,11 @@ def verify_manifest(cells_dir: str, manifest: dict) -> list:
 
     An empty list means all cells match the manifest.
     """
+    if not isinstance(manifest, dict):
+        raise ValueError(f"Manifest must be a JSON object, got {type(manifest).__name__}")
     issues = []
     known_cells = manifest.get("cells", {})
+
 
     # Discover current cells on disk
     current_cells = {}

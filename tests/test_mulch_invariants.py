@@ -243,7 +243,10 @@ class TestInvariant4_FailClosedConfinement:
         "LPT2",
         "NUL",
         "CON",
+        "CONIN$",
+        "CONOUT$",
         "aux.txt",
+
         "safe.txt:hidden_stream",
         "file::$DATA",
     ])
