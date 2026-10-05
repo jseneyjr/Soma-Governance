@@ -58,6 +58,8 @@ docs/postmortem-work-sessions.md
 .soma/credentials.conf
 .soma/backup/
 .soma/enforcement/
+.soma/governance/
+.soma/metrics/
 .soma/keys/
 .soma/human_insights.jsonl
 docs/internal/

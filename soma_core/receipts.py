@@ -147,9 +147,17 @@ def verify_receipt(
     cell_digest: str,
     consume: bool = False
 ) -> bool:
-    """
-    Verify that a receipt is valid for the given parameters.
-    """
+    if (
+        not isinstance(receipt_id, str)
+        or not isinstance(session_id, str)
+        or not isinstance(workspace, str)
+        or not isinstance(operation, str)
+        or not isinstance(file_digest, str)
+        or not isinstance(cell_digest, str)
+        or not isinstance(args, dict)
+    ):
+        return False
+
     with _receipt_lock:
         _prune_expired_locked(time.time())
         if receipt_id not in _receipt_store:

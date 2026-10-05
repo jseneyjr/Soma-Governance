@@ -9,6 +9,15 @@ import os
 from pathlib import Path
 
 
+import re
+
+_WINDOWS_DEVICE_NAMES = frozenset(
+    {"CON", "PRN", "AUX", "NUL"}
+    | {f"COM{i}" for i in range(1, 10)}
+    | {f"LPT{i}" for i in range(1, 10)}
+)
+
+
 def confine_workspace(untrusted_workspace: str) -> str:
     """Validate and confine a workspace path.
 
@@ -46,6 +55,27 @@ def confine_path(untrusted_path: str, workspace: str) -> tuple:
     """
     if not untrusted_path or not str(untrusted_path).strip():
         raise ValueError("file path must not be empty")
+
+    if "\x00" in untrusted_path:
+        raise ValueError("null bytes are not permitted in file paths")
+
+    if untrusted_path.startswith(("\\\\?\\", "\\\\.\\", "//?/", "//./")):
+        raise ValueError("extended device namespace paths are not permitted")
+
+    # Reject alternate data streams (e.g. file.txt:stream)
+    if ":" in untrusted_path:
+        has_drive = re.match(r"^[a-zA-Z]:[\\/]", untrusted_path)
+        rest = untrusted_path[2:] if has_drive else untrusted_path
+        if ":" in rest:
+            raise ValueError(f"alternate data stream syntax (':') is not permitted: {untrusted_path!r}")
+
+    # Reject reserved Windows device names
+    for seg in re.split(r"[\\/]", untrusted_path):
+        if not seg:
+            continue
+        base = seg.rstrip(". ").split(".")[0].upper()
+        if base in _WINDOWS_DEVICE_NAMES:
+            raise ValueError(f"reserved Windows device name not permitted: {untrusted_path!r}")
 
     workspace_root = Path(workspace).resolve()
     # os.path.join returns untrusted_path unchanged when it is absolute,

@@ -44,3 +44,20 @@ def test_receipt_capacity_cap(monkeypatch):
     assert verify_receipt(rids[-1], "s9", "w", "op", {}, "fd", "cd") == True
     clear_receipts()
 
+
+def test_verify_receipt_with_invalid_types():
+    assert verify_receipt(None, "s1", "w1", "o1", {}, "fd", "cd") is False
+    assert verify_receipt(12345, "s1", "w1", "o1", {}, "fd", "cd") is False
+    rid = issue_receipt("s1", "w1", "o1", {}, "fd", "cd")
+    try:
+        assert verify_receipt(rid, None, "w1", "o1", {}, "fd", "cd") is False
+        assert verify_receipt(rid, 123, "w1", "o1", {}, "fd", "cd") is False
+        assert verify_receipt(rid, "s1", None, "o1", {}, "fd", "cd") is False
+        assert verify_receipt(rid, "s1", "w1", None, {}, "fd", "cd") is False
+        assert verify_receipt(rid, "s1", "w1", "o1", None, "fd", "cd") is False
+        assert verify_receipt(rid, "s1", "w1", "o1", {}, None, "cd") is False
+        assert verify_receipt(rid, "s1", "w1", "o1", {}, "fd", None) is False
+    finally:
+        clear_receipts()
+
+
