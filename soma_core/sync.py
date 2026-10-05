@@ -1,0 +1,852 @@
+"""soma_core.sync — Protocol escalation, liveness sentinels, team sync, HGT ribosome, and hooks.
+
+Consolidates:
+- Subagent liveness & deadlock sentinel (formerly enzymes/liveness_sentinel.py)
+- Protocol escalation recommender & last-gasp sentinel (formerly enzymes/escalation_sentinel.py)
+- Team cell & metrics synchronization (formerly enzymes/team_sync.py)
+- Horizontal Gene Transfer ribosome translation (formerly enzymes/hgt_ribosome.py)
+- Periodic governance sweep (formerly enzymes/immune_sweep.py)
+- Post-session transcript fitness and evidence hook (formerly enzymes/post_session_hook.py)
+"""
+from __future__ import annotations
+
+import argparse
+from datetime import datetime, timezone
+import fnmatch
+import glob
+import json
+import os
+from pathlib import Path
+import re
+import shutil
+import subprocess
+import sys
+from typing import Any, Dict, List, Optional, Set, Tuple
+
+from soma_core.workspace import resolve_workspace
+from soma_core.frontmatter import parse_frontmatter, _get_body, dump_frontmatter
+
+# ── Liveness Sentinel ──────────────────────────────────────────────────────
+
+
+def check_liveness(payload_str: str) -> int:
+    """Detect stalled or deadlocked subagents that fail to report back."""
+    try:
+        data = json.loads(payload_str)
+        now = datetime.now(timezone.utc)
+        for agent in data.get("agents", []):
+            name = agent.get("name", "Unknown")
+            dispatch_str = agent.get("dispatched", "")
+            timeout = agent.get("timeout_seconds", 0)
+
+            try:
+                if dispatch_str.endswith("Z"):
+                    dispatch_str = dispatch_str[:-1] + "+00:00"
+                dispatch_time = datetime.fromisoformat(dispatch_str)
+            except ValueError:
+                print(f"[{name}] INVALID_DATE: {dispatch_str}")
+                continue
+
+            elapsed = (now - dispatch_time).total_seconds()
+
+            if elapsed > timeout:
+                print(
+                    f"[{name}] STALLED (Elapsed: {elapsed:.1f}s, Timeout: {timeout}s) - Action suggested: kill or escalate"
+                )
+            elif elapsed > timeout * 0.8:
+                print(
+                    f"[{name}] WARNING (Elapsed: {elapsed:.1f}s, Timeout: {timeout}s) - Action suggested: nudge"
+                )
+            else:
+                print(f"[{name}] HEALTHY (Elapsed: {elapsed:.1f}s, Timeout: {timeout}s)")
+        return 0
+    except json.JSONDecodeError:
+        print("Error: Invalid JSON provided.", file=sys.stderr)
+        return 1
+    except Exception as e:
+        print(f"Error: {e}", file=sys.stderr)
+        return 1
+
+
+def cli_liveness_sentinel(argv: Optional[List[str]] = None) -> int:
+    parser = argparse.ArgumentParser(description="Subagent liveness sentinel")
+    parser.add_argument("--check", dest="payload", default="", help="JSON string with agent list")
+    args = parser.parse_args(argv if argv is not None else sys.argv[1:])
+
+    if not args.payload:
+        print("Usage: liveness_sentinel.py --check '{\"agents\": [...]}'")
+        return 0
+
+    return check_liveness(args.payload)
+
+
+# ── Escalation Sentinel ────────────────────────────────────────────────────
+
+HIGH_PATTERNS = [
+    r"enzymes/.*\.sh$",
+    r"install\.sh$",
+    r"install\.ps1$",
+    r"Makefile$",
+    r"hooks\.json",
+    r"\.github/workflows/",
+    r"auth|credential|secret|token|password",
+    r"docker|Dockerfile",
+    r"requirements\.txt$|package\.json$|go\.mod$",
+]
+
+MEDIUM_PATTERNS = [
+    r"genome/.*\.md$",
+    r"organs/.*/SKILL\.md$",
+    r"steering\.conf",
+    r"\.py$|\.js$|\.ts$|\.go$",
+]
+
+LOW_PATTERNS = [
+    r"(?:^|/)docs/",
+    r"README\.md$",
+    r"LICENSE$",
+    r"CHANGELOG|EVOLUTION|METRICS|EXPERIMENTS",
+    r"\.txt$|\.csv$|\.json$",
+]
+
+TEST_PATTERNS = [
+    r"\.test\.",
+    r"_test\.",
+    r"^tests/",
+]
+
+PROTOCOL_RANKS = {
+    "breeze": 1,
+    "gale": 2,
+    "trident": 3,
+    "maelstrom": 4,
+    "tempest": 5,
+}
+
+
+def classify_file(filepath: str) -> str:
+    norm = filepath.replace("\\", "/").lstrip("./")
+    for pat in HIGH_PATTERNS:
+        if re.search(pat, norm, re.IGNORECASE):
+            return "HIGH"
+    for pat in MEDIUM_PATTERNS:
+        if re.search(pat, norm, re.IGNORECASE):
+            return "MEDIUM"
+    for pat in LOW_PATTERNS:
+        if re.search(pat, norm, re.IGNORECASE):
+            return "LOW"
+    return "MEDIUM"
+
+
+def is_test_file(filepath: str) -> bool:
+    norm = filepath.replace("\\", "/").lstrip("./")
+    for pat in TEST_PATTERNS:
+        if re.search(pat, norm, re.IGNORECASE):
+            return True
+    return False
+
+
+def gather_files(mode: str, file_args: list[str], workspace: Path) -> list[str]:
+    if file_args:
+        return [f.strip() for f in file_args if f.strip()]
+
+    files: set[str] = set()
+    try:
+        if mode == "--staged":
+            out = subprocess.check_output(
+                ["git", "diff", "--cached", "--name-only"],
+                cwd=workspace,
+                text=True,
+                stderr=subprocess.DEVNULL,
+            )
+            files.update(line.strip() for line in out.splitlines() if line.strip())
+        else:
+            out1 = subprocess.check_output(
+                ["git", "diff", "--name-only"],
+                cwd=workspace,
+                text=True,
+                stderr=subprocess.DEVNULL,
+            )
+            out2 = subprocess.check_output(
+                ["git", "diff", "--cached", "--name-only"],
+                cwd=workspace,
+                text=True,
+                stderr=subprocess.DEVNULL,
+            )
+            files.update(line.strip() for line in out1.splitlines() if line.strip())
+            files.update(line.strip() for line in out2.splitlines() if line.strip())
+    except (subprocess.CalledProcessError, FileNotFoundError, OSError):
+        pass
+
+    return sorted(files)
+
+
+def get_diff_size(mode: str, file_args: list[str], workspace: Path) -> int:
+    total_lines = 0
+    try:
+        commands: list[list[str]] = []
+        if file_args:
+            commands.append(["git", "diff", "--numstat", "--"] + file_args)
+            commands.append(["git", "diff", "--cached", "--numstat", "--"] + file_args)
+        elif mode == "--staged":
+            commands.append(["git", "diff", "--cached", "--numstat"])
+        else:
+            commands.append(["git", "diff", "--numstat"])
+            commands.append(["git", "diff", "--cached", "--numstat"])
+
+        for cmd in commands:
+            out = subprocess.check_output(
+                cmd,
+                cwd=workspace,
+                text=True,
+                stderr=subprocess.DEVNULL,
+            )
+            for line in out.splitlines():
+                parts = line.split()
+                if len(parts) >= 2:
+                    try:
+                        ins = int(parts[0]) if parts[0] != "-" else 0
+                        dele = int(parts[1]) if parts[1] != "-" else 0
+                        total_lines += ins + dele
+                    except ValueError:
+                        pass
+    except (subprocess.CalledProcessError, FileNotFoundError, OSError):
+        pass
+
+    return total_lines
+
+
+def detect_branch_ops(workspace: Path) -> str:
+    try:
+        out = subprocess.check_output(
+            ["git", "reflog", "--format=%gs", "-5"],
+            cwd=workspace,
+            text=True,
+            stderr=subprocess.DEVNULL,
+        )
+        if re.search(r"branch -[mMdD]|push.*force|rebase|reset.*hard", out, re.IGNORECASE):
+            return "CRITICAL"
+    except (subprocess.CalledProcessError, FileNotFoundError, OSError):
+        pass
+    return "NONE"
+
+
+def check_membrane_overrides(workspace: Path, files: list[str], current_protocol: str) -> tuple[str, str]:
+    best_protocol = current_protocol
+    best_rank = PROTOCOL_RANKS.get(current_protocol, 1)
+    override_reason = ""
+
+    cells_dir = workspace / ".soma" / "cells"
+    for cell_subdir in ["membranes", "walls"]:
+        target_dir = cells_dir / cell_subdir
+        if not target_dir.is_dir():
+            continue
+        for cell_path in target_dir.glob("*.md"):
+            if not cell_path.is_file():
+                continue
+            try:
+                with open(cell_path, "r", encoding="utf-8-sig") as cf:
+                    metadata = parse_frontmatter(cf.read())
+                if not metadata:
+                    continue
+                min_mode = str(metadata.get("minimum_mode", "")).strip().lower()
+                target_paths = metadata.get("target_paths", [])
+                if isinstance(target_paths, str):
+                    target_paths = [target_paths]
+
+                if min_mode in PROTOCOL_RANKS and target_paths:
+                    mem_rank = PROTOCOL_RANKS[min_mode]
+                    path_matched = False
+                    matched_target = ""
+                    for tp in target_paths:
+                        for f in files:
+                            if f == tp or fnmatch.fnmatch(f, tp) or fnmatch.fnmatch(f, f"*{tp}*"):
+                                path_matched = True
+                                matched_target = tp
+                                break
+                        if path_matched:
+                            break
+
+                    if path_matched and mem_rank > best_rank:
+                        best_rank = mem_rank
+                        best_protocol = min_mode
+                        override_reason = f"Membrane escalation for {matched_target} ({min_mode})"
+            except Exception:
+                continue
+
+    return best_protocol, override_reason
+
+
+def recommend_protocol(mode: str, file_args: list[str], workspace: Path | None = None) -> int:
+    root = workspace or Path.cwd()
+    files = gather_files(mode, file_args, root)
+
+    if not files:
+        print("PROTOCOL=none")
+        print("REASON=No changes detected")
+        return 1
+
+    total_files = len(files)
+    high_count = 0
+    medium_count = 0
+    low_count = 0
+    test_count = 0
+    high_files_list: list[str] = []
+
+    for f in files:
+        level = classify_file(f)
+        if level == "HIGH":
+            high_count += 1
+            high_files_list.append(f)
+        elif level == "MEDIUM":
+            medium_count += 1
+        elif level == "LOW":
+            low_count += 1
+
+        if is_test_file(f):
+            test_count += 1
+
+    high_files = ", ".join(high_files_list)
+    branch_ops = detect_branch_ops(root)
+    diff_lines = get_diff_size(mode, file_args, root)
+
+    protocol = "breeze"
+    reasons_list: list[str] = []
+
+    if branch_ops == "CRITICAL":
+        protocol = "maelstrom"
+        reasons_list.append("Branch operation detected (rename/force-push/rebase)")
+
+    if high_count >= 3:
+        protocol = "maelstrom"
+        reasons_list.append(f"{high_count} high-sensitivity files: {high_files}")
+    elif high_count >= 1:
+        if protocol not in ("maelstrom", "tempest"):
+            protocol = "trident"
+            reasons_list.append(f"High-sensitivity file(s): {high_files}")
+
+    if re.search(r"auth|credential|secret|token|password", high_files, re.IGNORECASE):
+        protocol = "maelstrom"
+        reasons_list.append("Security-sensitive path detected")
+
+    if diff_lines > 200:
+        if protocol == "breeze":
+            protocol = "gale"
+            reasons_list.append(f"Large diff ({diff_lines} lines)")
+        elif protocol == "gale":
+            protocol = "trident"
+            reasons_list.append(f"Large diff ({diff_lines} lines)")
+        elif protocol == "trident":
+            protocol = "maelstrom"
+            reasons_list.append(f"Large diff ({diff_lines} lines)")
+
+    if high_count == 0 and medium_count == 0 and low_count > 0:
+        protocol = "breeze"
+        reasons_list = ["All changes are low-sensitivity (docs/README)"]
+
+    if high_count == 0 and test_count > 0 and (test_count + low_count) == total_files:
+        protocol = "gale"
+        reasons_list = [f"Test-only changes ({test_count} test file(s); test changes do not need Trident)"]
+
+    if protocol == "breeze" and total_files == 1 and high_count == 0 and test_count == 0:
+        reasons_list = ["Single file, non-infrastructure change"]
+
+    protocol, mem_override = check_membrane_overrides(root, files, protocol)
+    if mem_override:
+        reasons_list.append(mem_override)
+
+    reasons = "; ".join(reasons_list) if reasons_list else "Default classification"
+
+    print(f"PROTOCOL={protocol}")
+    print(f"REASON={reasons}")
+    print(f"FILES_TOTAL={total_files}")
+    print(f"FILES_HIGH={high_count}")
+    print(f"FILES_MEDIUM={medium_count}")
+    print(f"FILES_LOW={low_count}")
+    print(f"FILES_TEST={test_count}")
+    print(f"DIFF_LINES={diff_lines}")
+    print(f"BRANCH_OPS={branch_ops}")
+
+    print(f"⚡ Escalation Sentinel: {protocol.upper()} recommended", file=sys.stderr)
+    print(f"   {reasons}", file=sys.stderr)
+    print(
+        f"   Files: {total_files} ({high_count} high, {medium_count} medium, {low_count} low, {test_count} test)",
+        file=sys.stderr,
+    )
+    return 0
+
+
+def run_last_gasp(workspace: Path | None = None) -> int:
+    ws = str(workspace or Path.cwd())
+    cells_dir = os.path.join(ws, ".soma", "cells")
+    if not os.path.exists(cells_dir):
+        return 0
+
+    last_gasp_dir = os.path.join(cells_dir, ".last_gasp_queue")
+    archive_dir = os.path.join(cells_dir, ".archive")
+
+    if not os.path.exists(last_gasp_dir):
+        return 0
+
+    queued_files = glob.glob(os.path.join(last_gasp_dir, "*.md"))
+    if not queued_files:
+        return 0
+
+    for fpath in queued_files:
+        filename = os.path.basename(fpath)
+        try:
+            with open(fpath, "r", encoding="utf-8-sig") as cf:
+                content = cf.read()
+            metadata = parse_frontmatter(content)
+            body = _get_body(content)
+        except Exception:
+            continue
+        if not metadata:
+            continue
+
+        organ = metadata.get("organ", "governance-auditor")
+        print(f"[Sentinel] Cell {filename} faces APOPTOSIS. Invoking Last Gasp Organ: {organ}...")
+
+        result_file = os.path.join(last_gasp_dir, filename.replace(".md", ".result"))
+        organ_validates_cell = os.path.exists(result_file)
+
+        if organ_validates_cell:
+            print(f"[Sentinel] Organ '{organ}' VALIDATED the cell! Saving from Apoptosis.")
+            conf_path = os.path.join(ws, "steering.conf")
+            if os.path.exists(conf_path):
+                with open(conf_path, "r", encoding="utf-8") as f:
+                    lines = f.readlines()
+                with open(conf_path, "w", encoding="utf-8") as f:
+                    for line in lines:
+                        if line.startswith("REVIEW_MODE="):
+                            f.write("REVIEW_MODE=TEMPEST\n")
+                        else:
+                            f.write(line)
+
+            if "fitness" not in metadata:
+                metadata["fitness"] = {}
+            metadata["fitness"]["score"] = 0.75
+            metadata["fitness"]["stress_survived"] = metadata["fitness"].get("stress_survived", 0) + 1
+
+            raw_type = str(metadata.get("type", "wall")).rstrip("s")
+            allowed_types = {"wall", "membrane", "vacuole", "chloroplast", "ribosome", "nucleus"}
+            cell_type = raw_type if raw_type in allowed_types else "wall"
+            parent_type = cell_type + "s"
+            target_dir = os.path.abspath(os.path.join(cells_dir, parent_type))
+            abs_cells_dir = os.path.abspath(cells_dir)
+            if not target_dir.startswith(abs_cells_dir) or os.path.commonpath([abs_cells_dir, target_dir]) != abs_cells_dir:
+                target_dir = os.path.join(abs_cells_dir, "walls")
+            os.makedirs(target_dir, exist_ok=True)
+            new_path = os.path.join(target_dir, filename)
+
+            new_content = "---\n" + dump_frontmatter(metadata) + "---\n" + body
+            with open(new_path, "w", encoding="utf-8") as outf:
+                outf.write(new_content)
+            os.remove(fpath)
+        else:
+            print(f"[Sentinel] Organ '{organ}' REFUTED the cell! Brutally punishing and archiving.")
+            if "fitness" not in metadata:
+                metadata["fitness"] = {}
+            metadata["fitness"]["score"] = 0.0
+            metadata["fitness"]["false_positives"] = metadata["fitness"].get("false_positives", 0) + 10
+
+            os.makedirs(archive_dir, exist_ok=True)
+            new_path = os.path.join(archive_dir, filename)
+
+            new_content = "---\n" + dump_frontmatter(metadata) + "---\n" + body
+            with open(new_path, "w", encoding="utf-8") as outf:
+                outf.write(new_content)
+            os.remove(fpath)
+
+    return 0
+
+
+def cli_escalation_sentinel(argv: Optional[List[str]] = None) -> int:
+    args_list = argv if argv is not None else sys.argv[1:]
+
+    if "--last-gasp" in args_list:
+        return run_last_gasp()
+
+    mode = "--all"
+    file_args: list[str] = []
+
+    for arg in args_list:
+        if arg == "--staged":
+            mode = "--staged"
+        elif arg == "--all":
+            mode = "--all"
+        elif not arg.startswith("--"):
+            file_args.append(arg)
+
+    return recommend_protocol(mode=mode, file_args=file_args)
+
+
+# ── Team Sync ──────────────────────────────────────────────────────────────
+
+
+def load_soma_config(repo_dir: Path) -> dict[str, str]:
+    conf_path = repo_dir / "soma.conf"
+    cfg = {}
+    if conf_path.is_file():
+        with open(conf_path, encoding="utf-8") as f:
+            for line in f:
+                line = line.strip()
+                if line.startswith("#") or "=" not in line:
+                    continue
+                k, v = line.split("=", 1)
+                cfg[k.strip()] = v.strip().strip('"').strip("'")
+    return cfg
+
+
+def run_push(repo_dir: Path, team_repo: Path, org_repo: Path | None, member_id: str) -> int:
+    print(f"Syncing local promoted cells to team repo ({team_repo})...")
+    promoted_dir = team_repo / "cells" / "promoted"
+    promoted_dir.mkdir(parents=True, exist_ok=True)
+    snap_dir = team_repo / "snapshots" / member_id
+    snap_dir.mkdir(parents=True, exist_ok=True)
+
+    cells_dir = repo_dir / ".soma" / "cells"
+    cell_fitness_py = repo_dir / "enzymes" / "cell_fitness.py"
+
+    try:
+        res = subprocess.run([sys.executable, str(cell_fitness_py), "--json"], capture_output=True, text=True)
+        if res.returncode == 0:
+            data = json.loads(res.stdout)
+            for item in data:
+                if item.get("score") is not None and item.get("score") > 0.85:
+                    cell_name = item["cell"]
+                    src = cells_dir / cell_name
+                    if not src.is_file():
+                        for match in cells_dir.rglob(cell_name):
+                            if match.is_file():
+                                src = match
+                                break
+                    if src.is_file():
+                        shutil.copy2(str(src), str(promoted_dir / cell_name))
+                        print(f"Promoted: {cell_name}")
+                        if org_repo:
+                            org_promoted_dir = org_repo / "cells" / "promoted"
+                            org_promoted_dir.mkdir(parents=True, exist_ok=True)
+                            shutil.copy2(str(src), str(org_promoted_dir / cell_name))
+    except Exception as e:
+        print(f"Error syncing cells: {e}", file=sys.stderr)
+
+    print("Syncing metrics snapshot...")
+    metrics_snapshot_py = repo_dir / "enzymes" / "metrics_snapshot.py"
+    if metrics_snapshot_py.is_file():
+        subprocess.run([sys.executable, str(metrics_snapshot_py), "--save"], capture_output=True)
+
+    metrics_repo = repo_dir / "docs" / "snapshots"
+    snapshots = sorted(metrics_repo.glob("*.json"), key=os.path.getmtime, reverse=True)
+    if snapshots:
+        shutil.copy2(str(snapshots[0]), str(snap_dir / snapshots[0].name))
+
+    if (team_repo / ".git").is_dir():
+        subprocess.run(["git", "add", "cells/promoted", f"snapshots/{member_id}"], cwd=str(team_repo))
+        subprocess.run(
+            ["git", "commit", "-m", f"chore(sync): update promoted cells and metrics for {member_id}"],
+            cwd=str(team_repo),
+            capture_output=True,
+        )
+        subprocess.run(["git", "push"], cwd=str(team_repo), capture_output=True)
+
+    if org_repo and (org_repo / ".git").is_dir():
+        subprocess.run(["git", "add", "cells/promoted"], cwd=str(org_repo))
+        subprocess.run(
+            ["git", "commit", "-m", f"chore(sync): update org promoted cells from {member_id}"],
+            cwd=str(org_repo),
+            capture_output=True,
+        )
+        subprocess.run(["git", "push"], cwd=str(org_repo), capture_output=True)
+
+    print("Push complete.")
+    return 0
+
+
+def run_pull(repo_dir: Path, team_repo: Path, org_repo: Path | None) -> int:
+    print(f"Pulling promoted cells from team repo ({team_repo})...")
+    if (team_repo / ".git").is_dir():
+        subprocess.run(["git", "pull", "--rebase"], cwd=str(team_repo), capture_output=True)
+
+    if org_repo and (org_repo / ".git").is_dir():
+        print(f"Pulling from org repo ({org_repo})...")
+        subprocess.run(["git", "pull", "--rebase"], cwd=str(org_repo), capture_output=True)
+
+    local_cells = repo_dir / ".soma" / "cells"
+    ribosomes_dir = local_cells / "ribosomes"
+    ribosomes_dir.mkdir(parents=True, exist_ok=True)
+
+    team_promoted = team_repo / "cells" / "promoted"
+    if team_promoted.is_dir():
+        for f in team_promoted.glob("*.md"):
+            dest = ribosomes_dir / f.name
+            if not dest.exists():
+                shutil.copy2(str(f), str(dest))
+                print(f"Imported from team: {f.name} -> ribosomes/")
+
+    if org_repo:
+        org_promoted = org_repo / "cells" / "promoted"
+        if org_promoted.is_dir():
+            for f in org_promoted.glob("*.md"):
+                dest = ribosomes_dir / f.name
+                if not dest.exists():
+                    shutil.copy2(str(f), str(dest))
+                    print(f"Imported from org: {f.name} -> ribosomes/")
+
+    print("Pull complete.")
+    return 0
+
+
+def run_status(repo_dir: Path, team_repo: Path, org_repo: Path | None) -> int:
+    print("=== Team Sync Status ===")
+    print(f"Local repo:  {repo_dir}")
+    print(f"Team repo:   {team_repo} (exists: {team_repo.is_dir()})")
+    if org_repo:
+        print(f"Org repo:    {org_repo} (exists: {org_repo.is_dir()})")
+
+    team_promoted = team_repo / "cells" / "promoted"
+    team_count = len(list(team_promoted.glob("*.md"))) if team_promoted.is_dir() else 0
+    print(f"Team promoted cells: {team_count}")
+
+    if org_repo:
+        org_promoted = org_repo / "cells" / "promoted"
+        org_count = len(list(org_promoted.glob("*.md"))) if org_promoted.is_dir() else 0
+        print(f"Org promoted cells:  {org_count}")
+
+    return 0
+
+
+def cli_team_sync(argv: Optional[List[str]] = None) -> int:
+    parser = argparse.ArgumentParser(description="Synchronize cells and metrics with team repositories")
+    parser.add_argument("command", choices=["push", "pull", "status"], default="status", nargs="?")
+    args = parser.parse_args(argv if argv is not None else sys.argv[1:])
+
+    repo_dir = Path(resolve_workspace())
+    cfg = load_soma_config(repo_dir)
+
+    team_repo_str = cfg.get("TEAM_REPO", "../soma-team")
+    team_repo = (repo_dir / team_repo_str).resolve()
+    org_repo_str = cfg.get("ORG_REPO")
+    org_repo = (repo_dir / org_repo_str).resolve() if org_repo_str else None
+    member_id = cfg.get("MEMBER_ID", os.environ.get("USER", "anonymous"))
+
+    if args.command == "push":
+        return run_push(repo_dir, team_repo, org_repo, member_id)
+    elif args.command == "pull":
+        return run_pull(repo_dir, team_repo, org_repo)
+    else:
+        return run_status(repo_dir, team_repo, org_repo)
+
+
+# ── Horizontal Gene Transfer (Ribosome) ────────────────────────────────────
+
+
+def prompt_llm_translation(cell_content: str, mock: bool = False) -> str:
+    """Translate domain-specific strategy into universal engineering law."""
+    if mock:
+        if "draft all combat-capable pawns" in cell_content:
+            return """# Resource Consolidation (HGT)
+- When a catastrophic event is detected (e.g., massive production outage), immediately consolidate resources to a defensible position.
+- Halt all exploratory or non-essential feature work until the primary threat is neutralized.
+- Do not engage in risky ad-hoc fixes unless core stability is breached."""
+        else:
+            return "# Generalized Strategy\n- Apply caution and verify inputs."
+
+    return "# Generalized Strategy\n- Apply caution and verify inputs."
+
+
+def cli_hgt_ribosome(argv: Optional[List[str]] = None) -> int:
+    parser = argparse.ArgumentParser(description="HGT Ribosome Translator")
+    parser.add_argument("source_file", help="Path to foreign cell")
+    parser.add_argument("--mock", action="store_true", help="Use mock LLM output")
+    args = parser.parse_args(argv if argv is not None else sys.argv[1:])
+
+    if not os.path.exists(args.source_file):
+        print(f"Error: {args.source_file} not found.")
+        return 1
+
+    with open(args.source_file, "r", encoding="utf-8-sig") as f:
+        content = f.read()
+
+    metadata = parse_frontmatter(content)
+    body = _get_body(content)
+
+    print(f"🧬 Ribosome intercepting: {args.source_file}")
+    translated_body = prompt_llm_translation(body, mock=args.mock)
+
+    ws = resolve_workspace()
+    genome_dir = os.path.join(ws, "genome")
+    os.makedirs(genome_dir, exist_ok=True)
+
+    first_line = translated_body.split("\n")[0]
+    filename_base = re.sub(r"[^a-z0-9]+", "-", first_line.lower().replace("#", "").strip()).strip("-")
+    gene_id = f"hgt-{filename_base}"
+    filename = f"{gene_id}.md"
+
+    output_path = os.path.join(genome_dir, filename)
+    new_metadata = {
+        "id": gene_id,
+        "domain": "governance",
+        "name": filename_base,
+        "type": "gene",
+    }
+    with open(output_path, "w", encoding="utf-8") as outf:
+        outf.write("---\n" + dump_frontmatter(new_metadata) + "---\n" + translated_body + "\n")
+
+    print(f"✅ Translated and saved gene: {output_path}")
+    return 0
+
+
+# ── Immune Sweep ───────────────────────────────────────────────────────────
+
+
+def run_sweep(active_only: bool = False, soma_data_dir: Path | None = None) -> int:
+    """Run periodic governance sweep."""
+    home_str = os.environ.get("USERPROFILE") or os.environ.get("HOME")
+    resolved_home = Path(home_str) if home_str else Path.home()
+
+    if soma_data_dir is None:
+        env_data = os.environ.get("SOMA_DATA_DIR")
+        soma_data_dir = Path(env_data) if env_data else resolved_home / ".gemini" / "antigravity"
+
+    governance_dir = soma_data_dir / "scratch" / "ai-conversation-logs" / "governance"
+    brain_dir = soma_data_dir / "brain"
+    metrics_dir = governance_dir / "session_metrics"
+    metrics_dir.mkdir(parents=True, exist_ok=True)
+
+    timestamp = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+    print(f"🔄 Governance Sweep — {timestamp}\n")
+
+    sessions_scanned = 0
+    if not active_only and brain_dir.is_dir():
+        for child in brain_dir.iterdir():
+            if not child.is_dir():
+                continue
+            transcript = child / ".system_generated" / "logs" / "transcript.jsonl"
+            if transcript.is_file():
+                sessions_scanned += 1
+
+    print(f"Sweep complete ({sessions_scanned} sessions scanned).")
+    return 0
+
+
+def cli_immune_sweep(argv: Optional[List[str]] = None) -> int:
+    parser = argparse.ArgumentParser(description="Governance Sweep")
+    parser.add_argument("--active-only", action="store_true", help="Only check active sessions")
+    args = parser.parse_args(argv if argv is not None else sys.argv[1:])
+    return run_sweep(active_only=args.active_only)
+
+
+# ── Post-Session Hook ──────────────────────────────────────────────────────
+
+
+def run_post_session_hook(
+    transcript_path: Path,
+    platform: str | None = None,
+    cells_dir: Path | None = None,
+    evidence_dir: Path | None = None,
+    repo_root: Path | None = None,
+) -> int:
+    """Run post-session transcript fitness and evidence collection."""
+    if not transcript_path.is_file():
+        print(f"Error: transcript not found: {transcript_path}", file=sys.stderr)
+        return 1
+
+    root = repo_root or Path(resolve_workspace())
+    cells_dir = cells_dir or root / ".soma" / "cells"
+    evidence_dir = evidence_dir or root / ".soma" / "evidence"
+
+    from enzymes.fitness_updater import (
+        detect_platform,
+        extract_modified_files,
+        match_cells,
+        resolve_transcript_id,
+        update_fitness,
+    )
+    from enzymes.evidence_collector import aggregate_evidence, build_observation, check_compliance
+
+    resolved_platform = platform or detect_platform(transcript_path)
+    transcript_id = resolve_transcript_id(transcript_path, resolved_platform)
+
+    print(f"Processing transcript: {transcript_path}")
+    print(f"  Platform: {resolved_platform}")
+    modified = extract_modified_files(transcript_path, platform=resolved_platform)
+    print(f"  Modified files: {len(modified)}")
+
+    triggered = match_cells(modified, cells_dir, repo_root=str(root))
+    print(f"  Cells triggered: {len(triggered)}")
+    for t in triggered:
+        print(f"    - {t['cell_id']} ({len(t['matched_files'])} files)")
+
+    update_fitness(triggered, transcript_id, evidence_dir)
+    print(f"  Fitness updated: {evidence_dir / 'signals.jsonl'}")
+
+    try:
+        from soma_cli.sync import aggregate_evidence as sync_aggregate_evidence
+        from soma_cli.sync import sync_frontmatter
+
+        counts = sync_aggregate_evidence(str(evidence_dir))
+        if counts:
+            changes = sync_frontmatter(str(cells_dir), counts)
+            if changes:
+                print(f"  Frontmatter synced: {len(changes)} cells updated")
+    except ImportError:
+        pass
+
+    rules = ["read-before-write", "test-before-implementation", "no-hardcoded-paths"]
+    observations = []
+    for rule_id in rules:
+        result = check_compliance(transcript_path, rule_id)
+        obs = build_observation(result, transcript_path, rule_id)
+        if obs is not None:
+            observations.append(obs)
+
+    if observations:
+        summary = aggregate_evidence(observations)
+        evidence_dir.mkdir(parents=True, exist_ok=True)
+        outfile = evidence_dir / "compliance.jsonl"
+        try:
+            with open(outfile, "a", encoding="utf-8") as f:
+                f.write(json.dumps(summary) + "\n")
+        except OSError as exc:
+            print(f"Warning: could not write compliance evidence: {exc}", file=sys.stderr)
+
+    return 0
+
+
+def cli_post_session_hook(argv: Optional[List[str]] = None) -> int:
+    parser = argparse.ArgumentParser(description="Post-session hook for Soma governance")
+    parser.add_argument("transcript_path", type=Path, help="Path to transcript.jsonl")
+    parser.add_argument("--platform", default=None, help="Platform name")
+    parser.add_argument("--cells-dir", type=Path, default=None, help="Cells directory")
+    parser.add_argument("--evidence-dir", type=Path, default=None, help="Evidence directory")
+    args = parser.parse_args(argv if argv is not None else sys.argv[1:])
+
+    return run_post_session_hook(
+        transcript_path=args.transcript_path,
+        platform=args.platform,
+        cells_dir=args.cells_dir,
+        evidence_dir=args.evidence_dir,
+    )
+
+
+__all__ = [
+    "check_liveness",
+    "cli_liveness_sentinel",
+    "classify_file",
+    "is_test_file",
+    "recommend_protocol",
+    "run_last_gasp",
+    "cli_escalation_sentinel",
+    "load_soma_config",
+    "run_push",
+    "run_pull",
+    "run_status",
+    "cli_team_sync",
+    "prompt_llm_translation",
+    "cli_hgt_ribosome",
+    "run_sweep",
+    "cli_immune_sweep",
+    "run_post_session_hook",
+    "cli_post_session_hook",
+]
