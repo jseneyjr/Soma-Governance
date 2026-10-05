@@ -20,7 +20,7 @@ from typing import Any, Dict, Optional, Tuple
 
 from soma_core.frontmatter import parse_frontmatter
 from soma_core.locking import workspace_lock
-from soma_sdk.scoring import laplace_score
+from soma_core.scoring import laplace_score
 
 STATUS_NEW = "NEW"
 STATUS_SURVIVE = "SURVIVE"

@@ -76,39 +76,15 @@ except ImportError:
     _HAS_SDK = False
 
 
-# INTENTIONAL DUPLICATION: wall-mcp-zero-deps prohibits importing from enzymes/
-# Canonical source: enzymes/soma_resolve.py — keep in sync manually
+from soma_core.workspace import resolve_workspace as _core_resolve_workspace
+
+
 def resolve_workspace(args=None):
     """Find the project root containing .soma/cells/."""
     # We do NOT trust args["workspace"] from client input unverified.
     # Write and Execute tools use args["workspace"] strictly because the MCP server safely injects _canonical_workspace over whatever the client provided.
     # Read tools and background execution must rely on SOMA_WORKSPACE to prevent cross-workspace reading attacks.
-
-    soma_ws = os.environ.get("SOMA_WORKSPACE")
-    if soma_ws:
-        if os.path.isdir(os.path.join(soma_ws, ".soma", "cells")):
-            return os.path.abspath(soma_ws)
-        else:
-            raise ValueError(f"SOMA_WORKSPACE is set to {soma_ws} but no .soma/cells found there.")
-
-    soma_root = os.environ.get("SOMA_ROOT")
-    if soma_root:
-        if os.path.isdir(os.path.join(soma_root, ".soma", "cells")):
-            return os.path.abspath(soma_root)
-        else:
-            raise ValueError(f"SOMA_ROOT is set to {soma_root} but no .soma/cells found there.")
-
-    cwd = os.getcwd()
-    if os.path.isdir(os.path.join(cwd, ".soma", "cells")):
-        return cwd
-
-    d = cwd
-    while d != os.path.dirname(d):
-        if os.path.isdir(os.path.join(d, ".soma", "cells")):
-            return d
-        d = os.path.dirname(d)
-        
-    return cwd
+    return _core_resolve_workspace(strict_env=True)
 
 
 # ── Checkpoint helpers (shared with soma_cli.checkpoint) ──────────────
