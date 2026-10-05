@@ -571,7 +571,8 @@ def cli_cell_enforce(argv: Optional[List[str]] = None, workspace: Optional[str] 
     for cell in cells:
         enforcement = cell.get("enforcement", "advisory")
         if enforcement in ("mechanical", "gate"):
-            if args.cell and cell["_name"] != args.cell:
+            target = os.path.splitext(args.cell)[0] if args.cell else None
+            if target and cell["_name"] != target:
                 continue
             existing = cell.get("enforcement_artifact", "")
             if existing and os.path.exists(os.path.join(ws, existing)):

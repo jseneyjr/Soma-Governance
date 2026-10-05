@@ -164,6 +164,12 @@ def normalize_tool_call(tool_name: str, arguments: dict) -> tuple[str, dict]:
         if canon_k == "cell_type" and isinstance(v, str):
             v = _TYPE_TRANSLATION_MAP.get(v, v)
         normalized_args[canon_k] = v
+    if "cell_id" in (arguments or {}) and "cells_used" not in normalized_args:
+        val = arguments["cell_id"]
+        normalized_args["cells_used"] = [val] if isinstance(val, str) else list(val)
+    if "rule_id" in (arguments or {}) and "cells_used" not in normalized_args:
+        val = arguments["rule_id"]
+        normalized_args["cells_used"] = [val] if isinstance(val, str) else list(val)
     return canonical_name, normalized_args
 
 
@@ -1001,7 +1007,16 @@ def execute_tool(name: str, args: dict):
                 "status": _STATUS_FAIL,
             }
         raw_cells_used = args.get('cells_used')
+        if raw_cells_used is None:
+            if "cell_id" in args:
+                val = args["cell_id"]
+                raw_cells_used = [val] if isinstance(val, str) else val
+            elif "rule_id" in args:
+                val = args["rule_id"]
+                raw_cells_used = [val] if isinstance(val, str) else val
         if raw_cells_used is not None:
+            if isinstance(raw_cells_used, str):
+                raw_cells_used = [raw_cells_used]
             if not isinstance(raw_cells_used, (list, tuple)) or not all(isinstance(c, str) for c in raw_cells_used):
                 return {
                     "error": "'cells_used' must be a list of cell names.",

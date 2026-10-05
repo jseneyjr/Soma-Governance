@@ -11,6 +11,7 @@ from typing import Any, Optional
 
 from soma_core.cell_inventory import CellInventoryError, inventory_cells
 from soma_core.frontmatter import parse_frontmatter
+from soma_core.telemetry import EventConflictError, StaleGenerationError
 
 TYPE_TRANSLATION_MAP: dict[str, str] = {
     "safety-guard": "wall",
@@ -190,7 +191,19 @@ class Governance:
         except Exception:
             pass
 
-        signal_type = "tp" if success else "fp"
+        if isinstance(success, str):
+            norm = success.strip().lower()
+            if norm in ("tp", "pass", "true", "1", "success"):
+                signal_type = "tp"
+            elif norm in ("fp", "fail", "false", "0", "failure"):
+                signal_type = "fp"
+            else:
+                raise ValueError(f"Invalid outcome string: {success!r}")
+        elif isinstance(success, (bool, int)):
+            signal_type = "tp" if bool(success) else "fp"
+        else:
+            raise TypeError(f"success must be a bool or string, got {type(success).__name__}")
+
         merged_metric = dict(metric or {})
         session_id = kwargs.pop("session_id", None)
         source = kwargs.pop("source", "manual")
@@ -219,6 +232,8 @@ class Governance:
                 idempotency_key=idempotency_key,
                 expected_generation=expected_generation,
             )
+        except (EventConflictError, StaleGenerationError, ValueError):
+            raise
         except Exception:
             raw_output = self.signal(rule_id, signal_type, metric=merged_metric)
             return {

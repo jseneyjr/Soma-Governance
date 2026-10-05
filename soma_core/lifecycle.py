@@ -1115,7 +1115,8 @@ def cli_cell_promote(argv: list[str] | None = None, workspace: Optional[str] = N
                     if new_tier in ('mechanical', 'gate'):
                         try:
                             from soma_core.enforcement import cli_cell_enforce
-                            cli_cell_enforce(['--cell', cell_name], workspace=ws)
+                            cell_slug = os.path.splitext(cell_name)[0]
+                            cli_cell_enforce(['--cell', cell_slug], workspace=ws)
                         except Exception as e:
                             print(f"Error enforcing cell {cell_name}: {e}", file=sys.stderr)
                 else:
@@ -1767,7 +1768,8 @@ def compute_cells_fitness(
     promote: bool = False,
 ) -> list[dict]:
     """Compute fitness of immune cells in workspace."""
-    ws = workspace or resolve_workspace(start=__file__)
+    ws = workspace or resolve_workspace()
+
     total_sessions = 30
     conf_path = os.path.join(ws, "soma.conf")
     if os.path.exists(conf_path):

@@ -740,9 +740,7 @@ def cli_cell_expiry(argv: Optional[List[str]] = None) -> int:
 
     args = parser.parse_args(argv if argv is not None else sys.argv[1:])
 
-    if args.workspace != ".":
-        os.environ["SOMA_ROOT"] = os.path.abspath(args.workspace)
-    workspace = resolve_workspace()
+    workspace = os.path.abspath(args.workspace) if args.workspace != "." else resolve_workspace()
     results = audit_expiry(workspace, session_count=args.session_count)
 
     if args.json:

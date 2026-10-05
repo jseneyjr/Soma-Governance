@@ -6,7 +6,7 @@ import glob
 
 import csv
 from datetime import datetime
-from soma_resolve import resolve_workspace
+from soma_core.workspace import resolve_workspace
 from soma_sdk.cells import parse_cell_file
 
 def decayed_fitness(raw_score, last_trigger_date, telomere_days=30):
@@ -27,7 +27,7 @@ def main():
     parser.add_argument("--format", choices=["ascii", "csv"], default="ascii", help="Output format")
     args = parser.parse_args()
 
-    workspace = resolve_workspace(__file__)
+    workspace = resolve_workspace()
     cells_dir = os.path.join(workspace, '.soma', 'cells')
     
     cell_files = glob.glob(os.path.join(cells_dir, '**', '*.md'), recursive=True)

@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 import os, sys, argparse, glob, json
 from datetime import datetime, timedelta
-from soma_resolve import resolve_workspace
+from soma_core.workspace import resolve_workspace
 from soma_sdk.cells import parse_cell_file
 
 def main():
@@ -10,7 +10,7 @@ def main():
     parser.add_argument('--json', action='store_true', help='JSON output')
     args = parser.parse_args()
     
-    workspace = resolve_workspace(__file__)
+    workspace = resolve_workspace()
     metrics_dir = os.path.join(workspace, '.soma', 'metrics')
     
     if not os.path.isdir(metrics_dir):

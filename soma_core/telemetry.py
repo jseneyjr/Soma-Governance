@@ -1255,13 +1255,14 @@ def run_outcome_engine(workspace: Optional[str] = None, mod: Any = None) -> int:
 
 def cli_outcome_engine(argv: Optional[List[str]] = None, mod: Any = None) -> int:
     """CLI outcome engine handler."""
-    if argv is None and len(sys.argv) <= 1:
+    target_args = argv if argv is not None else ([] if __name__ != "__main__" else sys.argv[1:])
+    if not target_args:
         return run_outcome_engine(mod=mod)
     parser = argparse.ArgumentParser(description="Outcome Engine")
     parser.add_argument("--workspace", default=None)
     parser.add_argument("--apply", action="store_true")
     parser.add_argument("--json", action="store_true")
-    args = parser.parse_args(argv if argv is not None else sys.argv[1:])
+    args = parser.parse_args(target_args)
 
     ws = args.workspace or resolve_workspace()
     return run_outcome_engine(ws, mod=mod)
@@ -1997,7 +1998,8 @@ def cli_cell_coverage(argv: Optional[List[str]] = None, workspace: Optional[str]
     parser.add_argument('--exclude', action='append', default=[], help='Pattern(s) to exclude from coverage calculation')
     args = parser.parse_args(argv if argv is not None else sys.argv[1:])
 
-    ws = workspace or resolve_workspace(start=__file__)
+    ws = workspace or resolve_workspace()
+
     cov = calculate_coverage(ws, exclude=args.exclude)
 
     if args.json:
@@ -2141,7 +2143,8 @@ def cli_immune_grade(argv: Optional[List[str]] = None, workspace: Optional[str] 
     parser.add_argument('--json', action='store_true', help='JSON output')
     args = parser.parse_args(argv if argv is not None else sys.argv[1:])
 
-    ws = workspace or resolve_workspace(start=__file__)
+    ws = workspace or resolve_workspace()
+
     report = calculate_immune_grade(ws)
     if not report:
         print('No cells found. Run Genesis first.')

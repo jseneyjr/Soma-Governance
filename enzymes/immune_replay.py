@@ -2,7 +2,7 @@
 import os, sys, argparse, glob, json, subprocess
 from fnmatch import fnmatch
 from datetime import datetime
-from soma_resolve import resolve_workspace
+from soma_core.workspace import resolve_workspace
 from soma_sdk.cells import parse_cell_file
 
 def main():
@@ -14,7 +14,7 @@ def main():
     parser.add_argument('--json', action='store_true', help='JSON output')
     args = parser.parse_args()
     
-    workspace = resolve_workspace(__file__)
+    workspace = resolve_workspace()
     cells_dir = os.path.join(workspace, '.soma', 'cells')
     
     # Load all cells

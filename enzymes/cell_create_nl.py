@@ -117,7 +117,7 @@ def main():
             from enzymes.insight_correlator import cluster_insights
         except ImportError:
             from insight_correlator import cluster_insights
-        workspace = resolve_workspace(__file__)
+        workspace = resolve_workspace()
         clusters = cluster_insights(workspace)
         if not clusters:
             print('No insight clusters found.')
@@ -178,7 +178,7 @@ def main():
     filename = os.path.basename(filename)
     
     # Determine target directory
-    workspace = resolve_workspace(__file__)
+    workspace = resolve_workspace()
     type_dirs = {
         'wall': 'walls', 'membrane': 'membranes', 'vacuole': 'vacuoles',
         'chloroplast': 'chloroplasts', 'plasmodesmata': 'plasmodesmata'

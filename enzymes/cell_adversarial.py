@@ -3,7 +3,7 @@
 import os, sys, argparse, glob, json, subprocess
 from soma_sdk.cells import parse_cell_file
 from fnmatch import fnmatch
-from soma_resolve import resolve_workspace
+from soma_core.workspace import resolve_workspace
 
 
 def load_cell(cells_dir, cell_name):
@@ -152,7 +152,7 @@ def main():
     parser.add_argument('--json', action='store_true', help='JSON output')
     args = parser.parse_args()
     
-    workspace = resolve_workspace(__file__)
+    workspace = resolve_workspace()
     cells_dir = os.path.join(workspace, '.soma', 'cells')
     
     if args.cell_name:

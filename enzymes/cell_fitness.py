@@ -43,7 +43,8 @@ def __getattr__(name: str):
 def main(argv: list[str] | None = None) -> int:
     if hasattr(sys.stdout, "reconfigure"):
         sys.stdout.reconfigure(errors="replace")
-    ws = resolve_workspace(__file__)
+    ws = resolve_workspace()
+
     return cli_cell_fitness(argv, workspace=ws)
 
 

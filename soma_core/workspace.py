@@ -227,8 +227,12 @@ def validate_cell_names(cell_names: List[str], workspace: Union[str, Path]) -> L
     return [name for name in cell_names if name not in known]
 
 
+find_workspace_root = resolve_workspace
+
+
 __all__ = [
     "resolve_workspace",
+    "find_workspace_root",
     "resolve_workspace_path",
     "get_cells_dir",
     "get_metrics_dir",
@@ -238,3 +242,4 @@ __all__ = [
     "confine_path",
     "validate_cell_names",
 ]
+

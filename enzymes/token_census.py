@@ -5,7 +5,7 @@ import glob
 import re
 import sys
 
-from soma_resolve import resolve_workspace
+from soma_core.workspace import resolve_workspace
 from inference_provider import resolve_provider
 
 def parse_args():
@@ -45,7 +45,7 @@ def count_tokens(text, model_name, provider):
 def main():
     args = parse_args()
     
-    workspace = resolve_workspace(__file__)
+    workspace = resolve_workspace()
     rules_dir = os.path.join(workspace, "genome")
     skills_dir = os.path.join(workspace, "organs")
     

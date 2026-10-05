@@ -12,8 +12,8 @@ def get_workspace():
     return os.getcwd()
 
 try:
-    from soma_resolve import resolve_workspace
-    workspace = resolve_workspace(__file__)
+    from soma_core.workspace import resolve_workspace
+    workspace = resolve_workspace()
 except ImportError:
     workspace = get_workspace()
 
