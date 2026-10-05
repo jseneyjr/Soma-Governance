@@ -176,6 +176,11 @@ def _build_parser() -> argparse.ArgumentParser:
     p_hook.add_argument("--json", action="store_true",
                         help="Emit JSON output")
 
+    # soma transfer
+    p_transfer = sub.add_parser("transfer", help="Transfer a cell to another project with fitness reset")
+    p_transfer.add_argument("cell_id", nargs="?", default="", help="ID of cell to transfer")
+    p_transfer.add_argument("--to", dest="target_dir", default="", help="Path to target project")
+
     return parser
 
 
@@ -257,6 +262,12 @@ def cmd_hook(args: argparse.Namespace) -> int:
     return run_hook(args)
 
 
+def cmd_transfer(args: argparse.Namespace) -> int:
+    """Transfer a cell to another project with fitness reset."""
+    from soma_cli.transfer import run_transfer
+    return run_transfer(args)
+
+
 COMMANDS = {
     "init": cmd_init,
     "status": cmd_status,
@@ -271,6 +282,7 @@ COMMANDS = {
     "genesis": cmd_genesis,
     "completion": cmd_completion,
     "hook": cmd_hook,
+    "transfer": cmd_transfer,
 }
 
 

@@ -228,6 +228,7 @@ def run_safety_gate(
     if cmd is None and payload is not None:
         tc = payload.get("toolCall", {})
         args = tc.get("args", {})
+        cmd = args.get("CommandLine", "")
     if not cmd or not isinstance(cmd, str) or not cmd.strip():
         reason = "Unable to parse command — requesting confirmation"
         log_gate_event(cmd or "", "BLOCKED", reason, root)
@@ -339,7 +340,8 @@ def run_pre_invocation(
 # ── Session Close / Post-Session ──────────────────────────────────────────────
 
 def run_session_close(workspace: Path | None = None) -> tuple[int, dict[str, Any]]:
-    """Run session close lifecycle tasks (outcome evaluation and cell evolution)."""
+    """Run session close lifecycle tasks (outcome evaluation, cell evolution, and consolidation)."""
+    import random
     import subprocess
 
     root = workspace or Path.cwd()
@@ -366,6 +368,42 @@ def run_session_close(workspace: Path | None = None) -> tuple[int, dict[str, Any
     if cell_fitness.is_file():
         try:
             subprocess.run([sys.executable, str(cell_fitness)], cwd=root, capture_output=True, text=True)
+        except Exception:
+            pass
+
+    # 3. Cell selection pressure (archive extinct cells)
+    cell_selection = scripts_dir / "cell_selection.py"
+    if cell_selection.is_file():
+        try:
+            subprocess.run([sys.executable, str(cell_selection), "--execute"], cwd=root, capture_output=True, text=True)
+        except Exception:
+            pass
+
+    # 4. Probabilistic crossover
+    try:
+        from soma_core.evidence import aggregate_signals
+        evidence_dir = root / ".soma" / "evidence"
+        if evidence_dir.is_dir():
+            signal_counts = aggregate_signals(evidence_dir).counts
+            cell_triggers = {
+                cell_id: counts["triggers"]
+                for cell_id, counts in signal_counts.items()
+                if counts["has_triggers"]
+            }
+            high_fitness = [cid for cid, count in cell_triggers.items() if count >= 5]
+            if len(high_fitness) >= 2:
+                pair = random.sample(high_fitness, 2)
+                cell_crossover = scripts_dir / "cell_crossover.py"
+                if cell_crossover.is_file():
+                    subprocess.run([sys.executable, str(cell_crossover), pair[0], pair[1]], cwd=root, capture_output=True, text=True)
+    except Exception:
+        pass
+
+    # 5. Stochastic genesis
+    cell_genesis = scripts_dir / "cell_genesis_stochastic.py"
+    if cell_genesis.is_file():
+        try:
+            subprocess.run([sys.executable, str(cell_genesis)], cwd=root, capture_output=True, text=True)
         except Exception:
             pass
 
