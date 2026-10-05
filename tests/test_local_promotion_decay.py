@@ -103,35 +103,36 @@ class TestLocalPromotionDecay:
 class TestPromotionZeroTriggerGuard:
     """Verify untested cells cannot be promoted regardless of impact_weight."""
 
-    def test_normalize_fitness_zero_triggers_not_promoted(self):
-        """A cell with 0 triggers must not be promotable: score below threshold."""
-        from bayesian_score import bayesian_score
-        from cell_promote import normalize_fitness
-        meta = {'fitness': {'triggers': 0, 'true_positives': 0, 'false_positives': 0}}
-        result = normalize_fitness(meta)
-        # Compute the Bayesian score this cell would receive
-        score = bayesian_score(
-            result.get('true_positives', 0), result.get('triggers', 0)
-        )
-        # Score must be 0.5 (maximally uncertain), well below promotion threshold 0.7
-        assert score == pytest.approx(0.5)
-        assert score < 0.7, \
-            f"Zero-trigger cell must not meet promotion threshold, got {score}"
-        # Triggers must remain 0 — hard gate for promotion
-        assert result.get('triggers', 0) == 0
+    def test_normalize_fitness_zero_triggers_not_promoted(self, tmp_path):
+        """A cell with 0 triggers must not be promotable via lifecycle evaluation."""
+        from immune_system.verification.lifecycle import evaluate_promotions
+        from tests.helpers_cell import make_cell
 
-    def test_normalize_fitness_high_triggers_preserves_data(self):
-        """Normalization must preserve data, and high-quality cells must score above 0.9."""
-        from bayesian_score import bayesian_score
-        from cell_promote import normalize_fitness
-        meta = {'fitness': {'triggers': 50, 'true_positives': 48, 'false_positives': 1}}
-        result = normalize_fitness(meta)
-        # All fields preserved
-        assert result['triggers'] == 50
-        assert result['true_positives'] == 48
-        assert result['false_positives'] == 1
-        # Score computed from preserved data should reflect high quality
-        score = bayesian_score(result['true_positives'], result['triggers'])
-        assert score == pytest.approx((48 + 1) / (50 + 2))
-        assert score > 0.9, \
-            f"High-quality cell should score above 0.9, got {score}"
+        cells_dir = tmp_path / ".soma" / "cells" / "vacuoles"
+        cells_dir.mkdir(parents=True)
+        evidence_dir = tmp_path / ".soma" / "evidence"
+        evidence_dir.mkdir(parents=True)
+
+        make_cell(str(cells_dir), "zero-cell", cell_type="vacuole", created_days_ago=60)
+        # 0 triggers in evidence
+        candidates = evaluate_promotions(str(tmp_path))
+        assert not any(c["cell_id"] == "zero-cell" for c in candidates), \
+            "Zero-trigger cell must not appear in promotion candidates"
+
+    def test_normalize_fitness_high_triggers_preserves_data(self, tmp_path):
+        """A high-quality cell with 50 triggers (48 TP, 1 FP) must be promoted."""
+        from immune_system.verification.lifecycle import evaluate_promotions
+        from tests.helpers_cell import make_cell, write_evidence
+
+        cells_dir = tmp_path / ".soma" / "cells" / "vacuoles"
+        cells_dir.mkdir(parents=True)
+        evidence_dir = tmp_path / ".soma" / "evidence"
+        evidence_dir.mkdir(parents=True)
+
+        make_cell(str(cells_dir), "high-cell", cell_type="vacuole", created_days_ago=60)
+        write_evidence(str(evidence_dir), "high-cell", triggers=50, tp=48, fp=1)
+
+        candidates = evaluate_promotions(str(tmp_path))
+        promoted_ids = [c["cell_id"] for c in candidates]
+        assert "high-cell" in promoted_ids, \
+            f"High-quality cell should be promoted, got candidates {candidates}"

@@ -688,8 +688,8 @@ def execute_tool(name: str, args: dict):
         return payload
         
     elif name == "soma_audit_security":
-        content = args.get("proposed_content", "")
-        file_path = args.get("file_path", "")
+        content = args.get("proposed_content") or ""
+        file_path = args.get("file_path") or ""
         # Prototype: Basic keyword scanning for secrets and OWASP basics
         flags = []
         if "password=" in content.lower() or "secret=" in content.lower():
@@ -711,8 +711,8 @@ def execute_tool(name: str, args: dict):
         return {"status": "PASS", "feedback": f"Security Audit passed for {file_path or 'input'}. No OWASP flaws or exposed secrets detected.", "file_path": file_path}
 
     elif name == "soma_audit_performance":
-        content = args.get("proposed_content", "")
-        file_path = args.get("file_path", "")
+        content = args.get("proposed_content") or ""
+        file_path = args.get("file_path") or ""
         # Prototype: Basic keyword scanning for hot-paths and inefficiencies
         flags = []
         if content.count("for ") > 2 and "in " in content:
@@ -736,7 +736,7 @@ def execute_tool(name: str, args: dict):
             workspace = confine_workspace(args.get('workspace') or resolve_workspace(args))
         except ValueError as exc:
             return {"error": str(exc), "status": _STATUS_FAIL}
-        files = args.get('files', [])
+        files = args.get('files') or []
         # Confine each file path within the workspace
         try:
             files = [confine_path(f, workspace)[1] for f in files]
@@ -757,12 +757,15 @@ def execute_tool(name: str, args: dict):
         # Layer 2 execution is not implemented in MCP tools endpoint; force layer1_only to True
         # so response accuracy is guaranteed.
         actual_layer1_only = True
-        return {
+        response_payload = {
             "status": "PASS" if verdict else "FAIL",
             "summary": summary,
             "layer1_only": actual_layer1_only,
             "evidence": evidence,
         }
+        if not layer1_only:
+            response_payload["note"] = "Layer 2 verification is not supported over MCP transport; fell back to Layer 1."
+        return response_payload
 
     elif name == "soma_checkpoint":
         try:
@@ -814,7 +817,7 @@ def execute_tool(name: str, args: dict):
                 "error": "'idempotency_key' must be a nonempty string.",
                 "status": _STATUS_FAIL,
             }
-        cells_used = args.get('cells_used', [])
+        cells_used = args.get('cells_used') or []
         # Validate cell names against actual inventory
         if cells_used:
             invalid = validate_cell_names(cells_used, workspace)
@@ -867,10 +870,11 @@ def execute_tool(name: str, args: dict):
         except ImportError:
             return {"error": "enzymes.insight_capture is not importable."}
         try:
+            context_files_arg = args.get('context_files') or []
             record = capture_insight(
                 workspace=workspace,
                 insight=args.get('insight', ''),
-                context_files=[str(confine_path(f, workspace)[1]) for f in args.get('context_files', [])],
+                context_files=[str(confine_path(f, workspace)[1]) for f in context_files_arg],
                 source_conversation=args.get('source_conversation'),
                 category=args.get('category'),
             )

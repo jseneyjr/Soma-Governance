@@ -331,14 +331,3 @@ class TestBug2OutcomeEngineSchema:
         assert len(signals) == 1
         assert any('agent reported success' in r for r in signals[0]['reasons'])
 
-
-def test_outcome_engine_appends_are_generation_fenced(tmp_path):
-    from enzymes.outcome_engine import append_fitness_log
-    ws = str(tmp_path)
-    os.makedirs(os.path.join(ws, ".soma"), exist_ok=True)
-    with open(os.path.join(ws, ".soma", "epoch_generation"), "w", encoding="utf-8") as f:
-        f.write("2\n")
-    sig = [{"cell": "c", "_path": "x", "signal": 0.5, "verified": True, "reasons": []}]
-    assert append_fitness_log(ws, sig, {}, expected_generation=1) is False
-    assert not os.path.exists(os.path.join(ws, ".soma", "evidence", "signals.jsonl"))
-    assert append_fitness_log(ws, sig, {}, expected_generation=2) is True

@@ -10,12 +10,6 @@ RESOLVED_HOME=$(resolve_home)
 # Output contract: {"decision": "allow"} or {"decision": "force_ask", "reason": "..."}
 # Latency target: <100ms (pure bash, no subshells in hot path)
 
-# Emergency bypass: operator can disable the gate entirely
-if [ "${STEERING_SAFETY_GATE:-}" = "disabled" ]; then
-    echo '{"decision": "allow"}'
-    exit 0
-fi
-
 INPUT=$(cat)
 CMD=$(echo "$INPUT" | soma_py -c "
 import sys, json
@@ -42,10 +36,15 @@ REASON=""
 
 # --- File system destruction ---
 
-# rm: catch -rf, -r -f, -fr, --recursive, and rmdir with ignore flag
-if echo "$CMD" | grep -qE 'rm[[:space:]]+(-[a-zA-Z]*r[a-zA-Z]*f|-[a-zA-Z]*f[a-zA-Z]*r|-r[[:space:]]+-f|-f[[:space:]]+-r|--recursive)[[:space:]]+(/|~|/home|\$HOME)'; then
+# rm: catch -rf, -r -f, -fr, --recursive targeting home, root, current dir or wildcard
+if echo "$CMD" | grep -qE '(^|[;&|`\(\)[[:space:]])rm[[:space:]]+(-[a-zA-Z]*r[a-zA-Z]*f|-[a-zA-Z]*f[a-zA-Z]*r|-r[[:space:]]+-f|-f[[:space:]]+-r|--recursive)[[:space:]]+(/|~|/home|\$HOME|\.|\.\.|\*|[[:space:]]*/|[[:space:]]*~)'; then
     BLOCKED=true
-    REASON="Recursive delete targeting home/root directory"
+    REASON="Recursive delete targeting home/root directory or wildcard/current directory"
+fi
+
+if echo "$CMD" | grep -qE 'rmtree\('; then
+    BLOCKED=true
+    REASON="Recursive directory deletion (rmtree) detected"
 fi
 
 if echo "$CMD" | grep -qE 'rmdir[[:space:]]+--ignore-fail-on-non-empty'; then
