@@ -465,8 +465,9 @@ def match_cells_to_files(cells: list[dict[str, object]], changed_files: list[str
                     break
 
         if is_match:
-            cell['_matched_files'] = list(set(matched_files))
-            matched.append(cell)
+            cell_copy = cell.copy()
+            cell_copy['_matched_files'] = list(set(matched_files))
+            matched.append(cell_copy)
 
     return matched
 

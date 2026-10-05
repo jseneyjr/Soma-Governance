@@ -14,16 +14,16 @@ if [ -n "${SOMA_ROOT:-}" ] && [ -d "$SOMA_ROOT" ]; then
 else
   _d="$(pwd)"
   REPO_DIR="$_d"
-  while [ "$_d" != "/" ]; do
-    if [[ "$_d" == */vendor/* ]] || [[ "$_d" == */vendor ]]; then
-      _d="$(dirname "$_d")"
-      continue
+  while true; do
+    if [[ "$_d" != */vendor/* ]] && [[ "$_d" != */vendor ]]; then
+      if [ -d "$_d/.soma/cells" ]; then
+        REPO_DIR="$_d"
+        break
+      fi
     fi
-    if [ -d "$_d/.soma/cells" ]; then
-      REPO_DIR="$_d"
-      break
-    fi
-    _d="$(dirname "$_d")"
+    _parent="$(dirname "$_d")"
+    [ "$_d" = "$_parent" ] && break
+    _d="$_parent"
   done
 fi
 SCRIPTS_DIR="$REPO_DIR/enzymes"

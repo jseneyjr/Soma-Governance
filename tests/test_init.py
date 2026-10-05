@@ -39,6 +39,11 @@ class TestDetectPlatform:
         from soma_cli.init import detect_platform
         assert detect_platform(tmp_path) == "copilot"
 
+    def test_kiro_detected(self, tmp_path):
+        (tmp_path / ".kiro").mkdir()
+        from soma_cli.init import detect_platform
+        assert detect_platform(tmp_path) == "kiro"
+
     def test_unknown_when_empty(self, tmp_path):
         from soma_cli.init import detect_platform
         assert detect_platform(tmp_path) == "unknown"
@@ -101,6 +106,11 @@ class TestGetRulesDir:
         from soma_cli.init import get_rules_dir
         result = get_rules_dir("claude", tmp_path)
         assert str(result).endswith(".claude")
+
+    def test_kiro_rules_dir(self, tmp_path):
+        from soma_cli.init import get_rules_dir
+        result = get_rules_dir("kiro", tmp_path)
+        assert result.parts[-2:] == (".kiro", "steering")
 
     def test_unknown_raises(self, tmp_path):
         from soma_cli.init import get_rules_dir

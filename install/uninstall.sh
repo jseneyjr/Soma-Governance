@@ -1089,7 +1089,7 @@ if [ ${#MODIFY_FILES[@]} -gt 0 ]; then
       continue
     fi
     if [ -f "$m" ]; then
-      soma_py -c "import os, sys; p=sys.argv[1]; tmp=f'{p}.tmp.{os.getpid()}'; lines=open(p,encoding='utf-8').readlines(); out=[l for l in lines if not (l.startswith('# Copilot') or l.startswith('# Soma'))]; open(tmp,'w',encoding='utf-8').writelines(out); os.replace(tmp, p)" "$m" 2>/dev/null || true
+      soma_py -c "import os, sys; p=sys.argv[1]; tmp=f'{p}.tmp.{os.getpid()}'; lines=open(p,encoding='utf-8').readlines(); cut=next((i for i,l in enumerate(lines) if l.startswith('# Copilot') or l.startswith('# Soma') or l.startswith('<!-- SOMA:START')), -1); out=lines[:cut] if cut>=0 else lines; last=next((i for i in range(len(out)-1,-1,-1) if out[i].strip()),-1); out=out[:last+1]; open(tmp,'w',encoding='utf-8').writelines([l if l.endswith('\n') else l+'\n' for l in out]); os.replace(tmp, p)" "$m" 2>/dev/null || true
       # Truncating at our header can leave an empty file behind. Remove it only if
       # nothing but whitespace remains, so a user's own content is never lost.
       if [ ! -s "$m" ] || [ -z "$(tr -d '[:space:]' < "$m")" ]; then

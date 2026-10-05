@@ -54,16 +54,16 @@ if [ -n "${SOMA_ROOT:-}" ] && [ -d "$SOMA_ROOT" ]; then
   REPO_DIR="$SOMA_ROOT"
 else
   _d="$(pwd)"
-  while [ "$_d" != "/" ]; do
-    if [[ "$_d" == */vendor/* ]] || [[ "$_d" == */vendor ]]; then
-      _d="$(dirname "$_d")"
-      continue
+  while true; do
+    if [[ "$_d" != */vendor/* ]] && [[ "$_d" != */vendor ]]; then
+      if [ -d "$_d/.soma/cells" ]; then
+        REPO_DIR="$_d"
+        break
+      fi
     fi
-    if [ -d "$_d/.soma/cells" ]; then
-      REPO_DIR="$_d"
-      break
-    fi
-    _d="$(dirname "$_d")"
+    _parent="$(dirname "$_d")"
+    [ "$_d" = "$_parent" ] && break
+    _d="$_parent"
   done
 fi
 if [[ -z "$REPO_DIR" || ! -d "$REPO_DIR/.soma/cells" ]]; then
