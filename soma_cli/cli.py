@@ -181,6 +181,20 @@ def _build_parser() -> argparse.ArgumentParser:
     p_transfer.add_argument("cell_id", nargs="?", default="", help="ID of cell to transfer")
     p_transfer.add_argument("--to", dest="target_dir", default="", help="Path to target project")
 
+    # soma quarantine
+    p_quarantine = sub.add_parser("quarantine", help="Inspect and manage quarantined corrupt files")
+    p_quarantine_sub = p_quarantine.add_subparsers(dest="quarantine_action")
+
+    p_q_list = p_quarantine_sub.add_parser("list", help="List all quarantined files")
+    p_q_list.add_argument("--json", action="store_true", help="Emit JSON output")
+
+    p_q_inspect = p_quarantine_sub.add_parser("inspect", help="Inspect a quarantined file")
+    p_q_inspect.add_argument("target", nargs="?", default="", help="Filename or path of quarantined file")
+    p_q_inspect.add_argument("--json", action="store_true", help="Emit JSON output")
+
+    p_q_prune = p_quarantine_sub.add_parser("prune", help="Prune old quarantined files")
+    p_q_prune.add_argument("--older-than-days", type=int, default=30, help="Prune files older than N days (default 30)")
+
     return parser
 
 
@@ -268,6 +282,12 @@ def cmd_transfer(args: argparse.Namespace) -> int:
     return run_transfer(args)
 
 
+def cmd_quarantine(args: argparse.Namespace) -> int:
+    """Inspect and manage quarantined corrupt files."""
+    from soma_cli.quarantine import run_quarantine
+    return run_quarantine(args)
+
+
 COMMANDS = {
     "init": cmd_init,
     "status": cmd_status,
@@ -283,6 +303,7 @@ COMMANDS = {
     "completion": cmd_completion,
     "hook": cmd_hook,
     "transfer": cmd_transfer,
+    "quarantine": cmd_quarantine,
 }
 
 

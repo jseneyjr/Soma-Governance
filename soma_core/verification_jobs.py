@@ -43,6 +43,8 @@ class VerificationJob:
 
 _JOBS: dict[str, VerificationJob] = {}
 _JOBS_LOCK = threading.Lock()
+_ACTIVE_WORKERS: dict[str, threading.Thread] = {}
+_ACTIVE_WORKERS_LOCK = threading.Lock()
 JOB_TTL_SECONDS = 3600  # 1 hour TTL
 MAX_JOBS = 1000
 
@@ -138,74 +140,78 @@ def _run_verification_pipeline(job: VerificationJob, llm_backend: Optional[Calla
         job.started_at = _utc_now_iso()
 
     try:
-        from immune_system.verification import runner
-    except ImportError as exc:
-        with _JOBS_LOCK:
-            job.status = JOB_STATUS_FAILED
-            job.error = f"immune_system.verification import error: {exc}"
-            job.completed_at = _utc_now_iso()
-        return
-
-    try:
-        # Run Layer 1 checks
-        layer1_results = runner.run_layer1(
-            changed_files=job.files,
-            repo_root=job.workspace,
-        )
-        l1_verdict = runner.gate_verdict(layer1_results)
-        l1_summary = runner.format_summary(layer1_results)
-        l1_evidence = [
-            {"tool": r.tool, "target": r.target, "verdict": r.verdict, "detail": r.detail}
-            for r in layer1_results
-        ]
-
-        result_payload: dict[str, Any] = {
-            "status": "PASS" if l1_verdict else "FAIL",
-            "summary": l1_summary,
-            "layer1_only": job.layer1_only,
-            "evidence": l1_evidence,
-        }
-
-        # Run Layer 2 if requested
-        if not job.layer1_only:
-            if not job.task_plan:
-                result_payload["status"] = "FAIL"
-                result_payload["layer2_error"] = "Layer 2 verification requested but task_plan is missing"
-            elif llm_backend is None:
-                result_payload["status"] = "FAIL"
-                result_payload["layer2_error"] = "Layer 2 verification requested but llm_backend is not configured"
-            else:
-                try:
-                    l2_res = runner.run_layer2(
-                        changed_files=job.files,
-                        repo_root=job.workspace,
-                        task_plan=job.task_plan,
-                        layer1_evidence=layer1_results,
-                        llm_backend=llm_backend,
-                    )
-                    result_payload["layer2"] = {
-                        "verdict": l2_res.verdict.name,
-                        "divergences": [d.to_dict() if hasattr(d, "to_dict") else str(d) for d in l2_res.divergences],
-                        "convergences": [c.to_dict() if hasattr(c, "to_dict") else str(c) for c in l2_res.convergences],
-                    }
-                    if l2_res.verdict.name != "SHIP":
-                        result_payload["status"] = "FAIL"
-                except Exception as exc:
-                    result_payload["layer2_error"] = str(exc)
-                    result_payload["status"] = "FAIL"
-
-        with _JOBS_LOCK:
-            if job.status == JOB_STATUS_RUNNING:
-                job.status = JOB_STATUS_COMPLETED
-                job.result = result_payload
-                job.completed_at = _utc_now_iso()
-
-    except Exception as exc:
-        with _JOBS_LOCK:
-            if job.status == JOB_STATUS_RUNNING:
+        try:
+            from immune_system.verification import runner
+        except ImportError as exc:
+            with _JOBS_LOCK:
                 job.status = JOB_STATUS_FAILED
-                job.error = str(exc)
+                job.error = f"immune_system.verification import error: {exc}"
                 job.completed_at = _utc_now_iso()
+            return
+
+        try:
+            # Run Layer 1 checks
+            layer1_results = runner.run_layer1(
+                changed_files=job.files,
+                repo_root=job.workspace,
+            )
+            l1_verdict = runner.gate_verdict(layer1_results)
+            l1_summary = runner.format_summary(layer1_results)
+            l1_evidence = [
+                {"tool": r.tool, "target": r.target, "verdict": r.verdict, "detail": r.detail}
+                for r in layer1_results
+            ]
+
+            result_payload: dict[str, Any] = {
+                "status": "PASS" if l1_verdict else "FAIL",
+                "summary": l1_summary,
+                "layer1_only": job.layer1_only,
+                "evidence": l1_evidence,
+            }
+
+            # Run Layer 2 if requested
+            if not job.layer1_only:
+                if not job.task_plan:
+                    result_payload["status"] = "FAIL"
+                    result_payload["layer2_error"] = "Layer 2 verification requested but task_plan is missing"
+                elif llm_backend is None:
+                    result_payload["status"] = "FAIL"
+                    result_payload["layer2_error"] = "Layer 2 verification requested but llm_backend is not configured"
+                else:
+                    try:
+                        l2_res = runner.run_layer2(
+                            changed_files=job.files,
+                            repo_root=job.workspace,
+                            task_plan=job.task_plan,
+                            layer1_evidence=layer1_results,
+                            llm_backend=llm_backend,
+                        )
+                        result_payload["layer2"] = {
+                            "verdict": l2_res.verdict.name,
+                            "divergences": [d.to_dict() if hasattr(d, "to_dict") else str(d) for d in l2_res.divergences],
+                            "convergences": [c.to_dict() if hasattr(c, "to_dict") else str(c) for c in l2_res.convergences],
+                        }
+                        if l2_res.verdict.name != "SHIP":
+                            result_payload["status"] = "FAIL"
+                    except Exception as exc:
+                        result_payload["layer2_error"] = str(exc)
+                        result_payload["status"] = "FAIL"
+
+            with _JOBS_LOCK:
+                if job.status == JOB_STATUS_RUNNING:
+                    job.status = JOB_STATUS_COMPLETED
+                    job.result = result_payload
+                    job.completed_at = _utc_now_iso()
+
+        except Exception as exc:
+            with _JOBS_LOCK:
+                if job.status == JOB_STATUS_RUNNING:
+                    job.status = JOB_STATUS_FAILED
+                    job.error = str(exc)
+                    job.completed_at = _utc_now_iso()
+    finally:
+        with _ACTIVE_WORKERS_LOCK:
+            _ACTIVE_WORKERS.pop(job.job_id, None)
 
 
 def submit_verification_job(
@@ -230,12 +236,14 @@ def submit_verification_job(
         daemon=True,
         name=f"verification-worker-{job.job_id}",
     )
+    with _ACTIVE_WORKERS_LOCK:
+        _ACTIVE_WORKERS[job.job_id] = thread
     thread.start()
     return job
 
 
 def shutdown_verification_engine(grace_period: float = 2.0) -> None:
-    """Gracefully terminate verification worker execution and mark active jobs failed."""
+    """Gracefully terminate verification worker execution, join active threads, and mark active jobs failed."""
     now = _utc_now_iso()
     with _JOBS_LOCK:
         for job in _JOBS.values():
@@ -244,11 +252,25 @@ def shutdown_verification_engine(grace_period: float = 2.0) -> None:
                 job.error = "server_shutdown: process terminated during verification"
                 job.completed_at = now
 
+    with _ACTIVE_WORKERS_LOCK:
+        threads = list(_ACTIVE_WORKERS.values())
+
+    if threads and grace_period > 0:
+        per_thread_timeout = grace_period / len(threads)
+        for t in threads:
+            if t.is_alive():
+                t.join(timeout=per_thread_timeout)
+
+    with _ACTIVE_WORKERS_LOCK:
+        _ACTIVE_WORKERS.clear()
+
 
 def persist_jobs_state(workspace: str) -> str:
-    """Save the current in-memory job registry to .soma/jobs_state.json."""
+    """Save the current in-memory job registry to .soma/jobs_state.json atomically."""
     import json
     from pathlib import Path
+    from soma_core.storage import atomic_write_text
+
     ws = Path(workspace).resolve()
     soma_dir = ws / ".soma"
     soma_dir.mkdir(parents=True, exist_ok=True)
@@ -257,7 +279,7 @@ def persist_jobs_state(workspace: str) -> str:
     with _JOBS_LOCK:
         data = {jid: j.to_dict() for jid, j in _JOBS.items()}
 
-    state_file.write_text(json.dumps(data, indent=2), encoding="utf-8")
+    atomic_write_text(state_file, json.dumps(data, indent=2))
     return str(state_file)
 
 
@@ -265,12 +287,14 @@ def restore_jobs_state(workspace: str) -> list[VerificationJob]:
     """Load previously persisted jobs from .soma/jobs_state.json into memory."""
     import json
     from pathlib import Path
+    from soma_core.storage import read_text_utf8
+
     state_file = Path(workspace).resolve() / ".soma" / "jobs_state.json"
     if not state_file.exists():
         return []
 
     try:
-        data = json.loads(state_file.read_text(encoding="utf-8"))
+        data = json.loads(read_text_utf8(state_file))
         restored = []
         with _JOBS_LOCK:
             for jid, d in data.items():
