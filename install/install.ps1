@@ -1,4 +1,4 @@
-# Soma - Native Windows PowerShell Installer
+﻿# Soma - Native Windows PowerShell Installer
 # Deploys steering rules and skills for Gemini, Kiro, and Copilot.
 # NOTE: Hooks require bash (Git Bash, WSL, or MSYS2) and cannot run via native PowerShell.
 #

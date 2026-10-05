@@ -154,7 +154,7 @@ class TestMathematicalInvariants:
         elif tp > 0 and fp == 0:
             assert snr is None  # RFC 8259 JSON-safe positive infinite
         elif tp == 0 and fp > 0:
-            assert snr == -float("inf")  # Pure noise / zero signal
+            assert snr == -99.0  # RFC 8259 JSON-safe pure noise / zero signal
         else:
             assert snr == 0.0
 
