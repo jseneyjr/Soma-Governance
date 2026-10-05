@@ -3,6 +3,7 @@ name: Publish to PyPI
 on:
   release:
     types: [published]
+  workflow_dispatch:
 
 # Least privilege: every job gets a read-only token unless it grants more below.
 permissions:
