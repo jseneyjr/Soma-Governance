@@ -129,10 +129,10 @@ get_diff_size() {
   local mode="${1:-all}"
   case "$mode" in
     --staged)
-      git diff --cached --stat 2>/dev/null | tail -1 | grep -oE '[0-9]+' | head -1 || echo "0"
+      git diff --cached --numstat 2>/dev/null | awk '{ins += $1; del += $2} END {print ins + del + 0}'
       ;;
     *)
-      git diff --stat 2>/dev/null | tail -1 | grep -oE '[0-9]+' | head -1 || echo "0"
+      { git diff --numstat 2>/dev/null; git diff --cached --numstat 2>/dev/null; } | awk '{ins += $1; del += $2} END {print ins + del + 0}'
       ;;
   esac
 }
@@ -246,9 +246,8 @@ main() {
     reasons="Test-only changes (${test_count} test file(s); test changes do not need Trident)"
   fi
 
-  # Rule 6: Single known-location fix → Breeze
-  if [ "$total_files" -eq 1 ] && [ "$high_count" -eq 0 ] && [ "$test_count" -eq 0 ]; then
-    protocol="breeze"
+  # Rule 6: Single known-location fix → Breeze (only if not already escalated)
+  if [ "$protocol" = "breeze" ] && [ "$total_files" -eq 1 ] && [ "$high_count" -eq 0 ] && [ "$test_count" -eq 0 ]; then
     reasons="Single file, non-infrastructure change"
   fi
 

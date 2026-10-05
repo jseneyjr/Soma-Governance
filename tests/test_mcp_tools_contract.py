@@ -63,7 +63,9 @@ class TestSomaListCells:
         ws = _setup_workspace(tmp_path)
         monkeypatch.chdir(ws)
         result = execute_tool('soma_list_cells', {})
-        assert isinstance(result, (list, dict))
+        assert isinstance(result, list)
+        assert len(result) >= 1
+        assert any(c.get('id') == 'test-cell' or c.get('_name') == 'test-cell' for c in result)
 
 
 class TestSomaCreateCell:
@@ -92,7 +94,8 @@ class TestSomaReportOutcome:
             'idempotency_key': 'test-report-1',
         })
         assert isinstance(result, dict)
-        assert result.get('status') in ('recorded', 'FAIL')
+        assert result.get('status') == 'recorded'
+        assert 'records' in result
 
     def test_invalid_outcome_returns_error(self, tmp_path, monkeypatch):
         ws = _setup_workspace(tmp_path)
@@ -101,6 +104,8 @@ class TestSomaReportOutcome:
             'outcome': 'invalid_value_xyz',
         })
         assert isinstance(result, dict)
+        assert result.get('status') == 'FAIL'
+        assert "Invalid 'outcome'" in result.get('error', '')
 
 
 class TestSomaProposeChange:
@@ -119,6 +124,9 @@ class TestSomaProposeChange:
             'proposed_content': 'def hello():\n    return "updated"\n',
         })
         assert isinstance(result, dict)
+        assert 'status' in result
+        assert 'result' in result
+        assert result['status'] in ('PASS', 'FAIL')
 
 
 class TestSomaAuditTools:
@@ -132,7 +140,8 @@ class TestSomaAuditTools:
             'proposed_content': 'import os\nos.system("ls")\n',
         })
         assert isinstance(result, dict)
-        assert 'status' in result or 'feedback' in result
+        assert result.get('status') in ('PASS', 'FAIL')
+        assert 'feedback' in result
 
     def test_audit_performance_returns_status(self, tmp_path, monkeypatch):
         ws = _setup_workspace(tmp_path)
@@ -142,7 +151,8 @@ class TestSomaAuditTools:
             'proposed_content': 'for i in range(10**9): pass\n',
         })
         assert isinstance(result, dict)
-        assert 'status' in result or 'feedback' in result
+        assert result.get('status') in ('PASS', 'FAIL')
+        assert 'feedback' in result
 
 
 class TestToolOutputSerializability:

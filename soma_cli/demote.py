@@ -12,6 +12,13 @@ from pathlib import Path
 DEMOTION_PATH = {"genome": "wall", "wall": "vacuole"}
 TYPE_TO_DIR = {"wall": "walls", "vacuole": "vacuoles"}
 
+# The 11 built-in core rules that must not be demoted
+PROTECTED_RULES = {
+    "providence", "cost-optimization", "subagent-delegation", "architectural-tenets",
+    "polyglot-standards", "feature-specs", "testing", "documentation",
+    "destructive-ops", "git-workflow", "desktop-automation"
+}
+
 
 def _find_cell(cells_dir: Path, genome_dir: Path, cell_id: str) -> tuple[Path | None, str | None]:
     """Find a cell file by ID across walls/, vacuoles/, and genome/."""
@@ -37,6 +44,18 @@ def _current_type_from_dir(dir_name: str) -> str:
 
 def _force_demote(project_root: Path, cell_id: str, dry_run: bool, use_json: bool) -> int:
     """Force-demote a specific cell, bypassing evidence thresholds."""
+    rule_base = cell_id[:-3] if cell_id.endswith(".md") else cell_id
+    if rule_base.startswith("rule-"):
+        rule_base = rule_base[5:]
+
+    if rule_base in PROTECTED_RULES or cell_id in PROTECTED_RULES:
+        msg = f"Cannot demote core rule: {cell_id}. Only promoted cells can be demoted."
+        if use_json:
+            print(json.dumps({"error": msg}))
+        else:
+            print(f"  ❌ {msg}")
+        return 1
+
     cells_dir = project_root / ".soma" / "cells"
     genome_dir = project_root / "genome"
     cell_path, current_dir = _find_cell(cells_dir, genome_dir, cell_id)

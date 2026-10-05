@@ -213,3 +213,22 @@ class TestDemoteCLI:
         assert exit_code == 1
         output = capsys.readouterr().out
         assert "--force requires --cell" in output
+
+    def test_force_demote_core_rule_rejected(self, tmp_path, capsys):
+        """--force --cell on a protected core rule must fail."""
+        from soma_cli.demote import run_demote
+
+        genome_dir = tmp_path / "genome"
+        genome_dir.mkdir(parents=True)
+        (genome_dir / "providence.md").write_text("# Providence\n")
+
+        for rule in ("providence", "rule-providence", "cost-optimization.md"):
+            args = argparse.Namespace(
+                force=True, cell=rule, dry_run=False, json=False,
+                _project_root=tmp_path,
+            )
+            exit_code = run_demote(args)
+            assert exit_code == 1
+            output = capsys.readouterr().out
+            assert "Cannot demote core rule" in output
+

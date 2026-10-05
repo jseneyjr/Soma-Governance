@@ -17,10 +17,21 @@ import os
 import sys
 from datetime import datetime
 
+_enzyme_dir = os.path.dirname(os.path.abspath(__file__))
+_project_root = os.path.dirname(_enzyme_dir)
+for p in (_enzyme_dir, _project_root):
+    if p not in sys.path:
+        sys.path.insert(0, p)
+
 from soma_core.evidence import aggregate_signals
-from soma_resolve import resolve_workspace
+try:
+    from enzymes.soma_resolve import resolve_workspace
+    from enzymes.cell_expiry import audit_expiry
+except ImportError:
+    from soma_resolve import resolve_workspace
+    from cell_expiry import audit_expiry
+
 from soma_sdk.cells import parse_cell_file
-from cell_expiry import audit_expiry
 
 
 def _load_fitness_evidence(workspace):

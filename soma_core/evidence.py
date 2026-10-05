@@ -41,7 +41,9 @@ def _credit_weight(record: dict) -> Optional[Decimal]:
         weight = Decimal(str(metadata["credit_weight"]))
     except (InvalidOperation, TypeError, ValueError):
         return None
-    return weight if weight.is_finite() else None
+    if not weight.is_finite() or weight < 0 or weight > 10:
+        return None
+    return weight
 
 
 def _plain_number(value: Decimal):

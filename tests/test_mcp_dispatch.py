@@ -67,7 +67,9 @@ def test_soma_request_receipt_issues_receipt():
     content = resp["result"]["content"][0]["text"]
     assert "receipt" in content
 
-def test_dispatch_flow_with_receipt(monkeypatch):
+def test_dispatch_flow_with_receipt(tmp_path, monkeypatch):
+    (tmp_path / ".soma" / "cells").mkdir(parents=True)
+    monkeypatch.setattr(server_module, "_canonical_workspace", str(tmp_path))
     # Issue receipt
     req1 = {
         "jsonrpc": "2.0",
@@ -76,9 +78,9 @@ def test_dispatch_flow_with_receipt(monkeypatch):
         "params": {
             "name": "soma_request_receipt",
             "arguments": {
-                "operation": "soma_report_outcome",
+                "operation": "soma_create_cell",
                 "arguments": {
-                    "outcome": "success"
+                    "description": "Add security check"
                 }
             }
         }
@@ -88,25 +90,25 @@ def test_dispatch_flow_with_receipt(monkeypatch):
     receipt_data = json.loads(resp1["result"]["content"][0]["text"])
     receipt_id = receipt_data["receipt"]
 
-    # Mock execute_tool to avoid actually running
-    monkeypatch.setattr(server_module, "execute_tool", lambda name, args: {"mock": "ok"})
-
-    # Call tool with receipt
+    # Call tool with receipt for real (without mocking execute_tool)
     req2 = {
         "jsonrpc": "2.0",
         "id": 5,
         "method": "tools/call",
         "params": {
-            "name": "soma_report_outcome",
+            "name": "soma_create_cell",
             "arguments": {
-                "outcome": "success",
+                "description": "Add security check",
                 "receipt": receipt_id
             }
         }
     }
     resp2 = handle_request(req2)
     assert "result" in resp2
-    assert not resp2["result"]["isError"]
+    assert not resp2["result"].get("isError")
+    tool_output = json.loads(resp2["result"]["content"][0]["text"])
+    assert "prompt" in tool_output
+    assert "instruction" in tool_output
 
 def test_invalid_receipt_is_rejected():
     req = {

@@ -20,6 +20,29 @@ SERVER_OWNED_KEYS = ("workspace", "receipt", "_sessionToken")
 # In-memory storage for receipts: receipt_id -> receipt_data
 _receipt_store: Dict[str, Dict[str, Any]] = {}
 _receipt_lock = threading.RLock()
+MAX_RECEIPTS = 1000
+DEFAULT_TTL_SECONDS = 3600.0  # 1 hour
+
+
+def _prune_expired_locked(now: float) -> None:
+    """Evict expired receipts and enforce MAX_RECEIPTS cap (caller must hold _receipt_lock)."""
+    expired = [
+        rid for rid, data in _receipt_store.items()
+        if data.get("expires_at") is not None and now > data["expires_at"]
+    ]
+    for rid in expired:
+        _receipt_store.pop(rid, None)
+
+    if len(_receipt_store) >= MAX_RECEIPTS:
+        # Evict oldest entries by creation time
+        sorted_by_age = sorted(
+            _receipt_store.items(),
+            key=lambda item: item[1].get("created_at", 0)
+        )
+        to_evict = len(_receipt_store) - MAX_RECEIPTS + 1
+        for rid, _ in sorted_by_age[:to_evict]:
+            _receipt_store.pop(rid, None)
+
 
 def _hash_args(args: Dict[str, Any]) -> str:
     """Consistently hash a dictionary of arguments."""
@@ -106,9 +129,11 @@ def issue_receipt(
         "args_hash": _hash_args(args),
         "file_digest": file_digest,
         "cell_digest": cell_digest,
-        "expires_at": (now + ttl_seconds) if ttl_seconds is not None else None,
+        "created_at": now,
+        "expires_at": (now + ttl_seconds) if ttl_seconds is not None else (now + DEFAULT_TTL_SECONDS),
     }
     with _receipt_lock:
+        _prune_expired_locked(now)
         _receipt_store[receipt_id] = data
     return receipt_id
 
@@ -126,6 +151,7 @@ def verify_receipt(
     Verify that a receipt is valid for the given parameters.
     """
     with _receipt_lock:
+        _prune_expired_locked(time.time())
         if receipt_id not in _receipt_store:
             return False
             

@@ -444,9 +444,9 @@ case "$PLATFORM" in
       else
         [ -L "$TARGET_RULES/$name" ] && rm -f "$TARGET_RULES/$name"
         backup_file "$TARGET_RULES/$name"
-        # Convert trigger syntax to Kiro inclusion syntax
-        sed -e 's/^trigger: always_on$/inclusion: always/' \
-            -e 's/^trigger: model_decision$/inclusion: manual/' \
+        # Convert trigger syntax to Kiro inclusion syntax (CRLF-safe)
+        sed -e 's/^trigger:[[:space:]]*always_on[[:space:]]*\r*$/inclusion: always/' \
+            -e 's/^trigger:[[:space:]]*model_decision[[:space:]]*\r*$/inclusion: manual/' \
             "$rule" > "$TARGET_RULES/$name"
         record_installed_file "$TARGET_RULES/$name"
         log_info "$name"

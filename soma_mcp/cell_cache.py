@@ -15,14 +15,18 @@ class CellCacheError(RuntimeError):
     def __init__(
         self,
         operation: str,
-        path: str,
-        message: str,
+        path: str = "",
+        message: str = "",
         cause: Optional[BaseException] = None,
     ) -> None:
         self.operation = operation
         self.path = path
+        self.message = message or operation
         self.cause = cause
-        super().__init__(f"cell cache {operation} failed for {path}: {message}")
+        if path or message:
+            super().__init__(f"cell cache {operation} failed for {path}: {message}")
+        else:
+            super().__init__(operation)
 
 
 class CellCache:
@@ -113,6 +117,7 @@ class CellCache:
         from soma_mcp.jit_engine import warn
 
         cells_dir = os.path.join(workspace, ".soma", "cells")
+        manifest_path = os.path.join(cells_dir, "manifest.json")
         try:
             from soma_mcp.integrity import (
                 load_manifest,
@@ -120,17 +125,41 @@ class CellCache:
                 load_key,
                 verify_signature,
             )
-            manifest = load_manifest(workspace)
-            if manifest is None:
-                return
-            for issue in verify_manifest(cells_dir, manifest):
-                warn(f"integrity: {issue['type']} — {issue['detail']}")
             key = load_key(workspace)
-            if key is not None and "signature" in manifest:
-                if verify_signature(manifest, key):
-                    warn("integrity: HMAC signature verified ✓")
-                else:
-                    raise CellCacheError("integrity: HMAC signature verification FAILED — manifest may be tampered")
+            manifest = load_manifest(workspace)
+            if key is None and manifest is None:
+                return
+            if key is not None and manifest is None:
+                raise CellCacheError(
+                    "integrity",
+                    manifest_path,
+                    "missing manifest.json while HMAC key is configured",
+                )
+            if manifest is not None:
+                issues = list(verify_manifest(cells_dir, manifest))
+                for issue in issues:
+                    warn(f"integrity: {issue['type']} — {issue['detail']}")
+                if key is not None:
+                    if issues:
+                        raise CellCacheError(
+                            "integrity",
+                            cells_dir,
+                            f"cell file integrity verification failed: {issues[0]['detail']}",
+                        )
+                    if "signature" not in manifest:
+                        raise CellCacheError(
+                            "integrity",
+                            manifest_path,
+                            "missing HMAC signature while HMAC key is configured",
+                        )
+                    if verify_signature(manifest, key):
+                        warn("integrity: HMAC signature verified ✓")
+                    else:
+                        raise CellCacheError(
+                            "integrity",
+                            manifest_path,
+                            "HMAC signature verification FAILED — manifest may be tampered",
+                        )
         except CellCacheError:
             raise
         except Exception as exc:

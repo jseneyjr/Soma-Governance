@@ -30,13 +30,17 @@ soma_py "${SCRIPT_DIR}/fitness_updater.py" "$TRANSCRIPT"
 
 # === Evidence enrichment: correlate rule compliance patterns ===
 # evidence_collector.py is a library — invoke via one-liner
-soma_py -c "
+soma_py - "$SCRIPT_DIR" "$TRANSCRIPT" << 'EOF'
 import sys, json, os
-sys.path.insert(0, '${SCRIPT_DIR}')
-from evidence_collector import check_compliance, build_observation, aggregate_evidence
 from pathlib import Path
 
-transcript = Path('$TRANSCRIPT')
+script_dir = sys.argv[1]
+transcript_path = sys.argv[2]
+sys.path.insert(0, script_dir)
+
+from evidence_collector import check_compliance, build_observation, aggregate_evidence
+
+transcript = Path(transcript_path)
 if not transcript.exists():
     sys.exit(0)
 
@@ -54,7 +58,7 @@ if observations:
     evidence_dir = os.path.join(os.getcwd(), '.soma', 'evidence')
     os.makedirs(evidence_dir, exist_ok=True)
     outfile = os.path.join(evidence_dir, 'compliance.jsonl')
-    with open(outfile, 'a') as f:
+    with open(outfile, 'a', encoding='utf-8') as f:
         f.write(json.dumps(summary) + '\n')
-"
+EOF
 

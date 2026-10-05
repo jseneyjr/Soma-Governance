@@ -1,6 +1,6 @@
 {
   "name": "soma-governance",
-  "version": "0.91.2",
+  "version": "0.92.3",
   "description": "Adaptive governance framework for AI coding assistants",
   "main": "index.js",
   "types": "index.d.ts",

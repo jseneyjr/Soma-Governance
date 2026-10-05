@@ -47,10 +47,16 @@ def format_snr(value):
 def decayed_fitness(raw_score, last_trigger_date, telomere_days=30):
     if last_trigger_date is None or raw_score is None:
         return raw_score
+    try:
+        t_days = float(telomere_days)
+    except (TypeError, ValueError):
+        t_days = 30.0
+    if t_days <= 0:
+        return raw_score
     now_utc = datetime.now(timezone.utc).replace(tzinfo=None)
     trigger_utc = last_trigger_date.replace(tzinfo=None) if getattr(last_trigger_date, 'tzinfo', None) else last_trigger_date
     days_since = max(0, (now_utc - trigger_utc).days)
-    decay_factor = 0.5 ** (days_since / telomere_days)
+    decay_factor = 0.5 ** (days_since / t_days)
     return round(raw_score * decay_factor, 4)
 
 def main():
@@ -168,7 +174,7 @@ def main():
         elif not is_unobserved and dec_score is not None:
             if dec_score > 0.7:
                 status = "SURVIVE"
-            elif 0.3 <= dec_score <= 0.7:
+            elif 0.15 <= dec_score <= 0.7:
                 status = "ADAPT"
             else:
                 status = "EXTINCT"

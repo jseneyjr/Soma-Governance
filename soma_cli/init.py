@@ -72,6 +72,8 @@ def detect_platform(project_root: Path) -> str:
         return "cursor"
     if (project_root / ".github" / "copilot").is_dir() or (project_root / ".github" / "copilot-instructions.md").is_file():
         return "copilot"
+    if (project_root / ".kiro").is_dir():
+        return "kiro"
 
     return "unknown"
 
@@ -102,7 +104,7 @@ def get_rules_dir(platform: str, home: Path | None = None,
     """Return the target rules directory for the given platform.
 
     Args:
-        platform: One of 'gemini', 'claude', 'cursor', 'copilot'.
+        platform: One of 'gemini', 'claude', 'cursor', 'copilot', 'kiro'.
         home: Home directory override (for testing).
         project_root: Project directory override (for copilot, which is project-relative).
 
@@ -124,6 +126,7 @@ def get_rules_dir(platform: str, home: Path | None = None,
         "claude": home / ".claude",
         "cursor": home / ".cursor" / "rules",
         "copilot": project_root / ".github" / "copilot",
+        "kiro": home / ".kiro" / "steering",
     }
     if platform not in dirs:
         raise ValueError(
@@ -481,7 +484,7 @@ def run_init(args: argparse.Namespace) -> int:
             platform = detect_platform(Path.home())
         if platform == "unknown":
             print("  ⚠️  Could not detect platform.")
-            print("     Use --platform to specify: gemini, claude, cursor, copilot")
+            print("     Use --platform to specify: gemini, claude, cursor, copilot, kiro")
             return 1
         print(f"  Detected platform: {platform}")
 
