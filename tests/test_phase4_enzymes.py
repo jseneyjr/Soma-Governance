@@ -141,7 +141,7 @@ def test_shell_wrapper_delegation(tmp_path, bash):
     env["SOMA_PYTHON"] = sys.executable
 
     proc = subprocess.run(
-        [bash, str(script_sh), "0.94.0", "--dry-run"],
+        [bash, str(script_sh), "9.9.9", "--dry-run"],
         cwd=str(REPO_ROOT),
         capture_output=True,
         text=True,
