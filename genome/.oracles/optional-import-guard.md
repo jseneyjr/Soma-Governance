@@ -69,7 +69,8 @@ and indented imports inside functions. Use AST-based detection:
 # This script checks for truly optional packages only.
 python3 -c "
 import ast, glob, os, sys
-STDLIB = set(getattr(sys, 'stdlib_module_names', set())) | set(sys.builtin_module_names)
+from immune_system.verification.import_guard import _get_stdlib_modules
+STDLIB = set(_get_stdlib_modules()) | set(sys.builtin_module_names)
 INTERNAL = {'soma_cli', 'soma_core', 'soma_mcp', 'soma_sdk', 'enzymes', 'immune_system', 'install'} | {os.path.splitext(os.path.basename(p))[0] for p in glob.glob('enzymes/*.py') + glob.glob('soma_core/*.py')}
 for f in glob.glob('enzymes/**/*.py', recursive=True) + \
          glob.glob('soma_core/**/*.py', recursive=True) + \

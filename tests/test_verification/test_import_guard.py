@@ -127,6 +127,27 @@ class TestStdlibClassification:
         from immune_system.verification.import_guard import is_stdlib
         assert is_stdlib("requests") is False
 
+    def test_msvcrt_is_stdlib(self):
+        from immune_system.verification.import_guard import is_stdlib
+        assert is_stdlib("msvcrt") is True
+
+    def test_future_is_stdlib(self):
+        from immune_system.verification.import_guard import is_stdlib
+        assert is_stdlib("__future__") is True
+
+    def test_python39_fallback_simulation(self, monkeypatch):
+        import sys
+        import immune_system.verification.import_guard as ig
+        monkeypatch.delattr(sys, "stdlib_module_names", raising=False)
+        monkeypatch.setattr(ig, "_STDLIB_MODULES", None)
+        modules = ig._get_stdlib_modules()
+        assert "os" in modules
+        assert "argparse" in modules
+        assert "json" in modules
+        assert "msvcrt" in modules
+        assert "__future__" in modules
+
+
 
 class TestDependencyCheck:
     """Contract: check() returns ToolEvidence with unguarded third-party imports."""

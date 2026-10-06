@@ -407,8 +407,9 @@ def test_entire_runtime_has_zero_third_party_imports():
     Only Python standard library modules and internal modules are permitted at runtime.
     Optional inference providers must be strictly guarded by try/except."""
     import ast
+    from immune_system.verification.import_guard import _get_stdlib_modules
 
-    stdlib = set(getattr(sys, "stdlib_module_names", set())) | set(sys.builtin_module_names)
+    stdlib = set(_get_stdlib_modules()) | set(sys.builtin_module_names)
     internal_prefixes = ("soma_", "enzymes", "immune_system", "install", "genome")
     enzyme_dir = os.path.join(REPO_ROOT, "enzymes")
     enzyme_modules = {
