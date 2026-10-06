@@ -137,6 +137,7 @@ def workspace_lock(
         return
 
     fd = None
+    acquired_os = False
     try:
         remaining_timeout = max(0.01, timeout_sec - (time.monotonic() - start_time))
         fd = os.open(str_path, os.O_CREAT | os.O_RDWR, 0o600)
@@ -152,7 +153,8 @@ def workspace_lock(
         held.pop(norm, None)
         if fd is not None:
             try:
-                _release_os_lock(fd)
+                if acquired_os:
+                    _release_os_lock(fd)
             finally:
                 os.close(fd)
         thread_lock.release()

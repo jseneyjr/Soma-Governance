@@ -31,13 +31,14 @@ def fsync_dir(directory: Path | str) -> None:
 def _replace_with_retry(
     src: str,
     dst: str,
-    max_retries: int = 5,
+    max_retries: int = 8,
     initial_delay: float = 0.01,
 ) -> None:
     """Replace destination with source, retrying on transient Windows sharing violations.
 
     On Windows, os.replace raises PermissionError with winerror 32 (ERROR_SHARING_VIOLATION)
     or 5 (ERROR_ACCESS_DENIED) when an indexer, antivirus, or reader holds the destination.
+    With 8 attempts and initial_delay=0.01s, backoff reaches ~2.55s total budget.
     """
     delay = initial_delay
     for attempt in range(max_retries):
@@ -54,7 +55,7 @@ def _replace_with_retry(
 def atomic_write_bytes(
     path: Path | str,
     data: bytes,
-    max_retries: int = 5,
+    max_retries: int = 8,
     initial_delay: float = 0.01,
 ) -> None:
     """Atomically write binary data to path via a temporary file in the same directory.
@@ -90,7 +91,7 @@ def atomic_write_text(
     path: Path | str,
     text: str,
     encoding: str = "utf-8",
-    max_retries: int = 5,
+    max_retries: int = 8,
     initial_delay: float = 0.01,
 ) -> None:
     """Atomically write string text to path."""
@@ -102,11 +103,36 @@ def atomic_write_text(
     )
 
 
+def atomic_write_file(
+    path: Path | str,
+    content: str | bytes,
+    encoding: str = "utf-8",
+    max_retries: int = 8,
+    initial_delay: float = 0.01,
+) -> None:
+    """Polymorphic atomic write supporting either text string or raw bytes."""
+    if isinstance(content, bytes):
+        atomic_write_bytes(
+            path=path,
+            data=content,
+            max_retries=max_retries,
+            initial_delay=initial_delay,
+        )
+    else:
+        atomic_write_text(
+            path=path,
+            text=str(content),
+            encoding=encoding,
+            max_retries=max_retries,
+            initial_delay=initial_delay,
+        )
+
+
 async def async_atomic_write_text(
     path: Path | str,
     text: str,
     encoding: str = "utf-8",
-    max_retries: int = 5,
+    max_retries: int = 8,
     initial_delay: float = 0.01,
 ) -> None:
     """Asynchronously and atomically write string text to path off the main event loop."""
@@ -129,6 +155,7 @@ def read_text_utf8(path: Path | str) -> str:
 __all__ = [
     "async_atomic_write_text",
     "atomic_write_bytes",
+    "atomic_write_file",
     "atomic_write_text",
     "fsync_dir",
     "read_text_utf8",

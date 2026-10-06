@@ -83,3 +83,25 @@ class TestWorkspaceLock:
             with workspace_lock(tmp_path, "cells", timeout_sec=1.0) as lock2:
                 assert lock1 == lock2
 
+    def test_unacquired_lock_release_not_called_on_timeout(self, tmp_path: Path, monkeypatch):
+        """If OS lock acquisition fails, _release_os_lock must not be called (guards Windows CRT)."""
+        import soma_core.locking as locking_mod
+
+        release_called = False
+
+        def fake_acquire(fd, timeout):
+            return False
+
+        def fake_release(fd):
+            nonlocal release_called
+            release_called = True
+
+        monkeypatch.setattr(locking_mod, "_acquire_os_lock", fake_acquire)
+        monkeypatch.setattr(locking_mod, "_release_os_lock", fake_release)
+
+        with pytest.raises(LockTimeoutError):
+            with workspace_lock(tmp_path, "res_fail", timeout_sec=0.05):
+                pass
+
+        assert not release_called
+

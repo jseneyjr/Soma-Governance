@@ -88,3 +88,38 @@ def test_read_text_utf8_strips_bom(tmp_path: Path):
     content = read_text_utf8(target)
     assert not content.startswith("\ufeff")
     assert content.startswith("---")
+
+
+def test_atomic_write_file_polymorphic(tmp_path: Path):
+    from soma_core.storage import atomic_write_file
+
+    # Text write
+    txt_file = tmp_path / "poly_text.txt"
+    atomic_write_file(txt_file, "polymorphic text string")
+    assert txt_file.read_text(encoding="utf-8") == "polymorphic text string"
+
+    # Bytes write
+    bin_file = tmp_path / "poly_bin.dat"
+    atomic_write_file(bin_file, b"polymorphic byte buffer")
+    assert bin_file.read_bytes() == b"polymorphic byte buffer"
+
+
+def test_atomic_write_retries_up_to_eight_times(tmp_path: Path):
+    from soma_core.storage import atomic_write_file
+
+    target = tmp_path / "retry8.txt"
+    attempts = 0
+    real_replace = os.replace
+
+    def flaky_replace_seven_times(src, dst):
+        nonlocal attempts
+        attempts += 1
+        if attempts < 8:
+            raise PermissionError("[WinError 32] Sharing violation")
+        return real_replace(src, dst)
+
+    with patch("os.replace", side_effect=flaky_replace_seven_times):
+        atomic_write_file(target, "success on 8th attempt", initial_delay=0.0001)
+
+    assert attempts == 8
+    assert target.read_text(encoding="utf-8") == "success on 8th attempt"
