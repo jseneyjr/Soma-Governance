@@ -51,6 +51,7 @@ develop ──→ release/v0.XX ──→ PR to main ──→ tag v0.XX.0 ─�
 | Phase 5.7 | v0.97.0 ✅ | The Sunset Phase: Legacy Enzymes Purge, Native Platform Adapters & Dynamic Colocality |
 | Phase 5.8 | v0.97.1 ✅ | Structured Command Safety & Pattern De-bloating |
 | Phase 5.9 | v0.98.0 ✅ | Test Suite Rationalization & Deadwood Pruning |
+| Phase 5.10 | v0.99.0 ✅ | Core/CLI Decoupling & Legacy CLI Purge |
 
 ## Pre-Release Checklist
 

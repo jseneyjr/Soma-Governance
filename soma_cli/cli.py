@@ -148,6 +148,8 @@ def _build_parser() -> argparse.ArgumentParser:
                            help="Force promotion of --cell, bypassing evidence thresholds")
     p_promote.add_argument("--cell", type=str, default=None,
                            help="Target cell ID for --force promotion")
+    p_promote.add_argument("--tier-check", action="store_true",
+                           help="Evaluate enforcement tier transitions and apply decay")
 
     # soma demote
     p_demote = sub.add_parser("demote", parents=[common_parser], help="Evaluate cell demotion candidates")

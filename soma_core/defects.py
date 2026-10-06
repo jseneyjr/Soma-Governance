@@ -260,48 +260,6 @@ def run_diagnostic(workspace: str) -> dict:
     }
 
 
-def cli_diagnose_hot_zones(argv: Optional[List[str]] = None) -> int:
-    parser = argparse.ArgumentParser(description="Diagnose Hot Zones")
-    parser.add_argument("--workspace", default=None, help="Workspace root")
-    args = parser.parse_args(argv if argv is not None else sys.argv[1:])
-
-    if args.workspace:
-        workspace = args.workspace
-    elif os.path.exists(os.path.join(".", "docs", "project", "BUG_REGISTRY.json")):
-        workspace = "."
-    else:
-        workspace = resolve_workspace()
-
-    result = run_diagnostic(workspace)
-
-    if "error" in result:
-        print(f"ERROR: {result['error']}")
-        return 0
-
-    print(f"=== Hot Zone Diagnostic ({result['total_bugs']} bugs) ===\n")
-    print("Proximity to activation:")
-    for line in result["proximity"]:
-        print(line)
-
-    print(
-        f"\nActive hot zones: "
-        f"{len(result['active_files'])} files, "
-        f"{len(result['active_patterns'])} patterns"
-    )
-
-    if result["sanity"]:
-        print("\nThreshold health:")
-        for line in result["sanity"]:
-            print(f"  {line}")
-
-    cfg = result["config"]
-    print(
-        f"\nConfig: file_heat≥{cfg['file_heat_threshold']}, "
-        f"pattern_heat≥{cfg['pattern_heat_threshold']}, "
-        f"max_file_boost={cfg['max_file_boost']}, "
-        f"max_pattern_boost={cfg['max_pattern_boost']}"
-    )
-    return 0
 
 
 # ── Escaped Defects Tracking ──────────────────────────────────────────────
@@ -511,90 +469,6 @@ def generate_report(cells: list[dict], workspace: str) -> tuple[list[dict], int]
     return report, total_escapes
 
 
-def cli_cell_escaped_defects(argv: Optional[List[str]] = None) -> int:
-    parser = argparse.ArgumentParser(description="Track defects that escaped governance coverage")
-    parser.add_argument("--event", choices=["crash", "test_failure", "build_failure", "rework", "regression"])
-    parser.add_argument("--files", nargs="+", help="Files involved in the defect")
-    parser.add_argument("--severity", choices=["low", "medium", "high", "critical"], default="medium")
-    parser.add_argument("--scan-git", action="store_true", help="Auto-detect escaped defects from git")
-    parser.add_argument("--since", default="7 days ago", help="Git history lookback")
-    parser.add_argument("--report", action="store_true", help="Generate escaped defects report")
-    parser.add_argument("--json", action="store_true", help="JSON output")
-
-    args = parser.parse_args(argv if argv is not None else sys.argv[1:])
-
-    workspace = resolve_workspace()
-    cells_dir = os.path.join(workspace, ".soma", "cells")
-    cells = load_cells(cells_dir)
-
-    if not cells:
-        print("No cells found.")
-        return 0
-
-    if args.report:
-        report, total = generate_report(cells, workspace)
-        if args.json:
-            print(json.dumps(report, indent=2))
-        else:
-            print(f"\n🛡️  Escaped Defects Report ({total} total escaped defects)\n")
-            print(f"{'Cell':<25} {'Type':<10} {'Tier':<12} {'TP':>4} {'FP':>4} {'Esc':>4} {'Prevention':>10} {'Enhanced':>10}")
-            print("─" * 90)
-            for r in sorted(report, key=lambda x: x["enhanced_fitness"], reverse=True):
-                print(f"{r['cell']:<25} {r['type']:<10} {r['enforcement']:<12} {r['tp']:>4} {r['fp']:>4} {r['escaped']:>4} {r['defect_prevention_rate']:>9.1%} {r['enhanced_fitness']:>10.4f}")
-        return 0
-
-    if args.scan_git:
-        defects = scan_git_for_defects(workspace, args.since)
-        if not defects:
-            print(f"No escaped defects found in git history since \"{args.since}\".")
-            return 0
-
-        total_recorded = 0
-        for defect in defects:
-            covering = find_covering_cells(cells, defect["files"])
-            for cov in covering:
-                record_escaped_defect(
-                    cov["cell"], "git_" + defect["severity"],
-                    defect["files"], defect["severity"], workspace
-                )
-                total_recorded += 1
-                if not args.json:
-                    print(f"⚠️  {defect['sha']} \"{defect['message'][:60]}\"")
-                    print(f"   Escaped cell: {cov['cell']['_name']} (covers {len(cov['matched_files'])} of {len(defect['files'])} files)")
-
-        if args.json:
-            print(json.dumps({"scanned_commits": len(defects), "escaped_recorded": total_recorded}))
-        else:
-            print(f"\nRecorded {total_recorded} escaped defects from {len(defects)} commits.")
-        return 0
-
-    if args.event and args.files:
-        covering = find_covering_cells(cells, args.files)
-        if not covering:
-            if not args.json:
-                print(f"No cells cover the affected files: {', '.join(args.files)}")
-                print("This is a governance blind spot — consider creating cells for these paths.")
-            return 0
-
-        recorded = []
-        for cov in covering:
-            entry = record_escaped_defect(
-                cov["cell"], args.event, args.files, args.severity, workspace
-            )
-            recorded.append(entry)
-            if not args.json:
-                escaped_rate = update_cell_escaped_rate(cov["cell"], workspace)
-                print(f"⚠️  Escaped defect recorded against: {cov['cell']['_name']}")
-                print(f"   Event: {args.event} | Severity: {args.severity}")
-                print(f"   Escaped defect rate: {escaped_rate:.1%}")
-                print(f"   Files: {', '.join(cov['matched_files'])}")
-
-        if args.json:
-            print(json.dumps(recorded, indent=2))
-        return 0
-
-    parser.print_help()
-    return 0
 
 
 # ── Cell Expiry Enforcement ────────────────────────────────────────────────
@@ -726,45 +600,6 @@ def prune_expired(workspace: str, audit_results: list[dict]) -> int:
     return pruned
 
 
-def cli_cell_expiry(argv: Optional[List[str]] = None) -> int:
-    parser = argparse.ArgumentParser(description="Audit and enforce cell expiry limits")
-    parser.add_argument("workspace", nargs="?", default=".", help="Project workspace root")
-    parser.add_argument("--prune", action="store_true", help="Add expired_at marker to expired cells")
-    parser.add_argument("--json", action="store_true", help="Output results as JSON")
-    parser.add_argument("--session-count", type=int, default=None, help="Number of sessions elapsed")
-
-    args = parser.parse_args(argv if argv is not None else sys.argv[1:])
-
-    workspace = os.path.abspath(args.workspace) if args.workspace != "." else resolve_workspace()
-    results = audit_expiry(workspace, session_count=args.session_count)
-
-    if args.json:
-        print(json.dumps(results, indent=2))
-    else:
-        expired = [r for r in results if r["status"] in ("EXPIRED", "EXPIRY_WARNING")]
-        ok = [r for r in results if r["status"] == "OK"]
-        already = [r for r in results if r["status"] == "ALREADY_EXPIRED"]
-
-        print(f"Cells audited: {len(results)}")
-        print(f"  OK: {len(ok)}")
-        print(f"  Expired: {len(expired)}")
-        print(f"  Already pruned: {len(already)}")
-
-        if expired:
-            print("\nExpired cells:")
-            for r in expired:
-                icon = "⚠️" if r["status"] == "EXPIRY_WARNING" else "❌"
-                print(f"  {icon} {r['cell_id']}: {r['details']} ({r['reason']})")
-
-    if args.prune:
-        pruned = prune_expired(workspace, results)
-        print(f"\nPruned {pruned} cell(s)")
-        if pruned > 0:
-            return 0
-
-    return 0 if not any(r["status"] == "EXPIRED" for r in results) else 1
-
-
 __all__ = [
     "BoostConfig",
     "HotZoneReport",
@@ -776,7 +611,6 @@ __all__ = [
     "proximity_alerts",
     "threshold_sanity",
     "run_diagnostic",
-    "cli_diagnose_hot_zones",
     "match_glob",
     "load_cells",
     "find_covering_cells",
@@ -785,8 +619,6 @@ __all__ = [
     "compute_enhanced_fitness",
     "scan_git_for_defects",
     "generate_report",
-    "cli_cell_escaped_defects",
     "audit_expiry",
     "prune_expired",
-    "cli_cell_expiry",
 ]

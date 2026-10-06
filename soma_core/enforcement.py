@@ -530,84 +530,6 @@ def update_cell_enforcement_artifact(cell: Dict[str, Any], artifact_path: str, w
         f.write(new_content)
 
 
-def cli_cell_enforce(argv: Optional[List[str]] = None, workspace: Optional[str] = None) -> int:
-    parser = argparse.ArgumentParser(description="Auto-generate enforcement artifacts for cells")
-    parser.add_argument("--cell", default=None, help="Generate for specific cell")
-    parser.add_argument("--dry-run", action="store_true", help="Preview without writing")
-    parser.add_argument("--list", action="store_true", help="List enforcement artifacts")
-    parser.add_argument("--json", action="store_true", help="Output JSON")
-
-    args = parser.parse_args(argv if argv is not None else sys.argv[1:])
-    ws = workspace or resolve_workspace()
-    cells_dir = os.path.join(ws, ".soma", "cells")
-    cells = load_cells_for_enforcement(cells_dir)
-
-    if not cells:
-        print("No cells found.")
-        return 0
-
-    artifacts_dir = os.path.join(ws, ".soma", "enforcement")
-
-    if args.list:
-        if not os.path.exists(artifacts_dir):
-            print("No enforcement artifacts generated yet.")
-            return 0
-        artifacts = [{"file": f, "path": os.path.join(artifacts_dir, f)} for f in os.listdir(artifacts_dir)]
-        if args.json:
-            print(json.dumps(artifacts, indent=2))
-        else:
-            print(f"Enforcement Artifacts ({len(artifacts)}):")
-            for a in artifacts:
-                print(f"  {a['file']}")
-        return 0
-
-    target_cells = []
-    for cell in cells:
-        enforcement = cell.get("enforcement", "advisory")
-        if enforcement in ("mechanical", "gate"):
-            target = os.path.splitext(args.cell)[0] if args.cell else None
-            if target and cell["_name"] != target:
-                continue
-            existing = cell.get("enforcement_artifact", "")
-            if existing and os.path.exists(os.path.join(ws, existing)):
-                continue
-            target_cells.append(cell)
-
-    if not target_cells:
-        print("No cells pending enforcement artifact generation.")
-        return 0
-
-    os.makedirs(artifacts_dir, exist_ok=True)
-    generated = []
-
-    for cell in target_cells:
-        enforcement = cell.get("enforcement", "advisory")
-        name = cell["_name"]
-        if enforcement == "mechanical":
-            content = generate_precommit_check(cell, ws)
-            filename = f"check-{name}.sh"
-        elif enforcement == "gate":
-            content = generate_gate_assertion(cell, ws)
-            filename = f"gate-{name}.py"
-        else:
-            continue
-
-        artifact_path = os.path.join(artifacts_dir, filename)
-        if args.dry_run:
-            generated.append({"cell": name, "artifact": filename, "tier": enforcement})
-            continue
-
-        with open(artifact_path, "w", encoding="utf-8") as f:
-            f.write(content)
-        os.chmod(artifact_path, 0o755)
-        update_cell_enforcement_artifact(cell, artifact_path, ws)
-        generated.append({"cell": name, "artifact": filename, "tier": enforcement})
-        print(f"Generated: {filename} ({enforcement} enforcement for {name})")
-
-    if args.json:
-        print(json.dumps(generated, indent=2))
-    return 0
-
 
 # ── CI Outcome Reporter ───────────────────────────────────────────────────
 
@@ -864,7 +786,6 @@ __all__ = [
     "generate_precommit_check",
     "generate_gate_assertion",
     "update_cell_enforcement_artifact",
-    "cli_cell_enforce",
     "generate_ci_report",
     "_match_cells",
     "cli_ci_outcome_reporter",

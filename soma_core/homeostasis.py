@@ -171,19 +171,6 @@ def phase3_dream_compression(cells: list[dict], session_outcomes: list[dict], wo
     return dream_path
 
 
-def cli_soma_sleep(argv: Optional[List[str]] = None) -> int:
-    workspace = resolve_workspace()
-    print(f"🧬 Soma Sleep Engine starting. Workspace: {workspace}")
-    cells = load_cells_for_sleep(workspace)
-    session_outcomes = load_session_outcomes(workspace)
-    print(f"   Loaded {len(cells)} cells. {len(session_outcomes)} session outcomes found.")
-
-    cells = phase1_experience_replay(cells, session_outcomes)
-    cells = phase2_structural_pruning(cells, session_outcomes)
-    dream_path = phase3_dream_compression(cells, session_outcomes, workspace)
-
-    print(f"\n✅ Sleep complete. Dream Log: {dream_path}")
-    return 0
 
 
 # ── Signal Coherence Layer ─────────────────────────────────────────────────
@@ -282,43 +269,6 @@ def check_coherence(signal: CoherenceSignal) -> CoherenceResult:
     )
 
 
-def cli_soma_coherence(argv: Optional[List[str]] = None) -> int:
-    parser = argparse.ArgumentParser(description="Soma Signal Coherence Layer — The Integrity Engine")
-    parser.add_argument("--ttc-approved", type=str, default="true", help="TTC Verifier result: true/false")
-    parser.add_argument("--outcome-delta", type=float, default=0.0, help="Fitness delta (-1.0 to +1.0)")
-    parser.add_argument("--stress", type=int, default=0, help="Consecutive failures (0-10)")
-    parser.add_argument("--interoception", type=float, default=0.1, help="Internal state (0.0-1.0)")
-    parser.add_argument("--prediction-match", type=float, default=0.9, help="Prediction match (0.0-1.0)")
-    parser.add_argument("--changes", type=int, default=3, help="Files changed")
-
-    args = parser.parse_args(argv if argv is not None else sys.argv[1:])
-
-    signal = CoherenceSignal(
-        ttc_approved=args.ttc_approved.lower() == "true",
-        outcome_delta=args.outcome_delta,
-        stress_level=args.stress,
-        interoception_score=args.interoception,
-        prediction_match=args.prediction_match,
-        change_magnitude=args.changes,
-    )
-
-    result = check_coherence(signal)
-
-    print(f"\n🧬 Signal Coherence Layer")
-    print(f"   Incoherence Score: {result.score} → {result.verdict}")
-
-    if result.flags:
-        print(f"\n   ⚡ Incoherence Flags:")
-        for flag in result.flags:
-            print(f"   • {flag}")
-
-    print(f"\n{result.message}")
-
-    if result.verdict == "INCOHERENT":
-        return 2
-    elif result.verdict == "SUSPICIOUS":
-        return 1
-    return 0
 
 
 # ── Soma Interoception Engine ──────────────────────────────────────────────
@@ -395,32 +345,6 @@ def calculate_internal_state(
     }
 
 
-def cli_soma_interoception(argv: Optional[List[str]] = None) -> int:
-    parser = argparse.ArgumentParser(description="Soma Interoception Engine")
-    parser.add_argument("--tokens", type=int, default=0, help="Estimated current token count")
-    parser.add_argument("--budget", type=int, default=100000, help="Total token budget")
-    parser.add_argument("--files", type=int, default=0, help="Files touched this session")
-    parser.add_argument("--depth", type=int, default=0, help="Dependency depth (0-10)")
-    parser.add_argument("--turns-since-grounding", type=int, default=0, help="Turns since grounding probe")
-
-    args = parser.parse_args(argv if argv is not None else sys.argv[1:])
-
-    result = calculate_internal_state(
-        token_count=args.tokens,
-        token_budget=args.budget,
-        files_touched=args.files,
-        dependency_depth=args.depth,
-        turns_since_grounding=args.turns_since_grounding,
-    )
-
-    icon = {"CLEAR": "✅", "CAUTION": "⚠️", "CRITICAL": "🛑"}[result["status"]]
-    print(f"\n🧬 Interoception Engine")
-    print(f"   Internal State Score: {result['score']} → {icon} {result['status']}")
-    print(f"   Signals: {result['signals']}")
-    print(f"\n{result['message']}")
-    return 0
-
-
 # ── Resilience Engine ──────────────────────────────────────────────────────
 
 STRESS_THRESHOLD = 3
@@ -473,28 +397,6 @@ Pause your current task. Before taking any further action, you must explicitly s
     }
 
 
-def cli_resilience_engine(argv: Optional[List[str]] = None) -> int:
-    parser = argparse.ArgumentParser(description="Soma Resilience Engine")
-    parser.add_argument("--failures", type=int, default=0, help="Consecutive failures")
-    parser.add_argument("--turns", type=int, default=0, help="Turns elapsed")
-
-    args = parser.parse_args(argv if argv is not None else sys.argv[1:])
-
-    print(f"🧬 Resilience Engine reading State: Failures={args.failures}, Turns={args.turns}")
-    response = calculate_stress_response(args.failures, args.turns)
-
-    if response["status"] == "NOMINAL":
-        print(f"Status: {response['status']}. Agent is executing normally. No intervention required.")
-    else:
-        print(f"\n⚠️  Status: {response['status']} ⚠️")
-        if response["status"] == "CRITICAL_STRESS":
-            print("Intervening to prevent hallucination spiral...\n")
-        else:
-            print("Intervening to prevent context drift...\n")
-        print(response["payload"])
-    return 0
-
-
 __all__ = [
     "PRUNE_SCORE_THRESHOLD",
     "RECENCY_WEIGHT",
@@ -503,19 +405,15 @@ __all__ = [
     "phase1_experience_replay",
     "phase2_structural_pruning",
     "phase3_dream_compression",
-    "cli_soma_sleep",
     "CoherenceSignal",
     "CoherenceResult",
     "check_coherence",
-    "cli_soma_coherence",
     "CAUTION_THRESHOLD",
     "CRITICAL_THRESHOLD",
     "normalize",
     "calculate_internal_state",
-    "cli_soma_interoception",
     "STRESS_THRESHOLD",
     "DRIFT_THRESHOLD",
     "WEIGHTS",
     "calculate_stress_response",
-    "cli_resilience_engine",
 ]

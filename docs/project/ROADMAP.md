@@ -196,6 +196,12 @@ Adversarially audited and rejected proposed `RegexBuilder` class in favor of pur
 **Status**: ✅ Shipped (v0.98.0)  
 Consolidated 83 individual 1:1 mirrored stub files into a single high-speed parameterized test suite (`tests/test_module_contracts.py`). Purged 11 obsolete test suites (2,647 LOC) guarding deleted v0.97.0 assets (`enzymes/`, `install.sh`, etc.), eliminated 140 dead skipped tests in pytest runs, preserved historical bug registry traceability via tombstone regressions, and added dedicated unit tests for `soma_sdk.analysis`.
 
+## Phase 5.10 — v0.99.0 ✅ Shipped
+
+### Core/CLI Decoupling & Legacy CLI Purge
+**Status**: ✅ Shipped (v0.99.0)  
+Decoupled command-line execution and argument parsing from `soma_core/`. Extracted pure `evaluate_cell_tiers()` into `soma_core.lifecycle` and wired `soma promote --tier-check`. Purged 29 dead `cli_*` functions across `soma_core/` (`lifecycle.py`, `homeostasis.py`, `defects.py`, `insights.py`, `sync.py`, `telemetry.py`, `arbitration.py`, `enforcement.py`). Deleted legacy pass-through `soma_cli/handlers/` and its test suite. Net code reduction of ~1,660 lines.
+
 ## Research
 
 ### Antifragile Scaling

@@ -90,6 +90,21 @@ def run_promote(args: argparse.Namespace) -> int:
     force = getattr(args, "force", False)
     cell_id = getattr(args, "cell", None)
 
+    if getattr(args, "tier_check", False):
+        from soma_core.lifecycle import evaluate_cell_tiers
+        res = evaluate_cell_tiers(project_root, execute=not dry_run)
+        if use_json:
+            print(json.dumps(res, indent=2))
+        else:
+            changes = res.get("changes", [])
+            print(f"  🧬 Evaluated {res.get('evaluated', 0)} cells across enforcement tiers.")
+            if not changes:
+                print("  No tier changes required.")
+            else:
+                for c in changes:
+                    print(f"    {c['cell']}: {c['old_tier']} → {c['new_tier']} ({c['reason']})")
+        return 0
+
     if getattr(args, 'cell', None) and not getattr(args, 'force', False):
         print("Warning: --cell requires --force; running normal evaluation", file=sys.stderr)
 
