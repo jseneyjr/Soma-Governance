@@ -9,7 +9,7 @@ prediction: Will fire when a commit fixes a bug (changes implementation code) bu
   does not add or modify a test that exercises the fixed behavior
 falsification: 0 findings in 20 sessions → prune
 target_paths:
-- enzymes/*.py
+- soma_core/*.py
 - soma_sdk/*.py
 - soma_cli/*.py
 - soma_mcp/*.py
