@@ -9,10 +9,8 @@ prediction: Will catch orphaned references to 'prism', 'steering', 'rules/', 'sk
   'scripts/' after rename operations
 falsification: 0 stale references found in 5 sessions → prune
 target_paths:
-- enzymes/*.py
-- enzymes/*.sh
-- install/*.sh
-- install/*.ps1
+- soma_core/*.py
+- soma_cli/*.py
 - soma_mcp/*.py
 - soma_sdk/*.py
 - Makefile

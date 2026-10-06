@@ -10,9 +10,9 @@ hypothesis: Hardcoded platform paths (e.g. ~/.gemini, ~/.kiro) in scripts break 
 prediction: Will flag hardcoded paths where dynamic SOMA_PLATFORM logic is required
 falsification: 0 findings in 10 sessions → prune
 target_paths:
-- enzymes/*.sh
-- enzymes/*.py
-- install/*.sh
+- soma_cli/platforms/*.py
+- soma_cli/*.py
+- soma_core/*.py
 expiry_sessions: 10
 expiry_days: 30
 created: '2026-09-28'
