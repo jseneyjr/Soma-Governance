@@ -190,6 +190,12 @@ Purged all 75 legacy enzyme scripts and 4,277 lines of shell/PowerShell installe
 **Status**: ✅ Shipped (v0.97.1)  
 Adversarially audited and rejected proposed `RegexBuilder` class in favor of pure-stdlib `CommandAnalyzer` (`soma_core.command_safety`, ADR-014). Eliminated 123 lines of fragile, unmaintainable shell regexes in `soma_cli/hooks.py` while providing lexical tokenization, wrapper unwrapping (`sudo`, `env`, `nice`, `time`, `nohup`), quote-aware subshell and pipeline extraction, and bounded recursion depth clamps.
 
+## Phase 5.9 — v0.98.0 ✅ Shipped
+
+### Test Suite Rationalization & Deadwood Pruning
+**Status**: ✅ Shipped (v0.98.0)  
+Consolidated 83 individual 1:1 mirrored stub files into a single high-speed parameterized test suite (`tests/test_module_contracts.py`). Purged 11 obsolete test suites (2,647 LOC) guarding deleted v0.97.0 assets (`enzymes/`, `install.sh`, etc.), eliminated 140 dead skipped tests in pytest runs, preserved historical bug registry traceability via tombstone regressions, and added dedicated unit tests for `soma_sdk.analysis`.
+
 ## Research
 
 ### Antifragile Scaling

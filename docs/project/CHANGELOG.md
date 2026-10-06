@@ -3,6 +3,31 @@
 All notable changes to Soma are documented here.
 This project uses [Semantic Versioning](https://semver.org/).
 
+## [0.98.0] — 2026-10-06 — "Test Suite Rationalization & Deadwood Pruning"
+
+### Removed (Bloat Elimination)
+- **Purged 83 Mirrored Contract Test Stubs**:
+  - Eliminated 83 individual 1:1 mirrored stub files across `tests/soma_core/`, `tests/soma_cli/`, `tests/soma_mcp/`, `tests/soma_sdk/`, and `tests/immune_system/`.
+  - Replaced with a single dynamic, parameterized test suite in `tests/test_module_contracts.py` that verifies every module in the repository imports cleanly and exports valid symbols.
+- **Purged 11 Obsolete Test Suites Guarding Deleted v0.97.0 Assets**:
+  - Removed 2,647 lines of dead test code that executed zero passing tests and 100% skipped tests for purged `enzymes/` and shell scripts (`test_uninstall_confinement.py`, `test_python_resolution.py`, `test_install_lifecycle.py`, `test_shell_isolation_behavioral.py`, `test_enzyme_console_encoding.py`, `test_tournament_integration.py`, `test_cell_deps_behavioral.py`, `test_installer_security_hardening.py`, `test_home_isolation.py`, `test_cell_signal.py`, `test_immune_sweep.py`).
+  - Net test file reduction: 94 files removed; overall codebase reduced by 3,300+ lines.
+  - Eliminated 140 dead skipped tests in pytest runs.
+
+### Added
+- **Consolidated Module Contract Suite (`tests/test_module_contracts.py`)**:
+  - Parameterized clean-import verification across all 84 repository modules in 0.15s.
+- **Dedicated SDK Analysis Unit Tests (`tests/test_sdk_analysis.py`)**:
+  - Added fast, deterministic unit test coverage for `soma_sdk.analysis` (`shannon_diversity`, `letter_grade`, `specificity_penalty`, `antifragile_bonus`).
+- **Legacy Purged Regression Tombstones (`tests/test_legacy_purged_regressions.py`)**:
+  - Preserved auditability and Invariant 6 (`test_mulch_invariants.py`) for historical `BUG_REGISTRY.json` items while asserting purged scripts remain absent.
+
+### Changed
+- **Relocated Command Safety Tests**:
+  - Moved rich behavioral test suite from `tests/soma_core/test_command_safety.py` to canonical `tests/test_command_safety.py`, keeping all 101 tests intact.
+- **Main Entrypoint Guard**:
+  - Guarded `soma_cli/__main__.py` with `if __name__ == '__main__':` to prevent unintended top-level execution on programmatic import.
+
 ## [0.97.1] — 2026-10-06 — "Structured Command Safety & Pattern De-bloating"
 
 ### Added
