@@ -79,6 +79,7 @@ GIT_GLOBAL_FLAGS_WITH_ARG = frozenset({
 })
 
 ENV_VAR_RE = re.compile(r"^[a-zA-Z_][a-zA-Z0-9_]*=")
+WIN_DRIVE_RE = re.compile(r'([a-zA-Z]:)\\([\s*?$"]|$)')
 RM_DANGEROUS_TARGETS = frozenset({"/", "~", "/home", "$home", ".", "..", "*"})
 GLOB_CHARS = frozenset({"*", "?", "[", "]"})
 
@@ -285,7 +286,8 @@ def tokenize_command(cmd: str) -> list[str]:
     """Tokenize command handling multiline, punctuation delimiters and escapes."""
     normalized = decode_ansi_c_quotes(cmd)
     # Pre-normalize Windows drive backslashes so posix lexer does not treat C:\ as escape
-    normalized = re.sub(r'([a-zA-Z]:)\\([\s*?$"]|$)', r'\1/\2', normalized)
+    if ":\\" in normalized:
+        normalized = WIN_DRIVE_RE.sub(r'\1/\2', normalized)
     lex = shlex.shlex(normalized, posix=True, punctuation_chars="|;&\n\r")
     lex.whitespace_split = True
     lex.commenters = ""
@@ -353,7 +355,7 @@ def unwrap_command_stage(tokens: list[str]) -> tuple[UnwrappedCommand | None, st
             continue
 
         # 2. Leading environment variables (e.g. FOO=bar cmd)
-        if ENV_VAR_RE.match(tok):
+        if "=" in tok and ENV_VAR_RE.match(tok):
             k, _, v = tok.partition("=")
             env_vars[k] = v
             idx += 1
@@ -664,17 +666,19 @@ class CommandAnalyzer:
         if "rmtree(" in cmd:
             return SafetyEvaluation(True, REASON_RMTREE)
 
-        sql_patterns = ("DROP TABLE", "DROP DATABASE", "DELETE FROM", "TRUNCATE TABLE")
-        cmd_upper = cmd.upper()
-        if any(p in cmd_upper for p in sql_patterns):
-            return SafetyEvaluation(True, REASON_DB_DESTRUCTIVE)
+        if any(k in cmd for k in ("DROP", "drop", "DELETE", "delete", "TRUNCATE", "truncate")):
+            sql_patterns = ("DROP TABLE", "DROP DATABASE", "DELETE FROM", "TRUNCATE TABLE")
+            cmd_upper = cmd.upper()
+            if any(p in cmd_upper for p in sql_patterns):
+                return SafetyEvaluation(True, REASON_DB_DESTRUCTIVE)
 
         # 2. Hardened Subshell & Process Substitution Extraction
-        subshells = extract_subshell_commands(cmd)
-        for sub in subshells:
-            sub_res = cls.evaluate(sub, depth=depth + 1)
-            if sub_res.is_destructive:
-                return sub_res
+        if any(c in cmd for c in ("$", "`", "(", "<", ">")):
+            subshells = extract_subshell_commands(cmd)
+            for sub in subshells:
+                sub_res = cls.evaluate(sub, depth=depth + 1)
+                if sub_res.is_destructive:
+                    return sub_res
 
         # 3. Lexical Tokenization with fail-closed error handling
         try:
