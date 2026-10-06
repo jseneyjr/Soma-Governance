@@ -178,6 +178,18 @@ Consolidated all functional domains (Scoring/Workspace, Arbitration, Enforcement
 **Status**: ✅ Shipped (v0.96.1)  
 Achieved complete zero-dependency architecture across all runtime surfaces (`soma_cli/`, `soma_core/`, `soma_mcp/`, `soma_sdk/`, `enzymes/`). Eliminated PyYAML from required dependencies (`dependencies = []` in `pyproject.toml`). Upgraded `soma_core.frontmatter` to support 100% of cell YAML patterns in pure Python standard library (wrapped plain scalars, same-indent sequences, literal/folded block scalars with chomping, and multiline quoted strings with unicode escapes), verified across 102 cells and 2,522 tests. Upgraded invariant SOMA-C01 to repository-wide SOMA-C02.
 
+## Phase 5.7 — v0.97.0 ✅ Shipped
+
+### The Sunset Phase: Legacy Enzymes Purge, Native Platform Adapters & Dynamic Colocality
+**Status**: ✅ Shipped (v0.97.0)  
+Purged all 75 legacy enzyme scripts and 4,277 lines of shell/PowerShell installers in favor of pure-Python native platform adapters (`soma_cli.platforms`). Transitioned the SDK facade and MCP endpoints to 100% in-process execution without subprocess overhead (ADR-013). Established canonical 1:1 mirrored test package directories (`tests/soma_core/`, `tests/soma_cli/`, etc.) with hermetic import isolation and fully dynamic candidate resolution in checkpoint verification.
+
+## Phase 5.8 — v0.97.1 (In Progress)
+
+### Structured Command Safety & Safety Gate Pattern De-bloating
+**Status**: In Progress (v0.97.1)  
+Adversarially audited and rejected proposed `RegexBuilder` class in favor of pure-stdlib `CommandAnalyzer` (`soma_core.command_safety`, ADR-014). Eliminated 123 lines of fragile, unmaintainable shell regexes in `soma_cli/hooks.py` while providing lexical tokenization, wrapper unwrapping (`sudo`, `env`, `nice`, `time`, `nohup`), quote-aware subshell and pipeline extraction, and bounded recursion depth clamps.
+
 ## Research
 
 ### Antifragile Scaling
