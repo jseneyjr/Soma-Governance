@@ -222,6 +222,20 @@ def _build_parser() -> argparse.ArgumentParser:
     p_prune.add_argument("--execute", action="store_true", help="Execute pruning decisions (archive expired rules)")
     p_prune.add_argument("--dry-run", action="store_true", help="Simulate pruning decisions without archiving files")
 
+    # soma install
+    p_install = sub.add_parser("install", parents=[common_parser], help="Install Soma governance rules and configuration")
+    p_install.add_argument("--platform", "-p", choices=["gemini", "kiro", "copilot", "claude", "mcp"], default=None,
+                           help="Target platform (default: auto-detected or gemini)")
+    p_install.add_argument("--local", action="store_true", help="Install to project-local directory")
+    p_install.add_argument("--dry-run", action="store_true", help="Show what would be installed without writing files")
+
+    # soma uninstall
+    p_uninstall = sub.add_parser("uninstall", parents=[common_parser], help="Uninstall Soma governance rules and configuration")
+    p_uninstall.add_argument("--platform", "-p", choices=["gemini", "kiro", "copilot", "claude", "mcp"], default=None,
+                             help="Target platform (default: auto-detected or gemini)")
+    p_uninstall.add_argument("--local", action="store_true", help="Uninstall from project-local directory")
+    p_uninstall.add_argument("--dry-run", action="store_true", help="Show what would be uninstalled without deleting files")
+
     return parser
 
 
@@ -326,6 +340,46 @@ def cmd_prune(args: argparse.Namespace) -> int:
     return prune_cells(workspace=workspace, execute=execute)
 
 
+def cmd_install(args: argparse.Namespace) -> int:
+    """Install Soma rules and configuration for configured platform."""
+    from soma_cli.platforms import get_adapter
+    platform = getattr(args, "platform", None) or "gemini"
+    local = getattr(args, "local", False)
+    dry_run = getattr(args, "dry_run", False)
+    workspace = getattr(args, "_project_root", None)
+    try:
+        adapter = get_adapter(platform, workspace=workspace)
+        res = adapter.install(local=local, dry_run=dry_run)
+        for msg in res.messages:
+            print(msg)
+        for err in res.errors:
+            print(f"Error: {err}", file=sys.stderr)
+        return 0 if res.success else 1
+    except Exception as exc:
+        print(f"Error: {exc}", file=sys.stderr)
+        return 1
+
+
+def cmd_uninstall(args: argparse.Namespace) -> int:
+    """Uninstall Soma rules and configuration for configured platform."""
+    from soma_cli.platforms import get_adapter
+    platform = getattr(args, "platform", None) or "gemini"
+    local = getattr(args, "local", False)
+    dry_run = getattr(args, "dry_run", False)
+    workspace = getattr(args, "_project_root", None)
+    try:
+        adapter = get_adapter(platform, workspace=workspace)
+        res = adapter.uninstall(local=local, dry_run=dry_run)
+        for msg in res.messages:
+            print(msg)
+        for err in res.errors:
+            print(f"Error: {err}", file=sys.stderr)
+        return 0 if res.success else 1
+    except Exception as exc:
+        print(f"Error: {exc}", file=sys.stderr)
+        return 1
+
+
 COMMANDS = {
     "init": cmd_init,
     "status": cmd_status,
@@ -345,6 +399,8 @@ COMMANDS = {
     "transfer": cmd_transfer,
     "quarantine": cmd_quarantine,
     "prune": cmd_prune,
+    "install": cmd_install,
+    "uninstall": cmd_uninstall,
 }
 
 

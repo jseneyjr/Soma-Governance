@@ -371,5 +371,24 @@ class TestPorcelainCLIFacade:
                 for subparser in action.choices.values():
                     assert isinstance(subparser, SomaParser)
 
+    def test_cli_install_and_uninstall(self, tmp_path, monkeypatch):
+        import json
+        import soma_cli.cli as cli
+        monkeypatch.setenv("HOME", str(tmp_path / "home"))
+        workspace = tmp_path / "workspace"
+        workspace.mkdir()
+        genome = workspace / "genome"
+        genome.mkdir()
+        (genome / "providence.md").write_text("# Providence", encoding="utf-8")
+
+        rc = cli.main(["install", "--platform", "mcp", "--local", "--workspace", str(workspace)])
+        assert rc == 0
+        assert (workspace / ".mcp.json").is_file()
+
+        un_rc = cli.main(["uninstall", "--platform", "mcp", "--local", "--workspace", str(workspace)])
+        assert un_rc == 0
+        data = json.loads((workspace / ".mcp.json").read_text(encoding="utf-8"))
+        assert "soma" not in data.get("mcpServers", {})
+
 
 
