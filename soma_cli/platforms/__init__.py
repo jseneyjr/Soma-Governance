@@ -5,11 +5,17 @@ from typing import Type
 
 from soma_cli.platforms.base import PlatformAdapter, PlatformInstallResult
 from soma_cli.platforms.claude import ClaudeAdapter
+from soma_cli.platforms.copilot import CopilotAdapter
 from soma_cli.platforms.gemini import GeminiAdapter
+from soma_cli.platforms.kiro import KiroAdapter
+from soma_cli.platforms.mcp import McpAdapter
 
 _ADAPTERS: dict[str, Type[PlatformAdapter]] = {
     "gemini": GeminiAdapter,
     "claude": ClaudeAdapter,
+    "kiro": KiroAdapter,
+    "copilot": CopilotAdapter,
+    "mcp": McpAdapter,
 }
 
 
@@ -32,6 +38,9 @@ __all__ = [
     "PlatformInstallResult",
     "GeminiAdapter",
     "ClaudeAdapter",
+    "KiroAdapter",
+    "CopilotAdapter",
+    "McpAdapter",
     "get_adapter",
     "register_adapter",
 ]

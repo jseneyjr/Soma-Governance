@@ -7,19 +7,26 @@ from soma_cli.platforms import (
     PlatformInstallResult,
     GeminiAdapter,
     ClaudeAdapter,
+    KiroAdapter,
+    CopilotAdapter,
+    McpAdapter,
     get_adapter,
 )
 
 
 def test_get_adapter_registry():
-    """Verify registry returns correct adapter instances."""
-    gemini = get_adapter("gemini")
-    assert isinstance(gemini, GeminiAdapter)
-    assert gemini.name == "gemini"
-
-    claude = get_adapter("claude")
-    assert isinstance(claude, ClaudeAdapter)
-    assert claude.name == "claude"
+    """Verify registry returns correct adapter instances for all supported platforms."""
+    expected = {
+        "gemini": GeminiAdapter,
+        "claude": ClaudeAdapter,
+        "kiro": KiroAdapter,
+        "copilot": CopilotAdapter,
+        "mcp": McpAdapter,
+    }
+    for name, expected_cls in expected.items():
+        adapter = get_adapter(name)
+        assert isinstance(adapter, expected_cls)
+        assert adapter.name == name
 
     with pytest.raises(ValueError, match="Unknown platform"):
         get_adapter("unknown-platform-xyz")
@@ -32,7 +39,6 @@ def test_gemini_adapter_install_and_uninstall(tmp_path):
     home = tmp_path / "home"
     home.mkdir()
 
-    # Create dummy genome and organs in workspace
     genome = workspace / "genome"
     genome.mkdir()
     (genome / "providence.md").write_text("# Providence", encoding="utf-8")
@@ -43,7 +49,6 @@ def test_gemini_adapter_install_and_uninstall(tmp_path):
 
     adapter = GeminiAdapter(workspace=workspace, home=home)
 
-    # 1. Install global
     res = adapter.install(local=False, dry_run=False)
     assert res.success
     assert res.scope == "global"
@@ -52,7 +57,6 @@ def test_gemini_adapter_install_and_uninstall(tmp_path):
     assert (home / ".gemini" / "config" / "plugins" / "governance" / "hooks.json").is_file()
     assert adapter.verify(local=False)
 
-    # 2. Uninstall global
     un_res = adapter.uninstall(local=False, dry_run=False)
     assert un_res.success
     assert not (home / ".gemini" / "config" / "rules" / "providence.md").exists()
@@ -76,3 +80,61 @@ def test_claude_adapter_install_and_uninstall(tmp_path):
     un_res = adapter.uninstall(local=True, dry_run=False)
     assert un_res.success
     assert not claude_md.exists()
+
+
+def test_kiro_adapter_install_and_uninstall(tmp_path):
+    """Verify KiroAdapter installs steering rules and skills."""
+    workspace = tmp_path / "workspace"
+    workspace.mkdir()
+    home = tmp_path / "home"
+    home.mkdir()
+
+    genome = workspace / "genome"
+    genome.mkdir()
+    (genome / "providence.md").write_text("# Providence", encoding="utf-8")
+
+    adapter = KiroAdapter(workspace=workspace, home=home)
+    res = adapter.install(local=False, dry_run=False)
+    assert res.success
+    assert (home / ".kiro" / "steering" / "providence.md").is_file()
+    assert adapter.verify(local=False)
+
+    un_res = adapter.uninstall(local=False, dry_run=False)
+    assert un_res.success
+    assert not (home / ".kiro" / "steering" / "providence.md").exists()
+
+
+def test_copilot_adapter_install_and_uninstall(tmp_path):
+    """Verify CopilotAdapter writes .github/copilot-instructions.md and instructions/."""
+    workspace = tmp_path / "workspace"
+    workspace.mkdir()
+    genome = workspace / "genome"
+    genome.mkdir()
+    (genome / "providence.md").write_text("# Providence", encoding="utf-8")
+
+    adapter = CopilotAdapter(workspace=workspace)
+    res = adapter.install(local=True, dry_run=False)
+    assert res.success
+    assert (workspace / ".github" / "copilot-instructions.md").is_file()
+    assert (workspace / ".github" / "instructions" / "providence.md").is_file()
+    assert adapter.verify()
+
+    un_res = adapter.uninstall(local=True, dry_run=False)
+    assert un_res.success
+    assert not (workspace / ".github" / "copilot-instructions.md").exists()
+
+
+def test_mcp_adapter_install_and_uninstall(tmp_path):
+    """Verify McpAdapter writes and removes .mcp.json."""
+    workspace = tmp_path / "workspace"
+    workspace.mkdir()
+
+    adapter = McpAdapter(workspace=workspace)
+    res = adapter.install(local=True, dry_run=False)
+    assert res.success
+    assert (workspace / ".mcp.json").is_file()
+    assert adapter.verify(local=True)
+
+    un_res = adapter.uninstall(local=True, dry_run=False)
+    assert un_res.success
+    assert not adapter.verify(local=True)
