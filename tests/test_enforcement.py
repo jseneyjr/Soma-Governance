@@ -65,9 +65,8 @@ def test_gate_assertion_injection_sanitization():
     assert tree is not None
 
 
-def test_enforcement_load_cells_compat(tmp_path):
+def test_enforcement_load_cells(tmp_path):
     from soma_core.enforcement import load_cells
-    import enzymes.cell_enforce as ce_shim
 
     cells_dir = tmp_path / ".soma" / "cells" / "walls"
     cells_dir.mkdir(parents=True)
@@ -78,8 +77,4 @@ def test_enforcement_load_cells_compat(tmp_path):
     cells = load_cells(str(tmp_path / ".soma" / "cells"))
     assert len(cells) == 1
     assert cells[0]["id"] == "wall-1"
-
-    # Enzyme shim backward compat
-    assert hasattr(ce_shim, "load_cells")
-    assert ce_shim.load_cells == load_cells
 

@@ -54,11 +54,7 @@ def test_run_push_member_id_traversal_rejected(tmp_path):
 def test_sync_sentinel_exports(tmp_path):
     from pathlib import Path
     from soma_core.sync import set_review_mode, write_frontmatter, resolve_home
-    from soma_core.telemetry import _parse_frontmatter
-    import enzymes.escalation_sentinel as es_shim
-    import enzymes.immune_sweep as is_shim
-    import enzymes.fitness_updater as fu_shim
-
+    from soma_core.frontmatter import parse_frontmatter
     # Test set_review_mode
     conf = tmp_path / "steering.conf"
     conf.write_text("REVIEW_MODE=breeze\nOTHER=true\n", encoding="utf-8")
@@ -69,20 +65,13 @@ def test_sync_sentinel_exports(tmp_path):
     out_cell = tmp_path / "cell.md"
     write_frontmatter(str(out_cell), {"id": "test-cell", "type": "gene"}, "Cell body text\n")
     assert out_cell.exists()
-    parsed = _parse_frontmatter(out_cell.read_text(encoding="utf-8"))
+    parsed = parse_frontmatter(out_cell.read_text(encoding="utf-8"))
     assert parsed.get("id") == "test-cell"
 
     # Test resolve_home
     home = resolve_home()
     assert isinstance(home, Path)
     assert home.exists()
-
-    # Test forwarding shims have re-exports
-    assert hasattr(es_shim, "set_review_mode")
-    assert hasattr(es_shim, "write_frontmatter")
-    assert hasattr(is_shim, "resolve_home")
-    assert hasattr(fu_shim, "PLATFORMS")
-    assert hasattr(fu_shim, "DEFAULT_PLATFORM")
 
 
 def test_sync_liveness_check_naive_datetime():

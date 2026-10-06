@@ -16,6 +16,11 @@ INSTALL_PS1 = os.path.join(REPO_ROOT, "install", "install.ps1")
 UNINSTALL_PS1 = os.path.join(REPO_ROOT, "install", "uninstall.ps1")
 
 
+def _require_shell():
+    if not os.path.exists(INSTALL_SH):
+        pytest.skip("legacy shell installers purged in v0.97.0")
+
+
 def same_path(a: str, b: str) -> bool:
     # Under Git Bash the generator writes C:/... (forward slashes).
     return os.path.normcase(os.path.normpath(a)) == os.path.normcase(os.path.normpath(b))
@@ -38,6 +43,7 @@ def mcp_case_path(project: Path, home: Path, platform: str, args: tuple[str, ...
      ("kiro", ("--local",)), ("kiro", ())],
 )
 def test_bash_mcp_generators_merge_and_target_project(tmp_path, bash, platform, args):
+    _require_shell()
     home = tmp_path / "home"
     project = tmp_path / "governed-project"
     home.mkdir()
@@ -78,6 +84,7 @@ def test_bash_mcp_generators_merge_and_target_project(tmp_path, bash, platform, 
 def test_bash_mcp_generators_reject_invalid_json_unchanged(
     tmp_path, bash, platform, args
 ):
+    _require_shell()
     home = tmp_path / "home"
     project = tmp_path / "project"
     home.mkdir()
@@ -97,6 +104,7 @@ def test_bash_mcp_generators_reject_invalid_json_unchanged(
 
 
 def test_bash_mcp_uninstall_removes_only_soma_server(tmp_path, bash):
+    _require_shell()
     home = tmp_path / "home"
     project = tmp_path / "project"
     home.mkdir()
@@ -159,6 +167,7 @@ def test_python_init_invalid_mcp_json_is_unchanged(tmp_path):
 
 @pytest.mark.parametrize("platform", ["kiro", "gemini"])
 def test_manifestless_uninstall_removes_only_repo_names(tmp_path, bash, platform):
+    _require_shell()
     home = tmp_path / "home"
     project = tmp_path / "project"
     home.mkdir()
@@ -219,6 +228,7 @@ def test_packaging_excludes_private_soma_state_and_includes_genome_package():
 
 
 def test_powershell_installer_has_exact_manifest_and_utf8_contract():
+    _require_shell()
     src = read(INSTALL_PS1)
     for token in (
         "$InstalledFiles", "$InstalledOrgans", "$InstalledHooks",
@@ -239,6 +249,7 @@ def test_powershell_installer_has_exact_manifest_and_utf8_contract():
 
 
 def test_powershell_uninstall_consumes_mcp_ownership_and_guards_restore_map():
+    _require_shell()
     src = read(UNINSTALL_PS1)
     assert 'Get-ManifestPathList -Object $Manifest -Name "mcp_configs"' in src
     assert "Remove-SomaMcpServer" in src
@@ -253,6 +264,7 @@ def test_powershell_uninstall_consumes_mcp_ownership_and_guards_restore_map():
 
 
 def test_powershell_subset_records_only_paths_actually_written():
+    _require_shell()
     src = read(INSTALL_PS1)
     # Every platform that copies individual rules must record the target only
     # in the write branch, after the subset guard's `continue`.
@@ -264,6 +276,7 @@ def test_powershell_subset_records_only_paths_actually_written():
 
 
 def test_owned_mcp_corruption_aborts_before_uninstall_mutation(tmp_path, bash):
+    _require_shell()
     home = tmp_path / "home"
     project = tmp_path / "project"
     home.mkdir()

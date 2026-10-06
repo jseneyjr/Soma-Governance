@@ -14,7 +14,7 @@ import pytest
 from soma_core.frontmatter import dump_frontmatter
 
 # Will fail until implementation exists — that's the TDD red phase
-from enzymes.fitness_updater import (
+from soma_core.telemetry import (
     detect_platform,
     extract_modified_files,
     match_cells,

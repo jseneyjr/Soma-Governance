@@ -25,6 +25,11 @@ from conftest import REPO_ROOT, read, require_bash, run, symlink_or_skip
 UNINSTALL_SH = os.path.join(REPO_ROOT, "install", "uninstall.sh")
 UNINSTALL_PS1 = os.path.join(REPO_ROOT, "install", "uninstall.ps1")
 
+pytestmark = pytest.mark.skipif(
+    not os.path.exists(UNINSTALL_SH) and not os.path.exists(UNINSTALL_PS1),
+    reason="legacy shell/ps1 uninstallers purged in v0.97.0 in favor of soma uninstall",
+)
+
 SENTINEL_BYTES = b"outside sentinel - must survive\n"
 
 

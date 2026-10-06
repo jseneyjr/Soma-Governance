@@ -29,19 +29,19 @@ class TestScopeNarrowing:
     """Credit only flows to cells whose target_paths match specific changed files."""
 
     def test_cell_matching_tests_gets_no_credit_for_src(self):
-        from enzymes.outcome_engine import compute_credit_weights
+        from soma_core.telemetry import compute_credit_weights
         cells = [_make_cell_dict('c-tests', ['tests/*.py'])]
         weights = compute_credit_weights(cells, ['src/foo.py'])
         assert weights['c-tests'] == 0.0
 
     def test_cell_matching_src_gets_credit_for_src(self):
-        from enzymes.outcome_engine import compute_credit_weights
+        from soma_core.telemetry import compute_credit_weights
         cells = [_make_cell_dict('c-src', ['src/*.py'])]
         weights = compute_credit_weights(cells, ['src/foo.py'])
         assert weights['c-src'] == 1.0
 
     def test_cell_matching_nothing_gets_zero_credit(self):
-        from enzymes.outcome_engine import compute_credit_weights
+        from soma_core.telemetry import compute_credit_weights
         cells = [_make_cell_dict('c-docs', ['docs/*.md'])]
         weights = compute_credit_weights(cells, ['src/foo.py'])
         assert weights['c-docs'] == 0.0
@@ -51,7 +51,7 @@ class TestCreditConservation:
     """Per-file credit must sum to exactly 1.0."""
 
     def test_three_cells_same_file_get_one_third_each(self):
-        from enzymes.outcome_engine import compute_credit_weights
+        from soma_core.telemetry import compute_credit_weights
         cells = [
             _make_cell_dict('a', ['src/*.py']),
             _make_cell_dict('b', ['src/*.py']),
@@ -62,7 +62,7 @@ class TestCreditConservation:
             assert abs(weights[name] - 1 / 3) < 1e-9
 
     def test_one_cell_unique_file_gets_full_credit(self):
-        from enzymes.outcome_engine import compute_credit_weights
+        from soma_core.telemetry import compute_credit_weights
         cells = [
             _make_cell_dict('sole', ['src/*.py']),
             _make_cell_dict('other', ['tests/*.py']),
@@ -72,7 +72,7 @@ class TestCreditConservation:
         assert weights['other'] == 0.0
 
     def test_per_file_credit_sums_to_one(self):
-        from enzymes.outcome_engine import compute_credit_weights
+        from soma_core.telemetry import compute_credit_weights
         cells = [
             _make_cell_dict('x', ['src/*.py']),
             _make_cell_dict('y', ['src/*.py']),
@@ -83,7 +83,7 @@ class TestCreditConservation:
         assert abs(total - 1.0) < 1e-9
 
     def test_five_cells_same_file_get_one_fifth_each(self):
-        from enzymes.outcome_engine import compute_credit_weights
+        from soma_core.telemetry import compute_credit_weights
         cells = [_make_cell_dict(f'c{i}', ['src/*.py']) for i in range(5)]
         weights = compute_credit_weights(cells, ['src/foo.py'])
         for i in range(5):
@@ -94,7 +94,7 @@ class TestFractionalCredit:
     """Fractional conversion preserves exact credit without bias."""
 
     def test_to_fraction_converts_correctly(self):
-        from enzymes.outcome_engine import to_fraction
+        from soma_core.telemetry import to_fraction
         assert to_fraction(0.5) == "1/2"
         assert to_fraction(1.0) == "1/1"
         assert to_fraction(0.0) == "0/1"
@@ -105,7 +105,7 @@ class TestSignalProvenance:
     """Signals written to evidence ledger retain attribution metadata (BUG-005)."""
 
     def test_jsonl_entry_has_credit_weight(self, tmp_path):
-        from enzymes.outcome_engine import append_fitness_log
+        from soma_core.telemetry import append_fitness_log
 
         workspace = str(tmp_path)
         signals = [{

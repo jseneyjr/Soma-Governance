@@ -9,7 +9,7 @@ REPO_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 if REPO_ROOT not in sys.path:
     sys.path.insert(0, REPO_ROOT)
 
-from enzymes.verify_bug_registry import (
+from soma_core.enforcement import (
     load_registry,
     verify_regression_tests,
     verify_schema,
@@ -96,7 +96,7 @@ def test_error_report_survives_cp1252_stdout(tmp_path):
 
     _make_registry(tmp_path, [_open_bug(), _open_bug()])
     proc = subprocess.run(
-        [sys.executable, os.path.join(REPO_ROOT, "enzymes", "verify_bug_registry.py"),
+        [sys.executable, "-c", "import sys; from soma_core.enforcement import cli_verify_bug_registry; sys.exit(cli_verify_bug_registry(sys.argv[1:]))",
          "--workspace", str(tmp_path)],
         capture_output=True, encoding="cp1252", errors="replace", timeout=60,
         env=dict(os.environ, PYTHONIOENCODING="cp1252"),
@@ -248,7 +248,7 @@ class TestRegressionRunBudget:
 
     def _batch_taking(self, seconds, monkeypatch):
         import subprocess
-        import enzymes.verify_bug_registry as vbr
+        import soma_core.enforcement as vbr
 
         def fake_run(cmd, **kwargs):
             if kwargs["timeout"] < seconds:

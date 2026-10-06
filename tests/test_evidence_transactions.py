@@ -84,7 +84,7 @@ def test_report_outcome_batch_failure_then_same_key_retries_once(tmp_path, monke
 
 
 def test_fitness_updater_retry_completes_every_cell_once(tmp_path):
-    from enzymes.fitness_updater import update_fitness
+    from soma_core.telemetry import update_fitness
 
     evidence = tmp_path / ".soma" / "evidence"
     cells = [{"cell_id": "cell-a", "matched_files": ["a.py"]}]

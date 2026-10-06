@@ -48,7 +48,8 @@ def _make_parent(workspace, cell_id, cell_type='vacuole', hypothesis='hyp',
 def _run_crossover(workspace, cell_a_id, cell_b_id):
     """Run crossover via subprocess and return result."""
     result = subprocess.run(
-        [sys.executable, os.path.join(REPO_ROOT, 'enzymes', 'cell_crossover.py'),
+        [sys.executable, "-c",
+         "import sys; from soma_core.lifecycle import cli_cell_crossover; sys.exit(cli_cell_crossover(sys.argv[1:]))",
          cell_a_id, cell_b_id],
         capture_output=True, text=True, cwd=workspace,
         env={**os.environ, 'PYTHONPATH': REPO_ROOT}

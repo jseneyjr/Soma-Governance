@@ -1,38 +1,30 @@
 # Scripts Reference
 
-This document catalogs 147 executable scripts, command modules, SDK modules, and MCP/core modules in the Soma governance framework.
+This document catalogs 71 executable scripts, command modules, SDK modules, and MCP/core modules in the Soma governance framework.
 
 ## Counting Method
 
-Counts are generated from the v0.96.0 source tree with mutually exclusive categories: package initializers (`__init__.py`, `__main__.py`) are excluded; the six lifecycle enzymes plus `install/hooks/pre-commit` are counted only as lifecycle scripts; all remaining top-level `enzymes/*.py` and `enzymes/*.sh` files are utilities; installer wrappers are counted separately; and all non-initializer `soma_core/*.py` modules are grouped with the MCP modules. This produces 147 unique paths with no double counting.
+Counts are generated from the source tree with mutually exclusive categories: package initializers (`__init__.py`, `__main__.py`) are excluded; `install/hooks/pre-commit` is counted as the lifecycle script; and all non-initializer `soma_core/*.py` modules are grouped with the MCP modules. This produces 71 unique paths with no double counting.
 
 ## Summary by Category
 
 | Category | Primary Language / Location | Count | Description |
 |:---------|:----------------------------|:------|:------------|
-| [Lifecycle Scripts (Hooks)](#lifecycle-scripts-hooks--bash) | bash (`enzymes/`, `install/hooks/`) | 7 | Environment, agent execution, and pre-commit lifecycle hooks |
+| [Lifecycle Scripts (Hooks)](#lifecycle-scripts-hooks--bash) | bash (`install/hooks/`) | 1 | Git pre-commit lifecycle hook |
 | [Verification Scripts](#verification-scripts--python) | Python (`immune_system/verification/`) | 13 | Deterministic AST checkers, coverage tools, and adversarial verification |
 | [CLI Commands](#cli-commands--python-soma_cli) | Python and bash (`soma_cli/`, root) | 21 | CLI launcher and command implementation modules |
-| [Install Scripts](#install-scripts--bash-and-powershell) | Bash and PowerShell (`install/`, root) | 6 | Platform installers, uninstallers, and root wrappers |
-| [Utility Scripts](#utility-scripts) | Python and bash (`enzymes/`) | 67 | Cell genetics, runtime engines, evidence, telemetry, and shared utilities |
 | [SDK Modules](#sdk-modules--python-soma_sdk) | Python (`soma_sdk/`) | 8 | Canonical scoring, parsing, telemetry, hot-zone, and governance APIs |
 | [MCP and Core Modules](#mcp-and-core-modules) | Python (`soma_mcp/`, `soma_core/`) | 28 | MCP transport, dispatch, confinement, content inventory, canonical evidence, cache, errors, receipts, and atomic storage |
-| **Total** | | **150** | Unique paths under the method above |
+| **Total** | | **71** | Unique paths under the method above |
 
 ---
 
 ## Lifecycle Scripts (Hooks) — bash
 
-These 7 bash scripts are invoked automatically by the IDE, terminal hook systems, or git triggers. Following the v0.96.0 core consolidation, all `enzymes/*.sh` scripts function as backward-compatibility forwarding shims that delegate directly to canonical in-process Python implementations in `soma_core/` (such as `soma_core.lifecycle`, `soma_core.arbitration`, and `soma_core.sync`).
+This bash script is invoked automatically by git triggers. Following the v0.97.0 sunset phase, all runtime lifecycle hooks are driven directly by pure Python in `soma_cli/hooks.py` and `soma_core/sync.py`.
 
 | Script | Location | Purpose |
 |:-------|:---------|:--------|
-| **`immune_init.sh`** | `enzymes/immune_init.sh` | PreInvocation hook that fires before model calls. Sets up the workspace, seeds agent contexts, injects domain hints, and runs pre-flight scans. |
-| **`safety_gate.sh`** | `enzymes/safety_gate.sh` | PreToolUse hook that screens tool commands for destructive or globally scoped operations (e.g., `rm -rf /`, `git push -f`). |
-| **`session_close.sh`** | `enzymes/session_close.sh` | Post-session cleanup hook that exports conversation logs, triggers offline memory consolidation (`soma_sleep.py`), and executes local reporting. |
-| **`post_session_hook.sh`** | `enzymes/post_session_hook.sh` | Post-session hook that parses session transcripts and updates cell fitness data in `.soma/evidence/`. |
-| **`escalation_sentinel.sh`** | `enzymes/escalation_sentinel.sh` | Zero-token review escalation recommender. Analyzes staged and unstaged git changes to recommend review levels (Breeze vs Trident vs Tempest). |
-| **`liveness_sentinel.sh`** | `enzymes/liveness_sentinel.sh` | Subagent dispatch health monitor during multi-agent orchestration. Detects stalled or deadlocked agents. |
 | **`pre-commit`** | `install/hooks/pre-commit` | Git pre-commit hook that evaluates governance cells on staged diffs and mechanically blocks commits on violations. |
 
 ---
@@ -89,118 +81,7 @@ These 21 paths provide the root `soma` launcher and 20 non-initializer Python mo
 
 ---
 
-## Install Scripts — bash and PowerShell
 
-These 6 scripts provide Bash and PowerShell install/uninstall entrypoints. `install/hooks/pre-commit` is excluded here because it is counted in Lifecycle Scripts.
-
-| Script | Location | Purpose |
-|:-------|:---------|:--------|
-| **`install.sh`** | `install/install.sh` | Unified Bash installer for Gemini, Kiro, Copilot, Claude Code, and generic MCP; this is the installer that migrates `.prism/` to `.soma/`. |
-| **`uninstall.sh`** | `install/uninstall.sh` | Bash uninstaller driven by the install manifest, with confinement, backup restoration, opt-in data purge, and exact removal of `soma doctor --fix-path` rc lines. |
-| **`install.sh`** | `install.sh` | Root Bash wrapper delegating to `install/install.sh`. |
-| **`install.ps1`** | `install/install.ps1` | PowerShell installer for native Windows; verified across PowerShell 7 and Windows PowerShell 5.1 with UTF-8 BOM encoding and full hook installation parity. |
-| **`uninstall.ps1`** | `install/uninstall.ps1` | Native PowerShell uninstaller with manifest path confinement. |
-| **`install.ps1`** | `install.ps1` | Root PowerShell wrapper delegating to `install/install.ps1`. |
-
----
-
-## Utility Scripts
-
-These 69 scripts are the top-level `enzymes/*.py` and `enzymes/*.sh` files not already counted as lifecycle hooks. The subsection counts below are exclusive and sum to 69.
-
-### 1. Master Pipeline Orchestrator (removed)
-
-> **`soma_run.py` was removed in v0.86.0.** The unified execution pipeline
-> (Interoception → TTC → Outcome → Coherence → Sleep) is now handled by the
-> MCP server (`soma_mcp/`) and the CLI (`soma_cli/`). See `soma_mcp/tools.py`
-> for the tool-based equivalents of each pipeline stage.
-
-### 2. Cell Evolutionary Lifecycle & Genetics (24 scripts)
-
-| Script | Location | Purpose |
-|:-------|:---------|:--------|
-| **`cell_selection.sh`** | `enzymes/cell_selection.sh` | Shell entrypoint for evaluating local cell fitness, invoking `cell_fitness.py` and downstream adaptation scripts. |
-| **`cell_selection.py`** | `enzymes/cell_selection.py` | Pure Python selection pressure engine identifying extinct cells and managing quarantine transitions. |
-| **`cell_fitness.py`** | `enzymes/cell_fitness.py` | Computes cell fitness scores using Wilson-bounded fitness scoring with credible intervals from empirical TP/FP/trigger counts. |
-| **`cell_adapt.py`** | `enzymes/cell_adapt.py` | Modifies underperforming cells (score 0.3–0.7) by refining hypotheses, predictions, and target paths to improve SNR. |
-| **`cell_promote.py`** | `enzymes/cell_promote.py` | Promotes high-performing cells (score > 0.7) into global forest-floor rules with decay weighting to prevent Beta-locking. |
-| **`cell_demote.py`** | `enzymes/cell_demote.py` | Demotes global rules back to local cells when they cause false positives in new repository contexts. |
-| **`cell_signal.sh`** | `enzymes/cell_signal.sh` | External fitness signal API allowing CI/CD, test suites, or humans to record TP/FP/FN outcomes back to cells. |
-| **`cell_signal.py`** | `enzymes/cell_signal.py` | Pure Python signal recording engine delegating to `soma_sdk.telemetry` for canonical evidence tracking. |
-| **`cell_scan.py`** | `enzymes/cell_scan.py` | Evaluates git diffs against cell `target_paths` globs to trigger matching governance cells. |
-| **`cell_create.sh`** | `enzymes/cell_create.sh` | Programmatic cell creation CLI for automated systems, incident responses, or test failures. |
-| **`cell_create.py`** | `enzymes/cell_create.py` | Pure Python cell creation engine with structured frontmatter synthesis and path containment validation. |
-| **`cell_create_nl.py`** | `enzymes/cell_create_nl.py` | Natural language cell creation via Gemini API, synthesizing complete governance cells from plain English descriptions. |
-| **`cell_crossover.py`** | `enzymes/cell_crossover.py` | Genetic algorithm crossover operator merging hypotheses from two high-fitness parent cells into a new offspring cell. |
-| **`cell_tournament.py`** | `enzymes/cell_tournament.py` | Tournament selection operator picking k random cells and returning the fittest to preserve diversity during pruning. |
-| **`cell_metamorphose.py`** | `enzymes/cell_metamorphose.py` | Transforms cell maturity types (Vacuoles harden into Walls, Walls graduate to Rules) based on empirical proof. |
-| **`cell_transfer.sh`** | `enzymes/cell_transfer.sh` | Horizontal gene transfer utility copying cells to other projects with fitness resets and probation tracking. |
-| **`cell_transfer.py`** | `enzymes/cell_transfer.py` | Pure Python cell bundle exporter and importer with path traversal prevention and duplicate detection. |
-| **`cell_genesis_stochastic.py`** | `enzymes/cell_genesis_stochastic.py` | Probabilistic diversity injection sampling domain templates periodically to prevent evolutionary monoculture. |
-| **`cell_expiry.py`** | `enzymes/cell_expiry.py` | Audits governance cells against `expiry_days` and `expiry_sessions` limits, recommending or applying pruning. |
-| **`cell_enforce.py`** | `enzymes/cell_enforce.py` | Auto-generates mechanical pre-commit checks or runtime assertions for cells reaching enforcement tiers. |
-| **`cell_quorum.py`** | `enzymes/cell_quorum.py` | Quorum sensing detector identifying when ≥3 cells trigger simultaneously on the same diff, escalating review modes. |
-| **`bayesian_score.py`** | `enzymes/bayesian_score.py` | **Deprecated shim** — delegates to `soma_sdk.scoring`. Retained for backward compatibility; new callers should use `soma_sdk.scoring` directly. |
-| **`hgt_ribosome.py`** | `enzymes/hgt_ribosome.py` | Horizontal Gene Transfer ribosome engine translating domain-specific cells into universal engineering principles. |
-| **`verify_readme_claims.py`** | `enzymes/verify_readme_claims.py` | Pre-release claim verifier scanning documentation for quantitative assertions and cross-referencing against evidence ledgers. |
-
-### 3. Runtime Verification, Integrity & Test-Time Compute (10 scripts)
-
-| Script | Location | Purpose |
-|:-------|:---------|:--------|
-| **`ttc_oracle.py`** | `enzymes/ttc_oracle.py` | Test-Time Compute Oracle evaluating proposed diffs against hidden foundational rules (.oracles) using an LLM-as-a-judge before execution. |
-| **`ttc_verifier.py`** | `enzymes/ttc_verifier.py` | Advisory TTC verifier reviewing proposed file changes against active JIT playbooks and TTC oracles, returning unified diffs. |
-| **`cell_adversarial.py`** | `enzymes/cell_adversarial.py` | Adversarial cell testing tool probing governance cells for bypass vulnerabilities (renaming, indirection, test alteration). |
-| **`resilience_engine.py`** | `enzymes/resilience_engine.py` | Endocrine resilience engine monitoring consecutive agent execution failures (Stress) and intervening before runaway loops. |
-| **`soma_coherence.py`** | `enzymes/soma_coherence.py` | Signal Coherence Layer (Integrity Engine) cross-validating disparate Soma signals and detecting contradictions. |
-| **`soma_interoception.py`** | `enzymes/soma_interoception.py` | Internal state awareness (proprioception) engine reading four internal signals before major actions. |
-| **`evidence_collector.py`** | `enzymes/evidence_collector.py` | Derives aggregate compliance observations from session transcripts without persisting code or diff content; canonical fitness events are written elsewhere to `signals.jsonl`. |
-| **`outcome_engine.py`** | `enzymes/outcome_engine.py` | Captures test/build/git/MCP/human-insight outcomes, appends generation-fenced and idempotent events to canonical `signals.jsonl`, then updates derived cell state after evidence persistence. |
-| **`immune_replay.py`** | `enzymes/immune_replay.py` | Governance replay tool retrospectively testing current cells against historical commits to verify catch rates. |
-| **`sweep_session.py`** | `enzymes/sweep_session.py` | Lightweight waste signal scanner and session transcript scorer for governance sweeps. |
-
-### 4. Telemetry, Evidence, Reporting & Analysis (26 scripts)
-
-| Script | Location | Purpose |
-|:-------|:---------|:--------|
-| **`token_census.py`** | `enzymes/token_census.py` | Validates token footprints of active rules and skills via Gemini SDK counting or calibrated fallbacks. |
-| **`ci_outcome_reporter.py`** | `enzymes/ci_outcome_reporter.py` | Read-only CI advisory that matches changed files to cells and reports proposed credit weights/signals without mutating fitness. |
-| **`diagnose_hot_zones.py`** | `enzymes/diagnose_hot_zones.py` | Read-only diagnostic for bug-registry heat thresholds, active file/pattern zones, and threshold calibration. |
-| **`verify_bug_registry.py`** | `enzymes/verify_bug_registry.py` | Validates bug IDs, schema/status fields, categories, and executes every fixed bug's registered regression test; open bugs are exempt from fix fields. |
-| **`metrics_snapshot.sh`** | `enzymes/metrics_snapshot.sh` | Saves automated governance performance baselines and ROI deltas into `METRICS_REPO`. |
-| **`metrics_snapshot.py`** | `enzymes/metrics_snapshot.py` | Pure Python engine generating token census, step counts, and governance ROI deltas. |
-| **`export_logs.sh`** | `enzymes/export_logs.sh` | Prepares conversation logs and transcripts for post-mortem analysis and archiving. |
-| **`export_logs.py`** | `enzymes/export_logs.py` | Pure Python exporter archiving conversation logs, transcripts, and session metadata. |
-| **`immune_sweep.sh`** | `enzymes/immune_sweep.sh` | Performs batch scans across past session transcripts to extract recurring waste patterns. |
-| **`immune_sweep.py`** | `enzymes/immune_sweep.py` | Pure Python periodic governance sweeper auditing unreviewed sessions and active session waste. |
-| **`log_finding.sh`** | `enzymes/log_finding.sh` | Canonical entrypoint for logging governance findings and routing critical findings to `mulch_queue.jsonl`. |
-| **`log_finding.py`** | `enzymes/log_finding.py` | Pure Python review finding logger recording structured violation entries and routing critical alerts. |
-| **`team_sync.sh`** | `enzymes/team_sync.sh` | Syncs local promoted cells and metrics snapshots to a shared team repository for multi-developer convergence. |
-| **`team_sync.py`** | `enzymes/team_sync.py` | Pure Python team synchronization engine syncing rules and cells across git remotes. |
-| **`immune_entropy.py`** | `enzymes/immune_entropy.py` | Computes governance entropy rate using Shannon entropy to detect system stagnation or monoculture. |
-| **`immune_grade.py`** | `enzymes/immune_grade.py` | Governance report card generator producing single-grade compliance summaries. |
-| **`immune_trends.py`** | `enzymes/immune_trends.py` | Cross-session trend dashboard aggregating metrics over rolling windows with Shannon diversity indices. |
-| **`fitness_landscape.py`** | `enzymes/fitness_landscape.py` | ASCII visualization of governance effectiveness and cell fitness scores. |
-| **`fitness_updater.py`** | `enzymes/fitness_updater.py` | Extracts modified files from session transcripts, matches cells, and writes idempotent trigger events through telemetry to canonical `.soma/evidence/signals.jsonl` before syncing derived frontmatter. |
-| **`post_session_hook.py`** | `enzymes/post_session_hook.py` | Pure Python post-session hook updating cell fitness signals and rule compliance evidence. |
-| **`cell_coverage.py`** | `enzymes/cell_coverage.py` | Generates visual coverage maps showing which workspace files are covered by active cells and highlighting blind spots. |
-| **`cell_deps.py`** | `enzymes/cell_deps.py` | Computes and visualizes cell co-trigger dependencies and interaction networks. |
-| **`cell_escaped_defects.py`** | `enzymes/cell_escaped_defects.py` | Correlates test regressions, crashes, and build failures with files to pinpoint unmonitored blind spots. |
-| **`oracle_checkpoint.py`** | `enzymes/oracle_checkpoint.py` | Mid-session fitness feedback tool analyzing cell health, expiry status, and evidence trends. |
-| **`insight_capture.py`** | `enzymes/insight_capture.py` | Captures human developer insights into `.soma/human_insights.jsonl` and correlates them with existing cells. |
-| **`insight_correlator.py`** | `enzymes/insight_correlator.py` | Clusters captured human insights over rolling windows to automatically propose new governance cells. |
-
-### 5. Shared Infrastructure & Workspace Resolution (9 scripts)
-
-| Script | Location | Purpose |
-|:-------|:---------|:--------|
-| **`common.sh`** | `enzymes/common.sh` | Shared bash library providing standardized output, error handling, config loading, and path resolutions. |
-| **`soma_python.sh`** | `enzymes/soma_python.sh` | Resolves a working Python 3.9+ interpreter for the bash scripts (`SOMA_PYTHON`, `soma_py`), skipping the Windows Store `python3` stub. |
-| **`soma_resolve.py`** | `enzymes/soma_resolve.py` | Centralized workspace resolution library (respecting `SOMA_ROOT`, CWD, and parent repository roots). |
-| **`soma_sleep.py`** | `enzymes/soma_sleep.py` | Memory consolidation engine executed at session close for offline evidence distillation and cell decay. |
-| **`escalation_sentinel.py`** | `enzymes/escalation_sentinel.py` | Python engine managing review mode configuration and steering rules for protocol escalation. |
-| **`liveness_sentinel.py`** | `enzymes/liveness_sentinel.py` | Pure Python subagent liveness and watchdog sentinel detecting hung or stalled background commands. |
-| **`inference_provider.py`** | `enzymes/inference_provider.py` | Inference provider abstraction layer with secure credential lookup and key management for AI-assisted enzymes. |
 
 ---
 

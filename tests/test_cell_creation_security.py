@@ -9,18 +9,18 @@ from conftest import run, require_bash, symlink_or_skip
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 
-# Ensure REPO_ROOT and enzymes/ are in sys.path for importing modules under test
+# Ensure REPO_ROOT is in sys.path
 if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
-if str(REPO_ROOT / "enzymes") not in sys.path:
-    sys.path.insert(0, str(REPO_ROOT / "enzymes"))
 
 def test_cell_create_sh_id_override_traversal_blocked_with_description(tmp_path):
     """cell_create.sh with --from-description must reject path traversal in --id."""
+    script = REPO_ROOT / "enzymes" / "cell_create.sh"
+    if not script.exists():
+        pytest.skip("enzymes directory purged in v0.97.0")
     bash = require_bash()
     env = {"SOMA_ROOT": str(tmp_path)}
     (tmp_path / ".soma" / "cells" / "vacuoles").mkdir(parents=True, exist_ok=True)
-    script = REPO_ROOT / "enzymes" / "cell_create.sh"
     
     proc = run(
         [bash, str(script), "--from-description", "test desc", "--id", "../../../evil"],
@@ -32,9 +32,11 @@ def test_cell_create_sh_id_override_traversal_blocked_with_description(tmp_path)
 
 def test_cell_create_nl_py_id_traversal_blocked(tmp_path):
     """cell_create_nl.py must reject path traversal in --id."""
+    script = REPO_ROOT / "enzymes" / "cell_create_nl.py"
+    if not script.exists():
+        pytest.skip("enzymes directory purged in v0.97.0")
     env = {"SOMA_ROOT": str(tmp_path)}
     (tmp_path / ".soma" / "cells" / "vacuoles").mkdir(parents=True, exist_ok=True)
-    script = REPO_ROOT / "enzymes" / "cell_create_nl.py"
     
     proc = run(
         [sys.executable, str(script), "test desc", "--id", "../../evil"],
@@ -46,6 +48,9 @@ def test_cell_create_nl_py_id_traversal_blocked(tmp_path):
 
 def test_cell_create_sh_unlinks_preexisting_symlink(tmp_path):
     """cell_create.sh must unlink pre-existing symlinks at target cell path."""
+    script = REPO_ROOT / "enzymes" / "cell_create.sh"
+    if not script.exists():
+        pytest.skip("enzymes directory purged in v0.97.0")
     bash = require_bash()
     cells_dir = tmp_path / ".soma" / "cells" / "vacuoles"
     cells_dir.mkdir(parents=True, exist_ok=True)
@@ -56,7 +61,6 @@ def test_cell_create_sh_unlinks_preexisting_symlink(tmp_path):
     symlink_file = cells_dir / "test-symlink.md"
     symlink_or_skip(target_file, symlink_file)
         
-    script = REPO_ROOT / "enzymes" / "cell_create.sh"
     env = {"SOMA_ROOT": str(tmp_path)}
     
     proc = run(
@@ -72,9 +76,11 @@ def test_cell_create_sh_unlinks_preexisting_symlink(tmp_path):
 
 def test_cell_create_sh_escapes_quotes_in_hypothesis(tmp_path):
     """cell_create.sh must safely quote double quotes in hypothesis."""
+    script = REPO_ROOT / "enzymes" / "cell_create.sh"
+    if not script.exists():
+        pytest.skip("enzymes directory purged in v0.97.0")
     bash = require_bash()
     (tmp_path / ".soma" / "cells" / "vacuoles").mkdir(parents=True, exist_ok=True)
-    script = REPO_ROOT / "enzymes" / "cell_create.sh"
     env = {"SOMA_ROOT": str(tmp_path)}
     
     proc = run(
@@ -109,7 +115,7 @@ body
 
 def test_cell_enforce_handles_null_target_paths():
     """generate_precommit_check must handle target_paths=None without crashing."""
-    from cell_enforce import generate_precommit_check
+    from soma_core.enforcement import generate_precommit_check
     cell = {
         "_name": "test-null-targets",
         "type": "wall",

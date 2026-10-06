@@ -9,4 +9,3 @@ recursive-include templates *
 recursive-include install *
 recursive-include soma_cli/starter_rules *.md
 recursive-include soma_core *
-recursive-include enzymes *

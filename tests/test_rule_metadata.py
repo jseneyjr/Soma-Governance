@@ -358,12 +358,12 @@ def test_jit_matches_new_genome_files():
     """New genome rules should match when their activation paths are touched."""
     from soma_mcp.jit_engine import load_all_cells, match_cells_to_files
     cells = load_all_cells(str(REPO_ROOT))
-    # Touching an enzyme should match cells with enzymes in target_paths
-    matched = match_cells_to_files(cells, ["enzymes/fitness_updater.py"])
+    # Touching soma_core should match cells with soma_core in target_paths
+    matched = match_cells_to_files(cells, ["soma_core/telemetry.py"])
     matched_ids = {c["id"] for c in matched}
-    # At minimum, trap-schema-contract-drift targets enzymes/*.py
+    # At minimum, trap-schema-contract-drift targets soma_core/*.py
     assert "trap-schema-contract-drift" in matched_ids, (
-        f"trap-schema-contract-drift should match enzymes/fitness_updater.py "
+        f"trap-schema-contract-drift should match soma_core/telemetry.py "
         f"but matched: {matched_ids}"
     )
 

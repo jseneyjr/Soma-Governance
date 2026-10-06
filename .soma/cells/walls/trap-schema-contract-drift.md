@@ -11,7 +11,7 @@ prediction: Will catch field name mismatches between enzyme files that read/writ
   the same JSONL ledger files
 falsification: 0 findings in 10 sessions → prune
 target_paths:
-- enzymes/*.py
+- soma_core/*.py
 - soma_mcp/*.py
 - immune_system/**/*.py
 - soma_cli/*.py

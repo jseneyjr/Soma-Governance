@@ -8,7 +8,7 @@ prediction: Enforcing strict boundaries on this file prevents unauthorized circu
   of safety checks.
 falsification: The script is entirely benign and requires no protection.
 target_paths:
-- enzymes/safety_gate.sh
+- soma_cli/hooks.py
 expiry_sessions: 100
 impact_weight: 1.0
 minimum_mode: maelstrom

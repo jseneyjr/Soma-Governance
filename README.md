@@ -3,8 +3,8 @@
 [![License: Apache 2.0](https://img.shields.io/badge/License-Apache_2.0-blue?style=flat-square)](LICENSE)
 [![Core Rules](https://img.shields.io/badge/Core_Rules-19-green?style=flat-square)](#-core-rules)
 [![Agent Skills](https://img.shields.io/badge/Agent_Skills-15-purple?style=flat-square)](#-agent-skills)
-[![Automation Scripts](https://img.shields.io/badge/Automation_Scripts-73-red?style=flat-square)](#%EF%B8%8F-automation-scripts)
-[![Version](https://img.shields.io/badge/Version-0.96.2-informational?style=flat-square)](docs/project/CHANGELOG.md)
+[![Architecture](https://img.shields.io/badge/Architecture-Pure_Python-blue?style=flat-square)](#-architecture)
+[![Version](https://img.shields.io/badge/Version-0.97.0-informational?style=flat-square)](docs/project/CHANGELOG.md)
 [![Zero Runtime Dependencies](https://img.shields.io/badge/Dependencies-0-brightgreen?style=flat-square)](#)
 [![Blog Post](https://img.shields.io/badge/Blog-dev.to-black?style=flat-square&logo=devdotto)](https://dev.to/nseney1/your-ai-agents-rules-file-is-a-gentlemans-agreement-heres-what-happens-when-you-build-2dml)
 [![M8ven Score](https://m8ven.ai/badge/mcp/nseney1-soma-governance-yv4xbk)](https://m8ven.ai/mcp/nseney1/soma-governance?s=readme)
@@ -17,7 +17,7 @@ Soma makes AI agents trustworthy by providing observably traceable governance �
 >
 > **The Solution**: Soma provides JIT context injection, adaptive rule lifecycle, and pre-commit enforcement hooks to reduce waste. Rules are scored by Wilson-bounded fitness intervals and pruned when they stop proving value.
 
-> **Internal naming convention**: Soma uses a biological metaphor internally (genome, enzymes, organs, cells) to model rule evolution — see the codebase for details.
+> **Internal naming convention**: Soma uses a biological metaphor internally (genome, organs, cells) to model rule evolution — see the codebase for details.
 
 See the [NOTICE](NOTICE) and [PRIVACY.md](PRIVACY.md) files for our full Data Privacy Statement.
 
@@ -170,7 +170,7 @@ Soma models governance as a layered system of rules, skills, and automation. Eve
 ┌──────────────────────────────────────────────────────────────────────┐
 │  📐 CORE RULES (genome/)          18 Rules — inherited defaults      │
 │  🔧 AGENT SKILLS (organs/)       15 Skills — complex behaviors       │
-│  ⚙️  AUTOMATION (enzymes/)        75 Scripts — task automation        │
+│  ⚙️  CORE & CLI (soma_core/, soma_cli/) Pure Python Governance & CLI  │
 ├──────────────────────────────────────────────────────────────────────┤
 │  🛡️ VERIFICATION                  AST analysis tools                  │
 │     Layer 1: AST-based checks (import guards, complexity, coverage)  │
@@ -184,7 +184,7 @@ Soma models governance as a layered system of rules, skills, and automation. Eve
 |:------|:----------|:-----------------|
 | **Core Rules** | `genome/` | 18 rules — inherited behavioral defaults, rarely changed. |
 | **Agent Skills** | `organs/` | 15 skills — complex multi-step behaviors like adaptive-reviewer, genesis, security-audit. |
-| **Automation Scripts** | `enzymes/` | 75 scripts — task-specific automation (fitness scoring, rule creation, evidence pipeline). |
+| **Core & CLI** | `soma_core/`, `soma_cli/` | Pure Python governance engine, cross-platform CLI, and evidence pipeline. |
 | **Verification** | `immune_system/` | AST analysis tools for code checking. |
 | **Adaptive Rules** | `.soma/cells/` | Per-repo adaptive invariants. Generated, tested, evolved, or retired. |
 
@@ -266,7 +266,7 @@ Generate → Score (Confidence Decay) → Adapt → Differentiate → Prune / Re
 
 **Lifecycle operators**: Differentiation (vacuoles harden into walls), Confidence Decay (confidence decays unless reinforced), Retirement (immediate eviction on excess false positives), Horizontal Transfer (cross-project sharing with probation), Version History (provenance tracking).
 
-**Fitness scoring**: Wilson-bounded fitness scoring with credible intervals — cells are scored by true positive rate using Wilson score intervals for statistically rigorous confidence bounds. Laplace smoothing `(tp + 1) / (triggers + 2)` provides the point estimate; Wilson bounds determine promotion and pruning thresholds. The Python SDK and enzymes use the canonical `parse_cell_file` parser; the dependency-light MCP path uses its documented standard-library frontmatter parser.
+**Fitness scoring**: Wilson-bounded fitness scoring with credible intervals — cells are scored by true positive rate using Wilson score intervals for statistically rigorous confidence bounds. Laplace smoothing `(tp + 1) / (triggers + 2)` provides the point estimate; Wilson bounds determine promotion and pruning thresholds. The Python SDK and CLI use the canonical `parse_cell_file` parser; the dependency-light MCP path uses its documented standard-library frontmatter parser.
 
 **Credit assignment**: Scope-narrowed credit assignment with per-file conservation — when multiple cells match the same changed file, each cell's fitness signal is weighted by `1/N` (where N = matching cells for that file). Fractional credit is stored deterministically rather than randomly rounded. Canonical events are recorded in `.soma/evidence/signals.jsonl` with credit and provenance metadata.
 
@@ -284,9 +284,9 @@ Generate → Score (Confidence Decay) → Adapt → Differentiate → Prune / Re
 
 ---
 
-## ⚙️ Automation Scripts
+## ⚙️ Core Architecture & Scripts
 
-Soma includes 73 task-specific scripts driving rule lifecycles, verification, and evidence pipelines. See [SCRIPTS.md](docs/architecture/scripts.md) for full documentation.
+Soma is implemented as a pure-Python governance system with zero runtime dependencies. See [SCRIPTS.md](docs/architecture/scripts.md) for the complete reference catalog of CLI commands, verification scripts, SDK modules, and core engines.
 
 ---
 
@@ -349,7 +349,7 @@ GitHub Actions runs on `ubuntu-latest`, `macos-latest`, and `windows-latest`:
 Every feature claim in this README is tracked in [`docs/project/CLAIM_REGISTRY.json`](docs/project/CLAIM_REGISTRY.json). A claim can only appear in README when:
 1. Its behavioral test suite exists and passes
 2. It has a Claim Registry entry with status `unlocked`
-3. The CI gate (`enzymes/verify_readme_claims.py`) confirms no regressions
+3. The CI gate (`soma_core.enforcement`) confirms no regressions
 
 Features that are planned but not yet shipped are listed in [ROADMAP.md](docs/project/ROADMAP.md).
 

@@ -31,6 +31,11 @@ INSTALL = os.path.join(REPO_ROOT, "install", "install.sh")
 UNINSTALL = os.path.join(REPO_ROOT, "install", "uninstall.sh")
 POSIX_ONLY = pytest.mark.skipif(os.name == "nt", reason="POSIX modes/signals/shims")
 
+pytestmark = pytest.mark.skipif(
+    not os.path.exists(INSTALL),
+    reason="legacy shell installers and enzymes purged in v0.97.0",
+)
+
 
 def _env(tmp_path, **extra):
     home = tmp_path / "home"

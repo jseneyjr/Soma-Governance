@@ -12,7 +12,7 @@ prediction: Will fire when a commit message contains bug-fix indicators (fix,
 falsification: 0 findings in 20 sessions → prune
 target_paths:
 - docs/project/BUG_REGISTRY.json
-- enzymes/*.py
+- soma_core/*.py
 - soma_cli/*.py
 - soma_mcp/*.py
 - soma_sdk/*.py

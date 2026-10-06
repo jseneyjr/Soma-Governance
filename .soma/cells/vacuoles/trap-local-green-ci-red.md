@@ -13,8 +13,8 @@ falsification: If 5 consecutive CI-touching changes pass CI on first push withou
 target_paths:
 - .github/workflows/*.yml
 - tests/*.py
-- enzymes/*.py
-- enzymes/*.sh
+- soma_core/*.py
+- soma_cli/*.py
 - Makefile
 triggers:
 - ci_fix

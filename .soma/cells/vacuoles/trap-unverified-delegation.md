@@ -10,8 +10,8 @@ prediction: Accepting subagent completion reports without grepping for actual fi
 falsification: If 20 consecutive subagent delegations all pass post-hoc file verification,
   this vacuole is unnecessary
 target_paths:
-- enzymes/*.py
-- enzymes/*.sh
+- soma_core/*.py
+- soma_cli/*.py
 - tests/*.py
 - soma_mcp/*.py
 triggers:

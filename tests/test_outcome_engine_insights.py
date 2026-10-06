@@ -48,7 +48,7 @@ class TestCaptureHumanInsightSignals:
 
     def test_returns_signals_for_matching_cells(self, tmp_path):
         """Insights matching cell target_paths produce fitness signals."""
-        from enzymes.outcome_engine import capture_human_insight_signals
+        from soma_core.telemetry import capture_human_insight_signals
 
         workspace = str(tmp_path)
         _write_cell(workspace, "vacuole-api-check", ["api/*.py"])
@@ -69,7 +69,7 @@ class TestCaptureHumanInsightSignals:
 
     def test_signal_weight_is_configurable(self, tmp_path):
         """Human insight signal weight reads from .soma/config if present."""
-        from enzymes.outcome_engine import capture_human_insight_signals
+        from soma_core.telemetry import capture_human_insight_signals
 
         workspace = str(tmp_path)
         _write_cell(workspace, "vacuole-test", ["src/*.py"])
@@ -102,7 +102,7 @@ class TestCaptureHumanInsightSignals:
 
     def test_no_insights_no_signals(self, tmp_path):
         """When .soma/human_insights.jsonl doesn't exist, return empty list."""
-        from enzymes.outcome_engine import capture_human_insight_signals
+        from soma_core.telemetry import capture_human_insight_signals
 
         workspace = str(tmp_path)
         os.makedirs(os.path.join(workspace, ".soma"), exist_ok=True)
@@ -112,7 +112,7 @@ class TestCaptureHumanInsightSignals:
 
     def test_uncovered_insights_flagged(self, tmp_path):
         """Insights with was_covered=False produce a 'blind_spot' signal."""
-        from enzymes.outcome_engine import capture_human_insight_signals
+        from soma_core.telemetry import capture_human_insight_signals
 
         workspace = str(tmp_path)
         os.makedirs(os.path.join(workspace, ".soma"), exist_ok=True)
@@ -150,7 +150,7 @@ def _signals_log(workspace):
 class TestInsightCursorDurability:
 
     def test_read_never_writes_cursor(self, tmp_path):
-        from enzymes.outcome_engine import read_human_insight_signals
+        from soma_core.telemetry import read_human_insight_signals
         ws = str(tmp_path)
         _write_cell(ws, "vacuole-api-check", ["api/*.py"])
         _write_insights(ws, [_covered("vacuole-api-check")])
@@ -164,7 +164,7 @@ class TestInsightCursorDurability:
         assert len(again) == 1
 
     def test_commit_cursor_is_atomic_and_advances(self, tmp_path, monkeypatch):
-        import enzymes.outcome_engine as oe
+        import soma_core.telemetry as oe
         ws = str(tmp_path)
         _write_cell(ws, "vacuole-api-check", ["api/*.py"])
         _write_insights(ws, [_covered("vacuole-api-check")])
@@ -187,7 +187,7 @@ class TestInsightCursorDurability:
         assert oe.read_human_insight_signals(ws)[0] == []
 
     def test_partial_trailing_line_is_reread(self, tmp_path):
-        from enzymes.outcome_engine import read_human_insight_signals, commit_insight_cursor
+        from soma_core.telemetry import read_human_insight_signals, commit_insight_cursor
         ws = str(tmp_path)
         _write_cell(ws, "vacuole-a", ["api/*.py"])
         _write_cell(ws, "vacuole-b", ["api/*.py"])
@@ -210,7 +210,7 @@ class TestInsightCursorDurability:
         assert offset == os.path.getsize(path)
 
     def test_capture_wrapper_still_commits(self, tmp_path):
-        from enzymes.outcome_engine import capture_human_insight_signals
+        from soma_core.telemetry import capture_human_insight_signals
         ws = str(tmp_path)
         _write_cell(ws, "vacuole-api-check", ["api/*.py"])
         _write_insights(ws, [_covered("vacuole-api-check")])
@@ -225,17 +225,17 @@ class TestAppendFitnessLogResult:
                  "verified": True, "reasons": []}]
 
     def test_true_when_all_appends_succeed(self, tmp_path):
-        from enzymes.outcome_engine import append_fitness_log
+        from soma_core.telemetry import append_fitness_log
         assert append_fitness_log(str(tmp_path), self._sig(tmp_path), {}) is True
         assert len(_signals_log(str(tmp_path))) == 1
 
     def test_true_for_empty_signal_list(self, tmp_path):
-        from enzymes.outcome_engine import append_fitness_log
+        from soma_core.telemetry import append_fitness_log
         assert append_fitness_log(str(tmp_path), [], {}) is True
 
     def test_false_when_any_append_fails(self, tmp_path, monkeypatch):
         import soma_sdk.telemetry as telemetry
-        from enzymes.outcome_engine import append_fitness_log
+        from soma_core.telemetry import append_fitness_log
 
         def boom(*args, **kwargs):
             raise RuntimeError("migration in progress")
@@ -245,7 +245,7 @@ class TestAppendFitnessLogResult:
 
 
 def _stub_main(monkeypatch, ws):
-    import enzymes.outcome_engine as oe
+    import soma_core.telemetry as oe
     monkeypatch.setattr(oe, "resolve_workspace", lambda *a, **k: ws)
     monkeypatch.setattr(oe, "capture_test_outcome", lambda w: {"verified": False, "reason": "stub"})
     monkeypatch.setattr(oe, "capture_build_outcome", lambda w: {"verified": False})

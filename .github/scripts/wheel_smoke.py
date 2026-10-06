@@ -7,7 +7,7 @@ the current directory can shadow site-packages:
     cd "$(mktemp -d)" && python -I /path/to/wheel_smoke.py
 
 Fails (non-zero exit) if any Soma module resolves from outside site-packages,
-or if the CLI, the MCP server, or the packaged enzymes do not work.
+or if the CLI, the MCP server, or Governance SDK do not work.
 """
 import importlib
 import json
@@ -17,7 +17,7 @@ import sys
 import sysconfig
 import tempfile
 
-PACKAGES = ("soma_cli", "soma_sdk", "soma_core", "soma_mcp", "enzymes", "immune_system")
+PACKAGES = ("soma_cli", "soma_sdk", "soma_core", "soma_mcp", "immune_system")
 
 
 def fail(msg):
@@ -75,12 +75,12 @@ def check_mcp(ws):
     print("ok  soma_mcp initialize / tools/list / soma_list_cells")
 
 
-def check_packaged_enzymes(ws):
+def check_governance_fitness(ws):
     from soma_sdk.governance import Governance
     result = Governance(project_root=ws).fitness_landscape()
     if isinstance(result, dict) and "error" in result:
-        fail(f"packaged enzyme cell_fitness.py failed: {result}")
-    print("ok  packaged enzymes (Governance.fitness_landscape)")
+        fail(f"governance fitness_landscape failed: {result}")
+    print("ok  governance (Governance.fitness_landscape)")
 
 
 def check_full_rule_preset(ws):
@@ -105,7 +105,7 @@ def main():
     ws = make_workspace()
     check_cli()
     check_mcp(ws)
-    check_packaged_enzymes(ws)
+    check_governance_fitness(ws)
     check_full_rule_preset(ws)
     print("wheel smoke passed")
 

@@ -13,7 +13,7 @@ falsification: If soma CLI lacks a needed operation for 5 consecutive sessions, 
 target_paths:
 - .soma/cells/**/*.md
 - soma_cli/*.py
-- enzymes/*.py
+- soma_core/*.py
 triggers:
 - cell_creation
 - cell_promotion

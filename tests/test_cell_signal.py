@@ -25,6 +25,8 @@ def _link(link_dir, name):
     return str(link)
 
 def test_cell_signal_via_symlink(tmp_path, link_dir, bash):
+    if not os.path.exists(ENZYMES):
+        pytest.skip("enzymes directory purged in v0.97.0")
     proj = tmp_path / "proj"
     (proj / ".soma" / "cells").mkdir(parents=True)
     proc = run([bash, _link(link_dir, "cell_signal.sh")], cwd=str(proj),

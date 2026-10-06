@@ -5,6 +5,11 @@ from conftest import REPO_ROOT
 
 ENZYMES = os.path.join(REPO_ROOT, "enzymes")
 
+pytestmark = pytest.mark.skipif(
+    not os.path.exists(os.path.join(ENZYMES, "immune_sweep.sh")),
+    reason="enzymes directory purged in v0.97.0",
+)
+
 def _env(tmp_path, **extra):
     import sys
     home = tmp_path / "home"

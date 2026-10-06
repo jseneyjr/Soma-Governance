@@ -6,8 +6,13 @@ the real Windows profile (rewriting ~/.claude/CLAUDE.md, ~/.soma/manifest.json
 and creating ~/.kiro). The shared ``run`` helper must keep both in step.
 """
 import os
+import pytest
+from conftest import REPO_ROOT, run
 
-from conftest import run
+pytestmark = pytest.mark.skipif(
+    not os.path.exists(os.path.join(REPO_ROOT, "enzymes", "common.sh")),
+    reason="enzymes directory purged in v0.97.0",
+)
 
 RESOLVE_AND_MARK = 'source enzymes/common.sh; h="$(resolve_home)"; touch "$h/marker"'
 

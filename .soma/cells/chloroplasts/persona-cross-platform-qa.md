@@ -9,9 +9,8 @@ prediction: Will catch platform-specific assumptions (GNU vs BSD tools, path sep
   shebangs)
 falsification: 0 unique findings in 10 sessions → prune
 target_paths:
-- enzymes/*.sh
-- install/*.sh
-- install/*.ps1
+- soma_cli/platforms/*.py
+- install/hooks/*
 - Makefile
 expiry_sessions: 15
 expiry_days: 60

@@ -182,6 +182,8 @@ verify_bug_tests = verify_regression_tests
 
 
 def cli_verify_bug_registry(argv: Optional[List[str]] = None) -> int:
+    if hasattr(sys.stdout, "reconfigure"):
+        sys.stdout.reconfigure(errors="replace")
     parser = argparse.ArgumentParser(description="Verify Bug Registry")
     parser.add_argument("--workspace", default=None, help="Workspace root")
     args = parser.parse_args(argv if argv is not None else sys.argv[1:])
@@ -263,6 +265,8 @@ def verify_readme_claims(workspace: str) -> Tuple[bool, List[str]]:
 
 
 def cli_verify_readme_claims(argv: Optional[List[str]] = None) -> int:
+    if hasattr(sys.stdout, "reconfigure"):
+        sys.stdout.reconfigure(errors="replace")
     ws = resolve_workspace()
     ok, failures = verify_readme_claims(ws)
     if not ok:
@@ -347,9 +351,8 @@ if [ "$MATCHED" -eq 1 ]; then
     echo -n "   Hypothesis: "
     echo {quoted_hyp}
     echo "   Files: $CHANGED_FILES"
-    # Signal the cell
-    SCRIPT_DIR="$(dirname "$0")/../../enzymes"
-    [ -f "$SCRIPT_DIR/cell_signal.sh" ] && bash "$SCRIPT_DIR/cell_signal.sh" {quoted_name} tp 2>/dev/null
+    # Signal the cell via in-process python
+    python3 -c "import sys; from soma_core.telemetry import append_signal; append_signal('.', sys.argv[1], 'tp', 'mechanical')" {quoted_name} 2>/dev/null || true
     exit 1  # Mechanical: block commit
 fi
 
@@ -469,17 +472,8 @@ class Gate_{class_suffix}:
         try:
             from soma_core.telemetry import append_signal
             append_signal(os.getcwd(), cls.CELL_NAME, "tp", "ci")
-            return
         except Exception:
             pass
-        signal_script = os.path.join(
-            os.path.dirname(__file__), '..', '..', 'enzymes', 'cell_signal.sh'
-        )
-        if os.path.exists(signal_script):
-            subprocess.run(
-                ['bash', signal_script, cls.CELL_NAME, 'tp'],
-                capture_output=True, cwd=os.path.dirname(signal_script)
-            )
 
     @classmethod
     def enforce(cls, condition, message=None):
@@ -487,23 +481,11 @@ class Gate_{class_suffix}:
         if not condition:
             msg = message or f"Gate violation: {{cls.HYPOTHESIS}}"
             try:
-                from soma_core.defects import record_defect
-                record_defect(os.getcwd(), event="crash", files=cls.TARGET_PATHS, severity="critical")
+                from soma_core.defects import record_escaped_defect
+                cell_dict = {{"_name": cls.CELL_NAME, "name": cls.CELL_NAME, "type": "wall", "enforcement": "gate"}}
+                record_escaped_defect(cell_dict, "crash", cls.TARGET_PATHS, "critical", os.getcwd())
             except Exception:
-                escaped_script = os.path.join(
-                    os.path.dirname(__file__), '..', '..', 'vendor', 'soma',
-                    'enzymes', 'cell_escaped_defects.py'
-                )
-                if not os.path.exists(escaped_script):
-                    escaped_script = os.path.join(
-                        os.path.dirname(__file__), '..', '..', 'enzymes', 'cell_escaped_defects.py'
-                    )
-                if os.path.exists(escaped_script) and cls.TARGET_PATHS:
-                    subprocess.run(
-                        [sys.executable, escaped_script, '--event', 'crash',
-                         '--files'] + cls.TARGET_PATHS + ['--severity', 'critical'],
-                        capture_output=True
-                    )
+                pass
             raise RuntimeError(f"\U0001f6d1 GATE VIOLATION [{{cls.CELL_NAME}}]: {{msg}}")
 '''
     return assertion
@@ -860,6 +842,8 @@ def cli_ci_outcome_reporter(argv: Optional[List[str]] = None) -> int:
     return 0
 
 
+main = cli_ci_outcome_reporter
+
 __all__ = [
     "VALID_STATUSES",
     "CORE_FIELDS",
@@ -884,4 +868,5 @@ __all__ = [
     "generate_ci_report",
     "_match_cells",
     "cli_ci_outcome_reporter",
+    "main",
 ]
