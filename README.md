@@ -53,19 +53,19 @@ soma status
 # Global install via Makefile (Gemini / Antigravity)
 make install
 
-# Shell installer for specific platforms
-bash install/install.sh gemini     # Google Gemini
-bash install/install.sh copilot    # GitHub Copilot
-bash install/install.sh claude     # Claude Code
-bash install/install.sh kiro       # AWS Kiro
-bash install/install.sh mcp        # Any MCP-compatible agent
+# Install rules for specific platforms
+soma install --platform gemini     # Google Gemini
+soma install --platform copilot    # GitHub Copilot
+soma install --platform claude     # Claude Code
+soma install --platform kiro       # AWS Kiro
+soma install --platform mcp        # Any MCP-compatible agent
 ```
 
 </details>
 
 ### MCP Server (Recommended)
 
-Add Soma as an MCP server in your AI agent's config. Set `SOMA_WORKSPACE` to the governed project (the directory containing `.soma/cells/`). No API key is needed because the host agent supplies the model.
+Add Soma as an MCP server in your AI agent's config. Set `SOMA_WORKSPACE` to the governed project (the directory containing `.soma/`). No API key is needed because the host agent supplies the model.
 
 ```json
 {
@@ -97,7 +97,7 @@ Works with Gemini Antigravity, Claude Code, Cursor, and any MCP-compatible agent
 1. Call `soma_request_receipt` with the intended tool name in `operation` and the exact tool arguments in `arguments`. For `soma_report_outcome`, those arguments must include a non-empty, retry-stable `idempotency_key`.
 2. Call that tool with the same arguments plus the returned `receipt`.
 
-Receipts expire after 300 seconds and are single-use. They are bound to the current MCP session, canonical workspace, operation, exact arguments, target-file state, and governance-cell state. If a target file or any cell changes before redemption, request a new receipt. Receipts authorize a specific state-bound operation; they do not authenticate a person. Reusing the same `soma_report_outcome` idempotency key with the same payload is a no-op; changing the payload for that key fails closed.
+Receipts expire after 300 seconds and are single-use. They are bound to the current MCP session, canonical workspace, operation, exact arguments, target-file state, and governance rule state. If a target file or any active rule changes before redemption, request a new receipt. Receipts authorize a specific state-bound operation; they do not authenticate a person. Reusing the same `soma_report_outcome` idempotency key with the same payload is a no-op; changing the payload for that key fails closed.
 
 **Asynchronous verification:** For long-running adversarial Layer 2 checks, `soma_verify_changes` accepts `async_mode: true`. The tool immediately returns a `job_token`, executing verification in a background worker thread. Host agents can poll job status and retrieve signed receipts via the read-only `soma_poll_verification` tool without blocking.
 
@@ -133,18 +133,18 @@ All governance workflows are available via the `soma` CLI:
 
 | Command | Description |
 |:--------|:------------|
-| `soma init` | Set up governance for Gemini, Claude Code, Cursor, or Copilot; use the Bash installer for Kiro |
-| `soma genesis` | Scan codebase architecture, generate governance cells |
-| `soma status` | Show active rules, cell counts, and fitness stats |
+| `soma init` | Set up governance for Gemini, Claude Code, Cursor, Copilot, or Kiro |
+| `soma genesis` | Scan codebase architecture, generate adaptive governance rules |
+| `soma status` | Show active rules and fitness stats |
 | `soma report` | Session report card with compliance metrics |
 | `soma doctor` | System health check — verifies installation integrity |
 | `soma verify` | Layer 1 AST analysis on changed files (`--layer1-only` available) |
 | `soma checkpoint` | Quality checks (`--pre-commit` for git hooks) |
 | `soma hook` | Native lifecycle hooks (`pre-commit`, `safety-gate`, `pre-invocation`, `session-close`) |
-| `soma sync` | Reconcile evidence JSONL with cell frontmatter (`--dry-run`, `--json`) |
-| `soma oracle` | Cell health classification — healthy, noisy, expired, unobserved |
-| `soma promote` | Evaluate cells for promotion (vacuole → wall → genome). `--force --cell <id>` for manual |
-| `soma demote` | Evaluate cells for demotion (high FP rate or dormant). `--force --cell <id>` for manual |
+| `soma sync` | Reconcile evidence JSONL with rule frontmatter (`--dry-run`, `--json`) |
+| `soma oracle` | Rule health classification — healthy, noisy, expired, unobserved |
+| `soma promote` | Evaluate rules for promotion (candidate → invariant → core). `--force --cell <id>` for manual |
+| `soma demote` | Evaluate rules for demotion (high FP rate or dormant). `--force --cell <id>` for manual |
 
 ```bash
 # Quick quality check before committing
@@ -153,10 +153,10 @@ soma checkpoint
 # AST analysis (Layer 1)
 soma verify
 
-# Cell health dashboard
+# Rule health dashboard
 soma oracle --json
 
-# See what cells earned promotion
+# See what rules earned promotion
 soma promote --dry-run
 ```
 
@@ -226,7 +226,7 @@ Complex multi-step behaviors — each skill performs a specialized function.
 |:------|:--------|
 | [adaptive-reviewer](organs/adaptive-reviewer/SKILL.md) | Auto-escalating review orchestrator with subagent nesting |
 | [domain-researcher](organs/domain-researcher/SKILL.md) | Compiles verified external facts (wikis, API docs) |
-| [genesis](organs/genesis/SKILL.md) | Codebase onboarding: scans stack and seeds governance cells |
+| [genesis](organs/genesis/SKILL.md) | Codebase onboarding: scans stack and seeds governance rules |
 | [governance-auditor](organs/governance-auditor/SKILL.md) | Mechanical per-rule PASS/FAIL compliance checks |
 | [incident-debug](organs/incident-debug/SKILL.md) | SRE: reproduce → isolate → diagnose → fix → verify |
 | [performance-audit](organs/performance-audit/SKILL.md) | Hot-path allocations, O(n²) patterns, GC pressure |
@@ -266,19 +266,19 @@ Generate → Score (Confidence Decay) → Adapt → Differentiate → Prune / Re
 
 **Lifecycle operators**: Differentiation (vacuoles harden into walls), Confidence Decay (confidence decays unless reinforced), Retirement (immediate eviction on excess false positives), Horizontal Transfer (cross-project sharing with probation), Version History (provenance tracking).
 
-**Fitness scoring**: Wilson-bounded fitness scoring with credible intervals — cells are scored by true positive rate using Wilson score intervals for statistically rigorous confidence bounds. Laplace smoothing `(tp + 1) / (triggers + 2)` provides the point estimate; Wilson bounds determine promotion and pruning thresholds. The Python SDK and CLI use the canonical `parse_cell_file` parser; the dependency-light MCP path uses its documented standard-library frontmatter parser.
+**Fitness scoring**: Wilson-bounded fitness scoring with credible intervals — rules are scored by true positive rate using Wilson score intervals for statistically rigorous confidence bounds. Laplace smoothing `(tp + 1) / (triggers + 2)` provides the point estimate; Wilson bounds determine promotion and pruning thresholds. The Python SDK and CLI use the canonical `parse_cell_file` parser; the dependency-light MCP path uses its documented standard-library frontmatter parser.
 
-**Credit assignment**: Scope-narrowed credit assignment with per-file conservation — when multiple cells match the same changed file, each cell's fitness signal is weighted by `1/N` (where N = matching cells for that file). Fractional credit is stored deterministically rather than randomly rounded. Canonical events are recorded in `.soma/evidence/signals.jsonl` with credit and provenance metadata.
+**Credit assignment**: Scope-narrowed credit assignment with per-file conservation — when multiple rules match the same changed file, each rule's fitness signal is weighted by `1/N` (where N = matching rules for that file). Fractional credit is stored deterministically rather than randomly rounded. Canonical events are recorded in `.soma/evidence/signals.jsonl` with credit and provenance metadata.
 
-**Structured crossover**: Structured field-level rule merging — two high-fitness cells can be crossed to produce offspring with combined hypotheses, max impact weight, merged target paths (union), and reset fitness counters. Lineage tracking records parent IDs, generation number, and creation method.
+**Structured crossover**: Structured field-level rule merging — two high-fitness rules can be crossed to produce offspring with combined hypotheses, max impact weight, merged target paths (union), and reset fitness counters. Lineage tracking records parent IDs, generation number, and creation method.
 
-**Tournament selection**: Tournament selection for rule competition — random k-sample selection identifies the highest-fitness cell per round. Read-only operation preserves cell state. Handles null fitness, oversized k, and empty cell directories gracefully.
+**Tournament selection**: Tournament selection for rule competition — random k-sample selection identifies the highest-fitness rule per round. Read-only operation preserves rule state. Handles null fitness, oversized k, and empty rule directories gracefully.
 
-**Tiered enforcement**: Rules earn their enforcement tier through demonstrated defect prevention — `advisory` (prompt injection) → `mechanical` (pre-commit block) → `gate` (CI block). Enforcement ladder evaluates cell invariants and applies tier-appropriate blocking.
+**Tiered enforcement**: Rules earn their enforcement tier through demonstrated defect prevention — `advisory` (prompt injection) → `mechanical` (pre-commit block) → `gate` (CI block). Enforcement ladder evaluates rule invariants and applies tier-appropriate blocking.
 
-**Quorum sensing**: Multi-rule consensus for high-confidence decisions — when ≥N cells trigger simultaneously on the same changed files, Soma detects a systemic issue and escalates the review mode to the highest `minimum_mode` among triggered cells. Quorum events are logged to JSONL for trend analysis.
+**Quorum sensing**: Multi-rule consensus for high-confidence decisions — when ≥N rules trigger simultaneously on the same changed files, Soma detects a systemic issue and escalates the review mode to the highest `minimum_mode` among triggered rules. Quorum events are logged to JSONL for trend analysis.
 
-**Gate enforcement DSL**: Cells can declare invariants in frontmatter (e.g., `import_banned`, `file_must_exist`) that are evaluated against changed files. Violations are enforced according to the cell's enforcement tier: advisory warns without blocking, gate exits non-zero in CI.
+**Gate enforcement DSL**: Rules can declare invariants in frontmatter (e.g., `import_banned`, `file_must_exist`) that are evaluated against changed files. Violations are enforced according to the rule's enforcement tier: advisory warns without blocking, gate exits non-zero in CI.
 
 > **Planned features**: See [ROADMAP.md](docs/project/ROADMAP.md) for upcoming work.
 
@@ -308,11 +308,11 @@ Copy [`soma.conf.example`](install/soma.conf.example) → `soma.conf` to customi
 
 | OS | Shell | Install | Uninstall | Core Rules | Agent Skills | Hooks |
 |:---|:------|:--------|:----------|:----------:|:------------:|:-----:|
-| **Linux** | Bash | `make install` | `bash install/uninstall.sh` | ✅ | ✅ | ✅ |
-| **macOS** | Zsh / Bash | `make install` | `bash install/uninstall.sh` | ✅ | ✅ | ✅ |
-| **WSL** | Bash | `make install` | `bash install/uninstall.sh` | ✅ | ✅ | ✅ |
-| **Windows (Git Bash)** | Bash | `make install` | `bash install/uninstall.sh` | ✅ | ✅ | ✅ |
-| **Windows (PowerShell)** | PowerShell | `.\install.ps1` | `.\install\uninstall.ps1` | ✅ | ✅ | ✅ |
+| **Linux** | Bash | `make install` or `soma install` | `make uninstall` or `soma uninstall` | ✅ | ✅ | ✅ |
+| **macOS** | Zsh / Bash | `make install` or `soma install` | `make uninstall` or `soma uninstall` | ✅ | ✅ | ✅ |
+| **WSL** | Bash | `make install` or `soma install` | `make uninstall` or `soma uninstall` | ✅ | ✅ | ✅ |
+| **Windows (Git Bash)** | Bash | `make install` or `soma install` | `make uninstall` or `soma uninstall` | ✅ | ✅ | ✅ |
+| **Windows (PowerShell)** | PowerShell | `soma install` | `soma uninstall` | ✅ | ✅ | ✅ |
 
 > **Windows Support:** As of v0.93.0, Windows PowerShell 5.1, PowerShell 7, and Git Bash have full parity with native lifecycle hooks (`soma hook`) and UTF-8 encoding ([BUG-014](docs/project/BUG_REGISTRY.json), [BUG-032](docs/project/BUG_REGISTRY.json)). Details: [Known Issues — Windows](docs/KNOWN_ISSUES_WINDOWS.md).
 
@@ -320,7 +320,7 @@ Copy [`soma.conf.example`](install/soma.conf.example) → `soma.conf` to customi
 
 ## How Soma Differs
 
-Soma replaces passive prompt files with active lifecycle-managed governance: JIT context loading prevents bloat, adaptive cells trap repo-specific bugs, and AST analysis catches violations deterministically.
+Soma replaces passive prompt files with active lifecycle-managed governance: JIT context loading prevents bloat, adaptive rules trap repo-specific bugs, and AST analysis catches violations deterministically.
 
 For design analysis, see [ABSTRACT.md](docs/research/abstract.md).
 
@@ -376,23 +376,20 @@ Features that are planned but not yet shipped are listed in [ROADMAP.md](docs/pr
 
 ## Uninstalling
 
+Remove installed governance rules and configuration across platforms:
+
 ```bash
-bash install/uninstall.sh gemini                # Remove Soma files, restore backups
-bash install/uninstall.sh gemini --dry-run       # Preview what will be removed
-bash install/uninstall.sh gemini --keep-config   # Preserve soma.conf
-bash install/uninstall.sh gemini --no-restore    # Skip backup restoration
-bash install/uninstall.sh gemini --force         # Skip confirmation prompt
-bash install/uninstall.sh gemini --purge-data    # Also remove cells, fitness history
+soma uninstall                    # Remove Soma files for active platform
+soma uninstall --platform gemini  # Target a specific platform (gemini, kiro, copilot, claude, mcp)
+soma uninstall --dry-run          # Preview what would be removed without deleting
+soma uninstall --local            # Remove from project-local directory
 ```
 
-On Windows (PowerShell):
+Or via Makefile:
 
-```powershell
-pwsh install\uninstall.ps1 -Platform gemini
-pwsh install\uninstall.ps1 -Platform gemini -DryRun
+```bash
+make uninstall                    # Uses SOMA_PLATFORM from soma.conf or default (gemini)
 ```
-
-The Bash installer auto-migrates existing `.prism/` directories to `.soma/`. `soma init` and the PowerShell installer do not perform this migration.
 
 ## License
 

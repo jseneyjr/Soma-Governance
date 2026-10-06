@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import importlib
 import json
 import os
@@ -5,6 +7,7 @@ import re
 import secrets
 import sys
 from datetime import datetime, timezone
+from typing import Optional
 
 from soma_core.cell_inventory import CellInventoryError, inventory_cells
 from soma_core.workspace import resolve_workspace
@@ -136,7 +139,7 @@ def normalize_tool_call(tool_name: str, arguments: dict) -> tuple[str, dict]:
     return canonical_name, normalized_args
 
 
-def _matches_cell_type_filter(rel: str, cell_type: str | None) -> bool:
+def _matches_cell_type_filter(rel: str, cell_type: Optional[str] = None) -> bool:
     if not cell_type:
         return True
     parent_name = os.path.basename(os.path.dirname(rel))
