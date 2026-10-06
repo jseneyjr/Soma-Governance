@@ -16,10 +16,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Optional
 
-try:
-    import yaml
-except ImportError:
-    import json as yaml  # fallback
+from soma_core.frontmatter import parse_frontmatter, dump_frontmatter
 
 
 def resolve_workspace() -> Path:
@@ -85,13 +82,9 @@ def send_signal(
         print(f"Error: {target_cell} has malformed YAML frontmatter", file=sys.stderr)
         return 1
 
-    frontmatter_str = content[3:end_idx].strip()
-    body_str = content[end_idx + 3:]
-
-    try:
-        metadata = yaml.safe_load(frontmatter_str) or {}
-    except Exception as e:
-        print(f"Error parsing YAML: {e}", file=sys.stderr)
+    metadata = parse_frontmatter(content)
+    if metadata is None:
+        print(f"Error parsing frontmatter in {target_cell}", file=sys.stderr)
         return 1
 
     if "fitness" not in metadata or not isinstance(metadata["fitness"], dict):
@@ -126,7 +119,7 @@ def send_signal(
     metadata["fitness"] = fitness
 
     try:
-        new_frontmatter = yaml.dump(metadata, default_flow_style=False, sort_keys=False)
+        new_frontmatter = dump_frontmatter(metadata)
         clean_body = body_str[1:] if body_str.startswith("\n") else body_str
         new_content = f"---\n{new_frontmatter}---\n{clean_body}"
         target_cell.write_text(new_content, encoding="utf-8")

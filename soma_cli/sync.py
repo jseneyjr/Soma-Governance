@@ -14,8 +14,6 @@ import sys
 import tempfile
 from typing import Optional
 
-import yaml
-
 from soma_cli import resolve_root
 from soma_core.evidence import aggregate_signals
 from soma_core.sync import aggregate_evidence, sync_frontmatter

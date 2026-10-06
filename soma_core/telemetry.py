@@ -42,13 +42,8 @@ try:
 except ImportError:
     msvcrt = None
 
-try:
-    import yaml
-except ImportError:
-    yaml = None
-
 from soma_core.workspace import resolve_workspace
-from soma_core.frontmatter import parse_frontmatter, _get_body, dump_frontmatter
+from soma_core.frontmatter import parse_frontmatter, parse_yaml_subset, _get_body, dump_frontmatter
 
 
 # ── Evidence Ledger & Atomic Locking ──────────────────────────────────────
@@ -689,10 +684,9 @@ def read_human_insight_signals(workspace: str) -> tuple[list[dict], int]:
     if os.path.isfile(config_path):
         try:
             with open(config_path, 'r', encoding='utf-8') as f:
-                if yaml is not None:
-                    config = yaml.safe_load(f) or {}
-                else:
-                    config = parse_frontmatter(f.read()) or {}
+                content = f.read()
+                config = parse_frontmatter(content) if content.startswith("---") else parse_yaml_subset(content)
+                config = config or {}
             weight = float(config.get('insight_signal_weight', 0.5))
         except Exception:
             pass
@@ -812,25 +806,8 @@ def _parse_frontmatter(content: str, filepath: Optional[str] = None) -> dict:
             return {}
     if not content:
         return {}
-    try:
-        res = parse_frontmatter(content)
-        if isinstance(res, dict):
-            return res
-    except Exception:
-        pass
-    if not content.startswith('---'):
-        return {}
-    end = content.find('---', 3)
-    if end == -1:
-        return {}
-    fm_text = content[3:end].strip()
-    try:
-        if yaml is not None:
-            loaded = yaml.safe_load(fm_text)
-            return loaded if isinstance(loaded, dict) else {}
-    except Exception:
-        pass
-    return {}
+    res = parse_frontmatter(content)
+    return res if isinstance(res, dict) else {}
 
 
 def match_cells_to_changes(workspace: str, changed_files: list[str]) -> list[dict]:
@@ -1066,10 +1043,7 @@ def update_cell_fitness(workspace: str, fitness_signals: list[dict]) -> None:
             fitness['last_trigger_date'] = datetime.now(timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ')
             fm['fitness'] = fitness
 
-            if yaml is not None:
-                new_fm = yaml.dump(fm, sort_keys=False, default_flow_style=False, allow_unicode=True)
-            else:
-                new_fm = dump_frontmatter(fm)
+            new_fm = dump_frontmatter(fm)
 
             new_content = f"---\n{new_fm.strip()}\n---\n\n{body}\n" if body else f"---\n{new_fm.strip()}\n---\n"
 

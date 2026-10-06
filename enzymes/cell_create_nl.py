@@ -8,9 +8,7 @@ import os, sys, argparse, json, subprocess
 from soma_core.evidence import aggregate_signals
 from soma_core.workspace import resolve_workspace
 from soma_core.inference_provider import resolve_provider
-from soma_core.lifecycle import create_cell_from_description
-
-import yaml
+from soma_core.frontmatter import parse_frontmatter, dump_frontmatter
 
 
 
@@ -56,7 +54,7 @@ def create_cell_from_insight_cluster(cluster: dict, workspace: str) -> str:
         "tags": ["auto-generated", "insight-cluster", category],
     }
 
-    fm_text = yaml.dump(frontmatter, default_flow_style=False, sort_keys=False)
+    fm_text = dump_frontmatter(frontmatter)
 
     body = f"This vacuole was auto-generated from a cluster of human insights " \
            f"about **{category}** (confidence {confidence:.2f}).\n"
@@ -154,8 +152,7 @@ def main():
                 cell_content = cell_content.rstrip()[:-3].rstrip()
         
         if cell_content.startswith('---'):
-            yaml_block = cell_content[3:cell_content.find('---', 3)]
-            fm = yaml.safe_load(yaml_block)
+            fm = parse_frontmatter(cell_content) or {}
         else:
             print('Warning: Could not parse generated YAML frontmatter')
             fm = {}

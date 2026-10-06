@@ -30,14 +30,6 @@ from soma_mcp.cell_cache import CellCache
 # Module-level singleton — persists across MCP tool invocations
 _cell_cache = CellCache()
 
-# pyyaml is an OPTIONAL dependency. When it is missing we parse the frontmatter
-# subset used by cells with the stdlib parser below instead of failing to import.
-try:
-    import yaml
-except ImportError:
-    yaml = None
-
-
 # Ensure parent dir is importable
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 

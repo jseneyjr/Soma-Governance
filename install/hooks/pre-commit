@@ -51,16 +51,16 @@ fi
 NEW_FILES=$(git diff --cached --diff-filter=A --name-only 2>/dev/null)
 if [ -n "$NEW_FILES" ]; then
     soma_py -c "
-import sys, glob, yaml
+import sys, glob
 from fnmatch import fnmatch
+from soma_core.frontmatter import parse_frontmatter
 cells_dir = '.soma/cells'
 patterns = []
 for f in glob.glob(f'{cells_dir}/**/*.md', recursive=True):
     try:
-        with open(f) as fh: c = fh.read()
-        if c.startswith('---'):
-            fm = yaml.safe_load(c[3:c.find('---',3)])
-            patterns.extend(fm.get('target_paths', []))
+        with open(f, encoding='utf-8-sig') as fh: c = fh.read()
+        fm = parse_frontmatter(c) or {}
+        patterns.extend(fm.get('target_paths', []))
     except Exception: pass
 uncovered = []
 for nf in sys.stdin.read().strip().split('\n'):

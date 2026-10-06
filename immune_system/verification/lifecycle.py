@@ -20,9 +20,8 @@ import os
 from datetime import datetime, timezone
 from typing import Any, Optional
 
-import yaml
-
 from soma_core.evidence import aggregate_signals
+from soma_core.frontmatter import parse_frontmatter
 from soma_core.lifecycle import PROTECTED_RULES
 
 
@@ -104,15 +103,8 @@ def _load_cells(workspace: str) -> list[dict[str, Any]]:
             except OSError:
                 continue
 
-            # Parse YAML frontmatter
-            if not content.startswith("---"):
-                continue
-            parts = content.split("---", 2)
-            if len(parts) < 3:
-                continue
-            try:
-                meta = yaml.safe_load(parts[1]) or {}
-            except yaml.YAMLError:
+            meta = parse_frontmatter(content)
+            if not meta:
                 continue
 
             cell_id = meta.get("id", os.path.splitext(os.path.basename(md_path))[0])

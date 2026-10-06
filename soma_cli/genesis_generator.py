@@ -10,7 +10,7 @@ import json
 from datetime import date
 from pathlib import Path
 
-import yaml
+from soma_core.frontmatter import dump_frontmatter
 
 from soma_cli.genesis_scanner import CellCandidate
 
@@ -95,7 +95,7 @@ def _render_cell(candidate: CellCandidate) -> str:
         "expiry_days": 30,
     }
 
-    fm_str = yaml.dump(frontmatter, default_flow_style=False, sort_keys=False)
+    fm_str = dump_frontmatter(frontmatter)
 
     body = (
         f"## Vacuole: {candidate.hypothesis}\n"
