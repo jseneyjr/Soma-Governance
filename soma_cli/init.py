@@ -28,15 +28,6 @@ STARTER_RULES = [
 
 MINIMAL_RULES = ["providence", "destructive-ops"]
 
-# Legacy mapping for manifest cross-validation (starter_pack.txt)
-STARTER_RULES_LEGACY = {
-    "providence": "genome/providence.md",
-    "destructive-ops": "genome/destructive-ops.md",
-    "testing": "genome/.oracles/testing.md",
-    "cost-optimization": "genome/cost-optimization.md",
-    "git-workflow": "genome/.oracles/git-workflow.md",
-}
-
 
 def _get_starter_rule_path(name: str) -> Path | None:
     """Resolve the path to a bundled starter rule file.

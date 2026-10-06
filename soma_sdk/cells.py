@@ -158,21 +158,10 @@ class Cell:
 # Canonical Cell Parser (Phase 2.1)
 # ---------------------------------------------------------------------------
 
-# Lazy re-signing hook — no-op until Phase 4.3 registers integrity_check
-_post_write_hook: Callable[[str], None] = lambda path: None
-
-
-def register_write_hook(hook_fn: Callable[[str], None]) -> None:
-    """Register a post-write hook (e.g., manifest re-signing)."""
-    global _post_write_hook
-    _post_write_hook = hook_fn
-
-
 def parse_cell_file(filepath: str) -> Tuple[dict, str]:
     """Parse a cell markdown file into (frontmatter_dict, body_text).
 
     The single source of truth for YAML frontmatter parsing.
-    All enzyme files should import this instead of inline parsing.
 
     Args:
         filepath: Absolute or relative path to a cell .md file.
@@ -201,8 +190,6 @@ def write_cell_frontmatter(
 ) -> None:
     """Write a cell file with YAML frontmatter and body text.
 
-    Calls the registered post-write hook (no-op until Phase 4.3).
-
     Args:
         filepath: Path to write the cell file.
         frontmatter: Dict to serialize as YAML frontmatter.
@@ -217,8 +204,6 @@ def write_cell_frontmatter(
 
     with open(filepath, 'w', encoding='utf-8') as f:
         f.write(content)
-
-    _post_write_hook(filepath)
 
 
 def _sanitize_cell_id(cell_id: str) -> str:

@@ -52,9 +52,6 @@ SAFE_COMMAND_PREFIXES: tuple[str, ...] = (
 METACHARACTERS: frozenset[str] = frozenset({";", "&", "|", ">", "<", "`", "$", "\n", "\r", "(", ")", "\\"})
 DANGEROUS_FLAGS: tuple[str, ...] = ("-f", "--force", "-D", "-d", "-M", "--output", "--ext-cmd", "--delete")
 
-# Legacy pattern tuple maintained for backward compatibility (evaluations delegated to CommandAnalyzer)
-DESTRUCTIVE_PATTERNS: tuple[tuple[re.Pattern[str], str], ...] = ()
-
 SECRET_REPLACEMENTS: list[tuple[re.Pattern[str], str]] = [
     (
         re.compile(
