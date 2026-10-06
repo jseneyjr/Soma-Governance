@@ -13,31 +13,6 @@ from conftest import REPO_ROOT
 ENZYMES_DIR = Path(REPO_ROOT) / "enzymes"
 
 
-def test_bump_version_dry_run(tmp_path):
-    from enzymes.bump_version import bump_version
-
-    (tmp_path / "soma_sdk").mkdir()
-    (tmp_path / "soma_sdk_js").mkdir()
-    (tmp_path / "docs").mkdir()
-
-    (tmp_path / "VERSION").write_text("0.93.0\n", encoding="utf-8")
-    (tmp_path / "pyproject.toml").write_text('version = "0.93.0"\n', encoding="utf-8")
-    (tmp_path / "soma_sdk" / "__init__.py").write_text('__version__ = "0.93.0"\n', encoding="utf-8")
-    (tmp_path / "soma_sdk_js" / "package.json").write_text('{\n  "version": "0.93.0"\n}\n', encoding="utf-8")
-    (tmp_path / "README.md").write_text('[![Version](https://img.shields.io/badge/Version-0.93.0-informational)\n', encoding="utf-8")
-    (tmp_path / "docs" / "KNOWN_ISSUES_WINDOWS.md").write_text(
-        "# Known Issues — Windows (v0.93.0)   Open Windows issues as of v0.93.0\n",
-        encoding="utf-8",
-    )
-    (tmp_path / "SECURITY.md").write_text(
-        "| 0.93.x | ✅ |\n| < 0.93 | ❌ |\n",
-        encoding="utf-8",
-    )
-
-    rc = bump_version("0.94.0", repo_root=tmp_path, dry_run=True)
-    assert rc == 0
-
-
 def test_cell_selection_evaluation(tmp_path):
     from enzymes.cell_selection import run_cell_selection
 
@@ -173,12 +148,12 @@ def test_match_cells_windows_backslash_paths(tmp_path):
 
 def test_shell_wrapper_delegation(tmp_path, bash):
     """Verify that thin .sh wrappers delegate to their .py counterparts."""
-    script_sh = ENZYMES_DIR / "bump_version.sh"
+    script_sh = ENZYMES_DIR / "cell_create.sh"
     env = dict(os.environ)
     env["SOMA_PYTHON"] = sys.executable
 
     proc = subprocess.run(
-        [bash, str(script_sh), "9.9.9", "--dry-run"],
+        [bash, str(script_sh), "--help"],
         cwd=str(REPO_ROOT),
         capture_output=True,
         text=True,
@@ -186,7 +161,7 @@ def test_shell_wrapper_delegation(tmp_path, bash):
         timeout=30,
     )
     assert proc.returncode == 0, proc.stderr
-    assert "dry run" in proc.stdout.lower()
+    assert "cell_create.py" in proc.stdout.lower()
 
 
 def test_cli_transfer_subcommand(tmp_path):

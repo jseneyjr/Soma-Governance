@@ -24,7 +24,7 @@ def test_sync_liveness_check():
 
 
 def test_sync_classification():
-    assert classify_file("enzymes/bump_version.sh") == "HIGH"
+    assert classify_file("enzymes/cell_create.sh") == "HIGH"
     assert classify_file("genome/testing.md") == "MEDIUM"
     assert classify_file("docs/README.md") == "LOW"
     assert is_test_file("tests/test_sync.py")

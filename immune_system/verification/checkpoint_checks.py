@@ -26,7 +26,6 @@ DIR_TO_TYPE = {
 
 SOURCE_TO_TEST_MAP = {
     "enzymes/bayesian_score.py": "tests/test_bayesian_correctness.py",
-    "enzymes/bump_version.py": "tests/test_phase4_enzymes.py",
     "enzymes/cell_adapt.py": "tests/test_governance.py",
     "enzymes/cell_adversarial.py": "tests/test_enzyme_console_encoding.py",
     "enzymes/cell_coverage.py": "tests/test_enzyme_console_encoding.py",
