@@ -10,7 +10,6 @@ prediction: Extracting these numbers into configuration or constants will increa
 falsification: The numbers are mathematically fundamental constants that never change.
 target_paths:
 - '**/*.py'
-- '**/*.sh'
 expiry_sessions: 50
 impact_weight: 0.8
 minimum_mode: breeze

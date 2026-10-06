@@ -13,8 +13,10 @@ REPO_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 if REPO_ROOT not in sys.path:
     sys.path.insert(0, REPO_ROOT)
 
-if not os.path.exists(os.path.join(REPO_ROOT, "enzymes", "cell_tournament.py")):
-    pytest.skip("enzymes directory purged in v0.97.0", allow_module_level=True)
+pytestmark = pytest.mark.skipif(
+    not os.path.exists(os.path.join(REPO_ROOT, "enzymes", "cell_tournament.py")),
+    reason="enzymes directory purged in v0.97.0",
+)
 
 
 def _make_cell(workspace, cell_id, fitness_score=0.8, cell_type='vacuole',
