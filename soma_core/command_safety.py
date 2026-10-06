@@ -744,3 +744,32 @@ class CommandAnalyzer:
                     return sys_res
 
         return SafetyEvaluation(False)
+
+
+__all__ = [
+    "CommandAnalyzer",
+    "SafetyEvaluation",
+    "REASON_CHMOD_777",
+    "REASON_CMD_DELETE",
+    "REASON_DB_DESTRUCTIVE",
+    "REASON_DD",
+    "REASON_GIT_ADD_BULK",
+    "REASON_GIT_BRANCH",
+    "REASON_GIT_CHECKOUT_FORCE",
+    "REASON_GIT_CLEAN_FORCE",
+    "REASON_GIT_CONFIG",
+    "REASON_GIT_DIFF",
+    "REASON_GIT_PUSH_FORCE",
+    "REASON_GIT_PUSH_REFSPEC",
+    "REASON_GIT_RESET_HARD",
+    "REASON_KILL_ALL",
+    "REASON_MKFS",
+    "REASON_PIPE_TO_SHELL",
+    "REASON_POWERSHELL_DELETE",
+    "REASON_RMDIR_BYPASS",
+    "REASON_RM_RF",
+    "REASON_RMTREE",
+    "REASON_SUDO",
+    "REASON_UNABLE_TO_PARSE",
+    "REASON_WINDOWS_FORMAT",
+]
