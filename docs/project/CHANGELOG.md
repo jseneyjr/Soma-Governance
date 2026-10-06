@@ -2,7 +2,33 @@
 
 All notable changes to Soma are documented here.
 This project uses [Semantic Versioning](https://semver.org/).
-## [0.96.2] — 2026-10-06 — "Architecture Bridge: Primitives Hardening, Value Schemas, Test Harness & CLI Handlers"
+
+## [0.97.0] — 2026-10-06 — "The Sunset Phase: Legacy Enzymes Purge, Native Platform Adapters & Dynamic Colocality"
+
+### Removed (Breaking Changes)
+- **Purged Legacy `enzymes/` Directory**:
+  - Permanently deleted all 75 legacy enzyme scripts from the repository tree following the v0.96.2 deprecation bridge.
+  - Removed `enzymes*` inclusions and package-data rules from `pyproject.toml` and `MANIFEST.in`.
+  - Cleaned enzyme gate counts and path exceptions from `.github/workflows/validate.yml` and `.github/scripts/wheel_smoke.py`.
+- **Purged Shell & PowerShell Installers**:
+  - Removed legacy `install/install.sh`, `install/install.ps1`, `install/uninstall.sh`, and `install/uninstall.ps1` (4,277 LOC) in favor of pure-Python platform adapters.
+
+### Added
+- **Native Platform Adapters (`soma_cli.platforms`)**:
+  - Introduced `PlatformAdapter` ABC and concrete adapters for `GeminiAdapter`, `ClaudeAdapter`, `CopilotAdapter`, `KiroAdapter`, and `McpAdapter`.
+  - Wired `soma install --platform <name>` and `soma uninstall --platform <name>` commands to execute native, subprocess-free configuration and hook management across Linux, macOS, and Windows.
+- **1:1 Mirrored Test Package Structure**:
+  - Established canonical package test directories (`tests/soma_core/`, `tests/soma_cli/`, `tests/soma_mcp/`, `tests/soma_sdk/`, `tests/immune_system/`) providing 1:1 test coverage mirrors for all 83 core modules (AC-2C.1).
+  - Configured `addopts = "--import-mode=importlib"` in `pyproject.toml` for hermetic test module isolation without name collisions.
+
+### Changed
+- **Fully Dynamic Checkpoint Test Resolution**:
+  - Eliminated the legacy hardcoded `SOURCE_TO_TEST_MAP` dictionary (75 mappings) from `immune_system/verification/checkpoint_checks.py`.
+  - Implemented dynamic candidate resolution for subpackages, handlers, and platform adapters, allowing `check_test_coverage()` to run 100% dynamically with zero hardcoded lookup tables.
+- **Documentation & Governance Cell Re-anchoring**:
+  - Synchronized `docs/architecture/scripts.md` and `README.md` to catalog 71 pure-Python runtime modules.
+  - Repointed all membrane, wall, and vacuole governance cells to pure-Python `soma_core` and `soma_cli` entrypoints.
+
 
 ### Added
 - **Core Value Object Schemas (`soma_core.schemas`)**:
