@@ -386,7 +386,7 @@ def run_status(args: argparse.Namespace) -> int:
     # Sort rules: triggers descending, then core rules first, then name
     all_rules.sort(key=lambda r: (-r["triggers"], not r["is_core"], r["name"]))
 
-    if getattr(args, "format", None) == "json":
+    if getattr(args, "format", None) == "json" or getattr(args, "json", False):
         import json
         payload = {
             "core_rules": len(core_files) + len(merged_rules),

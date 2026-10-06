@@ -19,7 +19,7 @@ def run_oracle(args: argparse.Namespace) -> int:
     """
     from soma_core.arbitration import generate_checkpoint
 
-    project_root = getattr(args, "_project_root", Path.cwd())
+    project_root = getattr(args, "workspace", None) or getattr(args, "_project_root", None) or Path.cwd()
     project_root = Path(project_root)
 
     session_count = getattr(args, "session_count", None)

@@ -333,3 +333,30 @@ class TestCliDispatch:
         assert proc.returncode == 0
         data = json.loads(proc.stdout.strip())
         assert data["decision"] == "allow"
+
+    def test_pre_commit_json_stdout_purity(self, tmp_path):
+        proc = subprocess.run(
+            [sys.executable, "-m", "soma_cli", "hook", "pre-commit", "--workspace", str(tmp_path), "--json"],
+            capture_output=True,
+            text=True,
+            encoding="utf-8",
+        )
+        assert proc.returncode == 0
+        # stdout must be exclusively valid JSON with no banners or logs
+        data = json.loads(proc.stdout.strip())
+        assert data["status"] == "ok"
+        assert "triggered_cells" in data
+
+    def test_post_session_json_stdout_purity(self, tmp_path):
+        transcript_file = tmp_path / "transcript.jsonl"
+        transcript_file.write_text('{"event": "test"}\n', encoding="utf-8")
+        proc = subprocess.run(
+            [sys.executable, "-m", "soma_cli", "hook", "post-session", "--transcript", str(transcript_file), "--workspace", str(tmp_path), "--json"],
+            capture_output=True,
+            text=True,
+            encoding="utf-8",
+        )
+        assert proc.returncode == 0
+        data = json.loads(proc.stdout.strip())
+        assert data["status"] == "ok"
+

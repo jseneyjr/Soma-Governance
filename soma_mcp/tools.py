@@ -1029,8 +1029,6 @@ def execute_tool(name: str, args: dict):
                 val = args["rule_id"]
                 raw_cells_used = [val] if isinstance(val, str) else val
         if raw_cells_used is not None:
-            if isinstance(raw_cells_used, str):
-                raw_cells_used = [raw_cells_used]
             if not isinstance(raw_cells_used, (list, tuple)) or not all(isinstance(c, str) for c in raw_cells_used):
                 return {
                     "error": "'cells_used' must be a list of cell names.",

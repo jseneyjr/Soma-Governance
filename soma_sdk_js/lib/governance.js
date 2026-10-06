@@ -6,6 +6,20 @@ const fs = require('fs');
 const { promisify } = require('util');
 
 const execFileAsync = promisify(execFile);
+const { SomaError, SomaValidationError, CellNotFoundError, CellParseError } = require('./errors');
+
+const TYPE_TRANSLATION_MAP = {
+  'safety-guard': 'wall',
+  'learned-trap': 'vacuole',
+  'agent-persona': 'chloroplast',
+  'escalation-boundary': 'membrane',
+  'contract-bridge': 'plasmodesmata',
+  'wall': 'wall',
+  'vacuole': 'vacuole',
+  'chloroplast': 'chloroplast',
+  'membrane': 'membrane',
+  'plasmodesmata': 'plasmodesmata',
+};
 
 class Governance {
   constructor(projectRoot = '.') {
@@ -123,10 +137,17 @@ class Governance {
   }
 
   async createCell({ hypothesis, type = 'vacuole', targetPaths, minimumMode, tags, id }) {
-    const args = ['--name', id || hypothesis.slice(0, 40), '--type', type, '--hypothesis', hypothesis];
-    if (targetPaths) args.push('--target-paths', targetPaths.join(','));
+    const rawSlug = id || hypothesis.slice(0, 40);
+    const safeSlug = rawSlug.replace(/[^a-zA-Z0-9_.-]/g, '-').replace(/^-+|-+$/g, '');
+    const canonicalType = TYPE_TRANSLATION_MAP[type] || type;
+    const args = ['--id', safeSlug, '--type', canonicalType, '--hypothesis', hypothesis];
+    if (targetPaths && targetPaths.length) {
+      args.push('--target-paths', Array.isArray(targetPaths) ? targetPaths.join(',') : String(targetPaths));
+    }
     if (minimumMode) args.push('--minimum-mode', minimumMode);
-    if (id) args.push('--id', id);
+    if (tags && tags.length) {
+      args.push('--tags', Array.isArray(tags) ? tags.join(',') : String(tags));
+    }
     return this._runScript('cell_create.sh', args, { json: false });
   }
 
@@ -153,30 +174,113 @@ class Governance {
       throw new TypeError(`success must be a bool, number, or string, got ${typeof success}`);
     }
 
-    const { metric, sessionId, source = 'manual', ...rest } = options;
-    const mergedMetric = Object.assign({}, metric, rest);
-    if (sessionId) mergedMetric.session_id = sessionId;
+    const {
+      metric,
+      sessionId,
+      session_id,
+      source = 'manual',
+      principal = 'unknown',
+      idempotencyKey,
+      idempotency_key,
+      idempotencyScope,
+      idempotency_scope,
+      expectedGeneration,
+      expected_generation,
+      ...rest
+    } = options;
 
-    return this.signal(ruleId, signalType, mergedMetric);
+    const validSources = ['ci', 'manual', 'mcp', 'session'];
+    if (!validSources.includes(source)) {
+      throw new Error(`Invalid telemetry source '${source}'. Must be one of: ${validSources.join(', ')}`);
+    }
+
+    const mergedMetric = Object.assign({}, metric, rest);
+    const effSessionId = sessionId || session_id;
+    if (effSessionId) mergedMetric.session_id = effSessionId;
+
+    const effIdempotencyKey = idempotencyKey || idempotency_key || '';
+    const effIdempotencyScope = idempotencyScope || idempotency_scope || (effSessionId || 'global');
+    const effExpectedGen = expectedGeneration !== undefined ? expectedGeneration : expected_generation;
+
+    const pyScript = `import json, sys
+from soma_core.telemetry import append_signal
+try:
+    res = append_signal(
+        workspace=sys.argv[1],
+        cell_name=sys.argv[2],
+        signal_type=sys.argv[3],
+        source=sys.argv[4],
+        metadata=json.loads(sys.argv[5]),
+        principal=sys.argv[6],
+        idempotency_scope=sys.argv[7],
+        idempotency_key=sys.argv[8],
+        expected_generation=int(sys.argv[9]) if sys.argv[9] != "NONE" else None,
+    )
+    print(json.dumps(res))
+except Exception as e:
+    print(json.dumps({"error": str(e), "type": type(e).__name__}), file=sys.stderr)
+    sys.exit(1)
+`;
+
+    try {
+      const { stdout } = await execFileAsync(
+        'python3',
+        [
+          '-c',
+          pyScript,
+          this.root,
+          ruleId,
+          signalType,
+          source,
+          JSON.stringify(mergedMetric ? { metric: mergedMetric } : {}),
+          principal,
+          effIdempotencyScope,
+          effIdempotencyKey,
+          effExpectedGen !== undefined && effExpectedGen !== null ? String(effExpectedGen) : 'NONE',
+        ],
+        { cwd: this.root, timeout: 15000 }
+      );
+      return JSON.parse(stdout.trim());
+    } catch (err) {
+      const rawOutput = await this.signal(ruleId, signalType, mergedMetric);
+      return {
+        cell: ruleId,
+        signal: signalType,
+        source,
+        status: 'fallback_recorded',
+        raw: typeof rawOutput === 'string' ? rawOutput : JSON.stringify(rawOutput),
+      };
+    }
   }
 
-  async parseCellFile(filePath) {
+  parseCellFile(filePath) {
     const fullPath = path.isAbsolute(filePath) ? filePath : path.join(this.root, filePath);
     if (!fs.existsSync(fullPath)) {
-      throw new Error(`Cell file not found: ${filePath}`);
+      throw new CellNotFoundError(filePath);
     }
     const content = fs.readFileSync(fullPath, 'utf8');
     const cleanContent = content.startsWith('\ufeff') ? content.slice(1) : content;
     if (!cleanContent.startsWith('---')) {
-      throw new Error(`No frontmatter delimiter in ${filePath}`);
+      throw new CellParseError(filePath, `No frontmatter delimiter in ${filePath}`);
     }
     const endIdx = cleanContent.indexOf('---', 3);
     if (endIdx === -1) {
-      throw new Error(`Unclosed frontmatter in ${filePath}`);
+      throw new CellParseError(filePath, `Unclosed frontmatter in ${filePath}`);
     }
-    const yaml = await this._tryRequireYaml();
     const yamlText = cleanContent.slice(3, endIdx).trim();
-    const frontmatter = yaml.load(yamlText) || {};
+    let frontmatter = {};
+    try {
+      const yaml = require('js-yaml');
+      frontmatter = yaml.load(yamlText) || {};
+    } catch {
+      const lines = yamlText.split('\n');
+      for (const line of lines) {
+        const match = line.match(/^(\w[\w_]*)\s*:\s*(.+)$/);
+        if (match) {
+          frontmatter[match[1]] = match[2].trim().replace(/["']/g, '');
+        }
+      }
+    }
     const body = cleanContent.slice(endIdx + 3).replace(/^\n+/, '');
     return [frontmatter, body];
   }

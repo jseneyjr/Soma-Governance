@@ -65,6 +65,27 @@ def _seed(script, workspace):
         registry = workspace / "docs" / "project" / "BUG_REGISTRY.json"
         registry.parent.mkdir(parents=True)
         registry.write_text(json.dumps({"bugs": []}), encoding="utf-8")
+    else:
+        wall = workspace / ".soma" / "cells" / "walls" / "wall-test.md"
+        wall.parent.mkdir(parents=True, exist_ok=True)
+        wall.write_text(
+            "---\n"
+            "id: wall-test\n"
+            "type: wall\n"
+            "domain: testing\n"
+            "enforcement: gate\n"
+            "hypothesis: Test hypothesis\n"
+            "prediction: Test prediction\n"
+            "fitness:\n"
+            "  triggers: 5\n"
+            "  true_positives: 5\n"
+            "  false_positives: 0\n"
+            "target_paths:\n"
+            "  - src/**/*.py\n"
+            "---\n"
+            "# Wall Test\n",
+            encoding="utf-8",
+        )
 
 
 @pytest.mark.parametrize("script", NO_ARG_SCRIPTS)

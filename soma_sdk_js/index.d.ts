@@ -89,8 +89,8 @@ export class Governance {
       expectedGeneration?: number;
       [key: string]: any;
     }
-  ): Promise<string>;
-  parseCellFile(filePath: string): Promise<[Record<string, any>, string]>;
+  ): Promise<Record<string, any>>;
+  parseCellFile(filePath: string): [Record<string, any>, string];
   createCellFromDescription(description: string, options?: {
     domain?: string;
     type?: string;
@@ -107,6 +107,25 @@ export class Governance {
   scan(): Promise<any>;
   entropy(): Promise<any>;
   adversarial(cellName?: string): Promise<any>;
+}
+
+export function parseCellFile(filePath: string): [Record<string, any>, string];
+
+export class SomaError extends Error {
+  code: string;
+  constructor(message?: string, code?: string);
+}
+
+export class SomaValidationError extends SomaError {}
+
+export class CellNotFoundError extends SomaError {
+  filePath: string;
+  constructor(filePath: string, message?: string);
+}
+
+export class CellParseError extends SomaError {
+  filePath: string;
+  constructor(filePath: string, message?: string);
 }
 
 export function shannonDiversity(typeCounts: Record<string, number>): {

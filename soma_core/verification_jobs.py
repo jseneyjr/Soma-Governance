@@ -132,6 +132,27 @@ def clear_all_jobs() -> None:
         _JOBS.clear()
 
 
+_RUNNER = None
+
+
+def register_runner(runner_module: Any) -> None:
+    """Register the verification runner implementation."""
+    global _RUNNER
+    _RUNNER = runner_module
+
+
+def get_runner() -> Any:
+    """Resolve the verification runner via registry or dynamic import."""
+    global _RUNNER
+    if _RUNNER is not None:
+        return _RUNNER
+    try:
+        import importlib
+        return importlib.import_module("immune_system.verification.runner")
+    except ImportError:
+        return None
+
+
 def _run_verification_pipeline(job: VerificationJob, llm_backend: Optional[Callable[[str], str]] = None) -> None:
     """Worker logic executing Layer 1 (and optionally Layer 2) verification."""
     with _JOBS_LOCK:
@@ -141,12 +162,11 @@ def _run_verification_pipeline(job: VerificationJob, llm_backend: Optional[Calla
         job.started_at = _utc_now_iso()
 
     try:
-        try:
-            from immune_system.verification import runner
-        except ImportError as exc:
+        runner = get_runner()
+        if runner is None:
             with _JOBS_LOCK:
                 job.status = JOB_STATUS_FAILED
-                job.error = f"immune_system.verification import error: {exc}"
+                job.error = "No verification runner available (immune_system.verification.runner)"
                 job.completed_at = _utc_now_iso()
             return
 

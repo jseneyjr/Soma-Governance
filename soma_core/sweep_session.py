@@ -170,12 +170,15 @@ def main():
         print(json.dumps(summary))
     else:
         # Extract session_id from path
-        parts = transcript_path.split("/")
+        p = Path(transcript_path)
+        parts = p.parts
         session_id = "unknown"
         for i, part in enumerate(parts):
             if part == "brain" and i + 1 < len(parts):
                 session_id = parts[i + 1][:8]
                 break
+        if session_id == "unknown" and p.parent.name and p.parent.name != ".":
+            session_id = p.parent.name[:8]
 
         metrics = to_session_metrics(session_id, result)
         print(json.dumps(metrics, indent=2))

@@ -400,4 +400,125 @@ def test_state_digests_error_rolls_back_rate_limit(tmp_path, monkeypatch):
     assert server_module._tool_call_times["soma_checkpoint"] == []
 
 
+def test_multi_session_token_validation():
+    # Initialize client A
+    resp_a = handle_request({"jsonrpc": "2.0", "id": 100, "method": "initialize"})
+    token_a = resp_a["result"]["serverInfo"]["_sessionToken"]
+
+    # Initialize client B
+    resp_b = handle_request({"jsonrpc": "2.0", "id": 101, "method": "initialize"})
+    token_b = resp_b["result"]["serverInfo"]["_sessionToken"]
+
+    assert token_a != token_b
+    assert token_a in server_module._session_tokens
+    assert token_b in server_module._session_tokens
+
+    # Invalid token rejected
+    req_invalid = {
+        "jsonrpc": "2.0",
+        "id": 102,
+        "method": "tools/call",
+        "params": {
+            "name": "soma_scan",
+            "arguments": {},
+            "_sessionToken": "tampered_token"
+        }
+    }
+    resp_invalid = handle_request(req_invalid)
+    assert resp_invalid["error"]["code"] == -32002
+    assert "Invalid session token" in resp_invalid["error"]["message"]
+
+    # Valid token A accepted
+    req_a = {
+        "jsonrpc": "2.0",
+        "id": 103,
+        "method": "tools/call",
+        "params": {
+            "name": "soma_scan",
+            "arguments": {},
+            "_sessionToken": token_a
+        }
+    }
+    resp_a = handle_request(req_a)
+    assert "result" in resp_a
+
+    # Valid token B accepted
+    req_b = {
+        "jsonrpc": "2.0",
+        "id": 104,
+        "method": "tools/call",
+        "params": {
+            "name": "soma_scan",
+            "arguments": {},
+            "_sessionToken": token_b
+        }
+    }
+    resp_b = handle_request(req_b)
+    assert "result" in resp_b
+
+
+def test_session_partitioned_rate_limiting():
+    resp_a = handle_request({"jsonrpc": "2.0", "id": 200, "method": "initialize"})
+    token_a = resp_a["result"]["serverInfo"]["_sessionToken"]
+
+    resp_b = handle_request({"jsonrpc": "2.0", "id": 201, "method": "initialize"})
+    token_b = resp_b["result"]["serverInfo"]["_sessionToken"]
+
+    # Exhaust rate limit for soma_propose_change (max 5 calls) for client A
+    req_a = {
+        "jsonrpc": "2.0",
+        "id": 202,
+        "method": "tools/call",
+        "params": {
+            "name": "soma_propose_change",
+            "arguments": {"receipt": "fake"},
+            "_sessionToken": token_a
+        }
+    }
+    # Simulate 5 calls consumed in rate limit table for token_a
+    import time
+    server_module._tool_call_times[(token_a, "soma_propose_change")] = [
+        ("lease-1", time.monotonic()),
+        ("lease-2", time.monotonic()),
+        ("lease-3", time.monotonic()),
+        ("lease-4", time.monotonic()),
+        ("lease-5", time.monotonic()),
+    ]
+
+    # Next call from client A hits rate limit
+    resp = handle_request(req_a)
+    assert resp["error"]["code"] == -32000
+    assert "Rate limit exceeded" in resp["error"]["message"]
+
+    # Client B should NOT be rate limited
+    req_b = {
+        "jsonrpc": "2.0",
+        "id": 203,
+        "method": "tools/call",
+        "params": {
+            "name": "soma_propose_change",
+            "arguments": {"receipt": "fake"},
+            "_sessionToken": token_b
+        }
+    }
+    resp_b = handle_request(req_b)
+    # Reaches receipt validation (not rate limit)
+    assert resp_b["error"]["code"] == -32600
+
+
+def test_lease_contextvar_cleaned_up_finally():
+    req = {
+        "jsonrpc": "2.0",
+        "id": 300,
+        "method": "tools/call",
+        "params": {
+            "name": "soma_scan",
+            "arguments": {}
+        }
+    }
+    handle_request(req)
+    assert server_module._mcp_last_lease.get() is None
+
+
+
 

@@ -3,10 +3,14 @@ import os
 import sys
 from abc import ABC, abstractmethod
 
-try:
-    import keyring
-except ImportError:
-    keyring = None
+def _get_keyring():
+    if "keyring" in sys.modules:
+        return sys.modules["keyring"]
+    try:
+        import keyring
+        return keyring
+    except ImportError:
+        return None
 
 
 class InferenceUnavailableError(RuntimeError):
@@ -53,9 +57,10 @@ def resolve_key(workspace, env_keys):
         val = os.environ.get(key)
         if val:
             return val
-        if keyring is not None:
+        kr = _get_keyring()
+        if kr is not None:
             try:
-                val = keyring.get_password('soma', key)
+                val = kr.get_password('soma', key)
                 if val:
                     return val
             except Exception:

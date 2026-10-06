@@ -466,6 +466,12 @@ class Gate_{class_suffix}:
 
     @classmethod
     def check(cls, context=None):
+        try:
+            from soma_core.telemetry import append_signal
+            append_signal(os.getcwd(), cls.CELL_NAME, "tp", "ci")
+            return
+        except Exception:
+            pass
         signal_script = os.path.join(
             os.path.dirname(__file__), '..', '..', 'enzymes', 'cell_signal.sh'
         )
@@ -480,20 +486,24 @@ class Gate_{class_suffix}:
         """Assert a condition. Halt on failure."""
         if not condition:
             msg = message or f"Gate violation: {{cls.HYPOTHESIS}}"
-            escaped_script = os.path.join(
-                os.path.dirname(__file__), '..', '..', 'vendor', 'soma',
-                'enzymes', 'cell_escaped_defects.py'
-            )
-            if not os.path.exists(escaped_script):
+            try:
+                from soma_core.defects import record_defect
+                record_defect(os.getcwd(), event="crash", files=cls.TARGET_PATHS, severity="critical")
+            except Exception:
                 escaped_script = os.path.join(
-                    os.path.dirname(__file__), '..', '..', 'enzymes', 'cell_escaped_defects.py'
+                    os.path.dirname(__file__), '..', '..', 'vendor', 'soma',
+                    'enzymes', 'cell_escaped_defects.py'
                 )
-            if os.path.exists(escaped_script) and cls.TARGET_PATHS:
-                subprocess.run(
-                    [sys.executable, escaped_script, '--event', 'crash',
-                     '--files'] + cls.TARGET_PATHS + ['--severity', 'critical'],
-                    capture_output=True
-                )
+                if not os.path.exists(escaped_script):
+                    escaped_script = os.path.join(
+                        os.path.dirname(__file__), '..', '..', 'enzymes', 'cell_escaped_defects.py'
+                    )
+                if os.path.exists(escaped_script) and cls.TARGET_PATHS:
+                    subprocess.run(
+                        [sys.executable, escaped_script, '--event', 'crash',
+                         '--files'] + cls.TARGET_PATHS + ['--severity', 'critical'],
+                        capture_output=True
+                    )
             raise RuntimeError(f"\U0001f6d1 GATE VIOLATION [{{cls.CELL_NAME}}]: {{msg}}")
 '''
     return assertion

@@ -3,6 +3,10 @@ from __future__ import annotations
 
 import sys
 from pathlib import Path
+
+import pytest
+
+pytest.importorskip("hypothesis")
 from hypothesis import given, settings, strategies as st
 
 from soma_sdk.scoring import laplace_score, wilson_lower_bound, bayesian_posterior

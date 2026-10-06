@@ -84,7 +84,7 @@ def run_promote(args: argparse.Namespace) -> int:
     """
     if hasattr(sys.stdout, "reconfigure"):
         sys.stdout.reconfigure(errors="replace")
-    project_root = Path(getattr(args, "_project_root", Path.cwd()))
+    project_root = Path(getattr(args, "workspace", None) or getattr(args, "_project_root", None) or Path.cwd())
     use_json = getattr(args, "json", False)
     dry_run = getattr(args, "dry_run", False)
     force = getattr(args, "force", False)

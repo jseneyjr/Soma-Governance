@@ -20,6 +20,9 @@
   "engines": {
     "node": ">=16.0.0"
   },
+  "scripts": {
+    "test": "node test.js"
+  },
   "files": [
     "index.js",
     "index.d.ts",

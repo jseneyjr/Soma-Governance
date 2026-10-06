@@ -57,6 +57,9 @@ def _build_parser() -> argparse.ArgumentParser:
     common_parser.add_argument("--format", choices=["text", "json", "mermaid"],
                                default=argparse.SUPPRESS,
                                help="Output format")
+    common_parser.add_argument("--json", action="store_true",
+                               default=False,
+                               help="Emit machine-readable JSON output (shortcut for --format json)")
     common_parser.add_argument("-v", "--verbose", action="store_true",
                                default=argparse.SUPPRESS,
                                help="Verbose diagnostic output")
@@ -124,8 +127,6 @@ def _build_parser() -> argparse.ArgumentParser:
     p_sync = sub.add_parser("sync", parents=[common_parser], help="Reconcile evidence JSONL with cell frontmatter")
     p_sync.add_argument("--dry-run", action="store_true",
                         help="Show what would change without writing")
-    p_sync.add_argument("--json", action="store_true",
-                        help="Emit machine-readable JSON output")
 
     # soma checkpoint
     p_checkpoint = sub.add_parser("checkpoint", parents=[common_parser], help="Run deterministic quality checks")
@@ -133,13 +134,9 @@ def _build_parser() -> argparse.ArgumentParser:
                               help="Warn mode: exit 0 even if issues found (unless --strict)")
     p_checkpoint.add_argument("--strict", action="store_true",
                               help="In pre-commit mode, exit 1 on issues")
-    p_checkpoint.add_argument("--json", action="store_true",
-                              help="Emit machine-readable JSON output")
 
     # soma oracle
     p_oracle = sub.add_parser("oracle", parents=[common_parser], help="Cell health classification and recommendations")
-    p_oracle.add_argument("--json", action="store_true",
-                          help="Emit machine-readable JSON output")
     p_oracle.add_argument("--session-count", type=int, default=None,
                           help="Override session count for expiry calculation")
 
@@ -147,8 +144,6 @@ def _build_parser() -> argparse.ArgumentParser:
     p_promote = sub.add_parser("promote", parents=[common_parser], help="Evaluate cell promotion candidates")
     p_promote.add_argument("--dry-run", action="store_true",
                            help="Show candidates without performing promotions")
-    p_promote.add_argument("--json", action="store_true",
-                           help="Emit machine-readable JSON output")
     p_promote.add_argument("--force", action="store_true",
                            help="Force promotion of --cell, bypassing evidence thresholds")
     p_promote.add_argument("--cell", type=str, default=None,
@@ -158,8 +153,6 @@ def _build_parser() -> argparse.ArgumentParser:
     p_demote = sub.add_parser("demote", parents=[common_parser], help="Evaluate cell demotion candidates")
     p_demote.add_argument("--dry-run", action="store_true",
                           help="Show candidates without performing demotions")
-    p_demote.add_argument("--json", action="store_true",
-                          help="Emit machine-readable JSON output")
     p_demote.add_argument("--force", action="store_true",
                           help="Force demotion of --cell, bypassing evidence thresholds")
     p_demote.add_argument("--cell", type=str, default=None,
@@ -169,8 +162,6 @@ def _build_parser() -> argparse.ArgumentParser:
     p_genesis = sub.add_parser("genesis", aliases=["analyze"], parents=[common_parser], help="Analyze codebase and generate governance cells")
     p_genesis.add_argument("--dry-run", action="store_true",
                            help="Show candidates without writing files")
-    p_genesis.add_argument("--json", action="store_true",
-                           help="Emit machine-readable JSON output")
     p_genesis.add_argument("--min-confidence", type=float, default=0.5,
                            help="Minimum confidence threshold (default: 0.5)")
     p_genesis.add_argument("--force", action="store_true",
@@ -206,8 +197,6 @@ def _build_parser() -> argparse.ArgumentParser:
                         help="Command line string for safety-gate check")
     p_hook.add_argument("--strict", action="store_true",
                         help="In pre-commit, exit 1 on issues")
-    p_hook.add_argument("--json", action="store_true",
-                        help="Emit JSON output")
     p_hook.add_argument("--transcript", default=None,
                         help="Path to transcript.jsonl for post-session hook")
 
@@ -221,11 +210,9 @@ def _build_parser() -> argparse.ArgumentParser:
     p_quarantine_sub = p_quarantine.add_subparsers(dest="quarantine_action", parser_class=SomaParser)
 
     p_q_list = p_quarantine_sub.add_parser("list", parents=[common_parser], help="List all quarantined files")
-    p_q_list.add_argument("--json", action="store_true", help="Emit JSON output")
 
     p_q_inspect = p_quarantine_sub.add_parser("inspect", parents=[common_parser], help="Inspect a quarantined file")
     p_q_inspect.add_argument("target", nargs="?", default="", help="Filename or path of quarantined file")
-    p_q_inspect.add_argument("--json", action="store_true", help="Emit JSON output")
 
     p_q_prune = p_quarantine_sub.add_parser("prune", parents=[common_parser], help="Prune old quarantined files")
     p_q_prune.add_argument("--older-than-days", type=int, default=30, help="Prune files older than N days (default 30)")
@@ -371,6 +358,16 @@ def main(argv: list[str] | None = None) -> int:
     args = parser.parse_args(argv)
     if not hasattr(args, "plumbing"):
         args.plumbing = False
+
+    fmt = getattr(args, "format", None)
+    is_json = getattr(args, "json", False) or fmt == "json"
+    args.json = is_json
+    if is_json and not fmt:
+        args.format = "json"
+
+    ws_arg = getattr(args, "workspace", None)
+    if ws_arg:
+        args._project_root = Path(ws_arg)
 
     if args.command is None:
         parser.print_help()

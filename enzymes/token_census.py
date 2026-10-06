@@ -5,8 +5,10 @@ import glob
 import re
 import sys
 
-from soma_core.workspace import resolve_workspace
-from inference_provider import resolve_provider
+try:
+    from soma_core.inference_provider import resolve_provider
+except ImportError:
+    from inference_provider import resolve_provider
 
 def parse_args():
     parser = argparse.ArgumentParser(description="Ground-Truth Token Census")

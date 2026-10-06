@@ -157,7 +157,8 @@ def main():
         print(f'\n🔄 Governance Replay: {len(commits)} commits × {len(cells)} cells\n')
         total_triggers = sum(r['cells_would_trigger'] for r in replay_results)
         covered = sum(1 for r in replay_results if r['cells_would_trigger'] > 0)
-        print(f'Commits with coverage: {covered}/{len(replay_results)} ({covered/len(replay_results)*100:.0f}%)')
+        cov_pct = (covered / len(replay_results) * 100) if replay_results else 0.0
+        print(f'Commits with coverage: {covered}/{len(replay_results)} ({cov_pct:.0f}%)')
         print(f'Total retroactive triggers: {total_triggers}\n')
         for r in replay_results:
             indicator = '✅' if r['cells_would_trigger'] > 0 else '🔴'

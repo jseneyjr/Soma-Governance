@@ -1210,6 +1210,7 @@ def run_post_session_hook(
     cells_dir: Path | None = None,
     evidence_dir: Path | None = None,
     repo_root: Path | None = None,
+    use_json: bool = False,
 ) -> int:
     """Run post-session transcript fitness and evidence collection."""
     if not transcript_path.is_file():
@@ -1240,24 +1241,26 @@ def run_post_session_hook(
     resolved_platform = platform or detect_platform(transcript_path)
     transcript_id = resolve_transcript_id(transcript_path, resolved_platform)
 
-    print(f"Processing transcript: {transcript_path}")
-    print(f"  Platform: {resolved_platform}")
+    info_file = sys.stderr if use_json else sys.stdout
+
+    print(f"Processing transcript: {transcript_path}", file=info_file)
+    print(f"  Platform: {resolved_platform}", file=info_file)
     modified = extract_modified_files(transcript_path, platform=resolved_platform)
-    print(f"  Modified files: {len(modified)}")
+    print(f"  Modified files: {len(modified)}", file=info_file)
 
     triggered = match_cells(modified, cells_dir, repo_root=str(root))
-    print(f"  Cells triggered: {len(triggered)}")
+    print(f"  Cells triggered: {len(triggered)}", file=info_file)
     for t in triggered:
-        print(f"    - {t['cell_id']} ({len(t['matched_files'])} files)")
+        print(f"    - {t['cell_id']} ({len(t['matched_files'])} files)", file=info_file)
 
     update_fitness(triggered, transcript_id, evidence_dir)
-    print(f"  Fitness updated: {evidence_dir / 'signals.jsonl'}")
+    print(f"  Fitness updated: {evidence_dir / 'signals.jsonl'}", file=info_file)
 
     counts = aggregate_evidence(str(evidence_dir))
     if counts:
         changes = sync_frontmatter(str(cells_dir), counts)
         if changes:
-            print(f"  Frontmatter synced: {len(changes)} cells updated")
+            print(f"  Frontmatter synced: {len(changes)} cells updated", file=info_file)
 
     rules = ["read-before-write", "test-before-implementation", "no-hardcoded-paths"]
     observations = []
@@ -1277,6 +1280,16 @@ def run_post_session_hook(
         except OSError as exc:
             print(f"Warning: could not write compliance evidence: {exc}", file=sys.stderr)
 
+    if use_json:
+        result = {
+            "status": "ok",
+            "transcript_id": transcript_id,
+            "platform": resolved_platform,
+            "modified_files": sorted(list(modified)),
+            "triggered_cells": [t.get("cell_id") for t in triggered],
+        }
+        print(json.dumps(result))
+
     return 0
 
 
@@ -1286,6 +1299,7 @@ def cli_post_session_hook(argv: Optional[List[str]] = None) -> int:
     parser.add_argument("--platform", default=None, help="Platform name")
     parser.add_argument("--cells-dir", type=Path, default=None, help="Cells directory")
     parser.add_argument("--evidence-dir", type=Path, default=None, help="Evidence directory")
+    parser.add_argument("--json", action="store_true", help="Emit JSON output")
     args = parser.parse_args(argv if argv is not None else sys.argv[1:])
 
     return run_post_session_hook(
@@ -1293,6 +1307,7 @@ def cli_post_session_hook(argv: Optional[List[str]] = None) -> int:
         platform=args.platform,
         cells_dir=args.cells_dir,
         evidence_dir=args.evidence_dir,
+        use_json=getattr(args, "json", False),
     )
 
 

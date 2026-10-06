@@ -245,9 +245,9 @@ def save_manifest(workspace: str, manifest: dict) -> None:
         manifest["signature"] = sign_manifest(manifest, key)
     manifest_path = os.path.join(workspace, ".soma", "cells", _MANIFEST_FILENAME)
     os.makedirs(os.path.dirname(manifest_path), exist_ok=True)
-    with open(manifest_path, "w", encoding="utf-8") as f:
-        json.dump(manifest, f, indent=2, sort_keys=True)
-        f.write("\n")
+    manifest_bytes = (json.dumps(manifest, indent=2, sort_keys=True) + "\n").encode("utf-8")
+    from soma_core.storage import atomic_write_bytes
+    atomic_write_bytes(manifest_path, manifest_bytes)
 
 
 def _warn(message: str) -> None:

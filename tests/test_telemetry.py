@@ -404,3 +404,27 @@ def test_evidence_lock_reentrancy(tmp_path):
         with evidence_lock(ws):
             gen2 = increment_generation(ws)
             assert gen2 == 3
+
+
+def test_telemetry_surrogate_characters(tmp_path):
+    """C9: Telemetry must handle surrogate code points without UnicodeEncodeError."""
+    from soma_core.telemetry import append_signal, read_signals, compute_payload_digest
+    ws = str(tmp_path)
+    surrogate_text = "test-surrogate-\ud800-log"
+    digest = compute_payload_digest("cell-1", "tp", "manual", metadata={"note": surrogate_text})
+    assert isinstance(digest, str) and len(digest) == 64
+
+    event = append_signal(
+        workspace=ws,
+        cell_name="cell-1",
+        signal_type="tp",
+        source="manual",
+        metadata={"note": surrogate_text},
+        idempotency_key="key-1",
+    )
+    assert event["payload_digest"] == digest
+
+    signals = read_signals(ws)
+    assert len(signals) == 1
+    assert signals[0]["metadata"]["note"] == surrogate_text
+

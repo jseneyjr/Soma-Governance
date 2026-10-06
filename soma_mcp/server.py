@@ -33,6 +33,7 @@ from soma_core.receipts import (
     compute_cell_digest,
 )
 
+_session_tokens: set[str] = set()
 _session_token = None
 _canonical_workspace = None
 _execution_enabled = False
@@ -67,30 +68,31 @@ _mcp_last_lease = contextvars.ContextVar("mcp_last_lease", default=None)
 _mcp_tls = threading.local()
 
 
-def _check_rate_limit(tool_name: str) -> bool:
+def _check_rate_limit(tool_name: str, session_id: str = "default") -> bool:
     """Return True if the call is within rate limits, False if exceeded."""
     if tool_name not in _RATE_LIMITS:
         return True
     max_calls, window_seconds = _RATE_LIMITS[tool_name]
     now = time.monotonic()
-    lease_id = uuid.uuid4().hex
-    _mcp_last_lease.set((tool_name, lease_id))
-    _mcp_tls.last_lease = (tool_name, lease_id)
+    key = (session_id, tool_name)
     with _rate_limit_lock:
-        entries = _tool_call_times[tool_name]
+        entries = _tool_call_times[key]
         valid_entries = []
         for e in entries:
             ts = e[1] if isinstance(e, tuple) else e
             if now - ts < window_seconds:
                 valid_entries.append(e)
-        _tool_call_times[tool_name] = valid_entries
+        _tool_call_times[key] = valid_entries
         if len(valid_entries) >= max_calls:
             return False
-        _tool_call_times[tool_name].append((lease_id, now))
+        lease_id = uuid.uuid4().hex
+        _mcp_last_lease.set((tool_name, lease_id))
+        _mcp_tls.last_lease = (tool_name, lease_id)
+        _tool_call_times[key].append((lease_id, now))
         return True
 
 
-def _rollback_rate_limit(tool_name: str, lease_id: Optional[str] = None) -> None:
+def _rollback_rate_limit(tool_name: str, lease_id: Optional[str] = None, session_id: Optional[str] = None) -> None:
     """Revert the specific rate-limit lease if authorization/receipt verification fails."""
     if tool_name in _RATE_LIMITS:
         target_lease = lease_id
@@ -105,14 +107,16 @@ def _rollback_rate_limit(tool_name: str, lease_id: Optional[str] = None) -> None
         if target_lease is None:
             return
         with _rate_limit_lock:
-            entries = _tool_call_times.get(tool_name, [])
-            if not entries:
-                return
-            for i in range(len(entries) - 1, -1, -1):
-                e = entries[i]
-                if isinstance(e, tuple) and e[0] == target_lease:
-                    entries.pop(i)
-                    break
+            keys = [(session_id, tool_name)] if session_id else [k for k in _tool_call_times if (isinstance(k, tuple) and k[1] == tool_name) or k == tool_name]
+            if tool_name in _tool_call_times:
+                keys.append(tool_name)
+            for k in keys:
+                entries = _tool_call_times.get(k, [])
+                for i in range(len(entries) - 1, -1, -1):
+                    e = entries[i]
+                    if isinstance(e, tuple) and e[0] == target_lease:
+                        entries.pop(i)
+                        break
         last = _mcp_last_lease.get()
         if last and last == (tool_name, target_lease):
             _mcp_last_lease.set(None)
@@ -201,13 +205,22 @@ def send_error(id: Any, code: int, message: str):
     })
 
 def handle_request(request: Dict[str, Any]) -> Dict[str, Any]:
+    try:
+        return _handle_request_impl(request)
+    finally:
+        _mcp_last_lease.set(None)
+
+
+def _handle_request_impl(request: Dict[str, Any]) -> Dict[str, Any]:
     method = request.get("method")
     params = request.get("params", {})
     req_id = request.get("id")
 
     if method == "initialize":
         global _session_token
-        _session_token = secrets.token_hex(32)
+        new_token = secrets.token_hex(32)
+        _session_token = new_token
+        _session_tokens.add(new_token)
         return {
             "jsonrpc": "2.0",
             "id": req_id,
@@ -219,12 +232,12 @@ def handle_request(request: Dict[str, Any]) -> Dict[str, Any]:
                 "serverInfo": {
                     "name": "soma-mcp",
                     "version": _server_version(),
-                    "_sessionToken": _session_token
+                    "_sessionToken": new_token
                 }
             }
         }
     elif method == "tools/list":
-        if not _session_token:
+        if not _session_token and not _session_tokens:
             return {
                 "jsonrpc": "2.0",
                 "id": req_id,
@@ -246,7 +259,7 @@ def handle_request(request: Dict[str, Any]) -> Dict[str, Any]:
             }
         }
     elif method == "tools/call":
-        if not _session_token:
+        if not _session_token and not _session_tokens:
             return {
                 "jsonrpc": "2.0",
                 "id": req_id,
@@ -265,11 +278,20 @@ def handle_request(request: Dict[str, Any]) -> Dict[str, Any]:
         client_token = params.get("_sessionToken") or (args.get("_sessionToken") if isinstance(args, dict) else None)
         if client_token is not None:
             from soma_core.receipts import _safe_compare
-            if not _safe_compare(client_token, _session_token):
+            valid = False
+            for tok in _session_tokens:
+                if _safe_compare(client_token, tok):
+                    valid = True
+                    break
+            if not valid and _session_token and _safe_compare(client_token, _session_token):
+                valid = True
+            if not valid:
                 return _error(req_id, -32002, "Invalid session token")
 
+        active_session_id = client_token or _session_token or "default"
+
         if name == "soma_request_receipt":
-            if not _check_rate_limit("soma_request_receipt"):
+            if not _check_rate_limit("soma_request_receipt", session_id=active_session_id):
                 limit_info = _RATE_LIMITS.get("soma_request_receipt", (60, 60))
                 return {
                     "jsonrpc": "2.0",
@@ -288,14 +310,14 @@ def handle_request(request: Dict[str, Any]) -> Dict[str, Any]:
                 _, args["arguments"] = normalize_tool_call(operation, args["arguments"])
 
             if operation not in _EXECUTE_TOOLS and operation not in _WRITE_TOOLS:
-                _rollback_rate_limit("soma_request_receipt")
+                _rollback_rate_limit("soma_request_receipt", session_id=active_session_id)
                 return _error(req_id, -32602,
                               f"Tool '{operation}' does not require a receipt or does not exist.")
             if operation in _EXECUTE_TOOLS and not _execution_enabled:
-                _rollback_rate_limit("soma_request_receipt")
+                _rollback_rate_limit("soma_request_receipt", session_id=active_session_id)
                 return _error(req_id, -32600, "Execution capabilities are disabled.")
             if not _canonical_workspace:
-                _rollback_rate_limit("soma_request_receipt")
+                _rollback_rate_limit("soma_request_receipt", session_id=active_session_id)
                 return _error(req_id, -32600, "Server workspace is not configured.")
 
             # Bind the receipt to exactly what will be dispatched: the client
@@ -309,7 +331,7 @@ def handle_request(request: Dict[str, Any]) -> Dict[str, Any]:
             except (ValueError, RuntimeError, OSError) as exc:
                 return _error(req_id, -32602, str(exc))
             receipt_id = issue_receipt(
-                session_id=_session_token,
+                session_id=active_session_id,
                 workspace=_canonical_workspace,
                 operation=operation,
                 args=op_args,
@@ -334,7 +356,7 @@ def handle_request(request: Dict[str, Any]) -> Dict[str, Any]:
         name, args = normalize_tool_call(name, args)
 
         # Rate limit check BEFORE consuming receipt
-        if not _check_rate_limit(name):
+        if not _check_rate_limit(name, session_id=active_session_id):
             limit_info = _RATE_LIMITS.get(name, (0, 0))
             return {
                 "jsonrpc": "2.0",
@@ -350,23 +372,23 @@ def handle_request(request: Dict[str, Any]) -> Dict[str, Any]:
         if name == "soma_poll_verification":
             job_id = args.get("job_id")
             if not job_id or not isinstance(job_id, str):
-                _rollback_rate_limit(name)
+                _rollback_rate_limit(name, session_id=active_session_id)
                 return _error(req_id, -32602, "Missing or invalid 'job_id'")
             from soma_core.verification_jobs import get_job
             if get_job(job_id) is None:
-                _rollback_rate_limit(name)
+                _rollback_rate_limit(name, session_id=active_session_id)
                 return _error(req_id, -32602, f"Verification job '{job_id}' not found or expired.")
 
         # Both EXECUTE and WRITE tools require a valid receipt
         if name in _EXECUTE_TOOLS or name in _WRITE_TOOLS:
             if name in _EXECUTE_TOOLS and not _execution_enabled:
-                _rollback_rate_limit(name)
+                _rollback_rate_limit(name, session_id=active_session_id)
                 return _error(req_id, -32600, "Execution capabilities are disabled.")
             if not _canonical_workspace:
-                _rollback_rate_limit(name)
+                _rollback_rate_limit(name, session_id=active_session_id)
                 return _error(req_id, -32600, "Server workspace is not configured.")
             if not receipt or not isinstance(receipt, str):
-                _rollback_rate_limit(name)
+                _rollback_rate_limit(name, session_id=active_session_id)
                 return _error(req_id, -32600, f"Tool '{name}' requires a valid 'receipt'.")
 
             # Recompute the state digests now; a target file or cell edited
@@ -376,7 +398,7 @@ def handle_request(request: Dict[str, Any]) -> Dict[str, Any]:
             except ValueError as exc:
                 verify_receipt(
                     receipt_id=receipt,
-                    session_id=_session_token,
+                    session_id=active_session_id,
                     workspace=_canonical_workspace,
                     operation=name,
                     args=args,
@@ -386,11 +408,11 @@ def handle_request(request: Dict[str, Any]) -> Dict[str, Any]:
                 )
                 return _error(req_id, -32602, str(exc))
             except (RuntimeError, OSError) as exc:
-                _rollback_rate_limit(name)
+                _rollback_rate_limit(name, session_id=active_session_id)
                 return _error(req_id, -32602, str(exc))
             if not verify_receipt(
                 receipt_id=receipt,
-                session_id=_session_token,
+                session_id=active_session_id,
                 workspace=_canonical_workspace,
                 operation=name,
                 args=args,
@@ -398,7 +420,7 @@ def handle_request(request: Dict[str, Any]) -> Dict[str, Any]:
                 cell_digest=cell_digest,
                 consume=True
             ):
-                _rollback_rate_limit(name)
+                _rollback_rate_limit(name, session_id=active_session_id)
                 return _error(req_id, -32600, "Invalid, expired, or mismatched receipt.")
 
 
@@ -414,8 +436,14 @@ def handle_request(request: Dict[str, Any]) -> Dict[str, Any]:
             # Tool implementations (and the enzymes they call) may print progress
             # notes. stdout belongs to the JSON-RPC framing, so any stray writes
             # are re-routed to stderr instead of corrupting the stream.
-            with contextlib.redirect_stdout(sys.stderr):
-                result = execute_tool(name, args)
+            if _canonical_workspace and (name in _WRITE_TOOLS or name in _EXECUTE_TOOLS):
+                from soma_core.locking import workspace_lock
+                with workspace_lock(_canonical_workspace, "cells", timeout_sec=5.0):
+                    with contextlib.redirect_stdout(sys.stderr):
+                        result = execute_tool(name, args)
+            else:
+                with contextlib.redirect_stdout(sys.stderr):
+                    result = execute_tool(name, args)
             is_error = _is_error_result(result)
             return {
                 "jsonrpc": "2.0",
@@ -431,7 +459,7 @@ def handle_request(request: Dict[str, Any]) -> Dict[str, Any]:
                 }
             }
         except Exception as e:
-            _rollback_rate_limit(name)
+            _rollback_rate_limit(name, session_id=active_session_id)
             traceback.print_exc(file=sys.stderr)
             return {
                 "jsonrpc": "2.0",

@@ -507,8 +507,10 @@ def run_pre_commit(
             except Exception:
                 continue
 
+    info_file = sys.stderr if use_json else sys.stdout
+
     if triggered_cells:
-        print(f"🧬 Soma: {len(triggered_cells)} governance cell(s) triggered by this commit ({', '.join(triggered_cells)})")
+        print(f"🧬 Soma: {len(triggered_cells)} governance cell(s) triggered by this commit ({', '.join(triggered_cells)})", file=info_file)
 
     # 3. Mechanical enforcement scripts
     mechanical_failed = False
@@ -554,20 +556,44 @@ def run_pre_commit(
         if all_target_patterns and not any(fnmatch.fnmatch(nf, p) for p in all_target_patterns)
     ]
     if uncovered_files:
-        print("🔴 New files without governance coverage:")
+        print("🔴 New files without governance coverage:", file=info_file)
         for uf in uncovered_files:
-            print(f"  ⚠️  {uf}")
+            print(f"  ⚠️  {uf}", file=info_file)
 
     if mechanical_failed:
         print("❌ Commit blocked by mechanical enforcement gates.", file=sys.stderr)
+        if use_json:
+            print(json.dumps({
+                "status": "blocked",
+                "reason": "mechanical_enforcement_failed",
+                "triggered_cells": triggered_cells,
+                "uncovered_files": uncovered_files,
+                "checkpoint_issues": issues,
+            }))
         return 1
 
     if has_checkpoint_issues:
         if strict:
             print("❌ Commit blocked: quality checkpoint failed in strict mode.", file=sys.stderr)
+            if use_json:
+                print(json.dumps({
+                    "status": "blocked",
+                    "reason": "checkpoint_failed",
+                    "triggered_cells": triggered_cells,
+                    "uncovered_files": uncovered_files,
+                    "checkpoint_issues": issues,
+                }))
             return 1
         else:
-            print(f"⚠️  Quality checkpoint found {len(issues)} issue(s) (warn mode; commit allowed).")
+            print(f"⚠️  Quality checkpoint found {len(issues)} issue(s) (warn mode; commit allowed).", file=info_file)
+
+    if use_json:
+        print(json.dumps({
+            "status": "ok",
+            "triggered_cells": triggered_cells,
+            "uncovered_files": uncovered_files,
+            "checkpoint_issues": issues,
+        }))
 
     return 0
 
@@ -610,6 +636,7 @@ def run_hook(args: Any) -> int:
         from soma_core.sync import run_post_session_hook
         transcript_arg = getattr(args, "transcript", None)
         transcript_path = Path(transcript_arg) if transcript_arg else None
+        use_json = getattr(args, "json", False)
         if not transcript_path and not sys.stdin.isatty():
             try:
                 raw = sys.stdin.read().strip()
@@ -622,10 +649,16 @@ def run_hook(args: Any) -> int:
                 pass
 
         if transcript_path and transcript_path.is_file():
-            rc = run_post_session_hook(transcript_path=transcript_path, repo_root=workspace)
+            if use_json:
+                rc = run_post_session_hook(transcript_path=transcript_path, repo_root=workspace, use_json=True)
+            else:
+                rc = run_post_session_hook(transcript_path=transcript_path, repo_root=workspace)
             return rc
         else:
-            print("Skipping post-session hook: transcript file not provided or does not exist", file=sys.stderr)
+            if use_json:
+                print(json.dumps({"status": "skipped", "reason": "transcript not provided"}))
+            else:
+                print("Skipping post-session hook: transcript file not provided or does not exist", file=sys.stderr)
             return 0
 
     elif phase in ("session-close", "stop"):

@@ -205,7 +205,7 @@ def read_signals(workspace: str) -> list[dict]:
     if not os.path.isfile(path):
         return []
     records = []
-    with open(path, 'r', encoding='utf-8') as f:
+    with open(path, 'r', encoding='utf-8', errors='surrogatepass') as f:
         for line in f:
             line_str = line.strip()
             if line_str:
@@ -228,12 +228,12 @@ def compute_payload_digest(cell_name: str, signal_type: str, source: str, metada
         separators=(',', ':'),
         ensure_ascii=False,
     )
-    return hashlib.sha256(normalized.encode('utf-8')).hexdigest()
+    return hashlib.sha256(normalized.encode('utf-8', errors='surrogatepass')).hexdigest()
 
 
 def compute_event_id(principal: str, idempotency_scope: str, idempotency_key: str, cell_name: str) -> str:
     identity = f"{principal}:{idempotency_scope}:{idempotency_key}:{cell_name}"
-    return hashlib.sha256(identity.encode('utf-8')).hexdigest()
+    return hashlib.sha256(identity.encode('utf-8', errors='surrogatepass')).hexdigest()
 
 
 def _read_existing_events(log_path: str) -> tuple[bytes, dict[str, dict]]:
@@ -246,7 +246,7 @@ def _read_existing_events(log_path: str) -> tuple[bytes, dict[str, dict]]:
     by_id = {}
     for line in raw.splitlines():
         try:
-            record = json.loads(line.decode('utf-8'))
+            record = json.loads(line.decode('utf-8', errors='surrogatepass'))
         except (UnicodeDecodeError, json.JSONDecodeError):
             continue
         if isinstance(record, dict) and record.get('event_id'):
@@ -419,7 +419,7 @@ def append_signals(workspace: str, events: list[dict], expected_generation: Opti
             if prefix and not prefix.endswith(b'\n'):
                 prefix += b'\n'
             payload = b''.join(
-                (json.dumps(record, ensure_ascii=False) + '\n').encode('utf-8')
+                (json.dumps(record, ensure_ascii=False) + '\n').encode('utf-8', errors='surrogatepass')
                 for record in new_records
             )
             _atomic_replace_bytes(log_path, prefix + payload)
@@ -725,7 +725,7 @@ def read_human_insight_signals(workspace: str) -> tuple[list[dict], int]:
         if not raw_line.strip():
             continue
         try:
-            record = json.loads(raw_line.decode('utf-8'))
+            record = json.loads(raw_line.decode('utf-8', errors='surrogatepass'))
         except (UnicodeDecodeError, json.JSONDecodeError):
             continue
         if not isinstance(record, dict):
@@ -1167,7 +1167,7 @@ def append_fitness_log(
 
 def run_outcome_engine(workspace: Optional[str] = None, mod: Any = None) -> int:
     """Canonical ACE reflector loop."""
-    m = mod if mod is not None else sys.modules.get('enzymes.outcome_engine', sys.modules[__name__])
+    m = mod if mod is not None else sys.modules[__name__]
     resolve_ws = getattr(m, 'resolve_workspace', resolve_workspace)
     ws = workspace or resolve_ws()
     cells_dir = os.path.join(ws, '.soma', 'cells')
