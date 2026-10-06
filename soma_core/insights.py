@@ -16,7 +16,7 @@ from typing import Any, Dict, List, Optional
 
 from soma_core.workspace import resolve_workspace
 from soma_core.defects import find_covering_cells, load_cells
-from soma_core.frontmatter import parse_frontmatter
+from soma_core.frontmatter import parse_frontmatter, parse_yaml_subset
 
 
 def _load_signal_weight(workspace: str) -> float:
@@ -27,7 +27,10 @@ def _load_signal_weight(workspace: str) -> float:
         return default
     try:
         with open(config_path, "r", encoding="utf-8") as f:
-            cfg = parse_frontmatter(f.read())
+            content = f.read()
+        if content.startswith('\ufeff'):
+            content = content[1:]
+        cfg = parse_frontmatter(content) if content.startswith("---") else parse_yaml_subset(content)
         if isinstance(cfg, dict):
             return float(cfg.get("insight_signal_weight", default))
     except Exception:

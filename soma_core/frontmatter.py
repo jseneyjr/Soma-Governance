@@ -38,6 +38,7 @@ _SEQ_MAPPING_RE = re.compile(r'^[A-Za-z_][A-Za-z0-9_.\-]*:(?:\s|$)')
 _UNSUPPORTED_PREFIXES = ('&', '*', '!', '%', '@', '`')
 _ESCAPES = {'n': '\n', 't': '\t', 'r': '\r', '0': '\0',
             '"': '"', '\\': '\\', '/': '/', "'": "'", ' ': ' '}
+_CLOSING_DELIM_RE = re.compile(r'(?m)^---[ \t]*\r?$')
 
 
 def _skip_ws(text, i):
@@ -61,6 +62,11 @@ def _unescape_double(body):
                     continue
                 except ValueError:
                     pass
+            if nxt == '\r' and i + 2 < len(body) and body[i + 2] == '\n':
+                i += 3
+                while i < len(body) and body[i] in ' \t':
+                    i += 1
+                continue
             if nxt == '\n':
                 i += 2
                 while i < len(body) and body[i] in ' \t':
@@ -88,6 +94,9 @@ def _read_token(text, i, stops):
             if quote == '"' and ch == '\\' and i + 1 < len(text):
                 i += 2
                 continue
+            if quote == "'" and ch == "'" and i + 1 < len(text) and text[i + 1] == "'":
+                i += 2
+                continue
             if ch == quote:
                 quote = None
             i += 1
@@ -104,15 +113,20 @@ def _read_token(text, i, stops):
     return text[start:i], i
 
 
-def _strip_comment(line):
+def _strip_comment(line, quote=None):
     """Drop a trailing ` #` comment that is not inside quotes."""
+    if '#' not in line:
+        return line
     out = []
-    quote = None
     i = 0
     while i < len(line):
         ch = line[i]
         if quote:
             if quote == '"' and ch == '\\' and i + 1 < len(line):
+                out.append(line[i:i + 2])
+                i += 2
+                continue
+            if quote == "'" and ch == "'" and i + 1 < len(line) and line[i + 1] == "'":
                 out.append(line[i:i + 2])
                 i += 2
                 continue
@@ -128,6 +142,53 @@ def _strip_comment(line):
             out.append(ch)
         i += 1
     return ''.join(out)
+
+
+def _find_unclosed_quote(line, initial_quote=None):
+    quote = initial_quote
+    i = 0
+    while i < len(line):
+        ch = line[i]
+        if quote:
+            if quote == '"' and ch == '\\' and i + 1 < len(line):
+                i += 2
+                continue
+            if quote == "'" and ch == "'" and i + 1 < len(line) and line[i + 1] == "'":
+                i += 2
+                continue
+            if ch == quote:
+                quote = None
+            i += 1
+            continue
+        if ch in ('"', "'"):
+            quote = ch
+        i += 1
+    return quote
+
+
+def _is_quote_closed(text: str, quote_char: str) -> bool:
+    if len(text) < 2:
+        return False
+    if quote_char == '"':
+        if not text.endswith('"'):
+            return False
+        bs_count = 0
+        k = len(text) - 2
+        while k >= 0 and text[k] == '\\':
+            bs_count += 1
+            k -= 1
+        return (bs_count % 2) == 0
+    else:  # quote_char == "'"
+        if not text.endswith("'"):
+            return False
+        q_count = 0
+        k = len(text) - 1
+        while k >= 0 and text[k] == "'":
+            q_count += 1
+            k -= 1
+        if q_count == len(text):
+            return q_count % 2 == 0
+        return q_count % 2 == 1
 
 
 def _parse_scalar(raw):
@@ -223,14 +284,62 @@ def _parse_flow_map(text, i):
 def _prepare_lines(text):
     """Strip comments/blanks. Returns [(indent, content, lineno), ...]."""
     prepared = []
+    in_quote = None
+    in_block_scalar = False
+    scalar_indent = 0
+
     for lineno, raw in enumerate(text.splitlines(), start=1):
         leading = raw[:len(raw) - len(raw.lstrip(' \t'))]
         if '\t' in leading:
             raise FrontmatterError(f'line {lineno}: tab indentation is not supported')
+        indent = len(raw) - len(raw.lstrip(' '))
+        stripped = raw.strip()
+
+        # Block scalar mode: preserve comments, relative indent, and blank lines
+        if in_block_scalar:
+            if not stripped:
+                prepared.append((scalar_indent + 1, '', lineno))
+                continue
+            if indent > scalar_indent:
+                prepared.append((indent, stripped, lineno))
+                continue
+            in_block_scalar = False
+
+        # Multiline quoted scalar mode: preserve comments inside quotes
+        if in_quote is not None:
+            if not stripped:
+                prepared.append((indent, '', lineno))
+                continue
+            line = _strip_comment(raw, quote=in_quote)
+            in_quote = _find_unclosed_quote(line, initial_quote=in_quote)
+            prepared.append((indent, line.strip(), lineno))
+            continue
+
+        # Normal line processing
         line = _strip_comment(raw)
         if not line.strip():
             continue
-        prepared.append((len(line) - len(line.lstrip(' ')), line.strip(), lineno))
+        line_indent = len(line) - len(line.lstrip(' '))
+        line_content = line.strip()
+        prepared.append((line_indent, line_content, lineno))
+
+        # Check if line starts a block scalar or multiline quote
+        idx = line_content.find(':')
+        if idx != -1:
+            rest = line_content[idx + 1:].strip()
+            if rest in ('|', '|-', '|+', '>', '>-', '>+'):
+                in_block_scalar = True
+                scalar_indent = line_indent
+                continue
+            if rest[:1] in ('"', "'"):
+                quote_char = rest[0]
+                if _find_unclosed_quote(rest) is not None:
+                    in_quote = quote_char
+        elif line_content.startswith('- '):
+            rest = line_content[2:].strip()
+            if rest[:1] in ('"', "'"):
+                if _find_unclosed_quote(rest) is not None:
+                    in_quote = rest[0]
     return prepared
 
 
@@ -244,12 +353,19 @@ def _parse_collection(lines, start, indent):
 def _parse_block_scalar(lines, start, parent_indent, style):
     """Parse block scalar (| or >) lines with chomping indicators."""
     scalar_lines = []
+    base_indent = None
     i = start
     while i < len(lines):
         line_indent, content, lineno = lines[i]
-        if line_indent <= parent_indent:
+        if line_indent <= parent_indent and content:
             break
-        scalar_lines.append(content)
+        if base_indent is None and content:
+            base_indent = line_indent
+        if not content:
+            scalar_lines.append("")
+        else:
+            rel = line_indent - (base_indent if base_indent is not None else line_indent)
+            scalar_lines.append(" " * max(0, rel) + content)
         i += 1
     if style.startswith('|'):
         res = '\n'.join(scalar_lines)
@@ -257,8 +373,11 @@ def _parse_block_scalar(lines, start, parent_indent, style):
         res = ' '.join(scalar_lines)
     if style.endswith('-'):
         res = res.rstrip('\n')
-    elif not res.endswith('\n'):
-        res = res + '\n'
+    elif style.endswith('+'):
+        if not res.endswith('\n'):
+            res = res + '\n'
+    else:
+        res = res.rstrip('\n') + '\n' if res.rstrip('\n') else ""
     return res, i
 
 
@@ -292,10 +411,12 @@ def _parse_block_map(lines, start, indent):
                 quote_char = rest[0]
                 j = i
                 accum = rest
-                while not (len(accum) >= 2 and accum.endswith(quote_char) and not (accum.endswith('\\' + quote_char) and not accum.endswith('\\\\' + quote_char))):
+                while not _is_quote_closed(accum, quote_char):
                     j += 1
                     if j >= len(lines):
-                        break
+                        raise FrontmatterError(f'line {lines[i][2]}: unterminated quoted string')
+                    if lines[j][0] <= indent and lines[j][1]:
+                        raise FrontmatterError(f'line {lines[j][2]}: unterminated quoted string before sibling key')
                     accum = accum + '\n' + lines[j][1]
                 i = j + 1
                 mapping[key] = _parse_scalar(accum)
@@ -369,6 +490,20 @@ def _parse_block_seq(lines, start, indent):
             items.append(item_map)
             i = j
             continue
+        if body[:1] in ('"', "'"):
+            quote_char = body[0]
+            j = i
+            accum = body
+            while not _is_quote_closed(accum, quote_char):
+                j += 1
+                if j >= len(lines):
+                    raise FrontmatterError(f'line {lines[i][2]}: unterminated quoted string')
+                if lines[j][0] <= indent and lines[j][1]:
+                    raise FrontmatterError(f'line {lines[j][2]}: unterminated quoted string before sibling item')
+                accum = accum + '\n' + lines[j][1]
+            items.append(_parse_scalar(accum))
+            i = j + 1
+            continue
         items.append(_parse_scalar(body))
         i += 1
     return items, i
@@ -376,6 +511,8 @@ def _parse_block_seq(lines, start, indent):
 
 def parse_yaml_subset(text: str) -> dict[str, object]:
     """Parse the YAML subset used by cells. Raises FrontmatterError otherwise."""
+    if text.startswith('\ufeff'):
+        text = text[1:]
     lines = _prepare_lines(text)
     if not lines:
         return {}
@@ -397,10 +534,13 @@ def parse_frontmatter(content: str) -> dict[str, object] | None:
         content = content[1:]
     if not content.startswith('---'):
         return {}
-    end = content.find('---', 3)
-    if end == -1:
+    nl = content.find('\n')
+    if nl == -1:
         return None  # opened frontmatter that is never closed
-    fm_text = content[3:end].strip()
+    m = _CLOSING_DELIM_RE.search(content, nl + 1)
+    if not m:
+        return None  # opened frontmatter that is never closed
+    fm_text = content[nl + 1:m.start()].strip()
     if not fm_text:
         return {}
 
@@ -445,6 +585,7 @@ def dump_frontmatter(data: dict, body: str | None = None) -> str:
         if (
             not s
             or any(c in s for c in ":#{}[]|>&*!%@`,\n\"'")
+            or "---" in s
             or s.strip() != s
             or s.lower() in _BOOL_TRUE
             or s.lower() in _BOOL_FALSE
@@ -494,10 +635,13 @@ def _get_body(content: str) -> str:
         content = content[1:]
     if not content.startswith('---'):
         return content
-    end = content.find('---', 3)
-    if end == -1:
+    nl = content.find('\n')
+    if nl == -1:
         return content
-    return content[end + 3:].strip()
+    m = _CLOSING_DELIM_RE.search(content, nl + 1)
+    if not m:
+        return content
+    return content[m.end():].strip()
 
 
 def parse_cell_frontmatter(content_or_path: str) -> tuple[dict[str, object], str]:
@@ -523,11 +667,14 @@ def parse_cell_frontmatter(content_or_path: str) -> tuple[dict[str, object], str
         content = content[1:]
     if not content.startswith('---'):
         raise ValueError("No frontmatter delimiter")
-    end = content.find('---', 3)
-    if end == -1:
+    nl = content.find('\n')
+    if nl == -1:
+        raise ValueError("Unclosed frontmatter")
+    m = _CLOSING_DELIM_RE.search(content, nl + 1)
+    if not m:
         raise ValueError("Unclosed frontmatter")
 
-    fm_text = content[3:end].strip()
+    fm_text = content[nl + 1:m.start()].strip()
     if not fm_text:
         data = {}
     else:
@@ -539,7 +686,7 @@ def parse_cell_frontmatter(content_or_path: str) -> tuple[dict[str, object], str
     if not isinstance(data, dict):
         raise ValueError("Frontmatter is not a mapping")
 
-    body = content[end + 3:].lstrip('\n')
+    body = content[m.end():].lstrip('\r\n')
     return data, body
 
 
