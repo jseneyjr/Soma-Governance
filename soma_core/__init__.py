@@ -5,6 +5,7 @@ __version__ = "0.97.0"
 from soma_core import (
     arbitration,
     cell_inventory,
+    command_safety,
     defects,
     enforcement,
     errors,
@@ -31,6 +32,7 @@ from soma_core.cell_inventory import (
     CellInventoryError,
     inventory_cells,
 )
+from soma_core.command_safety import CommandAnalyzer, SafetyEvaluation
 from soma_core.errors import (
     CellCorruptError,
     LockTimeoutError,
@@ -65,6 +67,7 @@ __all__ = [
     # Submodules
     "arbitration",
     "cell_inventory",
+    "command_safety",
     "defects",
     "enforcement",
     "errors",
@@ -85,6 +88,8 @@ __all__ = [
     "telemetry",
     "workspace",
     # Core types & functions
+    "CommandAnalyzer",
+    "SafetyEvaluation",
     "CellInventory",
     "CellInventoryEntry",
     "CellInventoryError",

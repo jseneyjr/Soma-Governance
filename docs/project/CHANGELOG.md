@@ -3,6 +3,26 @@
 All notable changes to Soma are documented here.
 This project uses [Semantic Versioning](https://semver.org/).
 
+## [0.97.1] — 2026-10-06 — "Structured Command Safety & Pattern De-bloating"
+
+### Added
+- **Structured Lexical Command Analyzer (`soma_core.command_safety`)**:
+  - Implemented pure-stdlib `CommandAnalyzer` featuring lexical tokenization (`shlex`), state automaton, wrapper unwrapping (`sudo`, `env`, `nice`, `time`, `nohup`, `xargs`), quote-aware subshell extraction, and recursion depth clamps (ADR-014).
+  - Exported `CommandAnalyzer` and `SafetyEvaluation` in `soma_core/__init__.py`.
+  - Added canonical 1:1 mirrored test suite in `tests/soma_core/test_command_safety.py` (101 unit tests).
+
+### Changed
+- **Safety Gate De-bloating & Refactoring (`soma_cli.hooks`)**:
+  - Replaced brittle shell regular expressions (`_GIT_CMD_PREFIX`, `_GIT_GLOBAL_OPTS`, `_GIT_CMD`, and 22 redundant `DESTRUCTIVE_PATTERNS`) with structured `CommandAnalyzer` evaluation in `run_safety_gate()`.
+  - Converted remaining unstructured regexes (`SECRET_REPLACEMENTS`) to documented, readable `re.VERBOSE` patterns.
+  - Added `--delete` to dangerous git flags in fast-path allowlist.
+
+### Documented
+- **ADR-014 (Command Tokenization Over Regex Builder DSL)**:
+  - Formally codified rejection of regex builder DSL in favor of stdlib lexical command tokenization.
+- **Scripts Reference (`docs/architecture/scripts.md`)**:
+  - Cataloged `soma_core/command_safety.py`, updating MCP & Core modules count to 29 and repository runtime total to 72.
+
 ## [0.97.0] — 2026-10-06 — "The Sunset Phase: Legacy Enzymes Purge, Native Platform Adapters & Dynamic Colocality"
 
 ### Removed (Breaking Changes)

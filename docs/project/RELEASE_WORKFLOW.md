@@ -45,6 +45,11 @@ develop ──→ release/v0.XX ──→ PR to main ──→ tag v0.XX.0 ─�
 | Phase 4.9 | v0.85.0 ✅ | Antifragile hot zones |
 | Phase 5.0 | v0.89.0 ✅ | MCP execution security and release integrity |
 | Phase 6.0 | v0.90.0 ✅ | Security & Hardening |
+| Phase 5.4 | v0.95.0 ✅ | Architecture Consolidation & Deep Defense |
+| Phase 5.5 | v0.96.0 ✅ | Pure-Stdlib Core Layer & Codebase Consolidation |
+| Phase 5.6 | v0.96.1 ✅ | 100% Zero-Dependency Framework & Stdlib Frontmatter Engine |
+| Phase 5.7 | v0.97.0 ✅ | The Sunset Phase: Legacy Enzymes Purge, Native Platform Adapters & Dynamic Colocality |
+| Phase 5.8 | v0.97.1 ✅ | Structured Command Safety & Pattern De-bloating |
 
 ## Pre-Release Checklist
 
