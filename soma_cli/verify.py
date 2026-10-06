@@ -13,14 +13,14 @@ import sys
 
 # Lazy imports to keep CLI responsive
 def _get_verification():
-    from immune_system.verification import runner, Verdict
+    from soma_core.verification import runner, Verdict
     return runner, Verdict
 
 
 # ── Exit Code Mapping ─────────────────────────────────────────────────
 
 def _lazy_verdict():
-    from immune_system.verification import Verdict
+    from soma_core.verification import Verdict
     return Verdict
 
 

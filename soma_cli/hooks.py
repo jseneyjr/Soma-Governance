@@ -391,7 +391,7 @@ def run_pre_commit(
 
     # 1. Deterministic quality checkpoint
     try:
-        from immune_system.verification.checkpoint_checks import run_all_checks
+        from soma_core.verification.checkpoint_checks import run_all_checks
         issues = run_all_checks(root)
     except ImportError:
         issues = []

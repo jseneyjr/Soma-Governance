@@ -208,6 +208,12 @@ Decoupled command-line execution and argument parsing from `soma_core/`. Extract
 **Status**: ✅ Shipped (v0.100.0)  
 Decomposed `soma_core/telemetry.py` (1,911 LOC) into `soma_core/outcomes.py` and `soma_core/metrics.py`, leaving `soma_core/telemetry.py` as a ~450 LOC cohesive evidence ledger with proxy mutation mirroring. Decomposed `soma_core/sync.py` (1,206 LOC) into `soma_core/sentinels.py`. Deduplicated triplicate glob matchers across telemetry and enforcement into canonical `find_matching_cells` in `soma_core/cell_inventory.py`. Centralized OS locking inside `soma_core/locking.py`. Added colocated test suites `test_outcomes.py`, `test_metrics.py`, and `test_sentinels.py`.
 
+## Phase 5.12 — v0.101.0 ✅ Shipped
+
+### Immune System Unification & Lifecycle Consolidation
+**Status**: ✅ Shipped (v0.101.0)  
+Unified the verification framework by establishing `soma_core/verification/` as the canonical package housing 12 deterministic and adversarial verification modules. Replaced the 3,672 LOC in `immune_system/verification/*.py` with lightweight backward-compatibility facade modules mirroring attributes and re-exporting all symbols. Consolidated `evaluate_promotions` and `evaluate_demotions` directly into `soma_core/lifecycle.py`, eliminating the duplicate lifecycle engine. Streamlined `cli_cell_create` description generation in `soma_core/lifecycle.py`. Rerouted internal CLI, MCP, and Core callers to canonical verification paths. Purged deprecated enzyme stubs (`_safe_import_enzyme` and `_ENZYME_ALLOWLIST`). Updated scripts reference to 74 total scripts.
+
 ## Research
 
 ### Antifragile Scaling

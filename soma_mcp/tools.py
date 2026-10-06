@@ -32,13 +32,6 @@ try:
 except ImportError:
     soma_propose_change = None
 
-# Backward compatibility stubs for legacy test suites (tests/test_security.py)
-_ENZYME_ALLOWLIST = frozenset()
-
-
-def _safe_import_enzyme(module_name: str, attr: str):
-    """Deprecated: enzymes package has been purged."""
-    raise ImportError(f"Enzyme '{module_name}' is not in the import allowlist")
 
 # Try importing Governance SDK; its cell parser also has a stdlib fallback.
 try:
@@ -60,11 +53,11 @@ def resolve_workspace(args=None):
 
 
 # ── Checkpoint helpers (shared with soma_cli.checkpoint) ──────────────
-# Imported from immune_system.verification.checkpoint_checks to avoid
+# Imported from soma_core.verification.checkpoint_checks to avoid
 # copy-paste divergence. See trap-recurring-finding-escape.md.
 
 try:
-    from immune_system.verification.checkpoint_checks import (
+    from soma_core.verification.checkpoint_checks import (
         run_all_checks as _run_checkpoint_checks,
         check_test_coverage as _checkpoint_test_coverage,
         check_hardcoded_paths as _checkpoint_hardcoded_paths,
@@ -874,9 +867,9 @@ def execute_tool(name: str, args: dict):
             }
 
         try:
-            from immune_system.verification import runner
+            from soma_core.verification import runner
         except ImportError:
-            return {"error": "immune_system.verification is not importable. Install soma with immune_system package."}
+            return {"error": "soma_core.verification is not importable."}
         results = runner.run_layer1(changed_files=files, repo_root=workspace)
         verdict = runner.gate_verdict(results)
         summary = runner.format_summary(results)
@@ -939,7 +932,7 @@ def execute_tool(name: str, args: dict):
         except ValueError as exc:
             return {"error": str(exc), "status": _STATUS_FAIL}
         if _run_checkpoint_checks is None:
-            return {"error": "immune_system module is not available", "status": _STATUS_FAIL}
+            return {"error": "verification module is not available", "status": _STATUS_FAIL}
         from pathlib import Path
         root = Path(workspace)
         issues = _run_checkpoint_checks(root)

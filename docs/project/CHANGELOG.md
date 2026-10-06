@@ -3,6 +3,27 @@
 All notable changes to Soma are documented here.
 This project uses [Semantic Versioning](https://semver.org/).
 
+## [0.101.0] — 2026-10-06 — "Immune System Unification & Lifecycle Consolidation"
+
+### Architecture & Unification (Bloat Remediation)
+- **Unified Canonical Verification Framework (`soma_core/verification/`)**:
+  - Migrated 12 verification and quality assurance modules (`arbiter.py`, `branch_coverage.py`, `call_graph.py`, `checkpoint_checks.py`, `immune_verify.py`, `import_guard.py`, `mutation_tester.py`, `persistence_checker.py`, `quality_gate.py`, `review_adapter.py`, `runner.py`, `transcript_verifier.py`) into canonical package `soma_core/verification/`.
+  - Replaced 3,672 lines in `immune_system/verification/*.py` with lightweight backward-compatibility facade modules mirroring attributes and re-exporting all symbols for 100% backward compatibility.
+- **Consolidated Duplicate Lifecycle Engine (`soma_core/lifecycle.py`)**:
+  - Unified `evaluate_promotions` and `evaluate_demotions` (and signal ledger readers `_load_evidence`, `_load_cells`, `_cell_age_days`) into [`soma_core/lifecycle.py`](../../soma_core/lifecycle.py), establishing a single canonical lifecycle engine.
+  - Eliminated duplicate lifecycle transition engine file `immune_system/verification/lifecycle.py`, replacing with a backward-compatible shim.
+  - Streamlined `cli_cell_create` description generation in `soma_core/lifecycle.py`, eliminating ~50 lines of duplicate cell writing code.
+- **Rerouted Internal Callers to Canonical Verification**:
+  - Rerouted `soma_cli/checkpoint.py`, `soma_cli/hooks.py`, and `soma_mcp/tools.py` to import `checkpoint_checks` from `soma_core.verification.checkpoint_checks`.
+  - Rerouted `soma_cli/promote.py` and `soma_cli/demote.py` to import from `soma_core.lifecycle`.
+  - Rerouted `soma_cli/verify.py` and `soma_mcp/tools.py` to import from `soma_core.verification`.
+  - Rerouted `soma_core/verification_jobs.py` to target `soma_core.verification.runner`.
+- **Purged Deprecated Enzyme Stubs**:
+  - Stripped `_safe_import_enzyme` and `_ENZYME_ALLOWLIST` from `soma_mcp/tools.py` per ADR-013.
+  - Removed obsolete `TestEnzymeImportAllowlist` from `tests/test_security.py`.
+- **Documentation & Scripts Reference Accuracy**:
+  - Updated `docs/architecture/scripts.md` and `tests/test_documentation_accuracy.py` to catalog 12 verification scripts under `soma_core/verification/` (74 total scripts).
+
 ## [0.100.0] — 2026-10-06 — "Core God Module Decomposition & Verification Deduplication"
 
 ### Architecture & Decomposition (Bloat Remediation)
