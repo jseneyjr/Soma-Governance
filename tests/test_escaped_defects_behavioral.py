@@ -90,8 +90,7 @@ class TestEscapedDefectRecording:
         """Recording an escaped defect appends to escaped_defects.jsonl."""
         workspace = self._create_workspace_with_cell()
         try:
-            sys.path.insert(0, os.path.join(REPO_ROOT, 'enzymes'))
-            from cell_escaped_defects import record_escaped_defect
+            from soma_core.defects import record_escaped_defect
 
             cell_dict = {
                 '_name': 'trap-test',
