@@ -5,8 +5,10 @@ import glob
 import re
 import sys
 
-from soma_resolve import resolve_workspace
-from inference_provider import resolve_provider
+try:
+    from soma_core.inference_provider import resolve_provider
+except ImportError:
+    from inference_provider import resolve_provider
 
 def parse_args():
     parser = argparse.ArgumentParser(description="Ground-Truth Token Census")
@@ -45,7 +47,7 @@ def count_tokens(text, model_name, provider):
 def main():
     args = parse_args()
     
-    workspace = resolve_workspace(__file__)
+    workspace = resolve_workspace()
     rules_dir = os.path.join(workspace, "genome")
     skills_dir = os.path.join(workspace, "organs")
     

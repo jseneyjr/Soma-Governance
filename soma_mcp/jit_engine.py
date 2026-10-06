@@ -60,6 +60,7 @@ from soma_core.frontmatter import (
     _parse_frontmatter,
     _get_body,
 )
+from soma_core.scoring import compute_cell_fitness
 
 
 
@@ -142,45 +143,8 @@ def match_cells_to_files(cells: list[dict[str, object]], changed_files: list[str
 
 
 def get_fitness_score(cell: dict[str, object]) -> float:
-    """Extract fitness score from cell.
-
-    INTENTIONAL DUPLICATION: wall-mcp-zero-deps prohibits importing from enzymes/
-    Canonical source: enzymes/bayesian_score.py — keep in sync manually
-    """
-    fitness = cell.get('fitness', '')
-    impact_weight = cell.get('impact_weight', 1.0)
-    try:
-        impact_weight = float(impact_weight)
-    except (ValueError, TypeError):
-        impact_weight = 1.0
-
-    if isinstance(fitness, dict):
-        score = fitness.get('score')
-        # Compute from tp/triggers if available
-        tp = fitness.get('true_positives', 0)
-        triggers = fitness.get('triggers', 0)
-        try:
-            tp, triggers = int(tp), int(triggers)
-            if triggers > 0:
-                return ((tp + 1) / (triggers + 2)) * impact_weight
-        except (ValueError, TypeError):
-            pass
-        if score is not None:
-            try:
-                return float(score) * impact_weight
-            except (ValueError, TypeError):
-                pass
-
-    triggers = cell.get('triggers', '0')
-    tp = cell.get('true_positives', '0')
-    try:
-        tp_int = int(tp)
-        triggers_int = int(triggers)
-        if triggers_int > 0:
-            return ((tp_int + 1) / (triggers_int + 2)) * impact_weight
-    except (ValueError, TypeError):
-        pass
-    return 0.5 * impact_weight
+    """Extract fitness score from cell using canonical soma_core.scoring."""
+    return compute_cell_fitness(cell)
 
 
 def rank_cells(matched_cells: list[dict[str, object]]) -> list[dict[str, object]]:

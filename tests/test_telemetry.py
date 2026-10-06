@@ -345,3 +345,86 @@ class TestGenerationFence:
         with pytest.raises(RuntimeError, match='migration in progress'):
             append_signal(str(tmp_path), 'cell-a', 'tp', 'ci')
         assert _signals(tmp_path) == []
+# ── Core Telemetry Consolidated Unit Tests (Phase 5) ─────────────────────
+
+from soma_core.telemetry import (
+    append_signal as core_append_signal,
+    read_signals as core_read_signals,
+    current_generation as core_current_generation,
+    increment_generation as core_increment_generation,
+    detect_test_runner,
+    letter_grade,
+    compute_credit_weights,
+    evaluate_quorum,
+)
+
+
+def test_telemetry_append_and_read_signals(tmp_path):
+    ws = str(tmp_path)
+    rec = core_append_signal(ws, "cell-1", "tp", "ci", metadata={"test": True})
+    assert rec["cell"] == "cell-1"
+    assert rec["signal"] == "tp"
+
+    signals = core_read_signals(ws)
+    assert len(signals) == 1
+    assert signals[0]["cell"] == "cell-1"
+
+
+def test_telemetry_generation_increment(tmp_path):
+    ws = str(tmp_path)
+    assert core_current_generation(ws) == 1
+    gen = core_increment_generation(ws)
+    assert gen == 2
+    assert core_current_generation(ws) == 2
+
+
+def test_telemetry_letter_grade():
+    assert letter_grade(98) == "A+"
+    assert letter_grade(85) == "B"
+    assert letter_grade(50) == "F"
+
+
+def test_telemetry_credit_weights():
+    cells = [
+        {"id": "cell-a", "target_paths": ["src/*.py"]},
+        {"id": "cell-b", "target_paths": ["tests/*.py"]},
+    ]
+    weights = compute_credit_weights(cells, ["src/app.py"])
+    assert weights["cell-a"] == 1.0
+    assert weights["cell-b"] == 0.0
+
+
+def test_evidence_lock_reentrancy(tmp_path):
+    """C-02: evidence_lock must allow reentrant acquisition in the same thread without deadlock."""
+    from soma_core.telemetry import evidence_lock, increment_generation
+    ws = str(tmp_path)
+    with evidence_lock(ws):
+        gen1 = increment_generation(ws)
+        assert gen1 == 2
+        with evidence_lock(ws):
+            gen2 = increment_generation(ws)
+            assert gen2 == 3
+
+
+def test_telemetry_surrogate_characters(tmp_path):
+    """C9: Telemetry must handle surrogate code points without UnicodeEncodeError."""
+    from soma_core.telemetry import append_signal, read_signals, compute_payload_digest
+    ws = str(tmp_path)
+    surrogate_text = "test-surrogate-\ud800-log"
+    digest = compute_payload_digest("cell-1", "tp", "manual", metadata={"note": surrogate_text})
+    assert isinstance(digest, str) and len(digest) == 64
+
+    event = append_signal(
+        workspace=ws,
+        cell_name="cell-1",
+        signal_type="tp",
+        source="manual",
+        metadata={"note": surrogate_text},
+        idempotency_key="key-1",
+    )
+    assert event["payload_digest"] == digest
+
+    signals = read_signals(ws)
+    assert len(signals) == 1
+    assert signals[0]["metadata"]["note"] == surrogate_text
+

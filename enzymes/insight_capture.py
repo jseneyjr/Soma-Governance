@@ -1,111 +1,39 @@
-"""Capture human insights and correlate them with governance coverage.
+#!/usr/bin/env python3
+"""Backward-compatible forwarding shim for enzymes.insight_capture.
 
-Records insights as JSONL entries in `.soma/human_insights.jsonl`, tracking
-which governance cells (if any) already cover the files the insight refers to.
+Delegates canonical insight capture to soma_core.insights.
 """
-import json
-import os
-from datetime import datetime, timezone
+from __future__ import annotations
+
+import sys
+from pathlib import Path
+
+_REPO_ROOT = Path(__file__).resolve().parent.parent
+if str(_REPO_ROOT) not in sys.path:
+    sys.path.insert(0, str(_REPO_ROOT))
+
+from soma_core.insights import (
+    capture_insight,
+    cli_insight_capture,
+)
+
+__all__ = [
+    "capture_insight",
+    "main",
+]
 
 
-def _load_signal_weight(workspace):
-    """Load insight_signal_weight from .soma/config.yaml, defaulting to 0.5.
-
-    PyYAML is optional — returns the default when it is not installed or the
-    config file is missing / malformed.
-    """
-    default = 0.5
-    config_path = os.path.join(workspace, ".soma", "config.yaml")
-    if not os.path.exists(config_path):
-        return default
-    try:
-        import yaml
-        with open(config_path, encoding="utf-8") as f:
-            cfg = yaml.safe_load(f)
-        if isinstance(cfg, dict):
-            return cfg.get("insight_signal_weight", default)
-    except Exception:
-        pass
-    return default
+def __getattr__(name: str):
+    """Fallback delegation for dynamically queried attributes."""
+    import soma_core.insights as _ins
+    return getattr(_ins, name)
 
 
-def capture_insight(
-    workspace: str,
-    insight: str,
-    context_files: list,
-    source_conversation: str = None,
-    category: str = None,
-) -> dict:
-    """Capture a human insight and persist it to JSONL.
+def main(argv: list[str] | None = None) -> int:
+    if hasattr(sys.stdout, "reconfigure"):
+        sys.stdout.reconfigure(errors="replace")
+    return cli_insight_capture(argv)
 
-    Parameters
-    ----------
-    workspace:
-        Project root directory (must contain a ``.soma/`` subdirectory).
-    insight:
-        Free-text description of the insight.
-    context_files:
-        Non-empty list of file paths the insight relates to.
-    source_conversation:
-        Optional conversation / session identifier.
-    category:
-        Optional category tag (e.g. ``"contract_mismatch"``).
 
-    Returns
-    -------
-    dict
-        The record that was persisted, including coverage metadata.
-
-    Raises
-    ------
-    ValueError
-        If *context_files* is empty.
-    """
-    if not isinstance(context_files, list):
-        raise ValueError("context_files must be a list, not " + type(context_files).__name__)
-    if not context_files:
-        raise ValueError("context_files must not be empty")
-    if not insight or not insight.strip():
-        raise ValueError("insight must not be empty")
-
-    import sys
-    _repo_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-    if _repo_root not in sys.path:
-        sys.path.insert(0, _repo_root)
-
-    try:
-        from enzymes.cell_escaped_defects import find_covering_cells, load_cells
-    except ImportError:
-        # Fallback: relative import when already inside enzymes/
-        from cell_escaped_defects import find_covering_cells, load_cells
-
-    # Load cells — gracefully handle missing .soma/cells/
-    cells_dir = os.path.join(workspace, ".soma", "cells")
-    if os.path.isdir(cells_dir):
-        cells = load_cells(cells_dir)
-    else:
-        cells = []
-
-    covering = find_covering_cells(cells, context_files)
-    covering_cell_names = [c["cell"]["_name"] for c in covering]
-    was_covered = len(covering_cell_names) > 0
-
-    signal_weight = _load_signal_weight(workspace)
-
-    record = {
-        "timestamp": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
-        "insight": insight,
-        "context_files": context_files,
-        "source_conversation": source_conversation,
-        "category": category,
-        "covering_cells": covering_cell_names,
-        "was_covered": was_covered,
-        "signal_weight": signal_weight,
-    }
-
-    jsonl_path = os.path.join(workspace, ".soma", "human_insights.jsonl")
-    os.makedirs(os.path.dirname(jsonl_path), exist_ok=True)
-    with open(jsonl_path, "a", encoding="utf-8") as f:
-        f.write(json.dumps(record) + "\n")
-
-    return record
+if __name__ == "__main__":
+    sys.exit(main())

@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 import os, sys, argparse, glob
 from fnmatch import fnmatch
-from soma_resolve import resolve_workspace
+from soma_core.workspace import resolve_workspace
 from soma_sdk.cells import parse_cell_file
 
 def main():
@@ -11,7 +11,7 @@ def main():
     parser.add_argument('--workspace', type=str, default=None, help='Override workspace root')
     args = parser.parse_args()
     
-    workspace = args.workspace if args.workspace else resolve_workspace(__file__)
+    workspace = args.workspace if args.workspace else resolve_workspace()
     cells_dir = os.path.join(workspace, '.soma', 'cells')
     
     # Load all cells with target_paths

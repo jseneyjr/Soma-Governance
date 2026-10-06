@@ -271,6 +271,36 @@ class TestSessionClose:
         assert res == {}
 
 
+class TestPostSessionHook:
+    """Test post-session hook execution."""
+
+    def test_skips_when_transcript_missing(self, tmp_path: Path, capsys):
+        from argparse import Namespace
+        args = Namespace(phase="post-session", workspace=str(tmp_path), transcript=None)
+        rc = run_hook(args)
+        assert rc == 0
+        captured = capsys.readouterr()
+        assert "skipping post-session hook" in captured.err.lower()
+
+    def test_invokes_post_session_hook_with_file(self, tmp_path: Path, monkeypatch):
+        from argparse import Namespace
+        transcript_file = tmp_path / "transcript.jsonl"
+        transcript_file.write_text('{"event": "test"}\n', encoding="utf-8")
+
+        called = []
+
+        def fake_hook(transcript_path, repo_root):
+            called.append((transcript_path, repo_root))
+            return 0
+
+        monkeypatch.setattr("soma_core.sync.run_post_session_hook", fake_hook)
+        args = Namespace(phase="post-session", workspace=str(tmp_path), transcript=str(transcript_file))
+        rc = run_hook(args)
+        assert rc == 0
+        assert len(called) == 1
+        assert called[0][0] == transcript_file
+
+
 class TestPreCommitHook:
     """Test pre-commit hook."""
 
@@ -303,3 +333,30 @@ class TestCliDispatch:
         assert proc.returncode == 0
         data = json.loads(proc.stdout.strip())
         assert data["decision"] == "allow"
+
+    def test_pre_commit_json_stdout_purity(self, tmp_path):
+        proc = subprocess.run(
+            [sys.executable, "-m", "soma_cli", "hook", "pre-commit", "--workspace", str(tmp_path), "--json"],
+            capture_output=True,
+            text=True,
+            encoding="utf-8",
+        )
+        assert proc.returncode == 0
+        # stdout must be exclusively valid JSON with no banners or logs
+        data = json.loads(proc.stdout.strip())
+        assert data["status"] == "ok"
+        assert "triggered_cells" in data
+
+    def test_post_session_json_stdout_purity(self, tmp_path):
+        transcript_file = tmp_path / "transcript.jsonl"
+        transcript_file.write_text('{"event": "test"}\n', encoding="utf-8")
+        proc = subprocess.run(
+            [sys.executable, "-m", "soma_cli", "hook", "post-session", "--transcript", str(transcript_file), "--workspace", str(tmp_path), "--json"],
+            capture_output=True,
+            text=True,
+            encoding="utf-8",
+        )
+        assert proc.returncode == 0
+        data = json.loads(proc.stdout.strip())
+        assert data["status"] == "ok"
+

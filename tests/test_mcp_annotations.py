@@ -28,6 +28,9 @@ _EXPECTED = {
     "soma_capture_insight": (False, False, False, False),
     "soma_generate_manifest": (False, True, True, False),
     "soma_poll_verification": (True, False, True, False),
+    "soma_create_rule": (False, False, True, False),
+    "soma_list_rules": (True, False, True, False),
+    "soma_rule_fitness": (True, False, True, False),
 }
 
 

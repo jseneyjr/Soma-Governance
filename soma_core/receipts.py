@@ -4,9 +4,12 @@ import os
 import time
 import threading
 import hashlib
+import hmac
+from pathlib import Path
 from typing import Dict, Any, Iterable, List, Optional
 
 from soma_core.cell_inventory import inventory_cells
+from soma_core.workspace import confine_path
 
 # Argument keys that name workspace files a tool will read or act on. A receipt
 # binds the content of each of these, so editing a target between issuance and
@@ -49,8 +52,11 @@ def _hash_args(args: Dict[str, Any]) -> str:
     try:
         serialized = json.dumps(args, sort_keys=True, default=str)
     except Exception:
-        serialized = str(sorted(args.items()))
-    return hashlib.sha256(serialized.encode('utf-8')).hexdigest()
+        try:
+            serialized = str(sorted(args.items(), key=lambda x: str(x[0])))
+        except Exception:
+            serialized = str(args)
+    return hashlib.sha256(serialized.encode("utf-8", errors="surrogatepass")).hexdigest()
 
 def strip_server_owned(args: Optional[Dict[str, Any]]) -> Dict[str, Any]:
     """Return a copy of client arguments without server-owned keys."""
@@ -71,17 +77,23 @@ def target_paths(args: Dict[str, Any]) -> List[str]:
     return sorted(set(p for p in found if p))
 
 
-def _confined(workspace: str, rel_or_abs: str) -> str:
-    """Resolve a path and require it to stay inside the workspace."""
-    root = os.path.realpath(workspace)
-    candidate = os.path.realpath(os.path.join(root, rel_or_abs))
+def _safe_compare(a: Any, b: Any) -> bool:
+    """Safely compare two strings or byte sequences in constant time without non-ASCII crash."""
+    if not isinstance(a, (str, bytes)) or not isinstance(b, (str, bytes)):
+        return False
     try:
-        inside = os.path.commonpath([root, candidate]) == root
-    except ValueError:
-        inside = False
-    if not inside or candidate == root:
-        raise ValueError(f"path escapes the workspace: {rel_or_abs!r}")
-    return candidate
+        a_bytes = a.encode("utf-8", errors="surrogatepass") if isinstance(a, str) else a
+        b_bytes = b.encode("utf-8", errors="surrogatepass") if isinstance(b, str) else b
+        return hmac.compare_digest(a_bytes, b_bytes)
+    except Exception:
+        return False
+
+
+
+def _confined(workspace: str, rel_or_abs: str) -> str:
+    """Resolve a path and require it to stay inside the workspace using single-authority confinement."""
+    resolved, _ = confine_path(rel_or_abs, workspace)
+    return resolved
 
 
 def compute_file_digest(workspace: str, paths: Iterable[str]) -> str:
@@ -90,14 +102,29 @@ def compute_file_digest(workspace: str, paths: Iterable[str]) -> str:
     Missing files are bound as missing, so creating one later also makes the
     receipt stale. Raises ValueError for paths outside the workspace.
     """
+    ws_root = Path(workspace).resolve()
+    seen = set()
+    canonical_items = []
+    for p in paths:
+        resolved = _confined(workspace, p)
+        canonical_rel = Path(resolved).resolve().relative_to(ws_root).as_posix()
+        if canonical_rel not in seen:
+            seen.add(canonical_rel)
+            canonical_items.append((canonical_rel, resolved))
+    canonical_items.sort(key=lambda x: x[0])
+
     h = hashlib.sha256(b"soma-file-digest-v1\0")
-    normalized_paths = sorted(set(os.path.normpath(p).replace("\\", "/") for p in paths))
-    for rel in normalized_paths:
-        resolved = _confined(workspace, rel)
-        h.update(rel.encode("utf-8") + b"\0")
+    for rel_posix, resolved in canonical_items:
+        h.update(rel_posix.encode("utf-8") + b"\0")
         if os.path.isfile(resolved):
-            with open(resolved, "rb") as f:
-                h.update(hashlib.sha256(f.read()).digest())
+            try:
+                with open(resolved, "rb") as f:
+                    fh = hashlib.sha256()
+                    while chunk := f.read(65536):
+                        fh.update(chunk)
+                    h.update(fh.digest())
+            except OSError:
+                h.update(b"<missing>")
         else:
             h.update(b"<missing>")
         h.update(b"\0")
@@ -146,48 +173,59 @@ def verify_receipt(
     args: Dict[str, Any],
     file_digest: str,
     cell_digest: str,
-    consume: bool = False
+    consume: bool = True
 ) -> bool:
-    if (
-        not isinstance(receipt_id, str)
-        or not isinstance(session_id, str)
-        or not isinstance(workspace, str)
-        or not isinstance(operation, str)
-        or not isinstance(file_digest, str)
-        or not isinstance(cell_digest, str)
-        or not isinstance(args, dict)
-    ):
+    if not isinstance(receipt_id, str):
         return False
 
     with _receipt_lock:
         _prune_expired_locked(time.time())
-        if receipt_id not in _receipt_store:
+        stored = _receipt_store.pop(receipt_id, None) if consume else _receipt_store.get(receipt_id)
+        if stored is None:
             return False
-            
-        stored = _receipt_store[receipt_id]
-        
-        # Check expiration
+
         if stored.get("expires_at") is not None and time.time() > stored["expires_at"]:
-            _receipt_store.pop(receipt_id, None)
             return False
-        
-        import hmac
-        is_valid = (
-            hmac.compare_digest(stored["session_id"], session_id) and
-            hmac.compare_digest(stored["workspace"], workspace) and
-            hmac.compare_digest(stored["operation"], operation) and
-            hmac.compare_digest(stored["args_hash"], _hash_args(args)) and
-            hmac.compare_digest(stored["file_digest"], file_digest) and
-            hmac.compare_digest(stored["cell_digest"], cell_digest)
-        )
-        
-        # Single-use: burn receipt upon successful redemption when consume=True
-        if consume and is_valid:
-            _receipt_store.pop(receipt_id, None)
-            
-        return is_valid
+
+        if (
+            not isinstance(session_id, str)
+            or not isinstance(workspace, str)
+            or not isinstance(operation, str)
+            or not isinstance(file_digest, str)
+            or not isinstance(cell_digest, str)
+            or not isinstance(args, dict)
+        ):
+            return False
+
+        try:
+            return (
+                _safe_compare(stored["session_id"], session_id) and
+                _safe_compare(stored["workspace"], workspace) and
+                _safe_compare(stored["operation"], operation) and
+                _safe_compare(stored["args_hash"], _hash_args(args)) and
+                _safe_compare(stored["file_digest"], file_digest) and
+                _safe_compare(stored["cell_digest"], cell_digest)
+            )
+        except Exception:
+            return False
 
 def clear_receipts():
     """Clear all receipts (simulates process restart invalidation)."""
     with _receipt_lock:
         _receipt_store.clear()
+
+
+__all__ = [
+    "DEFAULT_TTL_SECONDS",
+    "MAX_RECEIPTS",
+    "SERVER_OWNED_KEYS",
+    "TARGET_PATH_KEYS",
+    "clear_receipts",
+    "compute_cell_digest",
+    "compute_file_digest",
+    "issue_receipt",
+    "strip_server_owned",
+    "target_paths",
+    "verify_receipt",
+]
+

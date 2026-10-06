@@ -85,9 +85,11 @@ SOURCE_TO_TEST_MAP = {
     "soma_core/errors.py": "tests/test_domain_errors.py",
     "soma_core/evidence.py": "tests/test_canonical_evidence_readers.py",
     "soma_core/frontmatter.py": "tests/test_core_lifecycle.py",
+    "soma_core/inference_provider.py": "tests/test_keyring_integration.py",
     "soma_core/lifecycle.py": "tests/test_core_lifecycle.py",
     "soma_core/locking.py": "tests/test_locking.py",
     "soma_core/quarantine.py": "tests/test_quarantine_resilience.py",
+    "soma_core/sweep_session.py": "tests/test_sweep_session.py",
     "soma_core/verification_jobs.py": "tests/test_mcp_async_verify.py",
     "soma_mcp/integrity.py": "tests/test_evidence_integrity.py",
     "soma_mcp/jit_engine.py": "tests/test_jit_engine_behavioral.py",
@@ -538,12 +540,18 @@ def check_cell_conventions(root: Path) -> list[dict]:
     return issues
 
 
-def check_arbitration_evidence(root: Path) -> list[dict]:
+def check_arbitration_evidence(root: Path, strict: bool = False) -> list[dict]:
     issues = []  # type: List[dict]
     evidence_dir = root / ".soma" / "evidence"
     try:
         info = os.stat(evidence_dir, follow_symlinks=False)
     except FileNotFoundError:
+        if strict:
+            return [{
+                "check": "arbitration_evidence",
+                "file": _relative(root, evidence_dir),
+                "message": f"{_relative(root, evidence_dir)}: evidence directory not found",
+            }]
         return issues
     except (OSError, UnicodeError) as exc:
         return [_failure(
@@ -566,7 +574,14 @@ def check_arbitration_evidence(root: Path) -> list[dict]:
             "arbitration_evidence", root, evidence_dir, "list", exc
         )]
     if not files:
+        if strict:
+            return [{
+                "check": "arbitration_evidence",
+                "file": _relative(root, evidence_dir),
+                "message": f"{_relative(root, evidence_dir)}: no arbitration cycles found in evidence directory",
+            }]
         return issues
+
 
     def cycle_number(path: Path) -> int:
         match = re.search(r"cycle_(\d+)", str(path))
@@ -642,13 +657,17 @@ CHECK_NAMES = [
 ]
 
 
-def run_all_checks(root: Path) -> list[dict]:
+def run_all_checks(root: Path, strict: bool = False) -> list[dict]:
     """Run every check and convert unexpected check failures into issues."""
     issues = []  # type: List[dict]
     for check_fn in ALL_CHECKS:
         try:
-            issues.extend(check_fn(root))
+            if check_fn == check_arbitration_evidence:
+                issues.extend(check_fn(root, strict=strict))
+            else:
+                issues.extend(check_fn(root))
         except Exception as exc:
             check_name = check_fn.__name__.replace("check_", "", 1)
             issues.append(_failure(check_name, root, root, "check", exc))
     return issues
+

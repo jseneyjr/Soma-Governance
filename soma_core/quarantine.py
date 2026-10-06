@@ -286,3 +286,16 @@ def prune_quarantine(older_than_days: int = 30, workspace: Optional[Path | str] 
                 pass
 
     return len(deleted_names)
+
+
+__all__ = [
+    "QUARANTINE_DIR",
+    "QUARANTINE_LOG",
+    "inspect_quarantined_file",
+    "list_quarantine",
+    "prune_quarantine",
+    "quarantine_file",
+    "safe_parse_cell_file",
+    "safe_read_jsonl",
+]
+

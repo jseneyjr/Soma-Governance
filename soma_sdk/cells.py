@@ -12,36 +12,20 @@ try:
 except ImportError:
     yaml = None
 
-def _stdlib_parse_frontmatter(yaml_text: str) -> dict:
-    import json
-    out = {}
-    for line in yaml_text.splitlines():
-        line = line.strip()
-        if not line or line.startswith('#'):
-            continue
-        if ':' in line:
-            k, v = line.split(':', 1)
-            k = k.strip()
-            v = v.strip()
-            if (v.startswith('"') and v.endswith('"')) or (v.startswith("'") and v.endswith("'")):
-                v = v[1:-1]
-            elif v.lower() == 'true':
-                v = True
-            elif v.lower() == 'false':
-                v = False
-            else:
-                try:
-                    v = int(v)
-                except ValueError:
-                    try:
-                        v = float(v)
-                    except ValueError:
-                        pass
-            out[k] = v
-    return out
-
 from soma_sdk.errors import CellParseError, CellNotFoundError, CellPathTraversalError
 from soma_sdk.scoring import bayesian_posterior, laplace_score
+
+
+def _stdlib_parse_frontmatter(yaml_text: str) -> dict:
+    from soma_core.frontmatter import parse_yaml_subset, FrontmatterError
+    try:
+        res = parse_yaml_subset(yaml_text)
+        if not isinstance(res, dict):
+            raise CellParseError("Frontmatter is not a mapping")
+        return res
+    except FrontmatterError as e:
+        raise CellParseError(f"Invalid YAML frontmatter: {e}") from e
+
 
 
 @dataclass
@@ -102,14 +86,8 @@ class CellFitness:
     @property
     def snr_db(self) -> float | None:
         """Signal-to-noise ratio in decibels."""
-        tp, fp = self.true_positives, self.false_positives
-        if tp > 0 and fp > 0:
-            return round(10 * math.log10(tp / fp), 1)
-        elif tp > 0:
-            return None  # JSON-safe encoding of infinite SNR (RFC 8259)
-        elif fp > 0:
-            return -99.0  # JSON-safe encoding of zero signal / pure noise (RFC 8259)
-        return 0.0
+        from soma_core.scoring import calculate_snr
+        return calculate_snr(self.true_positives, self.false_positives)
     
     def bayesian(self, confidence: float = 0.90) -> dict[str, float | str]:
         """Wilson-bounded posterior with Jeffrey's prior.
@@ -211,33 +189,11 @@ def parse_cell_file(filepath: str) -> Tuple[dict, str]:
     if not os.path.isfile(filepath):
         raise CellNotFoundError(f"Cell file not found: {filepath}")
 
-    # utf-8-sig: PowerShell 5.1 `Set-Content -Encoding UTF8` writes a BOM.
-    with open(filepath, encoding='utf-8-sig') as f:
-        content = f.read()
-
-    if not content.startswith('---'):
-        raise CellParseError(f"No frontmatter delimiter in {filepath}")
-
-    end_idx = content.find('---', 3)
-    if end_idx == -1:
-        raise CellParseError(f"Unclosed frontmatter in {filepath}")
-
-    yaml_text = content[3:end_idx].strip()
-    if yaml is not None:
-        try:
-            frontmatter = yaml.safe_load(yaml_text)
-        except yaml.YAMLError as e:
-            raise CellParseError(f"Invalid YAML in {filepath}: {e}") from e
-    else:
-        frontmatter = _stdlib_parse_frontmatter(yaml_text)
-
-    if not isinstance(frontmatter, dict):
-        raise CellParseError(f"Frontmatter is not a mapping in {filepath}")
-
-    # Body is everything after the closing ---
-    body = content[end_idx + 3:].lstrip('\n')
-
-    return frontmatter, body
+    from soma_core.frontmatter import parse_cell_frontmatter
+    try:
+        return parse_cell_frontmatter(filepath)
+    except ValueError as exc:
+        raise CellParseError(f"Error parsing cell {filepath}: {exc}") from exc
 
 
 def write_cell_frontmatter(
@@ -254,18 +210,23 @@ def write_cell_frontmatter(
         frontmatter: Dict to serialize as YAML frontmatter.
         body: Markdown body text.
     """
-    yaml_text = yaml.dump(
-        frontmatter,
-        default_flow_style=False,
-        sort_keys=False,
-        allow_unicode=True,
-    )
+    if yaml is not None:
+        yaml_text = yaml.dump(
+            frontmatter,
+            default_flow_style=False,
+            sort_keys=False,
+            allow_unicode=True,
+        )
+    else:
+        from soma_core.frontmatter import dump_frontmatter
+        yaml_text = dump_frontmatter(frontmatter)
+
+    content = f"---\n{yaml_text.strip()}\n---\n"
+    if body:
+        content += body
+
     with open(filepath, 'w', encoding='utf-8') as f:
-        f.write('---\n')
-        f.write(yaml_text)
-        f.write('---\n')
-        if body:
-            f.write(body)
+        f.write(content)
 
     _post_write_hook(filepath)
 

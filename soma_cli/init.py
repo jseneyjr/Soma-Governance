@@ -463,7 +463,7 @@ def generate_mcp_config(project_root: Path, dry_run: bool = False) -> None:
 def run_init(args: argparse.Namespace) -> int:
     """Main init flow. Returns exit code."""
     # Allow test override of project root
-    project_root = getattr(args, "_project_root", Path.cwd())
+    project_root = getattr(args, "workspace", None) or getattr(args, "_project_root", None) or Path.cwd()
     project_root = Path(project_root)
 
     dry_run = args.dry_run

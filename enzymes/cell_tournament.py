@@ -5,7 +5,7 @@ import argparse
 import glob
 from soma_sdk.cells import parse_cell_file
 import random
-from soma_resolve import resolve_workspace
+from soma_core.workspace import resolve_workspace
 
 def main():
     parser = argparse.ArgumentParser(description="Tournament selection for cell pruning decisions")
@@ -13,7 +13,7 @@ def main():
     parser.add_argument("--count", type=int, default=5, help="Number of tournaments to run")
     args = parser.parse_args()
 
-    workspace = resolve_workspace(__file__)
+    workspace = resolve_workspace()
     cells_dir = os.path.join(workspace, '.soma', 'cells')
     
     cell_files = glob.glob(os.path.join(cells_dir, '**', '*.md'), recursive=True)

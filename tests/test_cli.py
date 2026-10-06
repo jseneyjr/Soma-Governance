@@ -284,3 +284,92 @@ class TestInitIntegration:
         assert mcp_file.exists(), ".mcp.json was not created"
         data = json.loads(mcp_file.read_text())
         assert "soma" in data.get("mcpServers", {})
+
+
+# ── Porcelain CLI Facade Tests ─────────────────────────────────────────────
+
+
+class TestPorcelainCLIFacade:
+    """Verify porcelain subcommands, aliases, and plumbing flags."""
+
+    @pytest.mark.parametrize("cmd", ["rules", "analyze", "prune"])
+    def test_porcelain_subcommand_help_exits_zero(self, cmd):
+        from soma_cli.cli import main
+        with pytest.raises(SystemExit) as exc_info:
+            main([cmd, "--help"])
+        assert exc_info.value.code == 0
+
+    @pytest.mark.parametrize("cmd", ["status", "rules", "genesis", "analyze", "prune", "verify", "checkpoint"])
+    def test_plumbing_flags_parse(self, cmd):
+        from soma_cli.cli import _build_parser
+        parser = _build_parser()
+        args1 = parser.parse_args([cmd, "--plumbing"])
+        assert getattr(args1, "plumbing", False) is True
+        args2 = parser.parse_args([cmd, "--internal"])
+        assert getattr(args2, "plumbing", False) is True
+
+    def test_rules_alias_dispatches_same_as_status(self, monkeypatch):
+        from soma_cli import cli
+        assert cli.COMMANDS["rules"] is cli.COMMANDS["status"]
+        dispatched = []
+        monkeypatch.setitem(cli.COMMANDS, "status", lambda args: dispatched.append(args.command) or 0)
+        monkeypatch.setitem(cli.COMMANDS, "rules", lambda args: dispatched.append(args.command) or 0)
+        assert cli.main(["status"]) == 0
+        assert cli.main(["rules"]) == 0
+        assert dispatched == ["status", "rules"]
+
+    def test_analyze_alias_dispatches_same_as_genesis(self, monkeypatch):
+        from soma_cli import cli
+        assert cli.COMMANDS["analyze"] is cli.COMMANDS["genesis"]
+        dispatched = []
+        monkeypatch.setitem(cli.COMMANDS, "genesis", lambda args: dispatched.append(args.command) or 0)
+        monkeypatch.setitem(cli.COMMANDS, "analyze", lambda args: dispatched.append(args.command) or 0)
+        assert cli.main(["genesis", "--dry-run"]) == 0
+        assert cli.main(["analyze", "--dry-run"]) == 0
+        assert dispatched == ["genesis", "analyze"]
+
+    def test_prune_dispatches_to_lifecycle(self, tmp_path):
+        from soma_cli.cli import main
+        # Run prune against an empty or valid tmp workspace
+        rc = main(["prune", "--workspace", str(tmp_path)])
+        assert rc == 0
+
+    @pytest.mark.parametrize("flag", ["--plumbing", "--internal"])
+    def test_root_plumbing_flags_parse(self, flag):
+        from soma_cli.cli import _build_parser, main
+        parser = _build_parser()
+        args = parser.parse_args([flag, "rules"])
+        assert getattr(args, "plumbing", False) is True
+
+        # Test main handles root-level flag without crashing
+        assert main([flag, "rules"]) in (0, 1)
+
+    def test_prune_dry_run_flag(self, tmp_path, monkeypatch):
+        from soma_cli import cli
+        passed_execute = []
+        monkeypatch.setattr(
+            "soma_core.lifecycle.prune_cells",
+            lambda workspace=None, execute=False: passed_execute.append(execute) or 0
+        )
+        rc = cli.main(["prune", "--dry-run", "--workspace", str(tmp_path)])
+        assert rc == 0
+        assert passed_execute == [False]
+
+    def test_global_flags_verbose_quiet_format(self):
+        from soma_cli.cli import _build_parser
+        parser = _build_parser()
+        args = parser.parse_args(["rules", "--format", "json", "-v", "-q"])
+        assert args.format == "json"
+        assert args.verbose is True
+        assert args.quiet is True
+
+    def test_subparsers_use_soma_parser_class(self):
+        from soma_cli.cli import _build_parser, SomaParser
+        parser = _build_parser()
+        for action in parser._actions:
+            if hasattr(action, "choices") and isinstance(action.choices, dict):
+                for subparser in action.choices.values():
+                    assert isinstance(subparser, SomaParser)
+
+
+

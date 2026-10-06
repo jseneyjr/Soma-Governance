@@ -3,14 +3,14 @@ import os, sys, argparse, random, glob, json
 from datetime import datetime
 from datetime import timezone
 
-from soma_resolve import resolve_workspace
+from soma_core.workspace import resolve_workspace
 
 def main():
     parser = argparse.ArgumentParser(description='Stochastic cell genesis: inject random diversity')
     parser.add_argument('--force', action='store_true', help='Force genesis regardless of interval')
     args = parser.parse_args()
     
-    workspace = resolve_workspace(__file__)
+    workspace = resolve_workspace()
     
     # Check interval
     metrics_dir = os.path.join(workspace, '.soma', 'metrics')

@@ -383,6 +383,20 @@ def run_status(args: argparse.Namespace) -> int:
     # Context load: total characters / 4
     estimated_tokens = total_chars // 4
 
+    # Sort rules: triggers descending, then core rules first, then name
+    all_rules.sort(key=lambda r: (-r["triggers"], not r["is_core"], r["name"]))
+
+    if getattr(args, "format", None) == "json" or getattr(args, "json", False):
+        import json
+        payload = {
+            "core_rules": len(core_files) + len(merged_rules),
+            "adaptive_rules": len(adaptive_files),
+            "estimated_tokens": estimated_tokens,
+            "rules": all_rules,
+        }
+        print(json.dumps(payload, indent=2))
+        return 0
+
     # Print summary
     print("📊 Soma Status\n")
     print(f"  {'Core rules:':<16}{len(core_files) + len(merged_rules)} active")
@@ -392,9 +406,6 @@ def run_status(args: argparse.Namespace) -> int:
     if not all_rules:
         print("  No rules found. Run 'soma init' to set up governance rules.")
         return 0
-
-    # Sort rules: triggers descending, then core rules first, then name
-    all_rules.sort(key=lambda r: (-r["triggers"], not r["is_core"], r["name"]))
 
     # Table formatting
     rule_width = max(25, max((len(r["name"]) + 2 for r in all_rules), default=25))

@@ -38,7 +38,8 @@ def resolve_workspace() -> Optional[Path]:
 
 def run_quarantine(args: argparse.Namespace) -> int:
     """Entry point for soma quarantine commands."""
-    ws = resolve_workspace()
+    target_ws = getattr(args, "workspace", None) or getattr(args, "_project_root", None)
+    ws = resolve_workspace(target_ws) if target_ws else resolve_workspace()
     action = getattr(args, "quarantine_action", None) or "list"
 
     if action == "list":

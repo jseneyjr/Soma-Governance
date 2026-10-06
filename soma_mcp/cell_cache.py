@@ -38,6 +38,33 @@ class CellCache:
         self._fingerprint = None  # type: Optional[str]
         self._workspace = None  # type: Optional[str]
 
+    @staticmethod
+    def _compute_manifest_state_digest(workspace: str) -> str:
+        """Compute SHA-256 of manifest.json and manifest.key if they exist."""
+        import hashlib
+        h = hashlib.sha256()
+        manifest_path = os.path.join(workspace, ".soma", "cells", "manifest.json")
+        if os.path.isfile(manifest_path):
+            try:
+                with open(manifest_path, "rb") as f:
+                    h.update(f.read())
+            except OSError:
+                pass
+        else:
+            h.update(b"no-manifest")
+
+        key_path = os.path.join(workspace, ".soma", "keys", "manifest.key")
+        if os.path.isfile(key_path):
+            try:
+                with open(key_path, "rb") as f:
+                    h.update(f.read())
+            except OSError:
+                pass
+        else:
+            h.update(b"no-key")
+
+        return h.hexdigest()
+
     def get_cells(self, workspace: str) -> list[dict[str, Any]]:
         """Return cells, reparsing only when canonical inventory bytes change."""
         workspace_key = os.path.abspath(os.fspath(workspace))
@@ -49,15 +76,18 @@ class CellCache:
                     exc.operation, exc.path, str(exc), exc
                 ) from exc
 
+            manifest_digest = self._compute_manifest_state_digest(workspace_key)
+            composite_fingerprint = f"{inventory.fingerprint}:{manifest_digest}"
+
             if (
                 self._workspace == workspace_key
-                and self._fingerprint == inventory.fingerprint
+                and self._fingerprint == composite_fingerprint
             ):
                 return self._cells
 
             cells = self._load(workspace_key, inventory.entries)
             self._cells = cells
-            self._fingerprint = inventory.fingerprint
+            self._fingerprint = composite_fingerprint
             self._workspace = workspace_key
             return self._cells
 
@@ -163,4 +193,11 @@ class CellCache:
         except CellCacheError:
             raise
         except Exception as exc:
+            if key is not None:
+                raise CellCacheError(
+                    "integrity",
+                    manifest_path,
+                    f"HMAC integrity verification failed unexpectedly: {exc}",
+                ) from exc
             warn(f"integrity check failed (non-fatal): {exc}")
+

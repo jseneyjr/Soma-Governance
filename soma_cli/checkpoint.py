@@ -60,7 +60,7 @@ def run_checkpoint(args: argparse.Namespace) -> int:
         return 1
 
     # Run all checks (from shared module)
-    all_issues = run_all_checks(root)
+    all_issues = run_all_checks(root, strict=strict)
     has_issues = len(all_issues) > 0
 
     # Determine exit code

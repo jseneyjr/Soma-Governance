@@ -1,18 +1,34 @@
 'use strict';
 
 class CellFitness {
-  constructor({
-    triggers = 0,
-    true_positives = 0,
-    false_positives = 0,
-    score = null,
-    stress_survived = 0,
-  } = {}) {
+  constructor(data = {}) {
+    if (data instanceof CellFitness) {
+      this.triggers = data.triggers;
+      this.truePositives = data.truePositives;
+      this.falsePositives = data.falsePositives;
+      this.score = data.score;
+      this.stressSurvived = data.stressSurvived;
+      return;
+    }
+    const {
+      triggers = 0,
+      true_positives = 0,
+      truePositives = 0,
+      false_positives = 0,
+      falsePositives = 0,
+      score = null,
+      stress_survived = 0,
+      stressSurvived = 0,
+    } = data;
     this.triggers = triggers;
-    this.truePositives = true_positives;
-    this.falsePositives = false_positives;
+    this.truePositives = true_positives || truePositives;
+    this.falsePositives = false_positives || falsePositives;
     this.score = score;
-    this.stressSurvived = stress_survived;
+    this.stressSurvived = stress_survived || stressSurvived;
+  }
+
+  get laplaceScore() {
+    return (this.truePositives + 1) / (this.triggers + 2);
   }
 
   get rawScore() {
@@ -56,6 +72,7 @@ class Cell {
     minimum_mode = 'breeze',
     tags = [],
     fitness = {},
+    created_date = null,
   } = {}) {
     this.name = name;
     this.type = type;
@@ -65,12 +82,28 @@ class Cell {
     this.targetPaths = target_paths;
     this.minimumMode = minimum_mode;
     this.tags = tags;
-    this.fitness = new CellFitness(fitness);
+    this.createdDate = created_date;
+    this.fitness = fitness instanceof CellFitness ? fitness : new CellFitness(fitness);
   }
 
   get isWall() { return this.type === 'wall'; }
-  get isExtinct() { const s = this.fitness.rawScore; return s !== null && s <= 0.3; }
-  get isPromotable() { const s = this.fitness.rawScore; return s !== null && s > 0.7 && this.fitness.triggers >= 5; }
+  get isExtinct() {
+    if (this.fitness.triggers === 0) return false;
+    return this.fitness.laplaceScore <= 0.15;
+  }
+  get isPromotable() {
+    if (this.fitness.triggers === 0) return false;
+    return this.fitness.laplaceScore > 0.85 && this.fitness.triggers >= 20;
+  }
+  isPromotableWithAge(minAgeDays = 0) {
+    if (!this.isPromotable) return false;
+    if (minAgeDays <= 0) return true;
+    if (!this.createdDate) return false;
+    const created = new Date(this.createdDate);
+    if (isNaN(created.getTime())) return false;
+    const ageDays = (Date.now() - created.getTime()) / (1000 * 60 * 60 * 24);
+    return ageDays >= minAgeDays;
+  }
 }
 
 module.exports = { Cell, CellFitness };

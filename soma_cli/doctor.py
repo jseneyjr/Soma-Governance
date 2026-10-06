@@ -44,11 +44,12 @@ def _check_pyyaml() -> bool:
         return False
 
 
-def _check_platform() -> str | None:
+def _check_platform(project_root: Path | None = None) -> str | None:
     """Detect AI platform; return platform name or None on failure."""
     from soma_cli.init import detect_platform
 
-    platform = detect_platform(Path.cwd())
+    root = project_root or Path.cwd()
+    platform = detect_platform(root)
     # Fallback: check home directory for global AI configs
     if platform == "unknown":
         platform = detect_platform(Path.home())
@@ -59,14 +60,14 @@ def _check_platform() -> str | None:
     return None
 
 
-def _check_rules(platform: str | None) -> bool:
+def _check_rules(platform: str | None, project_root: Path | None = None) -> bool:
     """Check that rules directory has ≥1 .md file."""
     if platform is None:
         print("  ❌ Rules check skipped (no platform)")
         return False
     from soma_cli.init import get_rules_dir
 
-    rules_dir = get_rules_dir(platform)
+    rules_dir = get_rules_dir(platform, project_root=project_root)
     md_files = [
         p for p in rules_dir.glob("*.md")
         if p.name.lower() not in ("readme.md", "claude.md")
@@ -78,9 +79,9 @@ def _check_rules(platform: str | None) -> bool:
     return False
 
 
-def _check_evidence_dir() -> bool:
+def _check_evidence_dir(project_root: Path | None = None) -> bool:
     """Check .soma/evidence/ exists and is writable (read-only check)."""
-    evidence = Path.cwd() / ".soma" / "evidence"
+    evidence = (project_root or Path.cwd()) / ".soma" / "evidence"
     if evidence.is_dir():
         if os.access(str(evidence), os.W_OK):
             print(f"  ✅ Evidence directory writable ({evidence})")
@@ -423,17 +424,18 @@ def run_doctor(args: argparse.Namespace) -> int:
     if getattr(args, "yes", False):
         print("--yes only applies to --fix-path", file=sys.stderr)
         return 2
-    print("soma doctor — running health checks:\n")
+    ws = Path(getattr(args, "workspace", None) or getattr(args, "_project_root", None) or Path.cwd())
+    print(f"soma doctor — running health checks ({ws}):\n")
     results: list[bool] = []
 
     results.append(_check_python_version())
     results.append(_check_pyyaml())
-    platform = _check_platform()
+    platform = _check_platform(ws)
     results.append(platform is not None)
-    results.append(_check_rules(platform))
-    results.append(_check_evidence_dir())
+    results.append(_check_rules(platform, ws))
+    results.append(_check_evidence_dir(ws))
     results.append(_check_cli_resolvable())
-    hook_ok = _check_precommit_hook()
+    hook_ok = _check_precommit_hook(ws)
     if hook_ok is not None:
         results.append(hook_ok)
     # Advisory: only MCP users need it, so it does not fail the run.

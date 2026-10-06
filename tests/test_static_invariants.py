@@ -433,6 +433,18 @@ def test_version_is_single_sourced():
         "server.py still hardcodes the version string"
     )
 
+    readme = read(os.path.join(REPO_ROOT, "README.md"))
+    readme_badge_match = re.search(r'badge/Version-([0-9]+\.[0-9]+\.[0-9]+)-', readme)
+    assert readme_badge_match and readme_badge_match.group(1) == version_file, (
+        f"README.md badge ({readme_badge_match.group(1) if readme_badge_match else 'missing'}) != VERSION ({version_file})"
+    )
+
+    security = read(os.path.join(REPO_ROOT, "SECURITY.md"))
+    major_minor = ".".join(version_file.split(".")[:2])
+    assert f"| {major_minor}.x" in security, (
+        f"SECURITY.md does not list {major_minor}.x as supported"
+    )
+
 
 # ── SOMA-M03: failure paths must exit nonzero ───────────────────────────
 

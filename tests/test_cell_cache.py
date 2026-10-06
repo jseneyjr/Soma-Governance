@@ -229,3 +229,29 @@ class TestCellCacheContentFingerprint:
         monkeypatch.setattr('builtins.open', forbidden_open)
         cells = CellCache().get_cells(str(tmp_path))
         assert cells[0]['id'] == 'trap-test'
+
+    def test_manifest_tampering_invalidates_cache_and_raises(self, tmp_path):
+        from soma_mcp.integrity import generate_key, generate_manifest, save_manifest
+        from soma_mcp.cell_cache import CellCacheError
+
+        cells_dir = str(tmp_path / '.soma' / 'cells')
+        _make_cell(cells_dir, 'walls', 'trap-test')
+
+        # Generate key and signed manifest
+        generate_key(str(tmp_path))
+        manifest = generate_manifest(cells_dir)
+        save_manifest(str(tmp_path), manifest)
+
+        cache = CellCache()
+        warmed = cache.get_cells(str(tmp_path))
+        assert len(warmed) == 1
+
+        # Tamper with manifest.json
+        manifest_path = os.path.join(cells_dir, 'manifest.json')
+        with open(manifest_path, 'w', encoding='utf-8') as f:
+            f.write('{"cells": {}, "signature": "bogus"}')
+
+        # get_cells must not serve stale cache and must fail integrity check
+        with pytest.raises(CellCacheError, match="integrity"):
+            cache.get_cells(str(tmp_path))
+

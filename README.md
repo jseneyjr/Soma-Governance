@@ -5,7 +5,7 @@
 [![Agent Skills](https://img.shields.io/badge/Agent_Skills-15-purple?style=flat-square)](#-agent-skills)
 [![Automation Scripts](https://img.shields.io/badge/Automation_Scripts-75-red?style=flat-square)](#%EF%B8%8F-automation-scripts)
 [![Adaptive Rules](https://img.shields.io/badge/Adaptive_Rules-5_Types-orange?style=flat-square)](#-adaptive-rules)
-[![Version](https://img.shields.io/badge/Version-0.95.0-informational?style=flat-square)](docs/project/CHANGELOG.md)
+[![Version](https://img.shields.io/badge/Version-0.96.0-informational?style=flat-square)](docs/project/CHANGELOG.md)
 [![Blog Post](https://img.shields.io/badge/Blog-dev.to-black?style=flat-square&logo=devdotto)](https://dev.to/nseney1/your-ai-agents-rules-file-is-a-gentlemans-agreement-heres-what-happens-when-you-build-2dml)
 [![M8ven Score](https://m8ven.ai/badge/mcp/nseney1-soma-governance-yv4xbk)](https://m8ven.ai/mcp/nseney1/soma-governance?s=readme)
 
@@ -84,12 +84,12 @@ Add Soma as an MCP server in your AI agent's config. Set `SOMA_WORKSPACE` to the
 
 Works with Gemini Antigravity, Claude Code, Cursor, and any MCP-compatible agent.
 
-**Capabilities:** With `SOMA_EXECUTION_ENABLED` omitted, the server exposes nine read tools and three write tools. Write tools are discoverable but require a receipt. Setting `SOMA_EXECUTION_ENABLED=1` additionally exposes four execute tools, which also require receipts.
+**Capabilities:** With `SOMA_EXECUTION_ENABLED` omitted, the server exposes eleven read tools and four write tools. Write tools are discoverable but require a receipt. Setting `SOMA_EXECUTION_ENABLED=1` additionally exposes four execute tools, which also require receipts.
 
 | Tier | Available tools |
 |:-----|:----------------|
-| Read (default) | `soma_request_receipt`, `soma_scan`, `soma_list_cells`, `soma_grade`, `soma_coverage`, `soma_fitness`, `soma_audit_security`, `soma_audit_performance`, `soma_poll_verification` |
-| Write (default; receipt required) | `soma_report_outcome`, `soma_capture_insight`, `soma_create_cell` |
+| Read (default) | `soma_request_receipt`, `soma_scan`, `soma_list_cells`, `soma_grade`, `soma_coverage`, `soma_fitness`, `soma_audit_security`, `soma_audit_performance`, `soma_poll_verification`, `soma_list_rules`, `soma_rule_fitness` |
+| Write (default; receipt required) | `soma_report_outcome`, `soma_capture_insight`, `soma_create_cell`, `soma_create_rule` |
 | Execute (opt-in; receipt required) | `soma_propose_change`, `soma_verify_changes`, `soma_checkpoint`, `soma_generate_manifest` |
 
 **Receipt flow for write and execute tools:**
@@ -170,7 +170,7 @@ Soma models governance as a layered system of rules, skills, and automation. Eve
 ┌──────────────────────────────────────────────────────────────────────┐
 │  📐 CORE RULES (genome/)          18 Rules — inherited defaults      │
 │  🔧 AGENT SKILLS (organs/)       15 Skills — complex behaviors       │
-│  ⚙️  AUTOMATION (enzymes/)        63 Scripts — task automation        │
+│  ⚙️  AUTOMATION (enzymes/)        75 Scripts — task automation        │
 ├──────────────────────────────────────────────────────────────────────┤
 │  🛡️ VERIFICATION                  AST analysis tools                  │
 │     Layer 1: AST-based checks (import guards, complexity, coverage)  │
@@ -184,7 +184,7 @@ Soma models governance as a layered system of rules, skills, and automation. Eve
 |:------|:----------|:-----------------|
 | **Core Rules** | `genome/` | 18 rules — inherited behavioral defaults, rarely changed. |
 | **Agent Skills** | `organs/` | 15 skills — complex multi-step behaviors like adaptive-reviewer, genesis, security-audit. |
-| **Automation Scripts** | `enzymes/` | 63 scripts — task-specific automation (fitness scoring, rule creation, evidence pipeline). |
+| **Automation Scripts** | `enzymes/` | 75 scripts — task-specific automation (fitness scoring, rule creation, evidence pipeline). |
 | **Verification** | `immune_system/` | AST analysis tools for code checking. |
 | **Adaptive Rules** | `.soma/cells/` | Per-repo adaptive invariants. Generated, tested, evolved, or retired. |
 

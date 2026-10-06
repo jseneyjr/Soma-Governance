@@ -78,8 +78,11 @@ def verify_manifest(cells_dir: str, manifest: dict) -> list:
 
     An empty list means all cells match the manifest.
     """
+    if not isinstance(manifest, dict):
+        raise ValueError(f"Manifest must be a JSON object, got {type(manifest).__name__}")
     issues = []
     known_cells = manifest.get("cells", {})
+
 
     # Discover current cells on disk
     current_cells = {}
@@ -204,13 +207,13 @@ def verify_signature(manifest: dict, key: bytes) -> bool:
     """Verify the manifest signature against the stored HMAC.
 
     Returns True if the signature matches, False if mismatch or missing.
-    Uses ``hmac.compare_digest`` for constant-time comparison.
+    Uses ``hmac.compare_digest`` on UTF-8 bytes for constant-time comparison.
     """
     stored_sig = manifest.get("signature")
-    if not stored_sig:
+    if not stored_sig or not isinstance(stored_sig, str):
         return False
     expected = sign_manifest(manifest, key)
-    return hmac.compare_digest(stored_sig, expected)
+    return hmac.compare_digest(stored_sig.encode("utf-8"), expected.encode("utf-8"))
 
 
 # ── Manifest I/O ─────────────────────────────────────────────────────
@@ -242,9 +245,9 @@ def save_manifest(workspace: str, manifest: dict) -> None:
         manifest["signature"] = sign_manifest(manifest, key)
     manifest_path = os.path.join(workspace, ".soma", "cells", _MANIFEST_FILENAME)
     os.makedirs(os.path.dirname(manifest_path), exist_ok=True)
-    with open(manifest_path, "w", encoding="utf-8") as f:
-        json.dump(manifest, f, indent=2, sort_keys=True)
-        f.write("\n")
+    manifest_bytes = (json.dumps(manifest, indent=2, sort_keys=True) + "\n").encode("utf-8")
+    from soma_core.storage import atomic_write_bytes
+    atomic_write_bytes(manifest_path, manifest_bytes)
 
 
 def _warn(message: str) -> None:

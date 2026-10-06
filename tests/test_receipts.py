@@ -61,22 +61,16 @@ def test_verify_receipt_with_invalid_types():
         clear_receipts()
 
 
-def test_verify_receipt_burn_on_success_only():
-    """Verify that consume=True does not burn receipt if verification fails."""
+def test_verify_receipt_unconditional_burn_on_consume():
+    """C-03: Verify that consume=True burns receipt even if verification fails, preventing replay/probing."""
     clear_receipts()
     try:
         rid = issue_receipt("sess_auth", "ws_1", "write_op", {"file": "a.txt"}, "fd_1", "cd_1")
 
-        # Invalid call with consume=True: wrong session -> returns False, MUST NOT burn receipt
+        # Invalid call with consume=True: wrong session -> returns False AND burns receipt
         assert verify_receipt(rid, "wrong_sess", "ws_1", "write_op", {"file": "a.txt"}, "fd_1", "cd_1", consume=True) is False
 
-        # Invalid call with wrong args -> returns False, MUST NOT burn receipt
-        assert verify_receipt(rid, "sess_auth", "ws_1", "write_op", {"file": "b.txt"}, "fd_1", "cd_1", consume=True) is False
-
-        # Legitimate caller with consume=True -> returns True, burns receipt
-        assert verify_receipt(rid, "sess_auth", "ws_1", "write_op", {"file": "a.txt"}, "fd_1", "cd_1", consume=True) is True
-
-        # Subsequent redemption attempt must fail because receipt is burned
+        # Subsequent redemption attempt (even with valid credentials) must fail because receipt was burned
         assert verify_receipt(rid, "sess_auth", "ws_1", "write_op", {"file": "a.txt"}, "fd_1", "cd_1", consume=True) is False
     finally:
         clear_receipts()
@@ -93,9 +87,51 @@ def test_compute_file_digest_path_normalization(tmp_path):
     digest_clean = compute_file_digest(str(tmp_path), ["sub/file.txt"])
     digest_dot = compute_file_digest(str(tmp_path), ["sub/./file.txt"])
     digest_dups = compute_file_digest(str(tmp_path), ["sub/file.txt", "sub/./file.txt"])
+    digest_abs = compute_file_digest(str(tmp_path), [str(target)])
 
     assert digest_clean == digest_dot
     assert digest_clean == digest_dups
+    assert digest_clean == digest_abs
 
 
+def test_verify_receipt_unicode_workspace_and_args():
+    """C-02: verify_receipt must handle non-ASCII / Unicode paths without TypeError."""
+    clear_receipts()
+    try:
+        ws_unicode = "/tmp/söma_test_日本語_workspace"
+        args = {"target": "ファイル.txt", "notes": "René Descartes"}
+        rid = issue_receipt("sess_123", ws_unicode, "op_write", args, "fd_unicode", "cd_unicode")
 
+        # Must verify cleanly without throwing TypeError from hmac.compare_digest
+        assert verify_receipt(rid, "sess_123", ws_unicode, "op_write", args, "fd_unicode", "cd_unicode") is True
+        # Mismatch check must also not raise
+        assert verify_receipt(rid, "sess_123", "/tmp/other_unicode_ путь", "op_write", args, "fd_unicode", "cd_unicode") is False
+    finally:
+        clear_receipts()
+
+
+def test_confined_path_rejects_devices_and_streams(tmp_path):
+    """C-04: _confined must delegate to confine_path and reject Windows devices and ADS."""
+    from soma_core.receipts import _confined
+
+    ws = str(tmp_path)
+    (tmp_path / "valid.txt").write_text("hello", encoding="utf-8")
+
+    # Valid file resolves
+    resolved = _confined(ws, "valid.txt")
+    assert resolved == str(tmp_path / "valid.txt")
+
+    # Windows device name rejected
+    with pytest.raises(ValueError, match="reserved Windows device name"):
+        _confined(ws, "CON")
+
+    with pytest.raises(ValueError, match="reserved Windows device name"):
+        _confined(ws, "nul.txt")
+
+    # Alternate data stream rejected
+    with pytest.raises(ValueError, match="alternate data stream"):
+        _confined(ws, "valid.txt:stream")
+
+    # Path traversal rejected
+    with pytest.raises(ValueError, match="path traversal blocked"):
+        _confined(ws, "../../etc/passwd")

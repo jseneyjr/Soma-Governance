@@ -123,6 +123,11 @@ def test_checkpoint_is_recursively_read_only_on_pass_and_fail(
 ):
     content = '---\nid: [unterminated\n---\nbody\n' if malformed else None
     _write_wall(tmp_path, content)
+    evidence_dir = tmp_path / '.soma' / 'evidence'
+    evidence_dir.mkdir(parents=True, exist_ok=True)
+    (evidence_dir / 'arbitration_cycle_1.json').write_text(
+        '{"verdict": "ship", "cycle": 1}', encoding='utf-8'
+    )
     marker = tmp_path / '.marker'
     marker.write_bytes(b'unchanged bytes\x00\xff')
     external = tmp_path.parent / f'{tmp_path.name}-external'

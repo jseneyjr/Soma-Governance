@@ -7,6 +7,8 @@ import sys
 from datetime import datetime, timezone
 
 from soma_core.cell_inventory import CellInventoryError, inventory_cells
+from soma_core.workspace import resolve_workspace
+
 
 # pyyaml is an OPTIONAL dependency of soma_mcp. The server must start on a bare
 # interpreter (see .soma/cells/walls/wall-mcp-zero-deps.md), so we only use
@@ -76,39 +78,15 @@ except ImportError:
     _HAS_SDK = False
 
 
-# INTENTIONAL DUPLICATION: wall-mcp-zero-deps prohibits importing from enzymes/
-# Canonical source: enzymes/soma_resolve.py — keep in sync manually
+from soma_core.workspace import resolve_workspace as _core_resolve_workspace
+
+
 def resolve_workspace(args=None):
     """Find the project root containing .soma/cells/."""
     # We do NOT trust args["workspace"] from client input unverified.
     # Write and Execute tools use args["workspace"] strictly because the MCP server safely injects _canonical_workspace over whatever the client provided.
     # Read tools and background execution must rely on SOMA_WORKSPACE to prevent cross-workspace reading attacks.
-
-    soma_ws = os.environ.get("SOMA_WORKSPACE")
-    if soma_ws:
-        if os.path.isdir(os.path.join(soma_ws, ".soma", "cells")):
-            return os.path.abspath(soma_ws)
-        else:
-            raise ValueError(f"SOMA_WORKSPACE is set to {soma_ws} but no .soma/cells found there.")
-
-    soma_root = os.environ.get("SOMA_ROOT")
-    if soma_root:
-        if os.path.isdir(os.path.join(soma_root, ".soma", "cells")):
-            return os.path.abspath(soma_root)
-        else:
-            raise ValueError(f"SOMA_ROOT is set to {soma_root} but no .soma/cells found there.")
-
-    cwd = os.getcwd()
-    if os.path.isdir(os.path.join(cwd, ".soma", "cells")):
-        return cwd
-
-    d = cwd
-    while d != os.path.dirname(d):
-        if os.path.isdir(os.path.join(d, ".soma", "cells")):
-            return d
-        d = os.path.dirname(d)
-        
-    return cwd
+    return _core_resolve_workspace(strict_env=True)
 
 
 # ── Checkpoint helpers (shared with soma_cli.checkpoint) ──────────────
@@ -157,8 +135,48 @@ def _cell_diagnostic(relative_path, message):
     }
 
 
-def _list_cells_stdlib(workspace):
+_CANONICAL_TOOL_MAP = {
+    "soma_create_rule": "soma_create_cell",
+    "soma_list_rules": "soma_list_cells",
+    "soma_rule_fitness": "soma_fitness",
+}
+_CANONICAL_ARG_MAP = {
+    "rule_type": "cell_type",
+    "rule_name": "cell_name",
+    "rules": "cells_used",
+    "rules_used": "cells_used",
+}
+_TYPE_TRANSLATION_MAP = {
+    "safety-guard": "wall",
+    "learned-trap": "vacuole",
+    "agent-persona": "chloroplast",
+    "escalation-boundary": "membrane",
+    "contract-bridge": "plasmodesmata",
+}
+
+
+def normalize_tool_call(tool_name: str, arguments: dict) -> tuple[str, dict]:
+    """Normalize porcelain aliases into canonical plumbing tool name and arguments."""
+    canonical_name = _CANONICAL_TOOL_MAP.get(tool_name, tool_name)
+    normalized_args = {}
+    for k, v in (arguments or {}).items():
+        canon_k = _CANONICAL_ARG_MAP.get(k, k)
+        if canon_k == "cell_type" and isinstance(v, str):
+            v = _TYPE_TRANSLATION_MAP.get(v, v)
+        normalized_args[canon_k] = v
+    if "cell_id" in (arguments or {}) and "cells_used" not in normalized_args:
+        val = arguments["cell_id"]
+        normalized_args["cells_used"] = [val] if isinstance(val, str) else list(val)
+    if "rule_id" in (arguments or {}) and "cells_used" not in normalized_args:
+        val = arguments["rule_id"]
+        normalized_args["cells_used"] = [val] if isinstance(val, str) else list(val)
+    return canonical_name, normalized_args
+
+
+def _list_cells_stdlib(workspace, cell_type=None):
     """List cells from one canonical byte snapshot using the shared parser."""
+    if cell_type:
+        cell_type = _TYPE_TRANSLATION_MAP.get(cell_type, cell_type)
     try:
         inventory = inventory_cells(workspace)
     except CellInventoryError as exc:
@@ -172,6 +190,10 @@ def _list_cells_stdlib(workspace):
         try:
             content = entry.content.decode('utf-8')
         except UnicodeDecodeError as exc:
+            if cell_type:
+                parent_name = os.path.basename(os.path.dirname(rel))
+                if not (parent_name in (cell_type, cell_type + 's') or f"/{cell_type}/" in rel or f"/{cell_type}s/" in rel):
+                    continue
             message = f'invalid UTF-8: {exc}'
             warn(f'skipped cell {rel}: {message}')
             cells.append(_cell_diagnostic(rel, message))
@@ -179,15 +201,30 @@ def _list_cells_stdlib(workspace):
 
         fm = _parse_frontmatter(content)
         if fm is None:
+            if cell_type:
+                parent_name = os.path.basename(os.path.dirname(rel))
+                if not (parent_name in (cell_type, cell_type + 's') or f"/{cell_type}/" in rel or f"/{cell_type}s/" in rel):
+                    continue
             message = 'malformed YAML frontmatter'
             warn(f'skipped cell {rel}: {message}')
             cells.append(_cell_diagnostic(rel, message))
             continue
         if not fm:
+            if cell_type:
+                parent_name = os.path.basename(os.path.dirname(rel))
+                if not (parent_name in (cell_type, cell_type + 's') or f"/{cell_type}/" in rel or f"/{cell_type}s/" in rel):
+                    continue
             message = 'no frontmatter metadata'
             warn(f'skipped cell {rel}: {message}')
             cells.append(_cell_diagnostic(rel, message))
             continue
+
+        if cell_type:
+            entry_type = fm.get('type')
+            parent_name = os.path.basename(os.path.dirname(rel))
+            if not (entry_type == cell_type or parent_name in (cell_type, cell_type + 's') or f"/{cell_type}/" in rel or f"/{cell_type}s/" in rel):
+                continue
+
         fm['_name'] = os.path.splitext(os.path.basename(rel))[0]
         fm['_path'] = rel
         cells.append(fm)
@@ -199,7 +236,7 @@ _STATUS_PASS = "PASS"
 _STATUS_FAIL = "FAIL"
 
 # Mirrors the "outcome" enum advertised in TOOL_DEFINITIONS for soma_report_outcome.
-_VALID_OUTCOMES = ("success", "partial", "failure", "tp", "fp")
+_VALID_OUTCOMES = ("success", "partial", "failure", "tp", "fp", "pass", "fail")
 
 
 _VERDICT_RE = re.compile(r'^\s*VERDICT:\s*([A-Z_]+)')
@@ -320,7 +357,7 @@ TOOL_DEFINITIONS = [
     },
     {
         "name": "soma_create_cell",
-        "description": "Takes a natural language description and builds a prompt to create a governance cell.",
+        "description": "Takes a natural language description and builds an advisory prompt proposal to create a governance cell (does not directly modify the filesystem).",
         "annotations": {
             "readOnlyHint": False,
             "destructiveHint": False,
@@ -333,6 +370,28 @@ TOOL_DEFINITIONS = [
             "properties": {
                 "description": {"type": "string", "description": "Natural language description"},
                 "cell_type": {"type": "string", "description": "Optional cell type hint"},
+                "domain": {"type": "string", "description": "Optional domain hint"},
+                "dry_run": {"type": "boolean", "description": "Optional dry run flag"},
+                "receipt": {"type": "string", "description": "Execution receipt ID obtained from soma_request_receipt"}
+            },
+            "required": ["description", "receipt"]
+        }
+    },
+    {
+        "name": "soma_create_rule",
+        "description": "Takes a natural language description and builds a prompt to create a governance rule.",
+        "annotations": {
+            "readOnlyHint": False,
+            "destructiveHint": False,
+            "idempotentHint": True,
+            "openWorldHint": False,
+            "title": "Create Rule"
+        },
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "description": {"type": "string", "description": "Natural language description"},
+                "rule_type": {"type": "string", "description": "Optional rule type hint (learned-trap, safety-guard, agent-persona)"},
                 "domain": {"type": "string", "description": "Optional domain hint"},
                 "dry_run": {"type": "boolean", "description": "Optional dry run flag"},
                 "receipt": {"type": "string", "description": "Execution receipt ID obtained from soma_request_receipt"}
@@ -389,7 +448,7 @@ TOOL_DEFINITIONS = [
                 },
                 "outcome": {
                     "type": "string",
-                    "enum": ["success", "partial", "failure"],
+                    "enum": ["success", "partial", "failure", "tp", "fp", "pass", "fail"],
                     "description": "Overall outcome of the task"
                 },
                 "tests_passed": {"type": "boolean", "description": "Did tests pass?"},
@@ -464,7 +523,43 @@ TOOL_DEFINITIONS = [
         },
         "inputSchema": {
             "type": "object",
-            "properties": {}
+            "properties": {
+                "cell_type": {"type": "string", "description": "Optional cell type filter (wall, vacuole, chloroplast, membrane, plasmodesmata)"}
+            }
+        }
+    },
+    {
+        "name": "soma_list_rules",
+        "description": "Lists all governance rules with their type, hypothesis, and fitness data.",
+        "annotations": {
+            "readOnlyHint": True,
+            "destructiveHint": False,
+            "idempotentHint": True,
+            "openWorldHint": False,
+            "title": "List Rules"
+        },
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "rule_type": {"type": "string", "description": "Optional rule type filter"}
+            }
+        }
+    },
+    {
+        "name": "soma_rule_fitness",
+        "description": "Returns fitness landscape showing rule health and evolution.",
+        "annotations": {
+            "readOnlyHint": True,
+            "destructiveHint": False,
+            "idempotentHint": True,
+            "openWorldHint": False,
+            "title": "Rule Fitness"
+        },
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "bayesian": {"type": "boolean", "description": "Use Bayesian smoothing"}
+            }
         }
     },
     {
@@ -657,6 +752,7 @@ TOOL_DEFINITIONS = [
 ]
 
 def execute_tool(name: str, args: dict):
+    name, args = normalize_tool_call(name, args)
     gov = get_governance(args)
     
     if name == "soma_create_cell":
@@ -675,9 +771,10 @@ def execute_tool(name: str, args: dict):
     
     elif name == "soma_list_cells":
         # Both SDK and stdlib paths use the same fail-closed canonical inventory.
+        cell_type = args.get("cell_type")
         if gov:
             try:
-                return gov.list_cells()
+                return gov.list_cells(cell_type=cell_type)
             except RuntimeError as exc:
                 return {'status': _STATUS_FAIL, 'error': str(exc)}
         try:
@@ -686,7 +783,7 @@ def execute_tool(name: str, args: dict):
             )
         except ValueError as exc:
             return {'status': _STATUS_FAIL, 'error': str(exc)}
-        return _list_cells_stdlib(workspace)
+        return _list_cells_stdlib(workspace, cell_type=cell_type)
 
     elif name == "soma_propose_change":
         if not soma_propose_change:
@@ -720,6 +817,13 @@ def execute_tool(name: str, args: dict):
     elif name == "soma_audit_security":
         content = args.get("proposed_content") or ""
         file_path = args.get("file_path") or ""
+        if file_path:
+            try:
+                workspace = confine_workspace(args.get('workspace') or resolve_workspace(args))
+                _, rel_path = confine_path(file_path, workspace)
+                file_path = rel_path
+            except ValueError as exc:
+                return {"error": str(exc), "status": _STATUS_FAIL}
         # Prototype: Basic keyword scanning for secrets and OWASP basics
         flags = []
         if "password=" in content.lower() or "secret=" in content.lower():
@@ -743,6 +847,13 @@ def execute_tool(name: str, args: dict):
     elif name == "soma_audit_performance":
         content = args.get("proposed_content") or ""
         file_path = args.get("file_path") or ""
+        if file_path:
+            try:
+                workspace = confine_workspace(args.get('workspace') or resolve_workspace(args))
+                _, rel_path = confine_path(file_path, workspace)
+                file_path = rel_path
+            except ValueError as exc:
+                return {"error": str(exc), "status": _STATUS_FAIL}
         # Prototype: Basic keyword scanning for hot-paths and inefficiencies
         flags = []
         if content.count("for ") > 2 and "in " in content:
@@ -910,6 +1021,13 @@ def execute_tool(name: str, args: dict):
                 "status": _STATUS_FAIL,
             }
         raw_cells_used = args.get('cells_used')
+        if raw_cells_used is None:
+            if "cell_id" in args:
+                val = args["cell_id"]
+                raw_cells_used = [val] if isinstance(val, str) else val
+            elif "rule_id" in args:
+                val = args["rule_id"]
+                raw_cells_used = [val] if isinstance(val, str) else val
         if raw_cells_used is not None:
             if not isinstance(raw_cells_used, (list, tuple)) or not all(isinstance(c, str) for c in raw_cells_used):
                 return {
@@ -931,7 +1049,7 @@ def execute_tool(name: str, args: dict):
         rework_count = args.get('rework_count', 0)
         notes = args.get('notes', '')
         signal_map = {'success': 'tp', 'tp': 'tp', 'failure': 'fp',
-                      'fp': 'fp', 'partial': 'trigger'}
+                      'fp': 'fp', 'partial': 'trigger', 'pass': 'tp', 'fail': 'fp'}
         metadata = {
             'notes': notes,
             'tests_passed': tests_passed,
@@ -950,7 +1068,7 @@ def execute_tool(name: str, args: dict):
             for cell_id in cells_used
         ]
         try:
-            from soma_sdk.telemetry import append_signals, read_generation
+            from soma_core.telemetry import append_signals, read_generation
             generation = read_generation(workspace)
             records = append_signals(
                 workspace, events, expected_generation=generation)
@@ -1023,9 +1141,53 @@ def execute_tool(name: str, args: dict):
         
     elif name == "soma_coverage":
         return gov.coverage_report()
-        
+
     elif name == "soma_fitness":
         return gov.fitness_landscape(bayesian=args.get("bayesian", False))
-        
+
+    elif name == "soma_request_receipt":
+        operation = args.get("operation")
+        if not operation:
+            return {"error": "Missing required argument 'operation'", "status": _STATUS_FAIL}
+        op_args = args.get("arguments", {})
+        if not isinstance(op_args, dict):
+            return {"error": "arguments must be an object", "status": _STATUS_FAIL}
+        from soma_core.receipts import (
+
+            issue_receipt,
+            compute_file_digest,
+            compute_cell_digest,
+            target_paths,
+            strip_server_owned,
+        )
+        workspace = (
+            args.get("workspace")
+            or (str(gov.repo_root) if (gov and hasattr(gov, "repo_root")) else resolve_workspace())
+        )
+
+        clean_args = strip_server_owned(op_args)
+        session_id = args.get("session_id") or args.get("_sessionToken") or "local-session"
+        try:
+            file_digest = compute_file_digest(workspace, target_paths(clean_args))
+            cell_digest = compute_cell_digest(workspace)
+        except (ValueError, RuntimeError, OSError) as exc:
+            return {"error": str(exc), "status": _STATUS_FAIL}
+
+        receipt_id = issue_receipt(
+            session_id=session_id,
+            workspace=workspace,
+            operation=operation,
+            args=clean_args,
+            file_digest=file_digest,
+            cell_digest=cell_digest,
+            ttl_seconds=300,
+        )
+        return {
+            "receipt": receipt_id,
+            "operation": operation,
+            "status": "ISSUED",
+        }
+
     else:
         raise ValueError(f"Unknown tool: {name}")
+

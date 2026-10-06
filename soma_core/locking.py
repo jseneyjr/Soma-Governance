@@ -44,7 +44,7 @@ def _get_thread_lock(lock_path: str) -> threading.RLock:
 
 
 def _acquire_os_lock(fileno: int, timeout_sec: float) -> bool:
-    start_time = time.time()
+    start_time = time.monotonic()
     retry_interval = 0.01
 
     while True:
@@ -65,7 +65,7 @@ def _acquire_os_lock(fileno: int, timeout_sec: float) -> bool:
             # Fallback: process-local thread lock is held, OS lock unavailable
             return True
 
-        if time.time() - start_time >= timeout_sec:
+        if time.monotonic() - start_time >= timeout_sec:
             return False
 
         time.sleep(retry_interval)
@@ -109,7 +109,7 @@ def workspace_lock(
     str_path = str(lock_file)
 
     thread_lock = _get_thread_lock(str_path)
-    start_time = time.time()
+    start_time = time.monotonic()
 
     # Acquire in-process thread lock first
     acquired_thread = thread_lock.acquire(timeout=timeout_sec)
@@ -138,7 +138,7 @@ def workspace_lock(
 
     fd = None
     try:
-        remaining_timeout = max(0.01, timeout_sec - (time.time() - start_time))
+        remaining_timeout = max(0.01, timeout_sec - (time.monotonic() - start_time))
         fd = os.open(str_path, os.O_CREAT | os.O_RDWR, 0o600)
         acquired_os = _acquire_os_lock(fd, remaining_timeout)
         if not acquired_os:
@@ -156,3 +156,11 @@ def workspace_lock(
             finally:
                 os.close(fd)
         thread_lock.release()
+
+
+__all__ = [
+    "LOCK_DIRNAME",
+    "LockTimeoutError",
+    "workspace_lock",
+]
+

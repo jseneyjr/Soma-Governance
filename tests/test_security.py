@@ -342,6 +342,22 @@ class TestManifestSigning:
         manifest["cells"]["walls/rogue.md"] = "sha256:badhash"
         assert verify_signature(manifest, key) is False
 
+    def test_verify_signature_non_string_rejected(self, soma_workspace):
+        """Non-string signature fails verification safely."""
+        from soma_mcp.integrity import (
+            generate_key, load_key, sign_manifest, verify_signature,
+        )
+
+        generate_key(str(soma_workspace))
+        key = load_key(str(soma_workspace))
+        cells_dir = str(soma_workspace / ".soma" / "cells")
+        manifest = generate_manifest(cells_dir)
+        manifest["signature"] = 12345
+        assert verify_signature(manifest, key) is False
+        manifest["signature"] = ["not", "a", "string"]
+        assert verify_signature(manifest, key) is False
+
+
     def test_save_manifest_auto_signs(self, soma_workspace):
         """save_manifest includes signature when key exists."""
         from soma_mcp.integrity import generate_key

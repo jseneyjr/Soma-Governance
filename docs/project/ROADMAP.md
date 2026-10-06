@@ -166,6 +166,12 @@ Pre-tokenization quote/escape dequoting in safety gate blocking evasion bypasses
 **Status**: ✅ Shipped (v0.95.0)  
 Crash-resilient atomic storage (`soma_core/storage.py`) with exponential backoff on Windows file locking sharing violations (`WinError 32`), new `soma quarantine` CLI subcommand (`list`, `inspect`, `prune`), universal `utf-8-sig` BOM handling, and worker thread registry tracking with bounded shutdown joins in `soma_core/verification_jobs.py`.
 
+## Phase 5.5 — v0.96.0 ✅ Shipped
+
+### Pure-Stdlib Core Layer & Codebase Consolidation
+**Status**: ✅ Shipped (v0.96.0)  
+Consolidated all functional domains (Scoring/Workspace, Arbitration, Enforcement, Defects, Insights, Homeostasis, Sync, Telemetry, and Cell Genetics/Lifecycle) into pure-stdlib `soma_core/`. Converted 58 enzyme modules into backward-compatible dual-mode forwarding shims with explicit re-exports, dynamic module dispatch, and console encoding compliance, reducing architectural bloat in preparation for 1.0.0.
+
 ## Research
 
 ### Antifragile Scaling

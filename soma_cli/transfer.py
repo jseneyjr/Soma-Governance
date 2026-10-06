@@ -174,4 +174,6 @@ def run_transfer(args: argparse.Namespace) -> int:
         print("Usage: soma transfer <cell_id> --to /path/to/target/project", file=sys.stderr)
         return 1
 
-    return transfer_cell(cell_id=args.cell_id, target_dir_str=args.target_dir)
+    ws = getattr(args, "workspace", None) or getattr(args, "_project_root", None)
+    source_workspace = Path(ws) if ws else None
+    return transfer_cell(cell_id=args.cell_id, target_dir_str=args.target_dir, source_workspace=source_workspace)

@@ -5,6 +5,7 @@ zero required external dependencies.
 """
 from __future__ import annotations
 
+import os
 import re
 
 # pyyaml is an OPTIONAL dependency. When it is missing we parse the frontmatter
@@ -405,3 +406,61 @@ def _get_body(content: str) -> str:
     if end == -1:
         return content
     return content[end + 3:].strip()
+
+
+def parse_cell_frontmatter(content_or_path: str) -> tuple[dict[str, object], str]:
+    """Parse a cell file or markdown content string into (frontmatter_dict, body).
+
+    Args:
+        content_or_path: Either a file path or raw markdown content string.
+
+    Returns:
+        (frontmatter_dict, body_text)
+
+    Raises:
+        FileNotFoundError: If a file path is provided but does not exist.
+        ValueError: If frontmatter is missing, unclosed, or fails to parse.
+    """
+    if os.path.exists(content_or_path) and os.path.isfile(content_or_path):
+        with open(content_or_path, "r", encoding="utf-8-sig") as f:
+            content = f.read()
+    else:
+        content = content_or_path
+
+    if content.startswith('\ufeff'):
+        content = content[1:]
+    if not content.startswith('---'):
+        raise ValueError("No frontmatter delimiter")
+    end = content.find('---', 3)
+    if end == -1:
+        raise ValueError("Unclosed frontmatter")
+
+    fm_text = content[3:end].strip()
+    if not fm_text:
+        data = {}
+    elif yaml is not None:
+        try:
+            data = yaml.safe_load(fm_text)
+        except Exception as e:
+            raise ValueError(f"Invalid YAML: {e}") from e
+    else:
+        try:
+            data = parse_yaml_subset(fm_text)
+        except Exception as e:
+            raise ValueError(f"Invalid YAML subset: {e}") from e
+
+    if not isinstance(data, dict):
+        raise ValueError("Frontmatter is not a mapping")
+
+    body = content[end + 3:].lstrip('\n')
+    return data, body
+
+
+__all__ = [
+    "FrontmatterError",
+    "dump_frontmatter",
+    "parse_cell_frontmatter",
+    "parse_frontmatter",
+    "parse_yaml_subset",
+]
+

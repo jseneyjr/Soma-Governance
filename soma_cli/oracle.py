@@ -17,17 +17,9 @@ def run_oracle(args: argparse.Namespace) -> int:
     Returns:
         0 if no critical issues, 1 if expired or critically unhealthy cells found.
     """
-    # Lazy import to keep CLI startup fast
-    # oracle_checkpoint lives in enzymes/ and imports from enzymes/ peers
-    import os as _os
-    _enzymes_dir = _os.path.join(
-        _os.path.dirname(_os.path.dirname(_os.path.abspath(__file__))), "enzymes"
-    )
-    if _enzymes_dir not in sys.path:
-        sys.path.insert(0, _enzymes_dir)
-    from enzymes.oracle_checkpoint import generate_checkpoint
+    from soma_core.arbitration import generate_checkpoint
 
-    project_root = getattr(args, "_project_root", Path.cwd())
+    project_root = getattr(args, "workspace", None) or getattr(args, "_project_root", None) or Path.cwd()
     project_root = Path(project_root)
 
     session_count = getattr(args, "session_count", None)

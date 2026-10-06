@@ -6,70 +6,12 @@ proper YAML frontmatter, hypothesis, prediction, and falsification.
 """
 import os, sys, argparse, json, subprocess
 from soma_core.evidence import aggregate_signals
-from soma_resolve import resolve_workspace
-from inference_provider import resolve_provider
+from soma_core.workspace import resolve_workspace
+from soma_core.inference_provider import resolve_provider
+from soma_core.lifecycle import create_cell_from_description
 
 import yaml
 
-def create_cell_from_description(description, domain_hint=None, cell_type=None, provider_name=None):
-    """Use AI to generate cell YAML from natural language."""
-    workspace = resolve_workspace(__file__)
-    
-    provider = resolve_provider(workspace, provider_name)
-    
-    # Load existing cells as examples
-    import glob
-    examples = []
-    cells_dir = os.path.join(workspace, '.soma', 'cells')
-    if os.path.isdir(cells_dir):
-        for cell_file in glob.glob(os.path.join(cells_dir, '**', '*.md'), recursive=True):
-            if os.path.basename(cell_file) == 'README.md': continue
-            try:
-                with open(cell_file, encoding="utf-8") as f:
-                    content = f.read()
-                if content.startswith('---'):
-                    examples.append(content[:500])  # Truncate for context
-            except Exception: pass
-    
-    example_text = '\n---\n'.join(examples[:3]) if examples else 'No existing cells found.'
-    
-    domain_context = f'\nDomain hint: {domain_hint}' if domain_hint else ''
-    type_hint = f'\nPreferred cell type: {cell_type}' if cell_type else ''
-    
-    prompt = f"""You are a governance cell generator for Soma.
-
-Given a natural language description of a concern, generate a governance cell in markdown with YAML frontmatter.
-
-Cell types:
-- wall: Non-negotiable invariant (hard safety gate). Use for things that must ALWAYS hold.
-- vacuole: Learned anti-pattern trap. Use for known failure modes to watch for.
-- membrane: Escalation gate. Use when sensitive areas need elevated review.
-- chloroplast: Domain persona/accelerator. Use for idiomatic patterns to follow.
-- plasmodesmata: Cross-service contract. Use for API/data shape agreements.
-
-YAML fields required:
-- id: (filename stem, e.g. 'trap-missing-tests' for trap-missing-tests.md)
-- type: (one of above)
-- domain: (one of: efficiency, correctness, security, style, governance)
-- hypothesis: (clear, testable statement)
-- prediction: (what will happen if the hypothesis is violated)
-- falsification: (how to prove this cell is no longer needed)
-- target_paths: (list of file glob patterns this cell monitors)
-- minimum_mode: (breeze | gale | trident | maelstrom | tempest)
-- tags: (list of relevant tags)
-
-
-Existing cells in this project for reference:
-{example_text}
-{domain_context}{type_hint}
-
-User description: "{description}"
-
-Generate ONLY the complete markdown cell file content. Start with --- for the YAML frontmatter. After the closing ---, include a brief description paragraph explaining the cell's purpose. Do not include any other text."""
-    
-    response_text = provider.generate(prompt)
-    
-    return response_text.strip()
 
 
 def create_cell_from_insight_cluster(cluster: dict, workspace: str) -> str:
@@ -175,7 +117,7 @@ def main():
             from enzymes.insight_correlator import cluster_insights
         except ImportError:
             from insight_correlator import cluster_insights
-        workspace = resolve_workspace(__file__)
+        workspace = resolve_workspace()
         clusters = cluster_insights(workspace)
         if not clusters:
             print('No insight clusters found.')
@@ -236,7 +178,7 @@ def main():
     filename = os.path.basename(filename)
     
     # Determine target directory
-    workspace = resolve_workspace(__file__)
+    workspace = resolve_workspace()
     type_dirs = {
         'wall': 'walls', 'membrane': 'membranes', 'vacuole': 'vacuoles',
         'chloroplast': 'chloroplasts', 'plasmodesmata': 'plasmodesmata'
