@@ -10,7 +10,7 @@ prediction: Will fire when a verification function returns an empty list, True, 
   exit code 0 on an error path (missing file, crashed subprocess, None data)
 falsification: 0 findings in 10 sessions → prune
 target_paths:
-- immune_system/verification/*.py
+- soma_core/verification/*.py
 - soma_cli/verify.py
 - soma_cli/checkpoint.py
 triggers:

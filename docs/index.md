@@ -7,8 +7,7 @@
 ### 👤 Users & Agent Developers
 - [Quickstart](../QUICKSTART.md)
 - [CLI Reference](../README.md#cli-commands)
-- [Python and JavaScript SDK overview](../README.md#sdk)
-- [JavaScript SDK reference](../soma_sdk_js/README.md)
+- [Python SDK overview](../README.md#sdk)
 - [MCP Integration](../README.md#mcp-server-recommended)
 - Planned for v1.0: standalone user guides for the CLI, SDK, and MCP integration
 

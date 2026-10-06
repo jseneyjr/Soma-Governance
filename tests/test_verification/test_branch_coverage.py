@@ -16,7 +16,7 @@ import pytest
 REPO_ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 sys.path.insert(0, REPO_ROOT)
 
-from immune_system.verification import ToolEvidence
+from soma_core.verification import ToolEvidence
 
 
 class TestBranchCoverageContract:
@@ -24,7 +24,7 @@ class TestBranchCoverageContract:
 
     def test_returns_tool_evidence(self, tmp_path):
         """check() must return passing ToolEvidence for fully covered code."""
-        from immune_system.verification import branch_coverage
+        from soma_core.verification import branch_coverage
 
         src = tmp_path / "target.py"
         src.write_text(textwrap.dedent("""\
@@ -58,7 +58,7 @@ class TestBranchCoverageContract:
 
     def test_full_coverage_passes(self, tmp_path):
         """When all branches are covered, verdict=True and no uncovered lines."""
-        from immune_system.verification import branch_coverage
+        from soma_core.verification import branch_coverage
 
         src = tmp_path / "target.py"
         src.write_text(textwrap.dedent("""\
@@ -89,7 +89,7 @@ class TestBranchCoverageContract:
 
     def test_dead_branch_detected(self, tmp_path):
         """Uncovered branches must produce verdict=False with specific lines."""
-        from immune_system.verification import branch_coverage
+        from soma_core.verification import branch_coverage
 
         src = tmp_path / "target.py"
         src.write_text(textwrap.dedent("""\
@@ -126,7 +126,7 @@ class TestBranchCoverageContract:
 
     def test_reports_uncovered_lines(self, tmp_path):
         """Result must include the specific uncovered line number."""
-        from immune_system.verification import branch_coverage
+        from soma_core.verification import branch_coverage
 
         src = tmp_path / "target.py"
         src.write_text(textwrap.dedent("""\
@@ -164,7 +164,7 @@ class TestParseCoverageMissingBranches:
 
     def test_parse_coverage_includes_missing_branches(self, tmp_path):
         """missing_branches entries should appear in the returned line list."""
-        from immune_system.verification.branch_coverage import _parse_coverage
+        from soma_core.verification.branch_coverage import _parse_coverage
 
         # Build a mock coverage JSON with both missing_lines and missing_branches
         report = tmp_path / "coverage.json"
@@ -194,7 +194,7 @@ class TestParseCoverageMissingBranches:
 
     def test_parse_coverage_branches_only(self, tmp_path):
         """When missing_lines is empty, branches alone should populate result."""
-        from immune_system.verification.branch_coverage import _parse_coverage
+        from soma_core.verification.branch_coverage import _parse_coverage
 
         report = tmp_path / "coverage.json"
         report.write_text(json.dumps({
@@ -217,7 +217,7 @@ class TestSubprocessTimeout:
     def test_subprocess_timeout_returns_false(self, monkeypatch):
         """_try_pytest_cov must return False on TimeoutExpired, not raise."""
         import subprocess as sp
-        from immune_system.verification.branch_coverage import _try_pytest_cov
+        from soma_core.verification.branch_coverage import _try_pytest_cov
 
         def mock_run(*args, **kwargs):
             raise sp.TimeoutExpired(cmd="pytest", timeout=120)
@@ -230,7 +230,7 @@ class TestSubprocessTimeout:
     def test_coverage_module_timeout_returns_false(self, monkeypatch):
         """_try_coverage_module must return False on TimeoutExpired."""
         import subprocess as sp
-        from immune_system.verification.branch_coverage import _try_coverage_module
+        from soma_core.verification.branch_coverage import _try_coverage_module
 
         def mock_run(*args, **kwargs):
             raise sp.TimeoutExpired(cmd="coverage", timeout=120)

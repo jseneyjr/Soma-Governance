@@ -11,7 +11,7 @@ falsification: 0 findings in 20 sessions → prune
 target_paths:
 - soma_mcp/*.py
 - soma_cli/*.py
-- immune_system/**/*.py
+- soma_core/**/*.py
 triggers:
 - import_modification
 - module_creation
@@ -36,4 +36,4 @@ fitness:
 Supercell C5 incident: `soma_mcp/tools.py` imported `_check_test_coverage`,
 `_check_hardcoded_paths`, `_check_assertion_density`, `_check_cell_fitness` from
 `soma_cli.checkpoint`. MCP should not reach into CLI internals. Fix: extract shared
-logic to immune_system or inline it.
+logic to soma_core or inline it.

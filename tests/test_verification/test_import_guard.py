@@ -13,7 +13,7 @@ import pytest
 REPO_ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 sys.path.insert(0, REPO_ROOT)
 
-from immune_system.verification import ToolEvidence
+from soma_core.verification import ToolEvidence
 
 
 class TestImportExtraction:
@@ -21,7 +21,7 @@ class TestImportExtraction:
 
     def test_finds_bare_imports(self, tmp_path):
         """Must find `import foo` statements."""
-        from immune_system.verification.import_guard import extract_imports
+        from soma_core.verification.import_guard import extract_imports
 
         src = tmp_path / "mod.py"
         src.write_text("import os\nimport yaml\nimport json\n")
@@ -34,7 +34,7 @@ class TestImportExtraction:
 
     def test_finds_from_imports(self, tmp_path):
         """Must find `from foo import bar` statements."""
-        from immune_system.verification.import_guard import extract_imports
+        from soma_core.verification.import_guard import extract_imports
 
         src = tmp_path / "mod.py"
         src.write_text("from pathlib import Path\nfrom yaml import safe_load\n")
@@ -46,7 +46,7 @@ class TestImportExtraction:
 
     def test_extracts_line_numbers(self, tmp_path):
         """Must capture the line number of each import."""
-        from immune_system.verification.import_guard import extract_imports
+        from soma_core.verification.import_guard import extract_imports
 
         src = tmp_path / "mod.py"
         src.write_text("import os\n\nimport yaml\n")
@@ -57,7 +57,7 @@ class TestImportExtraction:
 
     def test_detects_guarded_try_except(self, tmp_path):
         """Imports inside try/except blocks must be marked as guarded."""
-        from immune_system.verification.import_guard import extract_imports
+        from soma_core.verification.import_guard import extract_imports
 
         src = tmp_path / "mod.py"
         src.write_text(textwrap.dedent("""\
@@ -73,7 +73,7 @@ class TestImportExtraction:
 
     def test_detects_importorskip(self, tmp_path):
         """pytest.importorskip must be detected as guarded."""
-        from immune_system.verification.import_guard import extract_imports
+        from soma_core.verification.import_guard import extract_imports
 
         src = tmp_path / "mod.py"
         src.write_text('import pytest\nyaml = pytest.importorskip("yaml")\n')
@@ -86,7 +86,7 @@ class TestImportExtraction:
 
     def test_bare_import_is_unguarded(self, tmp_path):
         """Top-level imports outside try/except must be marked unguarded."""
-        from immune_system.verification.import_guard import extract_imports
+        from soma_core.verification.import_guard import extract_imports
 
         src = tmp_path / "mod.py"
         src.write_text("import yaml\n")
@@ -100,44 +100,44 @@ class TestStdlibClassification:
     """Contract: correctly classify stdlib vs third-party modules."""
 
     def test_os_is_stdlib(self):
-        from immune_system.verification.import_guard import is_stdlib
+        from soma_core.verification.import_guard import is_stdlib
         assert is_stdlib("os") is True
 
     def test_sys_is_stdlib(self):
-        from immune_system.verification.import_guard import is_stdlib
+        from soma_core.verification.import_guard import is_stdlib
         assert is_stdlib("sys") is True
 
     def test_pathlib_is_stdlib(self):
-        from immune_system.verification.import_guard import is_stdlib
+        from soma_core.verification.import_guard import is_stdlib
         assert is_stdlib("pathlib") is True
 
     def test_json_is_stdlib(self):
-        from immune_system.verification.import_guard import is_stdlib
+        from soma_core.verification.import_guard import is_stdlib
         assert is_stdlib("json") is True
 
     def test_yaml_is_not_stdlib(self):
-        from immune_system.verification.import_guard import is_stdlib
+        from soma_core.verification.import_guard import is_stdlib
         assert is_stdlib("yaml") is False
 
     def test_pytest_is_not_stdlib(self):
-        from immune_system.verification.import_guard import is_stdlib
+        from soma_core.verification.import_guard import is_stdlib
         assert is_stdlib("pytest") is False
 
     def test_requests_is_not_stdlib(self):
-        from immune_system.verification.import_guard import is_stdlib
+        from soma_core.verification.import_guard import is_stdlib
         assert is_stdlib("requests") is False
 
     def test_msvcrt_is_stdlib(self):
-        from immune_system.verification.import_guard import is_stdlib
+        from soma_core.verification.import_guard import is_stdlib
         assert is_stdlib("msvcrt") is True
 
     def test_future_is_stdlib(self):
-        from immune_system.verification.import_guard import is_stdlib
+        from soma_core.verification.import_guard import is_stdlib
         assert is_stdlib("__future__") is True
 
     def test_python39_fallback_simulation(self, monkeypatch):
         import sys
-        import immune_system.verification.import_guard as ig
+        import soma_core.verification.import_guard as ig
         monkeypatch.delattr(sys, "stdlib_module_names", raising=False)
         monkeypatch.setattr(ig, "_STDLIB_MODULES", None)
         modules = ig._get_stdlib_modules()
@@ -154,7 +154,7 @@ class TestDependencyCheck:
 
     def test_clean_file_passes(self, tmp_path):
         """File with only stdlib imports should pass."""
-        from immune_system.verification.import_guard import check
+        from soma_core.verification.import_guard import check
 
         src = tmp_path / "clean.py"
         src.write_text("import os\nimport sys\nimport json\n")
@@ -167,7 +167,7 @@ class TestDependencyCheck:
 
     def test_unguarded_third_party_fails(self, tmp_path):
         """Unguarded third-party import should fail."""
-        from immune_system.verification.import_guard import check
+        from soma_core.verification.import_guard import check
 
         src = tmp_path / "bad.py"
         src.write_text("import os\nimport yaml\n")
@@ -179,7 +179,7 @@ class TestDependencyCheck:
 
     def test_guarded_third_party_passes(self, tmp_path):
         """Guarded third-party import should pass."""
-        from immune_system.verification.import_guard import check
+        from soma_core.verification.import_guard import check
 
         src = tmp_path / "guarded.py"
         src.write_text(textwrap.dedent("""\
@@ -195,7 +195,7 @@ class TestDependencyCheck:
 
     def test_allowed_deps_not_flagged(self, tmp_path):
         """Imports listed in allowed_deps should not be flagged even if unguarded."""
-        from immune_system.verification.import_guard import check
+        from soma_core.verification.import_guard import check
 
         src = tmp_path / "with_dep.py"
         src.write_text("import pytest\nimport yaml\n")
@@ -205,7 +205,7 @@ class TestDependencyCheck:
 
     def test_reports_multiple_violations(self, tmp_path):
         """Multiple unguarded third-party imports should all be reported."""
-        from immune_system.verification.import_guard import check
+        from soma_core.verification.import_guard import check
 
         src = tmp_path / "multi.py"
         src.write_text("import yaml\nimport requests\nimport numpy\n")
@@ -218,17 +218,17 @@ class TestDependencyCheck:
 
     def test_local_project_imports_not_flagged(self, tmp_path):
         """Imports of local project packages should not be flagged."""
-        from immune_system.verification.import_guard import check
+        from soma_core.verification.import_guard import check
 
         # Create a fake project structure
         project = tmp_path / "myproject"
         project.mkdir()
-        pkg = project / "immune_system"
+        pkg = project / "soma_core"
         pkg.mkdir()
         (pkg / "__init__.py").write_text("")
 
         src = project / "app.py"
-        src.write_text("from immune_system.verification import something\n")
+        src.write_text("from soma_core.verification import something\n")
 
         result = check(str(src), project_root=str(project))
         assert result.verdict is True
@@ -239,7 +239,7 @@ class TestRealFiles:
 
     def test_catches_original_decay_integration_bug(self, tmp_path):
         """Simulate the exact file that broke CI — bare `import yaml`."""
-        from immune_system.verification.import_guard import check
+        from soma_core.verification.import_guard import check
 
         src = tmp_path / "test_decay.py"
         src.write_text(textwrap.dedent("""\
@@ -258,7 +258,7 @@ class TestRealFiles:
 
     def test_fixed_version_passes(self, tmp_path):
         """The fixed version with importorskip should pass."""
-        from immune_system.verification.import_guard import check
+        from soma_core.verification.import_guard import check
 
         src = tmp_path / "test_decay_fixed.py"
         src.write_text(textwrap.dedent("""\

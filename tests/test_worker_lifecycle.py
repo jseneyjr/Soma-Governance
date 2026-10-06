@@ -51,7 +51,7 @@ class TestWorkerLifecycleAndPersistence:
         """Worker thread completing pipeline cannot overwrite status if shutdown already occurred."""
         import threading
         from soma_core.verification_jobs import submit_verification_job
-        from immune_system.verification import runner
+        from soma_core.verification import runner
 
         started_evt = threading.Event()
         proceed_evt = threading.Event()

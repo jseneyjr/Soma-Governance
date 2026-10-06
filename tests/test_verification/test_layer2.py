@@ -8,7 +8,7 @@ The run_layer2() orchestrator wires together:
 - Deterministic arbitration (arbiter.arbitrate)
 
 Tests verify:
-1. run_layer2 is importable from immune_system.verification.runner
+1. run_layer2 is importable from soma_core.verification.runner
 2. llm_backend is a required parameter without defaults
 3. Prompt structure and information partitioning are strictly maintained
 4. Mock LLM returning empty predictions/claims produces SHIP verdict
@@ -30,7 +30,7 @@ import pytest
 REPO_ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 sys.path.insert(0, REPO_ROOT)
 
-from immune_system.verification import (
+from soma_core.verification import (
     ArbitrationResult,
     Claim,
     Divergence,
@@ -40,14 +40,14 @@ from immune_system.verification import (
     ToolEvidence,
     Verdict,
 )
-from immune_system.verification import runner
+from soma_core.verification import runner
 
 try:
-    from immune_system.verification.runner import run_layer2
+    from soma_core.verification.runner import run_layer2
 except ImportError:
     def run_layer2(*args, **kwargs):
         """Dynamic dispatch to run_layer2 to allow pytest discovery during TDD Red phase."""
-        from immune_system.verification.runner import run_layer2 as _real
+        from soma_core.verification.runner import run_layer2 as _real
         return _real(*args, **kwargs)
 
 
@@ -55,13 +55,13 @@ class TestRunLayer2Interface:
     """Verify interface contract, importability, and required arguments."""
 
     def test_run_layer2_is_importable(self):
-        """run_layer2 must be importable directly from immune_system.verification.runner."""
-        from immune_system.verification.runner import run_layer2 as imported_fn
+        """run_layer2 must be importable directly from soma_core.verification.runner."""
+        from soma_core.verification.runner import run_layer2 as imported_fn
         assert callable(imported_fn), "run_layer2 must be a callable function"
 
     def test_llm_backend_parameter_is_required(self):
         """llm_backend parameter must be required with no default value to prevent accidental real API calls."""
-        from immune_system.verification.runner import run_layer2 as imported_fn
+        from soma_core.verification.runner import run_layer2 as imported_fn
         sig = inspect.signature(imported_fn)
         assert "llm_backend" in sig.parameters, "run_layer2 signature must include 'llm_backend'"
         param = sig.parameters["llm_backend"]

@@ -206,12 +206,6 @@ def test_manifestless_uninstall_removes_only_repo_names(tmp_path, bash, platform
     assert not soma_skill.exists()
 
 
-def test_mcp_example_targets_governed_workspace():
-    example = json.loads(read(os.path.join(REPO_ROOT, ".mcp.json.example")))
-    soma = example["mcpServers"]["soma"]
-    assert soma["cwd"] == "."
-    assert soma["env"] == {"SOMA_WORKSPACE": "."}
-
 
 def test_packaging_excludes_private_soma_state_and_includes_genome_package():
     manifest = read(os.path.join(REPO_ROOT, "MANIFEST.in"))

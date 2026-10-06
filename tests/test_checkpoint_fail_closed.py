@@ -5,7 +5,7 @@ from pathlib import Path
 
 import pytest
 
-from immune_system.verification import checkpoint_checks
+from soma_core.verification import checkpoint_checks
 
 
 def _write_wall(root, content=None):
@@ -151,7 +151,7 @@ def test_checkpoint_is_recursively_read_only_on_pass_and_fail(
 
 def test_resolve_canonical_test_candidates(tmp_path: Path):
     """Verify deterministic test candidate resolution supports mirrored, subpackage, and fallback paths."""
-    from immune_system.verification.checkpoint_checks import _resolve_canonical_test_candidates
+    from soma_core.verification.checkpoint_checks import _resolve_canonical_test_candidates
 
     # Subpackage file
     sub_src = tmp_path / "soma_core" / "schemas" / "cells.py"

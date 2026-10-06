@@ -11,7 +11,7 @@ prediction: Will fire when review findings are resolved by orchestrator judgment
 falsification: If the arbiter cannot handle a finding category after 3 extensions,
   revisit the architecture
 target_paths:
-- immune_system/verification/arbiter.py
+- soma_core/verification/arbiter.py
 - organs/adaptive-reviewer/SKILL.md
 - soma_cli/*.py
 triggers:

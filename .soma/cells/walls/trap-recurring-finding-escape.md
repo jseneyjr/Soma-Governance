@@ -11,7 +11,7 @@ prediction: Will fire when the same finding (by category or file) appears in N a
 falsification: 0 findings in 10 sessions → prune
 target_paths:
 - .soma/evidence/arbitration_cycle_*.json
-- immune_system/verification/review_adapter.py
+- soma_core/verification/review_adapter.py
 triggers:
 - arbitration_complete
 - cycle_increment

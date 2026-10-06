@@ -96,65 +96,6 @@ def test_fitness_updater_retry_completes_every_cell_once(tmp_path):
     assert len(rows) == 2
 
 
-def test_old_live_migration_owner_cannot_be_stolen(tmp_path):
-    from soma_cli import migration
-
-    lock = tmp_path / "migration.lock"
-    lock.write_text(f"{os.getpid()}:{time.time() - 10000}:owner\n", encoding="utf-8")
-    old = time.time() - migration.STALE_LOCK_TIMEOUT - 10
-    os.utime(lock, (old, old))
-    assert migration._acquire_migration_lock(lock) is None
-    assert lock.read_text(encoding="utf-8").endswith(":owner\n")
-
-
-def test_migration_release_preserves_replacement_owner(tmp_path):
-    from soma_cli import migration
-
-    lock = tmp_path / "migration.lock"
-    owner = migration._acquire_migration_lock(lock)
-    assert owner
-    lock.write_text(f"{os.getpid()}:{time.time()}:successor\n", encoding="utf-8")
-    migration._release_migration_lock(lock, owner)
-    assert lock.exists()
-    assert lock.read_text(encoding="utf-8").endswith(":successor\n")
-
-
-def test_dead_migration_owner_is_reclaimed(tmp_path, monkeypatch):
-    from soma_cli import migration
-
-    lock = tmp_path / "migration.lock"
-    lock.write_text(f"999999999:{time.time()}:dead-owner\n", encoding="utf-8")
-
-    def dead(pid, signal):
-        raise ProcessLookupError(pid)
-
-    monkeypatch.setattr(migration.os, "kill", dead)
-    owner = migration._acquire_migration_lock(lock)
-    assert owner and owner != "dead-owner"
-    migration._release_migration_lock(lock, owner)
-    assert not lock.exists()
-
-
-def test_migration_linked_twin_signal_mismatch_aborts(tmp_path):
-    from soma_cli.migration import run_epoch_migration
-
-    evidence = tmp_path / ".soma" / "evidence"
-    evidence.mkdir(parents=True)
-    (evidence / "outcomes.jsonl").write_text(json.dumps({
-        "cell_id": "cell-a", "outcome": "success", "outcome_id": "oid-1",
-        "timestamp": "2026-01-01T00:00:00Z",
-    }) + "\n", encoding="utf-8")
-    original = json.dumps({
-        "cell": "cell-a", "signal": "fp", "source": "mcp",
-        "timestamp": "2026-01-01T00:00:01Z", "metadata": {"outcome_id": "oid-1"},
-    }) + "\n"
-    (evidence / "signals.jsonl").write_text(original, encoding="utf-8")
-
-    assert run_epoch_migration(str(tmp_path)) is False
-    assert (evidence / "signals.jsonl").read_text(encoding="utf-8") == original
-    assert not (tmp_path / ".soma" / "epoch_generation").exists()
-
-
 def test_sync_outcome_only_preserves_trigger_dimension(tmp_path):
     from soma_cli.sync import aggregate_evidence, sync_frontmatter
     from soma_sdk.cells import parse_cell_file

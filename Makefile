@@ -141,7 +141,7 @@ validate: ## Check script syntax and config values
 	  fi; \
 	done; \
 	if [ -n "$(SOMA_PYTHON_BIN)" ]; then \
-	  for p in soma_cli/*.py soma_core/*.py soma_mcp/*.py soma_sdk/*.py immune_system/**/*.py; do \
+	  for p in soma_cli/*.py soma_core/*.py soma_core/**/*.py soma_mcp/*.py soma_sdk/*.py; do \
 	    if [ -f "$$p" ]; then \
 	      if "$(SOMA_PYTHON_BIN)" -c "import ast, sys; ast.parse(open(sys.argv[1], encoding='utf-8').read())" "$$p" 2>/dev/null; then :; \
 	      else echo "  ❌ $$p (syntax error)"; failed=1; fi; \

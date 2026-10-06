@@ -14,10 +14,10 @@ import pytest
 REPO_ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 sys.path.insert(0, REPO_ROOT)
 
-from immune_system.verification import ToolEvidence
-from immune_system.verification import persistence_checker
-from immune_system.verification import call_graph
-from immune_system.verification import runner
+from soma_core.verification import ToolEvidence
+from soma_core.verification import persistence_checker
+from soma_core.verification import call_graph
+from soma_core.verification import runner
 
 
 class TestPersistenceChecker:

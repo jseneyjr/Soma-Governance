@@ -349,7 +349,7 @@
         "soma_cli/migration.py",
         "soma_sdk/telemetry.py"
       ],
-      "regression_test": "tests/test_migration.py::test_stale_generation_writer_rejected_after_cutover",
+      "regression_test": "tests/test_legacy_purged_regressions.py::test_bug_019_epoch_migration_purged",
       "pattern": "Lock-and-counter placeholder presented as a fenced migration",
       "changelog_ref": "v0.89.0"
     },
@@ -452,7 +452,7 @@
       "affected_files": [
         "soma_cli/migration.py"
       ],
-      "regression_test": "tests/test_evidence_transactions.py::test_old_live_migration_owner_cannot_be_stolen",
+      "regression_test": "tests/test_legacy_purged_regressions.py::test_bug_025_migration_lock_purged",
       "pattern": "Lease age treated as stronger evidence than live ownership",
       "changelog_ref": "v0.89.0"
     },

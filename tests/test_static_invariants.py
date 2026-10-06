@@ -407,10 +407,10 @@ def test_entire_runtime_has_zero_third_party_imports():
     Only Python standard library modules and internal modules are permitted at runtime.
     Optional inference providers must be strictly guarded by try/except."""
     import ast
-    from immune_system.verification.import_guard import _get_stdlib_modules
+    from soma_core.verification.import_guard import _get_stdlib_modules
 
     stdlib = set(_get_stdlib_modules()) | set(sys.builtin_module_names)
-    internal_prefixes = ("soma_", "immune_system", "install", "genome")
+    internal_prefixes = ("soma_", "install", "genome")
     soma_core_dir = os.path.join(REPO_ROOT, "soma_core")
     soma_core_modules = {
         f[:-3] for f in os.listdir(soma_core_dir) if f.endswith(".py")
@@ -494,11 +494,6 @@ def test_version_is_single_sourced():
     sdk_match = re.search(r"^__version__\s*=\s*['\"]([^'\"]+)['\"]", python_sdk, re.M)
     assert sdk_match and sdk_match.group(1) == version_file, (
         f"Python SDK ({sdk_match.group(1) if sdk_match else 'missing'}) != VERSION ({version_file})"
-    )
-
-    js_sdk = json.loads(read(os.path.join(REPO_ROOT, "soma_sdk_js", "package.json")))
-    assert js_sdk.get("version") == version_file, (
-        f"JavaScript SDK ({js_sdk.get('version')}) != VERSION ({version_file})"
     )
 
     from soma_mcp.server import _server_version

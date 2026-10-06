@@ -12,10 +12,10 @@ Counts are generated from the source tree with mutually exclusive categories: pa
 |:---------|:----------------------------|:------|:------------|
 | [Lifecycle Scripts (Hooks)](#lifecycle-scripts-hooks--bash) | bash (`install/hooks/`) | 1 | Git pre-commit lifecycle hook |
 | [Verification Scripts](#verification-scripts--python) | Python (`soma_core/verification/`) | 12 | Deterministic AST checkers, coverage tools, and adversarial verification |
-| [CLI Commands](#cli-commands--python-soma_cli) | Python and bash (`soma_cli/`, root) | 21 | CLI launcher and command implementation modules |
+| [CLI Commands](#cli-commands--python-soma_cli) | Python and bash (`soma_cli/`, root) | 20 | CLI launcher and command implementation modules |
 | [SDK Modules](#sdk-modules--python-soma_sdk) | Python (`soma_sdk/`) | 8 | Canonical scoring, parsing, telemetry, hot-zone, and governance APIs |
-| [MCP and Core Modules](#mcp-and-core-modules) | Python (`soma_mcp/`, `soma_core/`) | 32 | MCP transport, dispatch, confinement, content inventory, canonical evidence, cache, errors, receipts, and atomic storage |
-| **Total** | | **74** | Unique paths under the method above |
+| [MCP and Core Modules](#mcp-and-core-modules) | Python (`soma_mcp/`, `soma_core/`) | 31 | MCP transport, dispatch, confinement, content inventory, canonical evidence, cache, errors, receipts, and atomic storage |
+| **Total** | | **72** | Unique paths under the method above |
 
 ---
 
@@ -52,7 +52,7 @@ These 12 Python scripts form the deterministic and adversarial verification engi
 
 ## CLI Commands — Python (`soma_cli/`)
 
-These 21 paths provide the root `soma` launcher and 20 non-initializer Python modules in `soma_cli/`. Fifteen modules implement registered subcommands; scanner/generator modules support Genesis, `pathcheck.py` supports `soma doctor` and the installers, and `migration.py` implements evidence epoch cutover.
+These 20 paths provide the root `soma` launcher and 19 non-initializer Python modules in `soma_cli/`. Fifteen modules implement registered subcommands; scanner/generator modules support Genesis, and `pathcheck.py` supports `soma doctor` and the installers.
 
 | Command / Script | Location | Purpose |
 |:-----------------|:---------|:--------|
@@ -67,7 +67,6 @@ These 21 paths provide the root `soma` launcher and 20 non-initializer Python mo
 | **`genesis_scanner.py`** | `soma_cli/genesis_scanner.py` | Language-agnostic codebase scanner detecting 8 architectural patterns for governance cell candidate generation. |
 | **`hooks.py`** | `soma_cli/hooks.py` | `soma hook <phase>`: Pure Python cross-platform lifecycle hook runner for `pre-commit`, `safety-gate`, `pre-invocation`, and `session-close`. |
 | **`init.py`** | `soma_cli/init.py` | `soma init`: Initializes rules for Gemini, Claude Code, Cursor, or Copilot; it does not auto-detect Kiro. |
-| **`migration.py`** | `soma_cli/migration.py` | Generation-fenced evidence cutover: locks writers, reconciles legacy ledgers into canonical `signals.jsonl`, snapshots source bytes with `SHA256SUMS`, atomically publishes converted signals, then advances the epoch. |
 | **`oracle.py`** | `soma_cli/oracle.py` | `soma oracle`: Cell health classification, diagnostics, and pruning recommendations (wraps `oracle_checkpoint.py`). |
 | **`pathcheck.py`** | `soma_cli/pathcheck.py` | Shell-aware PATH guidance: finds where pip installed `soma` and prints the line to add for zsh, bash, fish or PowerShell. Used by `soma doctor` and the installers; never edits dotfiles itself (`soma doctor --fix-path` does, on request). |
 | **`promote.py`** | `soma_cli/promote.py` | `soma promote`: Evaluates and displays high-performing local cells eligible for promotion to forest-floor rules. |
@@ -103,7 +102,7 @@ These 8 non-initializer modules provide the canonical Python APIs used by the CL
 
 ## MCP and Core Modules
 
-These 32 modules implement the MCP server, state-bound authorization, safe cell inventory, frontmatter parsing, lifecycle state machine, verification job orchestration, canonical evidence reading, transactional resource locking, self-healing quarantine, atomic storage, and standardized domain errors. Package initializers and `soma_mcp/__main__.py` are excluded from the count.
+These 31 modules implement the MCP server, state-bound authorization, safe cell inventory, frontmatter parsing, verification job orchestration, canonical evidence reading, transactional resource locking, self-healing quarantine, atomic storage, and standardized domain errors. Package initializers and `soma_mcp/__main__.py` are excluded from the count.
 
 | Module | Location | Purpose |
 |:-------|:---------|:--------|
@@ -127,7 +126,6 @@ These 32 modules implement the MCP server, state-bound authorization, safe cell 
 | **`evidence.py`** | `soma_core/evidence.py` | Standard-library canonical reader for weighted `signals.jsonl` evidence, independent trigger/outcome dimensions, and structured parse errors. |
 | **`errors.py`** | `soma_core/errors.py` | Standardized typed domain error hierarchy (`SomaError`, `SomaValidationError`, `CellCorruptError`, `ReceiptExpiredError`, `LockTimeoutError`). |
 | **`frontmatter.py`** | `soma_core/frontmatter.py` | Standalone zero-dependency frontmatter parsing and YAML header extraction decoupled from MCP runtime. |
-| **`lifecycle.py`** | `soma_core/lifecycle.py` | Canonical cell lifecycle state machine (`NEW`, `SURVIVE`, `ADAPT`, `EXTINCT`, `APOPTOSIS`, `WALL`, `GENOME`) with Laplace smoothing and protected rule guards. |
 | **`locking.py`** | `soma_core/locking.py` | Cross-platform transactional resource locking with timeout fences and native Windows fallback. |
 | **`quarantine.py`** | `soma_core/quarantine.py` | Self-healing quarantine isolating damaged YAML cells and unparseable JSONL files to preserve system availability. |
 | **`storage.py`** | `soma_core/storage.py` | Crash-resilient atomic file writes via temporary files, directory fsync, and exponential backoff retry on Windows sharing violations (WinError 32). |

@@ -9,7 +9,7 @@ prediction: Will catch threshold comparisons where the operator doesn't match th
   documented behavior
 falsification: 0 findings in 20 sessions → prune
 target_paths:
-- immune_system/**/*.py
+- soma_core/**/*.py
 - soma_cli/*.py
 triggers:
 - threshold_modification

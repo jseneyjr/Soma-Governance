@@ -7,10 +7,6 @@ hooks.json
 # MCP server config (machine-specific paths, produced by soma init / install.sh)
 .mcp.json
 
-# Local telemetry & immune system runtime data
-immune_system/*.lock
-immune_system/*.log
-immune_system/mulch_queue.jsonl
 docs/snapshots/
 
 # Legacy governance dir (pre-rename)
