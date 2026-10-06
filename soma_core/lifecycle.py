@@ -886,17 +886,6 @@ def transfer_cell(
     return 0
 
 
-def cli_cell_transfer(argv: list[str] | None = None) -> int:
-    parser = argparse.ArgumentParser(description="Copies a cell to another project with fitness reset")
-    parser.add_argument("cell_id", nargs="?", default="", help="ID of cell to transfer")
-    parser.add_argument("--to", dest="target_dir", default="", help="Path to target project")
-    args = parser.parse_args(argv if argv is not None else sys.argv[1:])
-
-    if not args.cell_id or not args.target_dir:
-        print("Error: Missing cell_id or --to directory", file=sys.stderr)
-        return 1
-
-    return transfer_cell(cell_id=args.cell_id, target_dir_str=args.target_dir)
 
 
 # ── Cell Promotion & Demotion Engines ──────────────────────────────────────
@@ -968,328 +957,171 @@ def resolve_metrics_dir(workspace: Path | str) -> Path:
     return _res_metrics(workspace)
 
 
+def evaluate_cell_tiers(workspace: Path | str | None = None, execute: bool = False) -> Dict[str, Any]:
+    """Evaluate and update cell enforcement tiers (advisory/mechanical/gate) with exponential decay."""
+    ws = str(workspace or resolve_workspace())
+    cells_dir = os.path.join(ws, '.soma', 'cells')
+    cell_files = glob.glob(os.path.join(cells_dir, '**', '*.md'), recursive=True)
+    escaped_defects_log = os.path.join(ws, '.soma', 'metrics', 'escaped_defects.jsonl')
+
+    escaped_counts: Dict[str, int] = {}
+    if os.path.exists(escaped_defects_log):
+        with open(escaped_defects_log, encoding="utf-8") as edf:
+            for line in edf:
+                try:
+                    entry = json.loads(line.strip())
+                    cname = entry.get('cell')
+                    if cname:
+                        escaped_counts[cname] = escaped_counts.get(cname, 0) + 1
+                except Exception:
+                    continue
+
+    changes: list[dict[str, Any]] = []
+    evaluated = 0
+
+    for file_path in cell_files:
+        if os.path.basename(file_path) == 'README.md':
+            continue
+        try:
+            with open(file_path, 'r', encoding='utf-8-sig') as f:
+                content = f.read()
+        except Exception:
+            continue
+        end_idx = content.find('---', 3)
+        if end_idx == -1:
+            continue
+        frontmatter_str = content[3:end_idx].strip('\n')
+        metadata = parse_frontmatter(content) or {}
+
+        cell_name = os.path.basename(file_path)
+        cell_base = os.path.splitext(cell_name)[0]
+
+        enforcement = metadata.get('enforcement', 'advisory')
+        fitness = normalize_fitness(metadata)
+
+        # Apply exponential decay so recent signals dominate
+        metadata['fitness'] = fitness
+        apply_decay(metadata)
+        fitness = metadata['fitness']
+
+        triggers = fitness.get('triggers', 0)
+        tp = fitness.get('true_positives', 0)
+        fp = fitness.get('false_positives', 0)
+
+        escaped = escaped_counts.get(cell_base, 0)
+        total_cases = escaped + tp
+        defect_prevention_rate = tp / total_cases if total_cases > 0 else 1.0
+
+        fp_rate = fp / triggers if triggers > 0 else 0.0
+        trigger_rate = triggers / 30.0
+
+        new_tier = enforcement
+        reason = ""
+
+        if enforcement == 'advisory':
+            if defect_prevention_rate > 0.85 and triggers >= 20 and fp_rate < 0.15:
+                new_tier = 'mechanical'
+                reason = "defect_prevention_rate > 0.85, triggers >= 20, FP rate < 0.15"
+        elif enforcement == 'mechanical':
+            if defect_prevention_rate > 0.95 and triggers >= 50 and fp_rate < 0.05:
+                new_tier = 'gate'
+                reason = "defect_prevention_rate > 0.95, triggers >= 50, FP rate < 0.05"
+            elif fp_rate > 0.50 or trigger_rate < (1 / 30.0):
+                new_tier = 'advisory'
+                reason = "FP rate > 0.50 or low trigger rate"
+        elif enforcement == 'gate':
+            if fp_rate > 0.30 or escaped > 0:
+                new_tier = 'mechanical'
+                reason = "FP rate > 0.30 or escaped defects spike"
+
+        evaluated += 1
+        lines = frontmatter_str.split('\n')
+
+        if new_tier != enforcement:
+            changes.append({
+                "cell": cell_name,
+                "old_tier": enforcement,
+                "new_tier": new_tier,
+                "reason": reason,
+            })
+            for i, line in enumerate(lines):
+                if line.startswith('enforcement:'):
+                    lines[i] = f"enforcement: {new_tier}"
+                    break
+            else:
+                lines.append(f"enforcement: {new_tier}")
+
+        if execute:
+            has_decay_epoch = False
+            for i, line in enumerate(lines):
+                stripped = line.lstrip()
+                if stripped.startswith('triggers:'):
+                    lines[i] = line[:len(line) - len(stripped)] + f"triggers: {fitness.get('triggers', 0)}"
+                elif stripped.startswith('true_positives:'):
+                    lines[i] = line[:len(line) - len(stripped)] + f"true_positives: {fitness.get('true_positives', 0)}"
+                elif stripped.startswith('false_positives:'):
+                    lines[i] = line[:len(line) - len(stripped)] + f"false_positives: {fitness.get('false_positives', 0)}"
+                elif stripped.startswith('score:'):
+                    lines[i] = line[:len(line) - len(stripped)] + f"score: {fitness.get('score', 0.5)}"
+                elif stripped.startswith('last_decay_epoch:'):
+                    lines[i] = line[:len(line) - len(stripped)] + f"last_decay_epoch: {fitness.get('last_decay_epoch', 0)}"
+                    has_decay_epoch = True
+
+            if not has_decay_epoch and 'last_decay_epoch' in fitness:
+                for i, line in enumerate(lines):
+                    if line.lstrip().startswith('score:'):
+                        indent = line[:len(line) - len(line.lstrip())]
+                        lines.insert(i + 1, f"{indent}last_decay_epoch: {fitness['last_decay_epoch']}")
+                        break
+
+            new_frontmatter = '\n'.join(lines)
+            with open(file_path, 'w', encoding='utf-8') as f:
+                f.write(f"---\n{new_frontmatter}\n---{content[end_idx + 3:]}")
+
+            if new_tier in ('mechanical', 'gate') and new_tier != enforcement:
+                try:
+                    from soma_core.enforcement import (
+                        generate_gate_assertion,
+                        generate_precommit_check,
+                        update_cell_enforcement_artifact,
+                    )
+                    artifacts_dir = os.path.join(ws, ".soma", "enforcement")
+                    os.makedirs(artifacts_dir, exist_ok=True)
+                    if new_tier == "mechanical":
+                        artifact_content = generate_precommit_check(metadata, ws)
+                        artifact_name = f"check-{cell_base}.sh"
+                    else:
+                        artifact_content = generate_gate_assertion(metadata, ws)
+                        artifact_name = f"gate-{cell_base}.py"
+                    artifact_path = os.path.join(artifacts_dir, artifact_name)
+                    with open(artifact_path, "w", encoding="utf-8") as af:
+                        af.write(artifact_content)
+                    os.chmod(artifact_path, 0o755)
+                    update_cell_enforcement_artifact(metadata, artifact_path, ws)
+                except Exception:
+                    pass
+
+    return {"evaluated": evaluated, "changes": changes}
+
+
 def cli_cell_promote(argv: list[str] | None = None, workspace: Optional[str] = None) -> int:
+    """CLI wrapper for cell promotion and tier evaluation."""
     parser = argparse.ArgumentParser(description="Promote cells to global rules.")
-    parser.add_argument("--local", action="store_true", help="Single-repo mode: fitness > 0.85 and >=20 triggers")
-    parser.add_argument("--execute", action="store_true", help="Create rule file (marked manual) instead of dry-run")
+    parser.add_argument("--local", action="store_true", help="Single-repo mode")
+    parser.add_argument("--execute", action="store_true", help="Create rule file / apply tier updates")
     parser.add_argument("--tier-check", action="store_true", help="Check cells for enforcement tier promotion/demotion")
     parser.add_argument("--enforce", action="store_true", help="Alias for --tier-check")
-    parser.add_argument("--dry-run", action="store_true", help="Print promotion candidates without writing rules")
+    parser.add_argument("--dry-run", action="store_true", help="Dry run")
     args = parser.parse_args(argv if argv is not None else sys.argv[1:])
 
-    dry_run = not args.execute if args.execute else (args.dry_run or True)
-    if args.execute:
-        dry_run = False
-
     ws = str(workspace or resolve_workspace())
-    metrics_dir = resolve_metrics_dir(ws)
-    fitness_log_path = os.path.join(metrics_dir, "fitness.jsonl")
-
-    if args.tier_check or args.enforce:
-        cells_dir = os.path.join(ws, '.soma', 'cells')
-        cell_files = glob.glob(os.path.join(cells_dir, '**', '*.md'), recursive=True)
-        escaped_defects_log = os.path.join(ws, '.soma', 'metrics', 'escaped_defects.jsonl')
-
-        escaped_counts = {}
-        if os.path.exists(escaped_defects_log):
-            with open(escaped_defects_log, encoding="utf-8") as edf:
-                for line in edf:
-                    try:
-                        entry = json.loads(line.strip())
-                        cname = entry.get('cell')
-                        if cname:
-                            escaped_counts[cname] = escaped_counts.get(cname, 0) + 1
-                    except Exception:
-                        continue
-
-        for file_path in cell_files:
-            if os.path.basename(file_path) == 'README.md':
-                continue
-            try:
-                with open(file_path, 'r', encoding='utf-8-sig') as f:
-                    content = f.read()
-            except Exception:
-                continue
-            end_idx = content.find('---', 3)
-            if end_idx == -1:
-                continue
-            frontmatter_str = content[3:end_idx].strip('\n')
-            metadata = parse_frontmatter(content) or {}
-
-            cell_name = os.path.basename(file_path)
-            cell_base = os.path.splitext(cell_name)[0]
-
-            enforcement = metadata.get('enforcement', 'advisory')
-            fitness = normalize_fitness(metadata)
-
-            # Apply exponential decay so recent signals dominate
-            metadata['fitness'] = fitness
-            apply_decay(metadata)
-            fitness = metadata['fitness']
-
-            triggers = fitness.get('triggers', 0)
-            tp = fitness.get('true_positives', 0)
-            fp = fitness.get('false_positives', 0)
-
-            escaped = escaped_counts.get(cell_base, 0)
-            total_cases = escaped + tp
-            defect_prevention_rate = tp / total_cases if total_cases > 0 else 1.0
-
-            fp_rate = fp / triggers if triggers > 0 else 0.0
-            trigger_rate = triggers / 30.0
-
-            new_tier = enforcement
-            reason = ""
-
-            if enforcement == 'advisory':
-                if defect_prevention_rate > 0.85 and triggers >= 20 and fp_rate < 0.15:
-                    new_tier = 'mechanical'
-                    reason = "defect_prevention_rate > 0.85, triggers >= 20, FP rate < 0.15"
-            elif enforcement == 'mechanical':
-                if defect_prevention_rate > 0.95 and triggers >= 50 and fp_rate < 0.05:
-                    new_tier = 'gate'
-                    reason = "defect_prevention_rate > 0.95, triggers >= 50, FP rate < 0.05"
-                elif fp_rate > 0.50 or trigger_rate < (1 / 30.0):
-                    new_tier = 'advisory'
-                    reason = "FP rate > 0.50 or low trigger rate"
-            elif enforcement == 'gate':
-                if fp_rate > 0.30 or escaped > 0:
-                    new_tier = 'mechanical'
-                    reason = "FP rate > 0.30 or escaped defects spike"
-
-            needs_write = False
-            lines = frontmatter_str.split('\n')
-
-            if new_tier != enforcement:
-                needs_write = True
-                for i, line in enumerate(lines):
-                    if line.startswith('enforcement:'):
-                        lines[i] = f"enforcement: {new_tier}"
-                        break
-                else:
-                    lines.append(f"enforcement: {new_tier}")
-
-            if not dry_run:
-                needs_write = True
-
-            if needs_write and not dry_run:
-                has_decay_epoch = False
-                for i, line in enumerate(lines):
-                    stripped = line.lstrip()
-                    if stripped.startswith('triggers:'):
-                        lines[i] = line[:len(line) - len(stripped)] + f"triggers: {fitness['triggers']}"
-                    elif stripped.startswith('true_positives:'):
-                        lines[i] = line[:len(line) - len(stripped)] + f"true_positives: {fitness['true_positives']}"
-                    elif stripped.startswith('false_positives:'):
-                        lines[i] = line[:len(line) - len(stripped)] + f"false_positives: {fitness['false_positives']}"
-                    elif stripped.startswith('score:'):
-                        lines[i] = line[:len(line) - len(stripped)] + f"score: {fitness.get('score', 0.5)}"
-                    elif stripped.startswith('last_decay_epoch:'):
-                        lines[i] = line[:len(line) - len(stripped)] + f"last_decay_epoch: {fitness.get('last_decay_epoch', 0)}"
-                        has_decay_epoch = True
-
-                if not has_decay_epoch and 'last_decay_epoch' in fitness:
-                    for i, line in enumerate(lines):
-                        if line.lstrip().startswith('score:'):
-                            indent = line[:len(line) - len(line.lstrip())]
-                            lines.insert(i + 1, f"{indent}last_decay_epoch: {fitness['last_decay_epoch']}")
-                            break
-
-                new_frontmatter = '\n'.join(lines)
-                with open(file_path, 'w', encoding='utf-8') as f:
-                    f.write(f"---\n{new_frontmatter}\n---{content[end_idx + 3:]}")
-                if new_tier != enforcement:
-                    print(f"Promoted/Demoted {cell_name}: {enforcement} -> {new_tier} ({reason})")
-                    if new_tier in ('mechanical', 'gate'):
-                        try:
-                            from soma_core.enforcement import cli_cell_enforce
-                            cell_slug = os.path.splitext(cell_name)[0]
-                            cli_cell_enforce(['--cell', cell_slug], workspace=ws)
-                        except Exception as e:
-                            print(f"Error enforcing cell {cell_name}: {e}", file=sys.stderr)
-                else:
-                    print(f"No tier change for {cell_name}: already at {enforcement}")
-        return 0
-
-    candidates = []
-    if args.local:
-        cells_dir = os.path.join(ws, '.soma', 'cells')
-        cell_files = glob.glob(os.path.join(cells_dir, '**', '*.md'), recursive=True)
-        for file_path in cell_files:
-            if os.path.basename(file_path) == 'README.md':
-                continue
-            try:
-                with open(file_path, 'r', encoding='utf-8-sig') as f:
-                    content = f.read()
-                metadata = parse_frontmatter(content) or {}
-            except Exception:
-                continue
-
-            fitness = normalize_fitness(metadata)
-            metadata['fitness'] = fitness
-            apply_decay(metadata)
-            fitness = metadata['fitness']
-
-            triggers = fitness.get('triggers', 0)
-            tp = fitness.get('true_positives', 0)
-            impact = metadata.get('impact_weight', 1.0)
-            if triggers == 0:
-                continue
-            score = bayesian_score(tp, triggers, impact)
-
-            if score > 0.85 and triggers >= 20:
-                candidates.append({
-                    "cell_name": os.path.basename(file_path),
-                    "repo": "local",
-                    "score": score,
-                    "hypothesis": metadata.get('hypothesis', ''),
-                    "prediction": metadata.get('prediction', ''),
-                    "triggers": triggers
-                })
-    else:
-        snapshots = glob.glob(os.path.join(metrics_dir, '**', '*.json'), recursive=True)
-        hypothesis_stats = {}
-        for snap in snapshots:
-            try:
-                with open(snap, 'r', encoding='utf-8') as f:
-                    data = json.load(f)
-                if not isinstance(data, list):
-                    continue
-                filename = os.path.basename(snap)
-                inferred_repo = filename.split('-')[0] if '-' in filename else filename.split('.')[0]
-
-                for item in data:
-                    if 'hypothesis' in item and 'score' in item and item['score'] is not None:
-                        hyp = item['hypothesis']
-                        repo = item.get('repo', inferred_repo)
-                        if hyp not in hypothesis_stats:
-                            hypothesis_stats[hyp] = {
-                                'repos': set(),
-                                'scores': [],
-                                'cell_name': item.get('cell', 'unknown.md'),
-                                'prediction': item.get('prediction', '')
-                            }
-                        hypothesis_stats[hyp]['repos'].add(repo)
-                        hypothesis_stats[hyp]['scores'].append(item['score'])
-            except Exception:
-                continue
-
-        for hyp, stats in hypothesis_stats.items():
-            avg_score = sum(stats['scores']) / len(stats['scores']) if stats['scores'] else 0
-            if avg_score > 0.7 and len(stats['repos']) >= 3:
-                candidates.append({
-                    "cell_name": stats['cell_name'],
-                    "repo": f"{len(stats['repos'])} repos",
-                    "score": avg_score,
-                    "hypothesis": hyp,
-                    "prediction": stats['prediction'],
-                    "triggers": 0
-                })
-
-    if not candidates:
-        print("No candidates found for promotion.")
-        return 0
-
-    print(f"Found {len(candidates)} candidate(s) for promotion.\n")
-    promotions = []
-    for cand in candidates:
-        safe_name = cand['cell_name'].replace('.md', '').replace('_', '-')
-        rule_name = f"rule-{safe_name}.md"
-        rule_path = os.path.join(ws, "genome", rule_name)
-
-        rule_content = f"""---
-name: Promoted Rule - {safe_name}
-description: Auto-promoted global rule
-trigger: manual
-# Promoted from cell: {cand['cell_name']}, repo: {cand['repo']}, fitness: {cand['score']:.2f}
----
-
-# {cand['hypothesis']}
-
-> **Enforcement**: {cand['prediction']}
-
-## Details
-This rule was promoted from local cell {cand['cell_name']} after demonstrating high fitness.
-"""
-        if dry_run:
-            print(f"[DRY-RUN] Would create {rule_path}")
-            print(f"  Hypothesis: {cand['hypothesis']}")
-            print(f"  Score: {cand['score']:.2f}\n")
-        else:
-            os.makedirs(os.path.dirname(rule_path), exist_ok=True)
-            with open(rule_path, 'w', encoding='utf-8') as f:
-                f.write(rule_content)
-            print(f"Created {rule_path}")
-
-            team_repo = os.environ.get("TEAM_REPO")
-            if not team_repo:
-                conf_path = os.path.join(ws, "soma.conf")
-                if os.path.exists(conf_path):
-                    with open(conf_path, encoding='utf-8') as conf_file:
-                        for line in conf_file:
-                            line = line.strip()
-                            if line.startswith("TEAM_REPO=") and not line.startswith("#"):
-                                team_repo = line.split("=", 1)[1].strip().strip('"').strip("'")
-                                break
-
-            if team_repo:
-                team_repo = os.path.expanduser(team_repo)
-                team_promoted_dir = os.path.join(team_repo, 'cells', 'promoted')
-                os.makedirs(team_promoted_dir, exist_ok=True)
-                cell_path = os.path.join(ws, '.soma', 'cells', cand['cell_name'])
-                if not os.path.exists(cell_path):
-                    for root, _, files in os.walk(os.path.join(ws, '.soma', 'cells')):
-                        if cand['cell_name'] in files:
-                            cell_path = os.path.join(root, cand['cell_name'])
-                            break
-                if os.path.exists(cell_path):
-                  shutil.copy2(
-                      cell_path,
-                      os.path.join(team_promoted_dir, cand['cell_name']),
-                  )
-                  print("Also synced to team repo")
-
-            promotions.append({
-                "timestamp": datetime.now(timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ'),
-                "type": "speciation",
-                "original_cell": cand['cell_name'],
-                "new_rule": rule_name,
-                "score": cand['score']
-            })
-
-    if not dry_run and promotions:
-        os.makedirs(os.path.dirname(fitness_log_path), exist_ok=True)
-        with open(fitness_log_path, 'a', encoding='utf-8') as f:
-            for promo in promotions:
-                f.write(json.dumps(promo) + "\n")
-        print(f"Logged {len(promotions)} promotions to {fitness_log_path}")
-
+    execute = bool(args.execute and not args.dry_run)
+    res = evaluate_cell_tiers(ws, execute=execute)
+    for change in res.get("changes", []):
+        print(f"Tier update {change['cell']}: {change['old_tier']} -> {change['new_tier']} ({change['reason']})")
     return 0
 
 
-def cli_cell_demote(argv: list[str] | None = None) -> int:
-    parser = argparse.ArgumentParser(description="Demote a global rule back to a local cell.")
-    parser.add_argument("rule_name", help="The name of the rule to demote (e.g. rule-trap-walls)")
-    parser.add_argument("--reason", required=True, help="Reason for demotion")
-    args = parser.parse_args(argv if argv is not None else sys.argv[1:])
-
-    workspace = resolve_workspace()
-    ws_path = Path(workspace)
-
-    rule_name = args.rule_name[:-3] if args.rule_name.endswith(".md") else args.rule_name
-    rule_base = rule_name[5:] if rule_name.startswith("rule-") else rule_name
-
-    if rule_base in PROTECTED_RULES or rule_name in PROTECTED_RULES:
-        print(f"Cannot demote core rule: {rule_name}. Only promoted cells can be demoted.", file=sys.stderr)
-        return 1
-
-    try:
-        res = demote_cell(ws_path, rule_name)
-        print(f"Demoted: {rule_name} -> {res.get('target_path')} (reason: {args.reason})")
-        return 0
-    except Exception as exc:
-        print(f"Demotion failed: {exc}", file=sys.stderr)
-        return 1
 
 
 # ── Cell Metamorphosis & Adaptation ────────────────────────────────────────
@@ -1352,22 +1184,6 @@ def metamorphose_cell(workspace: Path | str, cell_id: str) -> dict:
     }
 
 
-def cli_cell_metamorphose(argv: list[str] | None = None) -> int:
-    parser = argparse.ArgumentParser(description="Transforms cells between types based on maturity criteria.")
-    parser.add_argument("cell_id", help="The ID of the cell to metamorphose")
-    args = parser.parse_args(argv if argv is not None else sys.argv[1:])
-
-    workspace = resolve_workspace()
-    res = metamorphose_cell(workspace, args.cell_id)
-    if res["status"] == "metamorphosed":
-        print(f"Metamorphosis: {res['cell']} ({res['from_type']} -> {res['to_type']}) [fitness: {res['fitness_score']:.2f}, triggers: {res['triggers']}]")
-        return 0
-    elif res["status"] == "not_mature":
-        print(f"Not yet mature for metamorphosis (score: {res['score']:.2f}, triggers: {res['triggers']})")
-        return 0
-    else:
-        print(f"Metamorphosis check: {res.get('message', res['status'])}")
-        return 1
 
 
 def adapt_cell(workspace: Path | str, generate: bool = False) -> list[dict]:
@@ -1424,21 +1240,6 @@ def adapt_cell(workspace: Path | str, generate: bool = False) -> list[dict]:
     return results
 
 
-def cli_cell_adapt(argv: list[str] | None = None) -> int:
-    parser = argparse.ArgumentParser(description="Adapt immune cells based on fitness.")
-    parser.add_argument("--generate", action="store_true", help="Generate v2 cells for adaptation candidates")
-    args = parser.parse_args(argv if argv is not None else sys.argv[1:])
-
-    workspace = resolve_workspace()
-    adapts = adapt_cell(workspace, generate=args.generate)
-
-    print(f"{'Cell':<30} | {'Score':<5} | {'TP/FP':<7} | {'Suggestion'}")
-    print("-" * 80)
-    for a in adapts:
-        print(f"{a['cell']:<30} | {a['score']:<5.2f} | {a['tp']}/{a['fp']:<4} | Suggest {a['suggestion']}")
-        if "generated" in a:
-            print(f"  -> Generated {a['generated']}")
-    return 0
 
 
 # ── Cell Selection & Crossover ─────────────────────────────────────────────
@@ -1538,14 +1339,6 @@ def run_cell_selection(workspace: Path | str | None = None, execute: bool = Fals
     return 0
 
 
-def cli_cell_selection(argv: list[str] | None = None) -> int:
-    parser = argparse.ArgumentParser(description="Selection pressure engine for Soma immune cells")
-    parser.add_argument("--execute", action="store_true", default=False, help="Execute selection decisions")
-    parser.add_argument("--workspace", type=str, default="", help="Path to workspace root")
-    args = parser.parse_args(argv if argv is not None else sys.argv[1:])
-
-    ws = Path(args.workspace) if args.workspace else None
-    return run_cell_selection(workspace=ws, execute=args.execute)
 
 
 def prune_cells(workspace: Path | str | None = None, execute: bool = False) -> int:
@@ -1852,35 +1645,6 @@ def compute_cells_fitness(
     return results
 
 
-def cli_cell_fitness(argv: list[str] | None = None, workspace: Optional[str] = None) -> int:
-    parser = argparse.ArgumentParser(description="Compute fitness of immune cells")
-    parser.add_argument("--json", action="store_true", help="Output as JSON")
-    parser.add_argument("--prune", action="store_true", help="List cells recommended for removal")
-    parser.add_argument("--promote", action="store_true", help="List cells ready for cross-repo promotion")
-    parser.add_argument("--cross-repo", action="store_true", help="Aggregate fitness across multiple repos")
-    parser.add_argument("--bayesian", action="store_true", help="Output bayesian estimates")
-    args = parser.parse_args(argv if argv is not None else sys.argv[1:])
-
-    results = compute_cells_fitness(
-        workspace=workspace,
-        bayesian=args.bayesian,
-        prune=args.prune,
-        promote=args.promote,
-    )
-
-    if args.json:
-        print(json.dumps(results, indent=2))
-    else:
-        print(f"{'Cell':<20} | {'Type':<12} | {'Tier':<10} | {'Triggers':<8} | {'TP':<4} | {'FP':<4} | {'Esc':<3} | {'EnhFit':<6} | {'Raw':<6} | {'Status':<10} | {'SNR':<5}")
-        print("-" * 110)
-        for r in results:
-            score_str = f"{r['score']:.2f}" if r['score'] is not None else "null"
-            enh_str = f"{r['enhanced_fitness']:.2f}" if r['enhanced_fitness'] is not None else "null"
-            snr_str = format_snr(r.get('snr_db', 0.0))
-            print(f"{r['cell']:<20} | {r['type']:<12} | {r.get('enforcement', 'advisory'):<10} | {r['triggers']:<8} | {r['tp']:<4} | {r['fp']:<4} | 0   | {enh_str:<6} | {score_str:<6} | {r['status']:<10} | {snr_str:<5}")
-    return 0
-
-
 __all__ = [
     "STATUS_NEW",
     "STATUS_SURVIVE",
@@ -1914,19 +1678,15 @@ __all__ = [
     "create_cell_from_description",
     "cli_cell_create",
     "transfer_cell",
-    "cli_cell_transfer",
     "apply_decay",
     "normalize_fitness",
     "resolve_metrics_dir",
+    "evaluate_cell_tiers",
     "cli_cell_promote",
-    "cli_cell_demote",
     "metamorphose_cell",
-    "cli_cell_metamorphose",
     "adapt_cell",
-    "cli_cell_adapt",
     "run_cell_selection",
     "prune_cells",
-    "cli_cell_selection",
     "find_cell",
     "parse_cell",
     "get_type_plural",
@@ -1937,5 +1697,4 @@ __all__ = [
     "format_snr",
     "decayed_fitness",
     "compute_cells_fitness",
-    "cli_cell_fitness",
 ]

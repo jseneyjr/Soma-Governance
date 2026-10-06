@@ -11,7 +11,6 @@ Consolidates:
 """
 from __future__ import annotations
 
-import argparse
 from collections import Counter
 from contextlib import contextmanager
 from datetime import datetime, timezone
@@ -1227,31 +1226,15 @@ def run_outcome_engine(workspace: Optional[str] = None, mod: Any = None) -> int:
 
 
 
-def cli_outcome_engine(argv: Optional[List[str]] = None, mod: Any = None) -> int:
-    """CLI outcome engine handler."""
-    target_args = argv if argv is not None else ([] if __name__ != "__main__" else sys.argv[1:])
-    if not target_args:
-        return run_outcome_engine(mod=mod)
-    parser = argparse.ArgumentParser(description="Outcome Engine")
-    parser.add_argument("--workspace", default=None)
-    parser.add_argument("--apply", action="store_true")
-    parser.add_argument("--json", action="store_true")
-    args = parser.parse_args(target_args)
-
-    ws = args.workspace or resolve_workspace()
-    return run_outcome_engine(ws, mod=mod)
-
-
 def main(*args, **kwargs) -> int:
     """Outcome engine main entrypoint."""
     if hasattr(sys.stdout, "reconfigure"):
         sys.stdout.reconfigure(errors="replace")
-    if args and isinstance(args[0], (list, tuple)):
-        return cli_outcome_engine(list(args[0]))
     ws = kwargs.get("workspace")
     if ws is not None:
         return run_outcome_engine(ws)
     return run_outcome_engine()
+
 
 
 # ── Fitness Updater ────────────────────────────────────────────────────────
@@ -1453,49 +1436,6 @@ def update_fitness(triggered_cells: list[dict], transcript_id: str, evidence_dir
     ]
     return append_signals(workspace, events, expected_generation=generation)
 
-
-def cli_fitness_updater(argv: Optional[List[str]] = None) -> int:
-    parser = argparse.ArgumentParser(description="Update cell fitness from session transcript")
-    parser.add_argument("transcript", help="Path to transcript.jsonl")
-    parser.add_argument("--platform", default=None,
-                        help=f"Platform name (auto-detected if omitted). Known: {list(PLATFORMS.keys())}")
-    parser.add_argument("--cells-dir", default=None, help="Path to cells directory")
-    parser.add_argument("--evidence-dir", default=None, help="Path to evidence directory")
-    parser.add_argument("--repo-root", default=None, help="Repo root for relativizing paths")
-    args = parser.parse_args(argv if argv is not None else sys.argv[1:])
-
-    script_dir = Path(__file__).parent.parent
-    cells_dir = Path(args.cells_dir) if args.cells_dir else script_dir / ".soma" / "cells"
-    evidence_dir = Path(args.evidence_dir) if args.evidence_dir else script_dir / ".soma" / "evidence"
-    repo_root = args.repo_root or str(script_dir)
-
-    transcript = Path(args.transcript)
-    platform = args.platform or detect_platform(transcript)
-    transcript_id = resolve_transcript_id(transcript, platform)
-
-    print(f"Processing transcript: {transcript}")
-    print(f"  Platform: {platform}")
-    modified = extract_modified_files(transcript, platform=platform)
-    print(f"  Modified files: {len(modified)}")
-
-    triggered = match_cells(modified, cells_dir, repo_root=repo_root)
-    print(f"  Cells triggered: {len(triggered)}")
-    for t in triggered:
-        print(f"    - {t['cell_id']} ({len(t['matched_files'])} files)")
-
-    update_fitness(triggered, transcript_id, evidence_dir)
-    print(f"  Fitness updated: {evidence_dir / 'signals.jsonl'}")
-
-    try:
-        from soma_core.sync import aggregate_evidence, sync_frontmatter
-        counts = aggregate_evidence(str(evidence_dir))
-        if counts:
-            changes = sync_frontmatter(str(cells_dir), counts)
-            if changes:
-                print(f"  Frontmatter synced: {len(changes)} cells updated")
-    except Exception:
-        pass
-    return 0
 
 
 # ── Metrics Snapshot ───────────────────────────────────────────────────────
@@ -1757,21 +1697,6 @@ def take_snapshot(
     return 0
 
 
-def cli_metrics_snapshot(argv: Optional[List[str]] = None) -> int:
-    parser = argparse.ArgumentParser(description="Metrics snapshot generator")
-    parser.add_argument("--json", action="store_true", default=False, help="Output JSON format")
-    parser.add_argument("--raw", action="store_true", default=False, help="Include timestamp in output")
-    parser.add_argument("--save", action="store_true", default=False, help="Save snapshot to file")
-    parser.add_argument("--compare", dest="compare_file", default=None, help="Compare with previous snapshot")
-    args = parser.parse_args(argv if argv is not None else sys.argv[1:])
-
-    return take_snapshot(
-        json_mode=args.json,
-        raw_mode=args.raw,
-        compare_file=args.compare_file,
-        save=args.save,
-    )
-
 
 # ── Cell Quorum ────────────────────────────────────────────────────────────
 
@@ -1843,47 +1768,6 @@ def evaluate_quorum(cells_dir: Path | str, changed_files: list[str], threshold: 
         'cells_triggered': len(triggered),
     }
 
-
-def cli_cell_quorum(argv: Optional[List[str]] = None) -> int:
-    parser = argparse.ArgumentParser(description='Quorum sensing: detect systemic issues from multi-cell triggers')
-    parser.add_argument('--threshold', type=int, default=3, help='Minimum cells for quorum (default: 3)')
-    parser.add_argument('--json', action='store_true', help='JSON output')
-    args = parser.parse_args(argv if argv is not None else sys.argv[1:])
-
-    workspace = resolve_workspace()
-    cells_dir = os.path.join(workspace, '.soma', 'cells')
-
-    result = subprocess.run(['git', 'diff', '--name-only', 'HEAD'], capture_output=True, text=True, cwd=workspace)
-    staged = subprocess.run(['git', 'diff', '--name-only', '--cached'], capture_output=True, text=True, cwd=workspace)
-    changed_files = list(set((result.stdout + staged.stdout).strip().split('\n')) - {''})
-
-    if not changed_files:
-        print('No changes detected.')
-        return 0
-
-    quorum = evaluate_quorum(cells_dir, changed_files, threshold=args.threshold)
-
-    if quorum['quorum']:
-        if args.json:
-            print(json.dumps(quorum, indent=2))
-        else:
-            print(f'🔬 QUORUM: {quorum["cells_triggered"]} cells triggered simultaneously!')
-            print(f'   Cell types: {", ".join(quorum["cell_types"])}')
-            print(f'   Escalating to: {quorum["escalate_to"]}')
-            for t in quorum['triggered_cells']:
-                print(f'   - {t["name"]} ({t["type"]}): {t["hypothesis"]}')
-
-        metrics_dir = os.path.join(workspace, '.soma', 'metrics')
-        os.makedirs(metrics_dir, exist_ok=True)
-        with open(os.path.join(metrics_dir, 'quorum_events.jsonl'), 'a', encoding='utf-8') as f:
-            quorum['timestamp'] = datetime.now(timezone.utc).isoformat() + 'Z'
-            f.write(json.dumps(quorum) + '\n')
-    else:
-        if args.json:
-            print(json.dumps(quorum))
-        else:
-            print(f'No quorum ({quorum["cells_triggered"]}/{args.threshold} cells triggered)')
-    return 0
 
 
 # ── Cell Coverage ──────────────────────────────────────────────────────────
@@ -1977,50 +1861,6 @@ def calculate_coverage(workspace: str, exclude: Optional[Union[List[str], str]] 
 
 calculate_cell_coverage = calculate_coverage
 
-
-def cli_cell_coverage(argv: Optional[List[str]] = None, workspace: Optional[str] = None) -> int:
-    parser = argparse.ArgumentParser(description='Cell coverage map: visualize governance blind spots')
-    parser.add_argument('--json', action='store_true', help='JSON output')
-    parser.add_argument('--exclude', action='append', default=[], help='Pattern(s) to exclude from coverage calculation')
-    args = parser.parse_args(argv if argv is not None else sys.argv[1:])
-
-    ws = workspace or resolve_workspace()
-
-    cov = calculate_coverage(ws, exclude=args.exclude)
-
-    if args.json:
-        res = dict(cov)
-        res.pop('uncovered_files', None)
-        print(json.dumps(res, indent=2))
-    else:
-        total = cov['total_files']
-        covered = cov['covered']
-        pct = cov['coverage_pct']
-        coverage_map = cov['by_directory']
-        uncovered_files = cov['uncovered_files']
-
-        print(f'\n📊 Cell Coverage: {covered}/{total} files ({pct:.1f}%)\n')
-        print(f'{"Directory":<40} {"Coverage":>10}  Bar                  Tier')
-        print('─' * 90)
-        tier_icons = {'gate': '🔒', 'mechanical': '⚙️', 'advisory': '💬', 'none': '⬜'}
-        for d in sorted(coverage_map.keys()):
-            info = coverage_map[d]
-            dpct = info['covered'] / info['total'] * 100 if info['total'] > 0 else 0
-            bar_len = int(dpct / 5)
-            bar = '█' * bar_len + '░' * (20 - bar_len)
-            status = '✅' if dpct == 100 else '⚠️' if dpct > 0 else '🔴'
-            tier = info.get('tier', 'none')
-            print(f'{d:<40} {info["covered"]:>3}/{info["total"]:<3} {status} {bar} {tier_icons.get(tier, "")} {tier}')
-
-        if uncovered_files:
-            print(f'\n🔴 Blind Spots ({len(uncovered_files)} uncovered files):')
-            uncovered_dirs = {}
-            for f in uncovered_files:
-                d = os.path.dirname(f) or '.'
-                uncovered_dirs[d] = uncovered_dirs.get(d, 0) + 1
-            for d, count in sorted(uncovered_dirs.items(), key=lambda x: -x[1])[:10]:
-                print(f'   {d}/ ({count} files)')
-    return 0
 
 
 # ── Immune Grade ───────────────────────────────────────────────────────────
@@ -2124,53 +1964,6 @@ def calculate_immune_grade(workspace: str) -> Optional[dict]:
     }
 
 
-def cli_immune_grade(argv: Optional[List[str]] = None, workspace: Optional[str] = None) -> int:
-    parser = argparse.ArgumentParser(description='Governance report card: single-grade summary')
-    parser.add_argument('--json', action='store_true', help='JSON output')
-    args = parser.parse_args(argv if argv is not None else sys.argv[1:])
-
-    ws = workspace or resolve_workspace()
-
-    report = calculate_immune_grade(ws)
-    if not report:
-        print('No cells found. Run Genesis first.')
-        return 0
-
-    if args.json:
-        out = dict(report)
-        out.pop('top_gap_count', None)
-        out['avg_fitness'].pop('score', None)
-        print(json.dumps(out, indent=2))
-    else:
-        cov_pct = report['coverage']['pct']
-        avg_fit = report['avg_fitness']['score']
-        fit_pct = report['avg_fitness']['pct']
-        div_pct = report['diversity']['pct']
-        stale_pct = report['staleness']['pct']
-        wall_pct = report['wall_integrity']['pct']
-        tiers = report['tiers']
-        overall_grade = report['overall']['grade']
-
-        print()
-        print('═══════════════════════════════════════════')
-        print('  📊 Governance Report Card')
-        print('═══════════════════════════════════════════')
-        print(f'  Coverage:        {cov_pct:5.1f}%  ({letter_grade(cov_pct)})')
-        print(f'  Avg Fitness:     {avg_fit:.2f}   ({letter_grade(fit_pct)})')
-        print(f'  Diversity:       {div_pct:5.1f}%  ({letter_grade(div_pct)})')
-        print(f'  Staleness:       {stale_pct:5.1f}%  ({letter_grade(stale_pct)})')
-        print(f'  Wall Integrity:  {wall_pct:5.1f}%  ({letter_grade(wall_pct)})')
-        print()
-        print(f'  Tiers:           A: {tiers.get("advisory", 0)} | M: {tiers.get("mechanical", 0)} | G: {tiers.get("gate", 0)}')
-        print()
-        print(f'  Overall Grade:   {overall_grade}')
-        print()
-        if report['top_gap_count'] > 0:
-            print(f'  Top Improvement: {report["top_improvement"]}')
-        print('═══════════════════════════════════════════')
-    return 0
-
-
 __all__ = [
     "VALID_SIGNAL_TYPES",
     "VALID_SOURCES",
@@ -2206,7 +1999,6 @@ __all__ = [
     "update_cell_fitness",
     "append_fitness_log",
     "run_outcome_engine",
-    "cli_outcome_engine",
     "main",
     "INSIGHT_PRINCIPAL",
     "INSIGHT_SCOPE",
@@ -2222,17 +2014,13 @@ __all__ = [
     "extract_modified_files",
     "match_cells",
     "update_fitness",
-    "cli_fitness_updater",
     "resolve_metrics_dir",
     "compute_token_census",
     "take_snapshot",
-    "cli_metrics_snapshot",
     "evaluate_quorum",
-    "cli_cell_quorum",
     "calculate_coverage",
     "calculate_cell_coverage",
-    "cli_cell_coverage",
     "letter_grade",
     "calculate_immune_grade",
-    "cli_immune_grade",
 ]
+

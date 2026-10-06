@@ -3,6 +3,28 @@
 All notable changes to Soma are documented here.
 This project uses [Semantic Versioning](https://semver.org/).
 
+## [0.99.0] — 2026-10-06 — "Core/CLI Decoupling & Legacy CLI Purge"
+
+### Removed (Bloat Elimination)
+- **Purged 29 Legacy `cli_*` CLI Wrappers Trapped in `soma_core/`**:
+  - Pruned dead CLI parser functions embedded in `soma_core/lifecycle.py` (`cli_cell_transfer`, `cli_cell_demote`, `cli_cell_metamorphose`, `cli_cell_adapt`, `cli_cell_selection`, `cli_cell_fitness`).
+  - Pruned dead CLI wrappers in `soma_core/homeostasis.py` (`cli_soma_sleep`, `cli_soma_coherence`, `cli_soma_interoception`, `cli_resilience_engine`).
+  - Pruned dead CLI wrappers in `soma_core/defects.py` (`cli_diagnose_hot_zones`, `cli_cell_escaped_defects`, `cli_cell_expiry`).
+  - Pruned dead CLI wrappers in `soma_core/insights.py` (`cli_insight_capture`, `cli_insight_correlator`).
+  - Pruned dead CLI wrappers in `soma_core/sync.py` (`cli_liveness_sentinel`, `cli_escalation_sentinel`, `cli_team_sync`, `cli_hgt_ribosome`, `cli_immune_sweep`, `cli_post_session_hook`).
+  - Pruned dead CLI wrappers in `soma_core/telemetry.py` (`cli_outcome_engine`, `cli_fitness_updater`, `cli_metrics_snapshot`, `cli_cell_quorum`, `cli_cell_coverage`, `cli_immune_grade`).
+  - Pruned dead CLI wrappers in `soma_core/arbitration.py` (`cli_oracle`) and `soma_core/enforcement.py` (`cli_cell_enforce`).
+  - Net core reduction: >1,000 lines of deadwood pruned from `soma_core/`, eliminating all unused `argparse` imports.
+- **Eliminated Forwarding Layer `soma_cli/handlers/` and Stale Handler Tests**:
+  - Deleted legacy forwarding package `soma_cli/handlers/` (`lifecycle.py`, `sentinels.py`, `sync.py`, `telemetry.py`, `__init__.py`).
+  - Deleted `tests/test_cli_handlers.py`.
+
+### Added
+- **Pure Core Tier Evaluation (`soma_core.lifecycle.evaluate_cell_tiers`)**:
+  - Extracted tier decay and promotion evaluation logic out of legacy CLI wrappers into a pure library function in `soma_core/lifecycle.py`.
+- **CLI Subcommand Support for `--tier-check`**:
+  - Wired `--tier-check` flag into `soma promote` in `soma_cli/promote.py` and `soma_cli/cli.py` with support for both human-readable summaries and machine-readable `--json` output.
+
 ## [0.98.0] — 2026-10-06 — "Test Suite Rationalization & Deadwood Pruning"
 
 ### Removed (Bloat Elimination)

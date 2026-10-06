@@ -582,25 +582,6 @@ def generate_checkpoint(workspace: Optional[str] = None, session_count: Optional
     }
 
 
-def cli_oracle(argv: Optional[List[str]] = None) -> int:
-    """CLI entrypoint for ttc_oracle."""
-    args = argv if argv is not None else sys.argv[1:]
-    if len(args) < 2:
-        print("Usage: ttc_oracle.py <workspace> <target_file> [proposed_content_file]")
-        return 1
-
-    workspace = args[0]
-    target_file = args[1]
-    if len(args) >= 3:
-        with open(args[2], "r", encoding="utf-8") as f:
-            proposed_content = f.read()
-    else:
-        proposed_content = sys.stdin.read()
-
-    result = evaluate_change(workspace, target_file, proposed_content, strict=True)
-    print(result)
-    return 1 if (result.startswith("REJECTED") or result.startswith("BLOCKED")) else 0
-
 
 def cli_checkpoint(argv: Optional[List[str]] = None) -> int:
     """CLI entrypoint for oracle_checkpoint."""
@@ -687,7 +668,6 @@ __all__ = [
     "_load_cells",
     "_classify_cell",
     "_classify_cells",
-    "cli_oracle",
     "cli_checkpoint",
     "self_test_verifier",
 ]

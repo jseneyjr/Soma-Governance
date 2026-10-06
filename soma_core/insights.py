@@ -257,60 +257,9 @@ def create_cell_from_insight_cluster(cluster: dict, workspace: str) -> str:
     return filepath
  
  
-def cli_insight_capture(argv: Optional[List[str]] = None) -> int:
-    parser = argparse.ArgumentParser(description="Capture human insight")
-    parser.add_argument("--insight", required=True, help="Insight description")
-    parser.add_argument("--files", nargs="+", required=True, help="Context files")
-    parser.add_argument("--conversation", default=None, help="Source conversation ID")
-    parser.add_argument("--category", default=None, help="Insight category")
-    parser.add_argument("--workspace", default=None, help="Workspace root")
-
-    args = parser.parse_args(argv if argv is not None else sys.argv[1:])
-    workspace = args.workspace or resolve_workspace()
-
-    record = capture_insight(
-        workspace=workspace,
-        insight=args.insight,
-        context_files=args.files,
-        source_conversation=args.conversation,
-        category=args.category,
-    )
-    print(f"Captured insight: {record['insight'][:60]} (covered: {record['was_covered']})")
-    return 0
-
-
-def cli_insight_correlator(argv: Optional[List[str]] = None) -> int:
-    parser = argparse.ArgumentParser(description="Cluster human insights into cell candidates")
-    parser.add_argument("--workspace", default=None, help="Workspace root")
-    parser.add_argument("--min-cluster-size", type=int, default=3, help="Min cluster size")
-    parser.add_argument("--window-days", type=int, default=30, help="Rolling window days")
-    parser.add_argument("--json", action="store_true", help="JSON output")
-
-    args = parser.parse_args(argv if argv is not None else sys.argv[1:])
-    workspace = args.workspace or resolve_workspace()
-
-    clusters = cluster_insights(
-        workspace=workspace,
-        min_cluster_size=args.min_cluster_size,
-        window_days=args.window_days,
-    )
-    candidates = generate_cell_candidates(clusters, workspace)
-
-    if args.json:
-        print(json.dumps({"clusters": clusters, "candidates": candidates}, indent=2))
-    else:
-        print(f"Clustered {len(clusters)} insight patterns ({len(candidates)} candidates):")
-        for c in candidates:
-            print(f"  • {c['hypothesis']}")
-
-    return 0
-
-
 __all__ = [
     "capture_insight",
     "cluster_insights",
     "generate_cell_candidates",
     "create_cell_from_insight_cluster",
-    "cli_insight_capture",
-    "cli_insight_correlator",
 ]

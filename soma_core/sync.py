@@ -10,7 +10,6 @@ Consolidates:
 """
 from __future__ import annotations
 
-import argparse
 from datetime import datetime, timezone
 import fnmatch
 import glob
@@ -70,16 +69,6 @@ def check_liveness(payload_str: str) -> int:
         return 1
 
 
-def cli_liveness_sentinel(argv: Optional[List[str]] = None) -> int:
-    parser = argparse.ArgumentParser(description="Subagent liveness sentinel")
-    parser.add_argument("--check", dest="payload", default="", help="JSON string with agent list")
-    args = parser.parse_args(argv if argv is not None else sys.argv[1:])
-
-    if not args.payload:
-        print("Usage: liveness_sentinel.py --check '{\"agents\": [...]}'")
-        return 0
-
-    return check_liveness(args.payload)
 
 
 # ── Escalation Sentinel ────────────────────────────────────────────────────
@@ -490,24 +479,6 @@ def run_last_gasp(workspace: Path | None = None) -> int:
     return 0
 
 
-def cli_escalation_sentinel(argv: Optional[List[str]] = None) -> int:
-    args_list = argv if argv is not None else sys.argv[1:]
-
-    if "--last-gasp" in args_list:
-        return run_last_gasp()
-
-    mode = "--all"
-    file_args: list[str] = []
-
-    for arg in args_list:
-        if arg == "--staged":
-            mode = "--staged"
-        elif arg == "--all":
-            mode = "--all"
-        elif not arg.startswith("--"):
-            file_args.append(arg)
-
-    return recommend_protocol(mode=mode, file_args=file_args)
 
 
 # ── Team Sync ──────────────────────────────────────────────────────────────
@@ -649,27 +620,6 @@ def run_status(repo_dir: Path, team_repo: Path, org_repo: Path | None) -> int:
     return 0
 
 
-def cli_team_sync(argv: Optional[List[str]] = None) -> int:
-    parser = argparse.ArgumentParser(description="Synchronize cells and metrics with team repositories")
-    parser.add_argument("command", choices=["push", "pull", "status"], default="status", nargs="?")
-    args = parser.parse_args(argv if argv is not None else sys.argv[1:])
-
-    repo_dir = Path(resolve_workspace())
-    cfg = load_soma_config(repo_dir)
-
-    team_repo_str = cfg.get("TEAM_REPO", "../soma-team")
-    team_repo = (repo_dir / team_repo_str).resolve()
-    org_repo_str = cfg.get("ORG_REPO")
-    org_repo = (repo_dir / org_repo_str).resolve() if org_repo_str else None
-    member_id = cfg.get("MEMBER_ID", os.environ.get("USER", "anonymous"))
-
-    if args.command == "push":
-        return run_push(repo_dir, team_repo, org_repo, member_id)
-    elif args.command == "pull":
-        return run_pull(repo_dir, team_repo, org_repo)
-    else:
-        return run_status(repo_dir, team_repo, org_repo)
-
 
 # ── Horizontal Gene Transfer (Ribosome) ────────────────────────────────────
 
@@ -687,47 +637,6 @@ def prompt_llm_translation(cell_content: str, mock: bool = False) -> str:
 
     return "# Generalized Strategy\n- Apply caution and verify inputs."
 
-
-def cli_hgt_ribosome(argv: Optional[List[str]] = None) -> int:
-    parser = argparse.ArgumentParser(description="HGT Ribosome Translator")
-    parser.add_argument("source_file", help="Path to foreign cell")
-    parser.add_argument("--mock", action="store_true", help="Use mock LLM output")
-    args = parser.parse_args(argv if argv is not None else sys.argv[1:])
-
-    if not os.path.exists(args.source_file):
-        print(f"Error: {args.source_file} not found.")
-        return 1
-
-    with open(args.source_file, "r", encoding="utf-8-sig") as f:
-        content = f.read()
-
-    metadata = parse_frontmatter(content)
-    body = _get_body(content)
-
-    print(f"🧬 Ribosome intercepting: {args.source_file}")
-    translated_body = prompt_llm_translation(body, mock=args.mock)
-
-    ws = resolve_workspace()
-    genome_dir = os.path.join(ws, "genome")
-    os.makedirs(genome_dir, exist_ok=True)
-
-    first_line = translated_body.split("\n")[0]
-    filename_base = re.sub(r"[^a-z0-9]+", "-", first_line.lower().replace("#", "").strip()).strip("-")
-    gene_id = f"hgt-{filename_base}"
-    filename = f"{gene_id}.md"
-
-    output_path = os.path.join(genome_dir, filename)
-    new_metadata = {
-        "id": gene_id,
-        "domain": "governance",
-        "name": filename_base,
-        "type": "gene",
-    }
-    with open(output_path, "w", encoding="utf-8") as outf:
-        outf.write("---\n" + dump_frontmatter(new_metadata) + "---\n" + translated_body + "\n")
-
-    print(f"✅ Translated and saved gene: {output_path}")
-    return 0
 
 
 # ── Immune Sweep ───────────────────────────────────────────────────────────
@@ -1023,12 +932,6 @@ def run_sweep(active_only: bool = False, soma_data_dir: Path | None = None) -> i
     return 0
 
 
-def cli_immune_sweep(argv: Optional[List[str]] = None) -> int:
-    parser = argparse.ArgumentParser(description="Governance Sweep")
-    parser.add_argument("--active-only", action="store_true", help="Only check active sessions")
-    args = parser.parse_args(argv if argv is not None else sys.argv[1:])
-    return run_sweep(active_only=args.active_only)
-
 
 # ── Evidence Aggregation & Frontmatter Sync ───────────────────────────────
 
@@ -1272,24 +1175,6 @@ def run_post_session_hook(
     return 0
 
 
-def cli_post_session_hook(argv: Optional[List[str]] = None) -> int:
-    parser = argparse.ArgumentParser(description="Post-session hook for Soma governance")
-    parser.add_argument("transcript_path", type=Path, help="Path to transcript.jsonl")
-    parser.add_argument("--platform", default=None, help="Platform name")
-    parser.add_argument("--cells-dir", type=Path, default=None, help="Cells directory")
-    parser.add_argument("--evidence-dir", type=Path, default=None, help="Evidence directory")
-    parser.add_argument("--json", action="store_true", help="Emit JSON output")
-    args = parser.parse_args(argv if argv is not None else sys.argv[1:])
-
-    return run_post_session_hook(
-        transcript_path=args.transcript_path,
-        platform=args.platform,
-        cells_dir=args.cells_dir,
-        evidence_dir=args.evidence_dir,
-        use_json=getattr(args, "json", False),
-    )
-
-
 __all__ = [
     "HIGH_PATTERNS",
     "MEDIUM_PATTERNS",
@@ -1297,7 +1182,6 @@ __all__ = [
     "TEST_PATTERNS",
     "PROTOCOL_RANKS",
     "check_liveness",
-    "cli_liveness_sentinel",
     "classify_file",
     "is_test_file",
     "gather_files",
@@ -1308,19 +1192,14 @@ __all__ = [
     "set_review_mode",
     "write_frontmatter",
     "run_last_gasp",
-    "cli_escalation_sentinel",
     "load_soma_config",
     "run_push",
     "run_pull",
     "run_status",
-    "cli_team_sync",
     "prompt_llm_translation",
-    "cli_hgt_ribosome",
     "resolve_home",
     "run_sweep",
-    "cli_immune_sweep",
     "run_post_session_hook",
-    "cli_post_session_hook",
     "aggregate_evidence",
     "sync_frontmatter",
 ]

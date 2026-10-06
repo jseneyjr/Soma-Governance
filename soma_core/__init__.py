@@ -1,6 +1,6 @@
 """soma_core package - foundational state and security primitives."""
 
-__version__ = "0.98.0"
+__version__ = "0.99.0"
 
 from soma_core import (
     arbitration,
