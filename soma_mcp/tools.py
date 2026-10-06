@@ -875,10 +875,7 @@ def _handle_verify_changes(args: dict, gov) -> dict:
     try:
         from soma_core.verification import runner
     except ImportError:
-        try:
-            from immune_system.verification import runner
-        except ImportError:
-            return {"error": "immune_system.verification is not importable. Install soma with immune_system package."}
+        return {"error": "soma_core.verification is not importable. Install soma package."}
     results = runner.run_layer1(changed_files=files, repo_root=workspace)
     verdict = runner.gate_verdict(results)
     summary = runner.format_summary(results)
@@ -941,7 +938,7 @@ def _handle_checkpoint(args: dict, gov) -> dict:
     except ValueError as exc:
         return {"error": str(exc), "status": _STATUS_FAIL}
     if _run_checkpoint_checks is None:
-        return {"error": "immune_system module is not available", "status": _STATUS_FAIL}
+        return {"error": "checkpoint verification is not available", "status": _STATUS_FAIL}
     from pathlib import Path
     root = Path(workspace)
     issues = _run_checkpoint_checks(root)

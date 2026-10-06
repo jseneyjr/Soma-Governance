@@ -17,7 +17,7 @@ import sys
 import sysconfig
 import tempfile
 
-PACKAGES = ("soma_cli", "soma_sdk", "soma_core", "soma_mcp", "immune_system")
+PACKAGES = ("soma_cli", "soma_sdk", "soma_core", "soma_mcp")
 
 
 def fail(msg):

@@ -10,7 +10,7 @@ Checks:
 
 Supports --pre-commit (warn mode), --strict, --json, --workspace flags.
 
-All check implementations live in immune_system.verification.checkpoint_checks
+All check implementations live in soma_core.verification.checkpoint_checks
 to share logic with soma_mcp without copy-paste.
 """
 from __future__ import annotations

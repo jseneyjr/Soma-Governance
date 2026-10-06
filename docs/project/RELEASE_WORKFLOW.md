@@ -18,7 +18,6 @@ develop ──→ release/v0.XX ──→ PR to main ──→ tag v0.XX.0 ─�
    - `VERSION` → `0.XX.0`
    - `README.md` → version badge
    - `soma_sdk/__init__.py` → `__version__ = "0.XX.0"`
-   - `soma_sdk_js/package.json` → `"version": "0.XX.0"`
    - Run `pytest tests/test_static_invariants.py::test_version_is_single_sourced` and the release-specific checks.
 4. **Push branch**: `git push -u origin release/v0.XX`
 5. **Create PR**: `gh pr create --base main --head release/v0.XX --title "release(v0.XX): <summary>"`
@@ -55,6 +54,7 @@ develop ──→ release/v0.XX ──→ PR to main ──→ tag v0.XX.0 ─�
 | Phase 5.11 | v0.100.0 ✅ | Core God Module Decomposition & Verification Deduplication |
 | Phase 5.12 | v0.101.0 ✅ | Immune System Unification & Lifecycle Consolidation |
 | Phase 5.13 | v0.102.0 ✅ | Facade Hardening & Final Prune (Bloat Initiative Completion) |
+| Phase 6 | v0.103.0 ✅ | Legacy Sunset, Packaging Decoupling & Lifecycle Modularization |
 
 ## Pre-Release Checklist
 
@@ -62,7 +62,7 @@ Before creating a release PR, verify:
 - [ ] All phase verification-gate items pass
 - [ ] `python3 enzymes/verify_readme_claims.py` passes
 - [ ] `pytest tests/` passes with 0 failures
-- [ ] Version is synchronized across `pyproject.toml`, `VERSION`, the README badge, `soma_sdk/__init__.py`, and `soma_sdk_js/package.json`
+- [ ] Version is synchronized across `pyproject.toml`, `VERSION`, the README badge, and `soma_sdk/__init__.py`
 - [ ] Validation creates exactly one wheel and one sdist plus `SHA256SUMS`
 - [ ] Source-hidden smoke tests pass for both wheel and sdist
 - [ ] Publish downloads and digest-verifies the validated artifact; it does not rebuild

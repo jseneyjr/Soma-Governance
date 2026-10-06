@@ -10,7 +10,7 @@ REPO_ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__fi
 if REPO_ROOT not in sys.path:
     sys.path.insert(0, REPO_ROOT)
 
-from immune_system.verification.mutation_tester import check
+from soma_core.verification.mutation_tester import check
 
 
 # --- Fixture functions for mutation testing ---

@@ -15,7 +15,7 @@ import pytest
 REPO_ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 sys.path.insert(0, REPO_ROOT)
 
-from immune_system.verification import ToolEvidence
+from soma_core.verification import ToolEvidence
 
 
 class TestMutationTesterContract:
@@ -23,7 +23,7 @@ class TestMutationTesterContract:
 
     def test_returns_tool_evidence(self, tmp_path):
         """check() must return a passing ToolEvidence for a well-tested function."""
-        from immune_system.verification import mutation_tester
+        from soma_core.verification import mutation_tester
 
         src = tmp_path / "target.py"
         src.write_text(textwrap.dedent("""\
@@ -53,7 +53,7 @@ class TestMutationTesterContract:
 
     def test_catches_tautological_test(self, tmp_path):
         """A test that passes regardless of implementation should FAIL."""
-        from immune_system.verification import mutation_tester
+        from soma_core.verification import mutation_tester
 
         src = tmp_path / "target.py"
         src.write_text(textwrap.dedent("""\
@@ -84,7 +84,7 @@ class TestMutationTesterContract:
 
     def test_real_test_passes(self, tmp_path):
         """A test that validates behavior should PASS (no survivors)."""
-        from immune_system.verification import mutation_tester
+        from soma_core.verification import mutation_tester
 
         src = tmp_path / "target.py"
         src.write_text(textwrap.dedent("""\
@@ -117,7 +117,7 @@ class TestMutationTesterContract:
 
     def test_reports_survival_count(self, tmp_path):
         """Result detail must include numeric survived vs total counts."""
-        from immune_system.verification import mutation_tester
+        from soma_core.verification import mutation_tester
 
         src = tmp_path / "target.py"
         src.write_text(textwrap.dedent("""\
@@ -145,7 +145,7 @@ class TestMutationTesterContract:
 
     def test_empty_function_passes(self, tmp_path):
         """A function with no mutable operations should pass trivially."""
-        from immune_system.verification import mutation_tester
+        from soma_core.verification import mutation_tester
 
         src = tmp_path / "target.py"
         src.write_text(textwrap.dedent("""\
@@ -175,7 +175,7 @@ class TestMutationTesterBudget:
 
     def test_respects_max_mutations(self, tmp_path):
         """Must not generate more mutations than the budget allows."""
-        from immune_system.verification import mutation_tester
+        from soma_core.verification import mutation_tester
 
         src = tmp_path / "target.py"
         src.write_text(textwrap.dedent("""\
@@ -225,7 +225,7 @@ class TestMutationTesterFailsClosed:
         return src
 
     def test_unrunnable_test_file_fails_closed(self, tmp_path):
-        from immune_system.verification import mutation_tester
+        from soma_core.verification import mutation_tester
 
         src = self._target(tmp_path)
         test = tmp_path / "test_target.py"
@@ -243,7 +243,7 @@ class TestMutationTesterFailsClosed:
         assert result.lines == [-1]
 
     def test_baseline_assertion_failure_fails_closed(self, tmp_path):
-        from immune_system.verification import mutation_tester
+        from soma_core.verification import mutation_tester
 
         src = self._target(tmp_path)
         test = tmp_path / "test_target.py"
@@ -266,7 +266,7 @@ class TestMutationTesterAppliesEveryCollectedMutation:
     check them still reported verdict=True ("0/2 survived")."""
 
     def test_unchecked_comparison_survives(self, tmp_path):
-        from immune_system.verification import mutation_tester
+        from soma_core.verification import mutation_tester
 
         src = tmp_path / "target.py"
         src.write_text(textwrap.dedent("""\
@@ -287,7 +287,7 @@ class TestMutationTesterAppliesEveryCollectedMutation:
         assert result.detail == "2/2 survived"
 
     def test_checked_boolean_logic_kills_mutants(self, tmp_path):
-        from immune_system.verification import mutation_tester
+        from soma_core.verification import mutation_tester
 
         src = tmp_path / "target.py"
         src.write_text(textwrap.dedent("""\
@@ -311,7 +311,7 @@ class TestMutationTesterAppliesEveryCollectedMutation:
     def test_docstring_and_return_none_are_not_mutated(self, tmp_path):
         """Deleting a docstring or turning `return None` into `return None`
         changes nothing, so no test could kill those mutants."""
-        from immune_system.verification import mutation_tester
+        from soma_core.verification import mutation_tester
 
         src = tmp_path / "target.py"
         src.write_text(textwrap.dedent('''\

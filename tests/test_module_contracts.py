@@ -15,7 +15,6 @@ from conftest import REPO_ROOT
 SOURCE_PACKAGES = [
     "soma_core",
     "soma_cli",
-    "immune_system",
     "soma_mcp",
     "soma_sdk",
 ]

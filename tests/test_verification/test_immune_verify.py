@@ -17,7 +17,7 @@ import pytest
 REPO_ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 sys.path.insert(0, REPO_ROOT)
 
-from immune_system.verification import (
+from soma_core.verification import (
     RiskCategory, Severity, Prediction, Claim, ArbitrationResult, Verdict,
     ToolEvidence, PREDICTION_SCHEMA, CLAIM_SCHEMA,
 )
@@ -27,7 +27,7 @@ class TestSignatureExtractor:
     """Contract: extract_signatures returns def lines without bodies."""
 
     def test_extracts_function_names(self, tmp_path):
-        from immune_system.verification.immune_verify import extract_signatures
+        from soma_core.verification.immune_verify import extract_signatures
 
         src = tmp_path / "target.py"
         src.write_text(textwrap.dedent("""\
@@ -51,7 +51,7 @@ class TestSignatureExtractor:
 
     def test_signatures_do_not_contain_bodies(self, tmp_path):
         """Signatures must NOT leak implementation details."""
-        from immune_system.verification.immune_verify import extract_signatures
+        from soma_core.verification.immune_verify import extract_signatures
 
         src = tmp_path / "target.py"
         src.write_text(textwrap.dedent("""\
@@ -69,7 +69,7 @@ class TestSignatureExtractor:
 
     def test_includes_argument_names(self, tmp_path):
         """Signatures should include parameter names for context."""
-        from immune_system.verification.immune_verify import extract_signatures
+        from soma_core.verification.immune_verify import extract_signatures
 
         src = tmp_path / "target.py"
         src.write_text(textwrap.dedent("""\
@@ -85,7 +85,7 @@ class TestSignatureExtractor:
 
     def test_includes_docstrings(self, tmp_path):
         """Signatures must include docstrings (they're part of the contract)."""
-        from immune_system.verification.immune_verify import extract_signatures
+        from soma_core.verification.immune_verify import extract_signatures
 
         src = tmp_path / "target.py"
         src.write_text(textwrap.dedent("""\
@@ -105,7 +105,7 @@ class TestInformationPartitioning:
 
     def test_spec_prompt_has_no_implementation(self):
         """Spec prompt must contain plan and signatures, NOT code bodies."""
-        from immune_system.verification.immune_verify import build_spec_prompt
+        from soma_core.verification.immune_verify import build_spec_prompt
 
         plan = "Implement idempotent decay with last_decay_epoch guard"
         signatures = ["def apply_decay(meta, session_id=None):"]
@@ -124,7 +124,7 @@ class TestInformationPartitioning:
 
     def test_code_prompt_has_no_plan(self):
         """Code prompt must contain implementation, NOT the plan or spec."""
-        from immune_system.verification.immune_verify import build_code_prompt
+        from soma_core.verification.immune_verify import build_code_prompt
 
         implementation = "fitness['last_decay_epoch'] = int(time.time())"
         test_results = "test_decay: PASSED"
@@ -137,7 +137,7 @@ class TestInformationPartitioning:
 
     def test_spec_prompt_forces_prediction_schema(self):
         """Spec prompt must include ALL required schema fields and ALL risk categories."""
-        from immune_system.verification.immune_verify import build_spec_prompt
+        from soma_core.verification.immune_verify import build_spec_prompt
 
         prompt = build_spec_prompt("plan", ["def f():"], ["test_f"])
         # Must reference all required schema keys
@@ -149,7 +149,7 @@ class TestInformationPartitioning:
 
     def test_code_prompt_forces_claim_schema(self):
         """Code prompt must include ALL required claim schema fields and ALL risk categories."""
-        from immune_system.verification.immune_verify import build_code_prompt
+        from soma_core.verification.immune_verify import build_code_prompt
 
         prompt = build_code_prompt("code", "results", {})
         for key in ["category", "claim", "evidence_file", "evidence_line"]:
@@ -163,7 +163,7 @@ class TestParsing:
 
     def test_parse_predictions_all_fields(self):
         """Parse must populate ALL fields of the Prediction dataclass."""
-        from immune_system.verification.immune_verify import parse_predictions
+        from soma_core.verification.immune_verify import parse_predictions
 
         raw = [
             {
@@ -186,7 +186,7 @@ class TestParsing:
 
     def test_parse_claims_all_fields(self):
         """Parse must populate ALL fields of the Claim dataclass."""
-        from immune_system.verification.immune_verify import parse_claims
+        from soma_core.verification.immune_verify import parse_claims
 
         raw = [
             {
@@ -209,7 +209,7 @@ class TestParsing:
 
     def test_parse_skips_invalid_categories(self):
         """Unknown categories should be skipped, not crash."""
-        from immune_system.verification.immune_verify import parse_predictions
+        from soma_core.verification.immune_verify import parse_predictions
 
         raw = [
             {
@@ -230,8 +230,8 @@ class TestEndToEnd:
 
     def test_full_pipeline_produces_arbitration_result(self):
         """Providing sample predictions + claims + evidence must produce ArbitrationResult."""
-        from immune_system.verification.immune_verify import parse_predictions, parse_claims
-        from immune_system.verification.arbiter import arbitrate
+        from soma_core.verification.immune_verify import parse_predictions, parse_claims
+        from soma_core.verification.arbiter import arbitrate
 
         raw_preds = [
             {

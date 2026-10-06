@@ -220,6 +220,12 @@ Unified the verification framework by establishing `soma_core/verification/` as 
 **Status**: ✅ Shipped (v0.102.0)  
 Decomposed monolithic `execute_tool()` in `soma_mcp/tools.py` into modular per-tool handlers with a declarative dispatch map, fixing syntax anomalies. Streamlined `_list_cells_stdlib` while preserving `TOOL_DEFINITIONS` literal AST compliance. Pruned dead legacy enzyme stubs in `soma_sdk/governance.py` (`_run_script`, `replay`, `trends`, `dependencies`, `adversarial`) and write-hook dead code in `soma_sdk/cells.py`. Eliminated leftover empty shims (`DESTRUCTIVE_PATTERNS = ()` and `STARTER_RULES_LEGACY`). Optimized `soma_core/__init__.py` with PEP 562 dynamic attribute resolution, accelerating cold package import by ~16x (down to 3.3ms) and process startup to 41ms. Completed comprehensive 5-phase bloat and latency audit.
 
+## Phase 6 — v0.103.0 ✅ Shipped
+
+### Legacy Sunset & Lifecycle Modularization
+**Status**: ✅ Shipped (v0.103.0)  
+Sunsetted legacy `immune_system/` compatibility shims, pruning 18 forwarding files. Pruned unmaintained `soma_sdk_js/` zero-dependency Node.js client package. Sunsetted dead epoch migration CLI engine `soma_cli/migration.py` and `tests/test_migration.py` while ensuring continuous BUG-019 and BUG-025 test suite coverage via tombstone regressions in `tests/test_legacy_purged_regressions.py`. Purged dead `install/starter_pack.txt` stub. Modularized 1,884-line monolithic `soma_core/lifecycle.py` into a structured, highly maintainable `soma_core/lifecycle/` package (`constants`, `parsers`, `quorum`, `decay`, `creation`, `promotion`, `selection`) with backward-compatible symbol re-exporting.
+
 ## Research
 
 ### Antifragile Scaling

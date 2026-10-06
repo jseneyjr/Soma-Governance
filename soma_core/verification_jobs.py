@@ -148,10 +148,7 @@ def get_runner() -> Any:
         return _RUNNER
     try:
         import importlib
-        try:
-            return importlib.import_module("soma_core.verification.runner")
-        except ImportError:
-            return importlib.import_module("immune_system.verification.runner")
+        return importlib.import_module("soma_core.verification.runner")
     except ImportError:
         return None
 

@@ -3,6 +3,32 @@
 All notable changes to Soma are documented here.
 This project uses [Semantic Versioning](https://semver.org/).
 
+## [0.103.0] — 2026-10-06 — "Legacy Sunset & Lifecycle Modularization"
+
+### Architecture & Modularization (Phase 6 Bloat Elimination)
+- **Sunset Legacy Verification Shims (`immune_system/`)**:
+  - Removed 18 legacy forwarding shims and mulch queue stubs in `immune_system/` (-323 LOC).
+  - Repointed all test suites (19 test files) to canonical `soma_core.verification` and `soma_core.lifecycle`.
+  - Cleaned package configurations across `pyproject.toml`, `Makefile`, `.gitignore`, and wheel smoke validation.
+- **Pruned Unmaintained JavaScript SDK (`soma_sdk_js/`)**:
+  - Removed outdated zero-dependency Node.js client (-889 LOC) to focus on the pure-stdlib Python SDK and MCP server.
+  - Retired obsolete SDK parity contract `.soma/cells/plasmodesmata/contract-sdk-feature-parity.md` and pruned documentation references.
+- **Sunset Dead Epoch Migration Engine (`soma_cli/migration.py`)**:
+  - Purged epoch migration CLI command and test suite (-640 LOC).
+  - Created tombstone regression tests `test_bug_019_epoch_migration_purged` and `test_bug_025_migration_lock_purged` in `tests/test_legacy_purged_regressions.py` guaranteeing BUG-019 and BUG-025 traceability.
+- **Purged Dead Install Stubs (`install/starter_pack.txt`)**:
+  - Removed unused static starter pack file in favor of runtime template generators.
+- **Modularized Lifecycle Engine (`soma_core/lifecycle/`)**:
+  - Decomposed 1,884-line monolithic `soma_core/lifecycle.py` into a cohesive `soma_core/lifecycle/` package:
+    - `constants.py`: status enumerations, thresholds, path constants, and metadata mappings.
+    - `parsers.py`: cell parsing, slug generation, frontmatter transforms, and atomic file maneuvers.
+    - `quorum.py`: lifecycle state predicates (`calculate_fitness_status`, `is_promotable`, `is_extinct`).
+    - `decay.py`: exponential decay, Bayesian fitness scoring, and aggregate fitness calculation.
+    - `creation.py`: cell creation (`create_cell`, `create_cell_from_description`), CLI and transfer handlers.
+    - `promotion.py`: promotion, demotion, tier evaluation, adaptation, and metamorphosis.
+    - `selection.py`: selection pressure, crossover (`crossover_cells`), and cell pruning.
+    - `__init__.py`: backward-compatible facade re-exporting all 53 public symbols in `__all__`.
+
 ## [0.102.0] — 2026-10-06 — "Facade Hardening & Final Prune"
 
 ### Architecture & Pruning (Final Bloat Remediation Phase)

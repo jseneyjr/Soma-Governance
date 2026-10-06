@@ -101,17 +101,6 @@ def test_documentation_index_local_links_exist():
     assert not missing, f"docs/index.md has missing local links: {missing}"
 
 
-def test_javascript_readme_uses_package_manifest_name():
-    package = json.loads(read(str(ROOT / "soma_sdk_js" / "package.json")))
-    name = package["name"]
-    sdk_readme = read(str(ROOT / "soma_sdk_js" / "README.md"))
-    top_readme = read(str(ROOT / "README.md"))
-    assert sdk_readme.startswith(f"# {name}\n")
-    assert f"npm install {name}" in sdk_readme
-    assert f"require('{name}')" in sdk_readme
-    assert f"npm install {name}" in top_readme
-
-
 def test_windows_issue_sections_match_bug_registry():
     version = read(str(ROOT / "VERSION")).strip()
     registry = json.loads(read(str(ROOT / "docs" / "project" / "BUG_REGISTRY.json")))

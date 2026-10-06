@@ -5,8 +5,8 @@ import tempfile
 
 import pytest
 
-from immune_system.verification import RiskCategory, Severity, Verdict
-from immune_system.verification.review_adapter import (
+from soma_core.verification import RiskCategory, Severity, Verdict
+from soma_core.verification.review_adapter import (
     _classify_finding,
     findings_to_claims,
     findings_to_predictions,

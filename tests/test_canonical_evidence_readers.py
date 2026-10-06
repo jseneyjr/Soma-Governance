@@ -115,7 +115,7 @@ def test_report_and_status_use_canonical_triggers_not_legacy(tmp_path, capsys):
 
 def test_oracle_and_lifecycle_use_weighted_canonical_signals(tmp_path):
     from soma_core.arbitration import generate_checkpoint
-    from immune_system.verification.lifecycle import evaluate_promotions
+    from soma_core.lifecycle import evaluate_promotions
 
     cells = tmp_path / ".soma" / "cells" / "vacuoles"
     _cell(cells / "canonical.md", "canonical")
@@ -133,7 +133,7 @@ def test_oracle_and_lifecycle_use_weighted_canonical_signals(tmp_path):
 
 
 def test_checkpoint_fails_closed_and_uses_weighted_outcomes(tmp_path):
-    from immune_system.verification.checkpoint_checks import check_cell_fitness
+    from soma_core.verification.checkpoint_checks import check_cell_fitness
 
     evidence = tmp_path / ".soma" / "evidence"
     evidence.mkdir(parents=True)
@@ -176,8 +176,8 @@ def test_owned_production_has_no_active_legacy_evidence_paths():
             ROOT / "soma_cli" / "sync.py", ROOT / "soma_cli" / "report.py", ROOT / "soma_cli" / "status.py",
             ROOT / "enzymes" / "oracle_checkpoint.py", ROOT / "enzymes" / "session_close.sh",
             ROOT / "enzymes" / "cell_create_nl.py", ROOT / "enzymes" / "soma_resolve.py",
-            ROOT / "enzymes" / "fitness_updater.py", ROOT / "immune_system" / "verification" / "checkpoint_checks.py",
-            ROOT / "immune_system" / "verification" / "lifecycle.py",
+            ROOT / "enzymes" / "fitness_updater.py", ROOT / "soma_core" / "verification" / "checkpoint_checks.py",
+            ROOT / "soma_core" / "lifecycle.py",
         ]
         if p.exists()
     ]
@@ -214,7 +214,7 @@ def test_sync_malformed_ledger_does_not_apply_partial_counts(tmp_path, monkeypat
 
 
 def test_lifecycle_does_not_infer_zero_triggers_from_outcome_only_data(tmp_path):
-    from immune_system.verification.lifecycle import evaluate_demotions
+    from soma_core.lifecycle import evaluate_demotions
 
     cell = tmp_path / ".soma" / "cells" / "walls" / "outcome-only.md"
     _cell(cell, "outcome-only", cell_type="wall", age_days=120)

@@ -9,7 +9,7 @@ prediction: Will catch modules that have test_*.py coverage but no imports from 
   soma_mcp/, or enzymes/
 falsification: 0 findings in 20 sessions → prune
 target_paths:
-- immune_system/**/*.py
+- soma_core/**/*.py
 - soma_cli/*.py
 - soma_mcp/*.py
 triggers:

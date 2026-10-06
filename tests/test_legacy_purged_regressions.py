@@ -81,3 +81,14 @@ def test_bug_062_shell_upward_traversal():
 def test_bug_063_uninstall_sed_rules():
     """BUG-063: uninstall.sh sed rule deletion pattern."""
     assert not (ROOT / "install" / "uninstall.sh").exists()
+
+
+def test_bug_019_epoch_migration_purged():
+    """BUG-019: epoch migration purged in v0.103.0."""
+    assert not (ROOT / "soma_cli" / "migration.py").exists()
+
+
+def test_bug_025_migration_lock_purged():
+    """BUG-025: migration locks purged in v0.103.0."""
+    assert not (ROOT / "soma_cli" / "migration.py").exists()
+
