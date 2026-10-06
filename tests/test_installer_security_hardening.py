@@ -13,6 +13,9 @@ from conftest import REPO_ROOT, require_bash, run
 
 def test_install_sh_unlinks_symlink_before_writing_rules(tmp_path, fake_home):
     """install.sh must unlink pre-existing symlinks in target rules dir instead of writing through them."""
+    installer = os.path.join(REPO_ROOT, "install", "install.sh")
+    if not os.path.exists(installer):
+        pytest.skip("legacy shell installers purged in v0.97.0")
     bash = require_bash()
     kiro_dir = fake_home / ".kiro" / "steering"
     kiro_dir.mkdir(parents=True)
@@ -24,7 +27,7 @@ def test_install_sh_unlinks_symlink_before_writing_rules(tmp_path, fake_home):
     os.symlink(str(sensitive_file), str(target_rule))
 
     env = {"HOME": str(fake_home), "USERPROFILE": str(fake_home), "SOMA_PYTHON": "python3"}
-    proc = run([bash, os.path.join(REPO_ROOT, "install", "install.sh"), "kiro"], env=env)
+    proc = run([bash, installer, "kiro"], env=env)
     assert proc.returncode == 0, proc.stderr
 
     # Sensitive file must NOT have been overwritten
@@ -35,6 +38,9 @@ def test_install_sh_unlinks_symlink_before_writing_rules(tmp_path, fake_home):
 
 def test_uninstall_sh_atomic_python_edit_preserves_file_on_error(tmp_path, fake_home):
     """uninstall.sh must not delete a user file if inline python editing fails."""
+    uninstaller = os.path.join(REPO_ROOT, "install", "uninstall.sh")
+    if not os.path.exists(uninstaller):
+        pytest.skip("legacy shell installers purged in v0.97.0")
     bash = require_bash()
     claude_md = fake_home / ".claude" / "CLAUDE.md"
     claude_md.parent.mkdir(parents=True)
@@ -42,7 +48,7 @@ def test_uninstall_sh_atomic_python_edit_preserves_file_on_error(tmp_path, fake_
 
     # Run uninstall with keep-config
     env = {"HOME": str(fake_home), "USERPROFILE": str(fake_home), "SOMA_PYTHON": "python3"}
-    proc = run([bash, os.path.join(REPO_ROOT, "install", "uninstall.sh"), "claude", "--force", "--no-restore"], env=env)
+    proc = run([bash, uninstaller, "claude", "--force", "--no-restore"], env=env)
     assert proc.returncode == 0, proc.stderr
 
     # The file should exist and contain user content, but not Soma content
@@ -54,12 +60,14 @@ def test_uninstall_sh_atomic_python_edit_preserves_file_on_error(tmp_path, fake_
 
 def test_cell_create_sh_blocks_path_traversal(tmp_path):
     """cell_create.sh must reject ID_OVERRIDE with path traversal tokens."""
+    cell_create = os.path.join(REPO_ROOT, "enzymes", "cell_create.sh")
+    if not os.path.exists(cell_create):
+        pytest.skip("enzymes directory purged in v0.97.0")
     bash = require_bash()
     proj = tmp_path / "proj"
     proj.mkdir()
     (proj / ".soma" / "cells" / "vacuoles").mkdir(parents=True)
 
-    cell_create = os.path.join(REPO_ROOT, "enzymes", "cell_create.sh")
     proc = run([bash, cell_create, "--id", "../../../pwned", "--type", "vacuole", "--hypothesis", "test"], cwd=str(proj))
     assert proc.returncode != 0 or not (tmp_path / "pwned.md").exists()
     assert not (tmp_path / "pwned.md").exists()
