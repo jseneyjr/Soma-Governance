@@ -9,9 +9,8 @@ prediction: Adding a new platform to install.sh without updating uninstall.sh cr
 falsification: "Platform count matches between install.sh and uninstall.sh for 10\
   \ sessions \u2192 maintain"
 target_paths:
-- install/install.sh
-- install/install.ps1
-- install/uninstall.sh
+- soma_cli/platforms/*.py
+- soma_cli/cli.py
 expiry_sessions: 15
 expiry_days: 60
 created: '2026-09-28'

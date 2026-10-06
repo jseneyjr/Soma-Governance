@@ -9,9 +9,8 @@ prediction: Deploying this persona will increase the robustness of install and s
   scripts.
 falsification: Shell scripts are deprecated and no longer used.
 target_paths:
-- enzymes/*.sh
-- install/*.sh
-- enzymes/safety_gate.sh
+- install/hooks/*
+- Makefile
 expiry_sessions: 60
 impact_weight: 0.8
 minimum_mode: breeze

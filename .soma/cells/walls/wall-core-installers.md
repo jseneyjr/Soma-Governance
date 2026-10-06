@@ -10,12 +10,10 @@ hypothesis: Changes to install.sh, install.ps1, uninstall.sh, common.sh, and Mak
 prediction: Will flag unreviewed changes to core installer infrastructure
 falsification: "0 findings in 15 sessions \u2192 prune"
 target_paths:
-- install/install.sh
-- install/install.ps1
-- install/uninstall.sh
+- soma_cli/platforms/*.py
+- soma_cli/cli.py
 - install/hooks/*
 - install/soma.conf.example
-- enzymes/common.sh
 - Makefile
 expiry_sessions: 15
 expiry_days: 60
