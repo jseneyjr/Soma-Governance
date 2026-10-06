@@ -33,7 +33,7 @@ def _script_groups():
     return {
         "Lifecycle Scripts (Hooks)": {ROOT / "install" / "hooks" / "pre-commit"},
         "Verification Scripts": {
-            path for path in (ROOT / "immune_system" / "verification").iterdir()
+            path for path in (ROOT / "soma_core" / "verification").iterdir()
             if path.is_file() and path.suffix == ".py" and path.name != "__init__.py"
         },
         "CLI Commands": {ROOT / "soma"} | {

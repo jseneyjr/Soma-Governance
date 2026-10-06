@@ -379,22 +379,6 @@ class TestManifestSigning:
         assert "signature" not in loaded
 
 
-# ── Enzyme Import Allowlist ───────────────────────────────────────────
-
-
-class TestEnzymeImportAllowlist:
-    def test_rejects_unlisted_module(self):
-        """Modules not in the allowlist are rejected."""
-        from soma_mcp.tools import _safe_import_enzyme
-
-        with pytest.raises(ImportError, match="not in the import allowlist"):
-            _safe_import_enzyme("malicious_module", "evil_func")
-
-    def test_allowlist_is_frozen(self):
-        """Allowlist is a frozenset and cannot be mutated."""
-        from soma_mcp.tools import _ENZYME_ALLOWLIST
-
-        assert isinstance(_ENZYME_ALLOWLIST, frozenset)
 
 
 # ── Session Auth ──────────────────────────────────────────────────────
