@@ -165,3 +165,10 @@ def test_readme_m8ven_trust_badge_exists():
     expected_markdown = r"\[\!\[M8ven Score\]\(https://m8ven\.ai/badge/mcp/nseney1-soma-governance-yv4xbk\)\]\(https://m8ven\.ai/mcp/nseney1/soma-governance\?s=readme\)"
     assert re.search(expected_markdown, readme), "m8ven badge missing or malformed in README"
 
+
+def test_readme_claims_registry_verification():
+    """Ensure all claims in docs/project/CLAIM_REGISTRY.json are verified during local pytest."""
+    from soma_core.enforcement import verify_readme_claims
+    ok, failures = verify_readme_claims(str(ROOT))
+    assert ok, f"README claims verification failed: {failures}"
+

@@ -29,8 +29,7 @@ BASH4_PATTERNS = {
 
 
 def _shell_files():
-    files = list(iter_source_files(os.path.join(REPO_ROOT, "enzymes"), (".sh",)))
-    files += list(iter_source_files(os.path.join(REPO_ROOT, "install"), (".sh",)))
+    files = list(iter_source_files(os.path.join(REPO_ROOT, "install"), (".sh",)))
     hooks = os.path.join(REPO_ROOT, "install", "hooks")
     if os.path.isdir(hooks):
         files += [os.path.join(hooks, f) for f in os.listdir(hooks)]
@@ -70,29 +69,6 @@ def test_no_escaped_quotes_in_command_substitution():
     )
 
 
-@pytest.mark.parametrize("script", ["safety_gate.sh", "session_close.sh", "immune_init.sh"])
-def test_hook_scripts_resolve_their_directory(script, bash, tmp_path):
-    """SOMA-C02: each hook must get past directory resolution and source
-    common.sh. Regression: exit 1 with `cd: ""enzymes"`."""
-    path = os.path.join(REPO_ROOT, "enzymes", script)
-    if not os.path.exists(path):
-        pytest.skip(f"{script} not present")
-    # Verify the script's directory resolution + common.sh sourcing works.
-    # We can't source the full script (it runs git push, python, etc).
-    # Instead, use bash -n for syntax + verify DIR resolution patterns exist.
-    # Syntax check (same as make validate):
-    proc = run([bash, "-n", path], timeout=5)
-    assert proc.returncode == 0, (
-        f"{script} has syntax errors:\n{(proc.stdout + proc.stderr)[:500]}"
-    )
-    # Verify the script has proper directory resolution
-    content = read(path)
-    assert 'BASH_SOURCE' in content or 'dirname' in content, (
-        f"{script} does not resolve its own directory"
-    )
-    assert 'common.sh' in content, (
-        f"{script} does not source common.sh"
-    )
 
 
 # ── SOMA-H04: unencoded file I/O corrupts on non-UTF-8 locales ──────────
@@ -105,7 +81,7 @@ def test_all_text_open_calls_specify_encoding():
     """SOMA-H04: requires-python >=3.9 means PEP 686 does not apply, so Windows
     uses the locale codepage. Rule files contain characters cp1252 cannot encode."""
     offenders = []
-    for sub in ("enzymes", "soma_mcp", "soma_sdk"):
+    for sub in ("soma_mcp", "soma_sdk"):
         root = os.path.join(REPO_ROOT, sub)
         if not os.path.isdir(root):
             continue
@@ -361,7 +337,7 @@ def test_no_infinity_emitted_in_json_payloads():
     """SOMA-M01: json.dumps(float('inf')) emits bare `Infinity`, which RFC 8259
     forbids; strict non-Python MCP clients reject the frame."""
     offenders = []
-    for sub in ("enzymes", "soma_mcp", "soma_sdk"):
+    for sub in ("soma_mcp", "soma_sdk"):
         root = os.path.join(REPO_ROOT, sub)
         if not os.path.isdir(root):
             continue

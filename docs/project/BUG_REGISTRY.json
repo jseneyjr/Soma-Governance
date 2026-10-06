@@ -180,7 +180,7 @@
         "tests/conftest.py",
         "tests/test_install_lifecycle.py"
       ],
-      "regression_test": "tests/test_home_isolation.py::test_home_only_override_isolates_installer_home",
+      "regression_test": "tests/test_legacy_purged_regressions.py::test_bug_010_home_isolation",
       "pattern": "Test isolation relies on HOME overrides that the code under test does not honor",
       "changelog_ref": "v0.90.0"
     },
@@ -382,7 +382,7 @@
         "install/uninstall.sh",
         "install/uninstall.ps1"
       ],
-      "regression_test": "tests/test_uninstall_confinement.py::test_dotdot_escape_is_refused",
+      "regression_test": "tests/test_legacy_purged_regressions.py::test_bug_021_uninstall_confinement_dotdot",
       "pattern": "String prefix check used as path containment",
       "changelog_ref": "v0.89.0"
     },
@@ -656,7 +656,7 @@
         "install/uninstall.sh",
         "enzymes/common.sh"
       ],
-      "regression_test": "tests/test_uninstall_confinement.py::test_msys_form_plan_entries_inside_roots_are_accepted",
+      "regression_test": "tests/test_legacy_purged_regressions.py::test_bug_036_uninstall_msys_paths",
       "pattern": "POSIX-form paths handed to a native Windows interpreter",
       "changelog_ref": "v0.90.0"
     },
@@ -676,7 +676,7 @@
       ],
       "pattern": "Interpreter presence checked with command -v instead of by running it",
       "fixed_in": "v0.90.0",
-      "regression_test": "tests/test_python_resolution.py",
+      "regression_test": "tests/test_legacy_purged_regressions.py::test_bug_037_python_resolution",
       "changelog_ref": "v0.90.0"
     },
     {
@@ -720,7 +720,7 @@
         "immune_system/verification/persistence_checker.py",
         "immune_system/verification/runner.py"
       ],
-      "regression_test": "tests/test_enzyme_console_encoding.py::test_every_entry_point_with_non_ascii_output_guards_stdout",
+      "regression_test": "tests/test_legacy_purged_regressions.py::test_bug_038_enzyme_console_encoding",
       "pattern": "Relying on the platform default encoding instead of an explicit utf-8",
       "changelog_ref": "v0.90.0"
     },
@@ -796,7 +796,7 @@
       "affected_files": [
         "enzymes/immune_sweep.sh"
       ],
-      "regression_test": "tests/test_immune_sweep.py::test_immune_sweep_runs_without_soma_data_dir",
+      "regression_test": "tests/test_legacy_purged_regressions.py::test_bug_042_immune_sweep_env",
       "pattern": "Variable read under set -u that no code path assigns",
       "changelog_ref": "v0.90.0"
     },
@@ -812,7 +812,7 @@
       "affected_files": [
         "install/uninstall.sh"
       ],
-      "regression_test": "tests/test_install_lifecycle.py::test_manifestless_uninstall_without_python_removes_nothing",
+      "regression_test": "tests/test_legacy_purged_regressions.py::test_bug_043_manifestless_uninstall",
       "pattern": "Security check degrades to a weaker fallback instead of failing closed",
       "changelog_ref": "v0.90.0"
     },
@@ -831,7 +831,7 @@
         "install/install.sh",
         "install/uninstall.sh"
       ],
-      "regression_test": "tests/test_shell_isolation_behavioral.py::test_install_and_uninstall_ignore_cwd_modules",
+      "regression_test": "tests/test_legacy_purged_regressions.py::test_bug_044_shell_isolation",
       "pattern": "Inline interpreter code run with the current directory on the import path",
       "changelog_ref": "v0.90.0"
     },
@@ -847,7 +847,7 @@
       "affected_files": [
         "install/uninstall.sh"
       ],
-      "regression_test": "tests/test_shell_isolation_behavioral.py::test_settings_cleanup_refuses_symlinked_claude_dir",
+      "regression_test": "tests/test_legacy_purged_regressions.py::test_bug_045_settings_cleanup_symlink",
       "pattern": "File rewrite that bypasses the path confinement guard",
       "changelog_ref": "v0.90.0"
     },
@@ -1014,7 +1014,7 @@
       "affected_files": [
         "enzymes/session_close.sh"
       ],
-      "regression_test": "tests/test_shell_isolation_behavioral.py",
+      "regression_test": "tests/test_legacy_purged_regressions.py::test_bug_055_session_close_order",
       "pattern": "Git push executed before lifecycle mutation steps complete",
       "changelog_ref": "v0.91.0"
     },
@@ -1078,7 +1078,7 @@
       "affected_files": [
         "enzymes/post_session_hook.sh"
       ],
-      "regression_test": "tests/test_shell_isolation_behavioral.py",
+      "regression_test": "tests/test_legacy_purged_regressions.py::test_bug_059_post_session_hook_heredoc",
       "pattern": "Unquoted heredoc interpolates unescaped shell variables into inline script",
       "changelog_ref": "v0.92.3"
     },
@@ -1129,7 +1129,7 @@
         "enzymes/team_sync.sh",
         "enzymes/cell_transfer.sh"
       ],
-      "regression_test": "tests/test_shell_isolation_behavioral.py",
+      "regression_test": "tests/test_legacy_purged_regressions.py::test_bug_062_shell_upward_traversal",
       "pattern": "Directory walk loop termination condition assumes POSIX root slash only",
       "changelog_ref": "v0.92.3"
     },
@@ -1145,7 +1145,7 @@
       "affected_files": [
         "install/uninstall.sh"
       ],
-      "regression_test": "tests/test_uninstall_confinement.py",
+      "regression_test": "tests/test_legacy_purged_regressions.py::test_bug_063_uninstall_sed_rules",
       "pattern": "Multiline section deletion regex truncates past section boundary or orphans content",
       "changelog_ref": "v0.92.3"
     },
