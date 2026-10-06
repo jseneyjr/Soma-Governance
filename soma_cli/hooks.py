@@ -372,46 +372,34 @@ def run_pre_invocation(
 def run_session_close(workspace: Path | None = None) -> tuple[int, dict[str, Any]]:
     """Run session close lifecycle tasks (outcome evaluation, cell evolution, and consolidation)."""
     import random
-    import subprocess
 
     root = workspace or Path.cwd()
-    scripts_dir = root / "enzymes"
-    if not (scripts_dir / "outcome_engine.py").is_file():
-        steering_env = os.environ.get("SOMA_STEERING_REPO")
-        if steering_env and (Path(steering_env) / "enzymes" / "outcome_engine.py").is_file():
-            scripts_dir = Path(steering_env) / "enzymes"
-        else:
-            package_enzymes = Path(__file__).resolve().parent.parent / "enzymes"
-            if (package_enzymes / "outcome_engine.py").is_file():
-                scripts_dir = package_enzymes
 
-    # 1. Outcome engine if available
-    outcome_engine = scripts_dir / "outcome_engine.py"
-    if outcome_engine.is_file():
-        try:
-            subprocess.run([sys.executable, str(outcome_engine)], cwd=root, capture_output=True, text=True)
-        except Exception:
-            pass
+    # 1. Outcome engine (in-process ACE reflector)
+    try:
+        from soma_core.telemetry import run_outcome_engine
+        run_outcome_engine(workspace=str(root))
+    except Exception:
+        pass
 
-    # 2. Cell fitness if available
-    cell_fitness = scripts_dir / "cell_fitness.py"
-    if cell_fitness.is_file():
-        try:
-            subprocess.run([sys.executable, str(cell_fitness)], cwd=root, capture_output=True, text=True)
-        except Exception:
-            pass
+    # 2. Cell fitness calculation
+    try:
+        from soma_core.lifecycle import compute_cells_fitness
+        compute_cells_fitness(workspace=str(root))
+    except Exception:
+        pass
 
     # 3. Cell selection pressure (archive extinct cells)
-    cell_selection = scripts_dir / "cell_selection.py"
-    if cell_selection.is_file():
-        try:
-            subprocess.run([sys.executable, str(cell_selection), "--execute"], cwd=root, capture_output=True, text=True)
-        except Exception:
-            pass
+    try:
+        from soma_core.lifecycle import run_cell_selection
+        run_cell_selection(workspace=root, execute=True)
+    except Exception:
+        pass
 
     # 4. Probabilistic crossover
     try:
         from soma_core.evidence import aggregate_signals
+        from soma_core.lifecycle import crossover_cells
         evidence_dir = root / ".soma" / "evidence"
         if evidence_dir.is_dir():
             signal_counts = aggregate_signals(evidence_dir).counts
@@ -423,21 +411,12 @@ def run_session_close(workspace: Path | None = None) -> tuple[int, dict[str, Any
             high_fitness = [cid for cid, count in cell_triggers.items() if count >= 5]
             if len(high_fitness) >= 2:
                 pair = random.sample(high_fitness, 2)
-                cell_crossover = scripts_dir / "cell_crossover.py"
-                if cell_crossover.is_file():
-                    subprocess.run([sys.executable, str(cell_crossover), pair[0], pair[1]], cwd=root, capture_output=True, text=True)
+                crossover_cells(root, pair[0], pair[1])
     except Exception:
         pass
 
-    # 5. Stochastic genesis
-    cell_genesis = scripts_dir / "cell_genesis_stochastic.py"
-    if cell_genesis.is_file():
-        try:
-            subprocess.run([sys.executable, str(cell_genesis)], cwd=root, capture_output=True, text=True)
-        except Exception:
-            pass
-
     return 0, {}
+
 
 
 # ── Pre-Commit Hook ───────────────────────────────────────────────────────────
