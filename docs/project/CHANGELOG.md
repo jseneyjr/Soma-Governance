@@ -3,6 +3,26 @@
 All notable changes to Soma are documented here.
 This project uses [Semantic Versioning](https://semver.org/).
 
+## [0.100.0] — 2026-10-06 — "Core God Module Decomposition & Verification Deduplication"
+
+### Architecture & Decomposition (Bloat Remediation)
+- **Decomposed `soma_core/telemetry.py` God-Module (1,911 LOC -> ~450 LOC)**:
+  - Extracted verifiable outcome reflection, credit assignment, fitness signals, transcript updater, and ACE reflector loop into [`soma_core/outcomes.py`](../../soma_core/outcomes.py).
+  - Extracted token census aggregation, metrics snapshot persistence, cell quorum sensing, coverage mapping, and immune report cards into [`soma_core/metrics.py`](../../soma_core/metrics.py).
+  - Retained canonical atomic evidence ledger, process-level locks, and epoch generation fences in [`soma_core/telemetry.py`](../../soma_core/telemetry.py).
+  - Implemented module facade proxy on `soma_core.telemetry` mirroring attribute mutations and re-exporting all symbols for 100% backward compatibility.
+- **Decomposed `soma_core/sync.py` God-Module (1,206 LOC -> ~750 LOC)**:
+  - Extracted subagent liveness & deadlock detection, protocol escalation recommender, and last-gasp apoptosis sentinels into [`soma_core/sentinels.py`](../../soma_core/sentinels.py).
+  - Fixed hidden file stripping bug in `classify_file` where `.github/` lost its leading period.
+  - Re-exported all sentinel functions and sensitivity patterns in `soma_core.sync`.
+- **Deduplicated Triplicate Cell Matching Algorithms**:
+  - Unified `match_cells_to_changes`, `match_cells`, and `_match_cells` into canonical `find_matching_cells` in [`soma_core/cell_inventory.py`](../../soma_core/cell_inventory.py).
+  - Eliminated divergent path separator normalization and glob edge cases.
+- **Consolidated OS File Locking**:
+  - Replaced raw `fcntl`/`msvcrt` imports in `soma_core/telemetry.py` with centralized, cross-platform locking primitives from [`soma_core/locking.py`](../../soma_core/locking.py).
+- **Added Canonical Colocated Test Suites**:
+  - Added [`tests/test_outcomes.py`](../../tests/test_outcomes.py), [`tests/test_metrics.py`](../../tests/test_metrics.py), and [`tests/test_sentinels.py`](../../tests/test_sentinels.py) with 100% test colocation parity and green `soma checkpoint`.
+
 ## [0.99.0] — 2026-10-06 — "Core/CLI Decoupling & Legacy CLI Purge"
 
 ### Removed (Bloat Elimination)

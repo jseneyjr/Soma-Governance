@@ -1,11 +1,13 @@
 """Canonical, race-detecting inventory of governance cell files."""
 from __future__ import annotations
 
+import fnmatch
 import hashlib
 import os
+from pathlib import Path
 import stat
 from dataclasses import dataclass
-from typing import List, Optional, Tuple
+from typing import Iterable, List, Optional, Tuple
 
 
 @dataclass(frozen=True)
@@ -243,10 +245,101 @@ def inventory_cells(workspace: str) -> CellInventory:
     return CellInventory(entries=tuple(entries), fingerprint=aggregate.hexdigest())
 
 
+@dataclass(frozen=True)
+class CellMatch:
+    """Represents a cell whose target_paths matched changed files."""
+
+    cell_id: str
+    cell_type: str
+    cell_path: str
+    frontmatter: dict
+    matched_files: Tuple[str, ...]
+    first_matching_target: Optional[str] = None
+
+
+def find_matching_cells(
+    cells_dir: str | Path,
+    changed_files: Iterable[str],
+    repo_root: str = "",
+    allow_basename_match: bool = True,
+) -> List[CellMatch]:
+    """Find all cells in cells_dir whose target_paths match changed_files."""
+    from soma_core.frontmatter import parse_frontmatter
+
+    cells_path = Path(cells_dir)
+    if not cells_path.is_dir():
+        return []
+
+    files_list = [f for f in changed_files if f]
+    if not files_list:
+        return []
+
+    rel_modified: List[str] = []
+    norm_root = str(repo_root).replace("\\", "/").rstrip("/") if repo_root else ""
+    for f in files_list:
+        norm_f = str(f).replace("\\", "/")
+        if norm_root and norm_f.startswith(norm_root):
+            rel = norm_f[len(norm_root):].lstrip("/")
+        else:
+            rel = norm_f.lstrip("/")
+        rel_modified.append(rel)
+
+    matches: List[CellMatch] = []
+    for md_file in sorted(cells_path.rglob("*.md")):
+        if md_file.name == "README.md":
+            continue
+        try:
+            content = md_file.read_text(encoding="utf-8")
+            fm = parse_frontmatter(content) or {}
+        except Exception:
+            continue
+
+        raw_targets = fm.get("target_paths", [])
+        if isinstance(raw_targets, str):
+            raw_targets = [raw_targets]
+        if not isinstance(raw_targets, list) or not raw_targets:
+            continue
+
+        cell_id = fm.get("id") or md_file.stem
+        cell_type = fm.get("type", "unknown")
+
+        matched_for_cell: List[str] = []
+        first_target: Optional[str] = None
+
+        for rel_file in rel_modified:
+            file_matched = False
+            for target in raw_targets:
+                pat_norm = str(target).replace("\\", "/")
+                if fnmatch.fnmatch(rel_file, pat_norm) or (
+                    allow_basename_match and fnmatch.fnmatch(os.path.basename(rel_file), pat_norm)
+                ):
+                    file_matched = True
+                    if first_target is None:
+                        first_target = target
+                    break
+            if file_matched:
+                matched_for_cell.append(rel_file)
+
+        if matched_for_cell:
+            matches.append(CellMatch(
+                cell_id=cell_id,
+                cell_type=cell_type,
+                cell_path=str(md_file.resolve()),
+                frontmatter=fm,
+                matched_files=tuple(sorted(set(matched_for_cell))),
+                first_matching_target=first_target,
+            ))
+
+    return matches
+
+
 __all__ = [
     "CellInventory",
     "CellInventoryEntry",
     "CellInventoryError",
+    "CellMatch",
+    "find_matching_cells",
     "inventory_cells",
 ]
+
 
