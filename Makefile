@@ -15,7 +15,16 @@ export RULES_SUBSET ENABLE_HOOKS SOMA_PLATFORM
 # A working Python 3.9+ (python3 can be the Windows Store stub, BUG-037).
 # Not exported: install.sh resolves its own, so a working python3 still
 # lands in MCP configs as the portable "python3".
-SOMA_PYTHON_BIN := $(shell bash -c '. enzymes/soma_python.sh && soma_resolve_python && printf %s "$$SOMA_PYTHON"' 2>/dev/null)
+SOMA_PYTHON_BIN ?= $(shell \
+	for py in "$$SOMA_PYTHON" "$$VIRTUAL_ENV/bin/python3" "$$VIRTUAL_ENV/bin/python" python3 python py; do \
+		if [ -n "$$py" ] && command -v "$$py" >/dev/null 2>&1; then \
+			if "$$py" -c "import sys; sys.exit(0 if sys.version_info >= (3, 9) else 1)" 2>/dev/null; then \
+				command -v "$$py"; \
+				break; \
+			fi; \
+		fi; \
+	done \
+)
 
 .PHONY: help info install install-gemini install-kiro install-copilot \
         install-claude install-mcp install-windows \
@@ -93,9 +102,9 @@ doctor: ## Verify installation health & dependencies
 	@command -v sed >/dev/null 2>&1 && echo "  ✅ sed" || echo "  ❌ sed not found"
 	@command -v awk >/dev/null 2>&1 && echo "  ✅ awk" || echo "  ❌ awk not found"
 	@echo ""
-	@echo "Scripts:"
-	@for s in enzymes/*.sh; do \
-	  if [ -f "$$s" ]; then echo "  ✅ $$s"; else echo "  ❌ $$s missing"; fi; \
+	@echo "Packages:"
+	@for mod in soma_core soma_cli soma_sdk soma_mcp; do \
+	  if [ -d "$$mod" ]; then echo "  ✅ $$mod (package)"; else echo "  ❌ $$mod missing"; fi; \
 	done
 	@echo ""
 	@echo "Hook template:"
@@ -125,14 +134,14 @@ doctor: ## Verify installation health & dependencies
 validate: ## Check script syntax and config values
 	@echo "Validating..."
 	@failed=0; \
-	for s in enzymes/*.sh install/hooks/*; do \
+	for s in install/hooks/*; do \
 	  if [ -f "$$s" ]; then \
 	    if bash -n "$$s" 2>/dev/null; then echo "  ✅ $$s"; \
 	    else echo "  ❌ $$s (syntax error)"; bash -n "$$s" || true; failed=1; fi; \
 	  fi; \
 	done; \
 	if [ -n "$(SOMA_PYTHON_BIN)" ]; then \
-	  for p in enzymes/*.py soma_cli/*.py soma_core/*.py soma_mcp/*.py soma_sdk/*.py immune_system/**/*.py; do \
+	  for p in soma_cli/*.py soma_core/*.py soma_mcp/*.py soma_sdk/*.py immune_system/**/*.py; do \
 	    if [ -f "$$p" ]; then \
 	      if "$(SOMA_PYTHON_BIN)" -c "import ast, sys; ast.parse(open(sys.argv[1], encoding='utf-8').read())" "$$p" 2>/dev/null; then :; \
 	      else echo "  ❌ $$p (syntax error)"; failed=1; fi; \
