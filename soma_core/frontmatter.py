@@ -8,20 +8,14 @@ from __future__ import annotations
 import os
 import re
 
-# pyyaml is an OPTIONAL dependency. When it is missing we parse the frontmatter
-# subset used by cells with the stdlib parser below instead of failing to import.
-try:
-    import yaml
-except ImportError:
-    yaml = None
-
-
 # ── Stdlib YAML-subset frontmatter parser ─────────────────────────────
 # Supports exactly what governance cells and genome rules use:
 #   scalars (quoted/plain strings, ints, floats, bools, null)
 #   nested block mappings   (fitness:/lineage: + indented keys)
 #   block sequences         (target_paths:\n  - "enzymes/*.sh")
 #   flow collections        (tags: [a, b] / {k: v})
+#   block scalars           (|, > with chomping indicators)
+#   wrapped plain scalars   (multiline continuation lines)
 # Anything outside that subset raises FrontmatterError so the caller can report
 # a *skipped* cell instead of silently acting on a half-parsed one.
 
@@ -40,11 +34,10 @@ _FLOAT_RE = re.compile(
 )
 _SEQ_MAPPING_RE = re.compile(r'^[A-Za-z_][A-Za-z0-9_.\-]*:(?:\s|$)')
 # Indicators pyyaml rejects outright ('%', '@', '`', '!', '*') plus constructs we
-# cannot honour without a real YAML engine ('|', '>' block scalars, '&' anchors).
-# Refusing beats returning the raw text as a string and acting on wrong data.
-_UNSUPPORTED_PREFIXES = ('|', '>', '&', '*', '!', '%', '@', '`')
+# cannot honour without a real YAML engine ('&' anchors).
+_UNSUPPORTED_PREFIXES = ('&', '*', '!', '%', '@', '`')
 _ESCAPES = {'n': '\n', 't': '\t', 'r': '\r', '0': '\0',
-            '"': '"', '\\': '\\', '/': '/', "'": "'"}
+            '"': '"', '\\': '\\', '/': '/', "'": "'", ' ': ' '}
 
 
 def _skip_ws(text, i):
@@ -60,6 +53,19 @@ def _unescape_double(body):
         ch = body[i]
         if ch == '\\' and i + 1 < len(body):
             nxt = body[i + 1]
+            if nxt == 'u' and i + 5 < len(body):
+                try:
+                    code = int(body[i + 2:i + 6], 16)
+                    out.append(chr(code))
+                    i += 6
+                    continue
+                except ValueError:
+                    pass
+            if nxt == '\n':
+                i += 2
+                while i < len(body) and body[i] in ' \t':
+                    i += 1
+                continue
             out.append(_ESCAPES.get(nxt, '\\' + nxt))
             i += 2
             continue
@@ -235,6 +241,27 @@ def _parse_collection(lines, start, indent):
     return _parse_block_map(lines, start, indent)
 
 
+def _parse_block_scalar(lines, start, parent_indent, style):
+    """Parse block scalar (| or >) lines with chomping indicators."""
+    scalar_lines = []
+    i = start
+    while i < len(lines):
+        line_indent, content, lineno = lines[i]
+        if line_indent <= parent_indent:
+            break
+        scalar_lines.append(content)
+        i += 1
+    if style.startswith('|'):
+        res = '\n'.join(scalar_lines)
+    else:
+        res = ' '.join(scalar_lines)
+    if style.endswith('-'):
+        res = res.rstrip('\n')
+    elif not res.endswith('\n'):
+        res = res + '\n'
+    return res, i
+
+
 def _parse_block_map(lines, start, indent):
     mapping = {}
     i = start
@@ -253,12 +280,50 @@ def _parse_block_map(lines, start, indent):
             raise FrontmatterError(f'line {lineno}: missing key')
         key = str(_parse_scalar(raw_key))
         rest = content[idx + 1:].strip()
-        if rest:
-            mapping[key] = _parse_scalar(rest)
-            i += 1
+
+        # Block scalar (| or >)
+        if rest in ('|', '|-', '|+', '>', '>-', '>+'):
+            mapping[key], i = _parse_block_scalar(lines, i + 1, indent, rest)
             continue
-        # Empty inline value: either a nested block below, or a null scalar.
-        if i + 1 < len(lines) and lines[i + 1][0] > indent:
+
+        if rest:
+            # Check if rest is a quoted string that wraps across lines
+            if rest[:1] in ('"', "'"):
+                quote_char = rest[0]
+                j = i
+                accum = rest
+                while not (len(accum) >= 2 and accum.endswith(quote_char) and not (accum.endswith('\\' + quote_char) and not accum.endswith('\\\\' + quote_char))):
+                    j += 1
+                    if j >= len(lines):
+                        break
+                    accum = accum + '\n' + lines[j][1]
+                i = j + 1
+                mapping[key] = _parse_scalar(accum)
+                continue
+            elif not rest[:1] in ('[', '{'):
+                # Plain scalar: check for continuation lines indented > indent
+                j = i + 1
+                while j < len(lines):
+                    next_indent, next_content, next_lineno = lines[j]
+                    if next_indent <= indent:
+                        break
+                    if _SEQ_MAPPING_RE.match(next_content) or next_content.startswith('- ') or next_content == '-':
+                        break
+                    rest = rest + ' ' + next_content
+                    j += 1
+                i = j
+                mapping[key] = _parse_scalar(rest)
+                continue
+            else:
+                mapping[key] = _parse_scalar(rest)
+                i += 1
+                continue
+
+        # Empty inline value:
+        # Check if next line is a sequence at same indent (e.g. target_paths:\n- item)
+        if i + 1 < len(lines) and lines[i + 1][0] == indent and (lines[i + 1][1] == '-' or lines[i + 1][1].startswith('- ')):
+            mapping[key], i = _parse_block_seq(lines, i + 1, indent)
+        elif i + 1 < len(lines) and lines[i + 1][0] > indent:
             mapping[key], i = _parse_collection(lines, i + 1, lines[i + 1][0])
         else:
             mapping[key] = None
@@ -287,9 +352,23 @@ def _parse_block_seq(lines, start, indent):
                 i += 1
             continue
         if _SEQ_MAPPING_RE.match(body):
-            raise FrontmatterError(
-                f'line {lineno}: sequences of mappings are outside the stdlib parser subset'
-            )
+            item_map = {}
+            k, idx = _read_token(body, 0, ':')
+            v = body[idx + 1:].strip()
+            item_map[str(_parse_scalar(k))] = _parse_scalar(v) if v else None
+            j = i + 1
+            while j < len(lines):
+                ni, nc, nl = lines[j]
+                if ni <= indent or nc.startswith('- ') or nc == '-':
+                    break
+                if ':' in nc:
+                    nk, nidx = _read_token(nc, 0, ':')
+                    nv = nc[nidx + 1:].strip()
+                    item_map[str(_parse_scalar(nk))] = _parse_scalar(nv) if nv else None
+                j += 1
+            items.append(item_map)
+            i = j
+            continue
         items.append(_parse_scalar(body))
         i += 1
     return items, i
@@ -307,7 +386,7 @@ def parse_yaml_subset(text: str) -> dict[str, object]:
 
 
 def parse_frontmatter(content: str) -> dict[str, object] | None:
-    """Parse YAML frontmatter from a cell/genome markdown file.
+    """Parse YAML frontmatter from a cell/genome markdown file without external dependencies.
 
     Returns a dict on success, {} when there is no frontmatter (or it is
     empty), and None when frontmatter is present but cannot be parsed. The
@@ -325,18 +404,12 @@ def parse_frontmatter(content: str) -> dict[str, object] | None:
     if not fm_text:
         return {}
 
-    if yaml is not None:
-        try:
-            data = yaml.safe_load(fm_text)
-        except Exception:
-            return None
-    else:
-        try:
-            data = parse_yaml_subset(fm_text)
-        except FrontmatterError:
-            return None
-        except Exception:
-            return None
+    try:
+        data = parse_yaml_subset(fm_text)
+    except FrontmatterError:
+        return None
+    except Exception:
+        return None
 
     if data is None:
         return {}
@@ -351,10 +424,7 @@ _parse_frontmatter = parse_frontmatter
 
 def dump_frontmatter(data: dict) -> str:
     """Serialize metadata dictionary to YAML frontmatter string without requiring PyYAML."""
-    import json
     from datetime import date, datetime
-    if yaml is not None:
-        return yaml.dump(data, default_flow_style=False, sort_keys=False)
 
     def _format_scalar(val: object) -> str:
         if val is None:
@@ -365,7 +435,20 @@ def dump_frontmatter(data: dict) -> str:
             return str(val)
         if isinstance(val, (datetime, date)):
             return val.isoformat()
-        return json.dumps(str(val))
+        s = str(val)
+        if (
+            not s
+            or any(c in s for c in ":#{}[]|>&*!%@`,\n\"'")
+            or s.strip() != s
+            or s.lower() in _BOOL_TRUE
+            or s.lower() in _BOOL_FALSE
+            or s.lower() in _NULL_VALUES
+            or _INT_RE.match(s)
+            or _FLOAT_RE.match(s)
+        ):
+            escaped = s.replace('\\', '\\\\').replace('"', '\\"').replace('\n', '\\n')
+            return f'"{escaped}"'
+        return s
 
     def _dump_lines(d: dict, indent: int = 0) -> list[str]:
         lines: list[str] = []
@@ -438,11 +521,6 @@ def parse_cell_frontmatter(content_or_path: str) -> tuple[dict[str, object], str
     fm_text = content[3:end].strip()
     if not fm_text:
         data = {}
-    elif yaml is not None:
-        try:
-            data = yaml.safe_load(fm_text)
-        except Exception as e:
-            raise ValueError(f"Invalid YAML: {e}") from e
     else:
         try:
             data = parse_yaml_subset(fm_text)

@@ -1,0 +1,238 @@
+"""Unit and behavioral tests for the pure-stdlib frontmatter engine."""
+from __future__ import annotations
+
+import pytest
+from soma_core.frontmatter import (
+    FrontmatterError,
+    dump_frontmatter,
+    parse_cell_frontmatter,
+    parse_frontmatter,
+    parse_yaml_subset,
+)
+
+
+class TestFrontmatterParser:
+    """Tests for parse_yaml_subset and parse_frontmatter."""
+
+    def test_flat_scalars(self):
+        text = """
+id: cell-123
+name: 'Special Cell'
+count: 42
+pi: 3.14159
+is_active: true
+is_dormant: false
+extra: null
+"""
+        data = parse_yaml_subset(text)
+        assert data["id"] == "cell-123"
+        assert data["name"] == "Special Cell"
+        assert data["count"] == 42
+        assert data["pi"] == 3.14159
+        assert data["is_active"] is True
+        assert data["is_dormant"] is False
+        assert data["extra"] is None
+
+    def test_wrapped_plain_scalars(self):
+        text = """
+hypothesis: A persona specialized in bash scripting improves the quality of shell-based
+  automation.
+prediction: Deploying this persona will increase the robustness of install and safety
+  scripts.
+falsification: Shell scripts are deprecated and no longer used.
+"""
+        data = parse_yaml_subset(text)
+        assert data["hypothesis"] == (
+            "A persona specialized in bash scripting improves the quality of shell-based "
+            "automation."
+        )
+        assert data["prediction"] == (
+            "Deploying this persona will increase the robustness of install and safety "
+            "scripts."
+        )
+        assert data["falsification"] == "Shell scripts are deprecated and no longer used."
+
+    def test_same_indent_sequences(self):
+        text = """
+target_paths:
+- enzymes/*.sh
+- install/*.sh
+- enzymes/safety_gate.sh
+"""
+        data = parse_yaml_subset(text)
+        assert data["target_paths"] == [
+            "enzymes/*.sh",
+            "install/*.sh",
+            "enzymes/safety_gate.sh",
+        ]
+
+    def test_indented_sequences(self):
+        text = """
+tags:
+  - cell
+  - governance
+  - zero-deps
+"""
+        data = parse_yaml_subset(text)
+        assert data["tags"] == ["cell", "governance", "zero-deps"]
+
+    def test_literal_block_scalar_pipe(self):
+        text = """
+activation: |
+  Any git tag creation, version bump (pyproject.toml, VERSION),
+  release branch creation, or merge to main.
+enforcement: gate
+"""
+        data = parse_yaml_subset(text)
+        assert data["activation"] == (
+            "Any git tag creation, version bump (pyproject.toml, VERSION),\n"
+            "release branch creation, or merge to main.\n"
+        )
+        assert data["enforcement"] == "gate"
+
+    def test_literal_block_scalar_chomping(self):
+        text_strip = """
+body: |-
+  line one
+  line two
+"""
+        data = parse_yaml_subset(text_strip)
+        assert data["body"] == "line one\nline two"
+
+    def test_folded_block_scalar_greater_than(self):
+        text = """
+summary: >
+  This is a long sentence
+  that spans across multiple lines
+  in folded style.
+"""
+        data = parse_yaml_subset(text)
+        assert data["summary"] == (
+            "This is a long sentence that spans across multiple lines in folded style.\n"
+        )
+
+    def test_multiline_quoted_strings_with_escapes(self):
+        text = r"""
+falsification: "Platform count matches between install.sh and uninstall.sh for 10\
+  \ sessions \u2192 maintain"
+"""
+        data = parse_yaml_subset(text)
+        assert data["falsification"] == (
+            "Platform count matches between install.sh and uninstall.sh for 10 sessions \u2192 maintain"
+        )
+
+    def test_sequences_of_mappings(self):
+        text = """
+rules:
+  - id: rule-1
+    weight: 1.0
+  - id: rule-2
+    weight: 0.5
+"""
+        data = parse_yaml_subset(text)
+        assert data["rules"] == [
+            {"id": "rule-1", "weight": 1.0},
+            {"id": "rule-2", "weight": 0.5},
+        ]
+
+    def test_nested_mappings(self):
+        text = """
+fitness:
+  score: 0.95
+  signals:
+    tp: 19
+    fp: 1
+"""
+        data = parse_yaml_subset(text)
+        assert data["fitness"]["score"] == 0.95
+        assert data["fitness"]["signals"]["tp"] == 19
+        assert data["fitness"]["signals"]["fp"] == 1
+
+    def test_flow_collections(self):
+        text = """
+tags: [alpha, beta, gamma]
+options: {enabled: true, max_depth: 3}
+"""
+        data = parse_yaml_subset(text)
+        assert data["tags"] == ["alpha", "beta", "gamma"]
+        assert data["options"] == {"enabled": True, "max_depth": 3}
+
+    def test_comments_and_blank_lines(self):
+        text = """
+# Header comment
+id: test-cell # inline comment
+
+# Another comment
+tags: # comment on tag
+  - tag1 # comment 1
+  - tag2
+"""
+        data = parse_yaml_subset(text)
+        assert data["id"] == "test-cell"
+        assert data["tags"] == ["tag1", "tag2"]
+
+    def test_parse_frontmatter_wrapper(self):
+        content = """---
+id: test
+enforcement: advisory
+---
+
+# Cell Body
+This is markdown content.
+"""
+        meta = parse_frontmatter(content)
+        assert meta == {"id": "test", "enforcement": "advisory"}
+
+    def test_parse_frontmatter_empty_or_missing(self):
+        assert parse_frontmatter("# Just markdown\nNo frontmatter") == {}
+        assert parse_frontmatter("---\n---\nBody") == {}
+        assert parse_frontmatter("---\nopened but never closed") is None
+
+    def test_parse_cell_frontmatter_body_separation(self, tmp_path):
+        cell_file = tmp_path / "cell.md"
+        cell_file.write_text(
+            "---\nid: cell-file\ntype: wall\n---\n\n# Body Heading\nBody content\n",
+            encoding="utf-8",
+        )
+        meta, body = parse_cell_frontmatter(str(cell_file))
+        assert meta == {"id": "cell-file", "type": "wall"}
+        assert body == "# Body Heading\nBody content\n"
+
+
+class TestFrontmatterDumper:
+    """Tests for dump_frontmatter."""
+
+    def test_dump_roundtrip_simple(self):
+        data = {
+            "id": "my-cell",
+            "type": "wall",
+            "weight": 1.5,
+            "count": 10,
+            "active": True,
+            "tags": ["wall", "security"],
+        }
+        dumped = dump_frontmatter(data)
+        parsed = parse_frontmatter(f"---\n{dumped}---\n")
+        assert parsed == data
+
+    def test_dump_roundtrip_nested(self):
+        data = {
+            "id": "nested-cell",
+            "fitness": {
+                "score": 0.85,
+                "history": [1, 2, 3],
+                "meta": {"verified": False},
+            },
+        }
+        dumped = dump_frontmatter(data)
+        parsed = parse_frontmatter(f"---\n{dumped}---\n")
+        assert parsed == data
+
+    def test_dump_escaping(self):
+        data = {
+            "title": "Rule: Always Check Inputs",
+            "note": "Line 1\nLine 2",
+        }
+        dumped = dump_frontmatter(data)
+        parsed = parse_frontmatter(f"---\n{dumped}---\n")
+        assert parsed == data
