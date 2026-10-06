@@ -192,6 +192,12 @@ class TestVerifyRealRegistry:
         registry = load_registry(REPO_ROOT)
         assert len(registry['bugs']) >= 5
 
+    def test_real_registry_regression_tests(self):
+        """The actual BUG_REGISTRY.json regression tests all pass."""
+        registry = load_registry(REPO_ROOT)
+        errors = verify_regression_tests(registry, REPO_ROOT)
+        assert len(errors) == 0, f"Regression test errors: {errors}"
+
 class TestRegressionTestExecution:
     """Regression tests must actually be run, not just collected."""
     

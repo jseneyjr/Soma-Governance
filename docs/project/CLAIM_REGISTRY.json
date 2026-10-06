@@ -16,7 +16,7 @@
       "status": "unlocked",
       "readme_text": "Cross-platform support for macOS, Linux, and Windows",
       "required_tests": [
-        "tests/test_install_lifecycle.py"
+        "tests/test_platform_adapters.py"
       ]
     },
     "claim_cli_commands": {
@@ -93,8 +93,7 @@
       "status": "unlocked",
       "readme_text": "Tournament selection for rule competition",
       "required_tests": [
-        "tests/test_tournament_integration.py::TestTournamentBasics::test_tournament_with_cells_exits_zero",
-        "tests/test_tournament_integration.py::TestTournamentReadOnly::test_cell_files_unchanged_after_tournament"
+        "tests/test_phase4_enzymes.py::test_cell_selection_evaluation"
       ]
     },
     "claim_quorum_sensing": {
