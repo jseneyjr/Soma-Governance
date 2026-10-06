@@ -9,7 +9,7 @@ prediction: Handling exit code 5 gracefully will improve outcome engine reliabil
 falsification: A lack of collected tests is always a critical failure.
 target_paths:
 - tests/*.py
-- enzymes/*.py
+- soma_core/*.py
 expiry_sessions: 30
 impact_weight: 0.7
 minimum_mode: breeze

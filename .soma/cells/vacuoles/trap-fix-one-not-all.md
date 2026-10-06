@@ -10,8 +10,8 @@ prediction: Fixing a bug in one enzyme without grepping for the same pattern acr
 falsification: If 10 consecutive multi-file bug fixes all pass the refactoring sweep
   check on first attempt, this vacuole is unnecessary
 target_paths:
-- enzymes/*.py
-- enzymes/*.sh
+- soma_core/*.py
+- soma_cli/*.py
 - soma_mcp/*.py
 - tests/*.py
 triggers:
