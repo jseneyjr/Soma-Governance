@@ -16,7 +16,8 @@ from typing import Any, Dict, List, Optional
 
 from soma_core.workspace import resolve_workspace
 from soma_core.defects import find_covering_cells, load_cells
-from soma_core.frontmatter import parse_frontmatter, parse_yaml_subset
+from soma_core.frontmatter import parse_frontmatter, parse_yaml_subset, dump_frontmatter
+from soma_core.evidence import aggregate_signals
 
 
 def _load_signal_weight(workspace: str) -> float:
@@ -196,8 +197,66 @@ def generate_cell_candidates(
         })
 
     return candidates
-
-
+ 
+ 
+def create_cell_from_insight_cluster(cluster: dict, workspace: str) -> str:
+    """Create a governance cell from an insight cluster."""
+    import re
+ 
+    category = cluster.get("common_category") or "unknown"
+    files = cluster.get("common_files", [])
+    confidence = cluster.get("confidence", 0.5)
+    files_str = ", ".join(files) if files else "project-wide"
+ 
+    hypothesis = f"Human attention pattern detected: {category} in {files_str}"
+ 
+    slug = re.sub(r"[^a-z0-9]+", "-", category.lower())[:50].strip("-") or "unknown"
+    cell_id = f"vacuole-{slug}"
+ 
+    frontmatter = {
+        "id": cell_id,
+        "type": "vacuole",
+        "domain": "correctness",
+        "hypothesis": hypothesis,
+        "prediction": f"Recurring {category} issues will continue if unaddressed",
+        "falsification": f"No {category} insights observed for 60 days",
+        "target_paths": list(files),
+        "minimum_mode": "breeze",
+        "origin": "human_insight",
+        "tags": ["auto-generated", "insight-cluster", category],
+    }
+ 
+    fm_text = dump_frontmatter(frontmatter)
+ 
+    body = (
+        f"This vacuole was auto-generated from a cluster of human insights "
+        f"about **{category}** (confidence {confidence:.2f}).\n"
+    )
+    cell_content = f"---\n{fm_text}---\n\n{body}"
+ 
+    filename = f"vacuole-{slug}.md"
+    target_dir = os.path.join(workspace, ".soma", "cells", "vacuoles")
+    os.makedirs(target_dir, exist_ok=True)
+ 
+    filepath = os.path.join(target_dir, filename)
+    if os.path.isfile(filepath):
+        evidence_dir = os.path.join(workspace, ".soma", "evidence")
+        signal_counts = aggregate_signals(evidence_dir).counts
+        c_id = frontmatter.get("id", "")
+        if signal_counts.get(c_id, {}).get("has_triggers", False):
+            return filepath
+ 
+    try:
+        os.unlink(filepath)
+    except OSError:
+        pass
+    fd = os.open(filepath, os.O_CREAT | os.O_EXCL | os.O_WRONLY, 0o644)
+    with open(fd, "w", encoding="utf-8") as f:
+        f.write(cell_content)
+ 
+    return filepath
+ 
+ 
 def cli_insight_capture(argv: Optional[List[str]] = None) -> int:
     parser = argparse.ArgumentParser(description="Capture human insight")
     parser.add_argument("--insight", required=True, help="Insight description")
@@ -251,6 +310,7 @@ __all__ = [
     "capture_insight",
     "cluster_insights",
     "generate_cell_candidates",
+    "create_cell_from_insight_cluster",
     "cli_insight_capture",
     "cli_insight_correlator",
 ]

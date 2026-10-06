@@ -7,13 +7,7 @@ import os
 import sys
 import pytest
 
-# cell_create_nl.py uses bare imports (soma_resolve, inference_provider)
-# that require enzymes/ on sys.path
-_ENZYMES_DIR = os.path.join(
-    os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "enzymes"
-)
-if _ENZYMES_DIR not in sys.path:
-    sys.path.insert(0, _ENZYMES_DIR)
+from soma_core.insights import create_cell_from_insight_cluster
 
 
 class TestCreateCellFromInsightCluster:
@@ -21,7 +15,6 @@ class TestCreateCellFromInsightCluster:
 
     def test_creates_cell_file(self, tmp_path):
         """A cluster produces a cell file in .soma/cells/vacuoles/."""
-        from enzymes.cell_create_nl import create_cell_from_insight_cluster
 
         workspace = str(tmp_path)
         cluster = {
@@ -38,7 +31,6 @@ class TestCreateCellFromInsightCluster:
 
     def test_cell_contains_frontmatter(self, tmp_path):
         """Generated cell has YAML frontmatter with required fields."""
-        from enzymes.cell_create_nl import create_cell_from_insight_cluster
 
         workspace = str(tmp_path)
         cluster = {
@@ -60,7 +52,6 @@ class TestCreateCellFromInsightCluster:
 
     def test_cell_has_hypothesis(self, tmp_path):
         """Generated cell has a hypothesis in frontmatter."""
-        from enzymes.cell_create_nl import create_cell_from_insight_cluster
 
         workspace = str(tmp_path)
         cluster = {
@@ -79,7 +70,6 @@ class TestCreateCellFromInsightCluster:
 
     def test_slug_sanitized(self, tmp_path):
         """Category with special characters produces a safe filename."""
-        from enzymes.cell_create_nl import create_cell_from_insight_cluster
 
         workspace = str(tmp_path)
         cluster = {

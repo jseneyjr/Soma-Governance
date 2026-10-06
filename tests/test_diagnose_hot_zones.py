@@ -9,7 +9,7 @@ if REPO_ROOT not in sys.path:
     sys.path.insert(0, REPO_ROOT)
 
 from soma_sdk.hot_zones import BoostConfig, HotZoneReport
-from enzymes.diagnose_hot_zones import (
+from soma_core.defects import (
     proximity_alerts,
     threshold_sanity,
     run_diagnostic,
