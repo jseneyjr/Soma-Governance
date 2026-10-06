@@ -88,3 +88,13 @@ def iter_source_files(root, extensions):
         for fn in filenames:
             if any(fn.endswith(ext) for ext in extensions):
                 yield os.path.join(dirpath, fn)
+
+
+@pytest.fixture
+def harness(tmp_path):
+    """Yield an isolated SomaTestHarness instance rooted in tmp_path."""
+    try:
+        from harness import SomaTestHarness
+    except ImportError:
+        from tests.harness import SomaTestHarness
+    return SomaTestHarness(tmp_path)
