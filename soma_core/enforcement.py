@@ -182,6 +182,8 @@ verify_bug_tests = verify_regression_tests
 
 
 def cli_verify_bug_registry(argv: Optional[List[str]] = None) -> int:
+    if hasattr(sys.stdout, "reconfigure"):
+        sys.stdout.reconfigure(errors="replace")
     parser = argparse.ArgumentParser(description="Verify Bug Registry")
     parser.add_argument("--workspace", default=None, help="Workspace root")
     args = parser.parse_args(argv if argv is not None else sys.argv[1:])
@@ -263,6 +265,8 @@ def verify_readme_claims(workspace: str) -> Tuple[bool, List[str]]:
 
 
 def cli_verify_readme_claims(argv: Optional[List[str]] = None) -> int:
+    if hasattr(sys.stdout, "reconfigure"):
+        sys.stdout.reconfigure(errors="replace")
     ws = resolve_workspace()
     ok, failures = verify_readme_claims(ws)
     if not ok:

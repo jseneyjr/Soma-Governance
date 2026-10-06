@@ -11,13 +11,7 @@ import textwrap
 
 import pytest
 
-# cell_enforce.py uses bare imports (soma_resolve) that require enzymes/ on sys.path
-_ENZYMES_DIR = os.path.join(
-    os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "enzymes"
-)
 import sys
-if _ENZYMES_DIR not in sys.path:
-    sys.path.insert(0, _ENZYMES_DIR)
 
 
 def _create_git_repo_with_hook(hook_script: str) -> str:
@@ -65,7 +59,7 @@ class TestWallHookGeneration:
     
     def _get_wall_hook(self, name='test-wall', target_paths=None, hypothesis='Test hypothesis'):
         """Generate a wall hook script using cell_enforce."""
-        from enzymes.cell_enforce import generate_precommit_check
+        from soma_core.enforcement import generate_precommit_check
         cell = {
             '_name': name,
             'type': 'wall',
@@ -115,7 +109,7 @@ class TestMembraneHookGeneration:
     """Test membrane-type cell hook generation."""
     
     def _get_membrane_hook(self, name='test-membrane', target_paths=None):
-        from enzymes.cell_enforce import generate_precommit_check
+        from soma_core.enforcement import generate_precommit_check
         cell = {
             '_name': name,
             'type': 'membrane',
@@ -142,7 +136,7 @@ class TestVacuoleHookGeneration:
     """Test vacuole-type (default) cell hook generation."""
     
     def _get_vacuole_hook(self, name='test-vacuole', target_paths=None):
-        from enzymes.cell_enforce import generate_precommit_check
+        from soma_core.enforcement import generate_precommit_check
         cell = {
             '_name': name,
             'type': 'vacuole',
