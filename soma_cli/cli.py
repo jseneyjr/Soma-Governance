@@ -44,6 +44,8 @@ class SomaParser(argparse.ArgumentParser):
             ns.quiet = False
         if not hasattr(ns, "format"):
             ns.format = None
+        if not hasattr(ns, "workspace"):
+            ns.workspace = None
         return ns
 
 
@@ -61,6 +63,9 @@ def _build_parser() -> argparse.ArgumentParser:
     common_parser.add_argument("-q", "--quiet", action="store_true",
                                default=argparse.SUPPRESS,
                                help="Suppress informational messages")
+    common_parser.add_argument("--workspace", type=str,
+                               default=argparse.SUPPRESS,
+                               help="Target workspace root")
 
     parser = SomaParser(
         prog="soma",
@@ -130,8 +135,6 @@ def _build_parser() -> argparse.ArgumentParser:
                               help="In pre-commit mode, exit 1 on issues")
     p_checkpoint.add_argument("--json", action="store_true",
                               help="Emit machine-readable JSON output")
-    p_checkpoint.add_argument("--workspace", default=None,
-                              help="Override target workspace directory")
 
     # soma oracle
     p_oracle = sub.add_parser("oracle", parents=[common_parser], help="Cell health classification and recommendations")
@@ -203,8 +206,6 @@ def _build_parser() -> argparse.ArgumentParser:
                         help="Command line string for safety-gate check")
     p_hook.add_argument("--strict", action="store_true",
                         help="In pre-commit, exit 1 on issues")
-    p_hook.add_argument("--workspace", default=None,
-                        help="Target workspace path")
     p_hook.add_argument("--json", action="store_true",
                         help="Emit JSON output")
     p_hook.add_argument("--transcript", default=None,
@@ -233,7 +234,6 @@ def _build_parser() -> argparse.ArgumentParser:
     p_prune = sub.add_parser("prune", parents=[common_parser], help="Prune extinct or apoptotic rules")
     p_prune.add_argument("--execute", action="store_true", help="Execute pruning decisions (archive expired rules)")
     p_prune.add_argument("--dry-run", action="store_true", help="Simulate pruning decisions without archiving files")
-    p_prune.add_argument("--workspace", type=str, default="", help="Path to workspace root")
 
     return parser
 

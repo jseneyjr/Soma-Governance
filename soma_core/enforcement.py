@@ -165,9 +165,11 @@ def verify_regression_tests(registry: Dict[str, Any], workspace: str) -> List[st
                     if any(_node_matches(node, test_ref) for node in failed):
                         errors.append(f"{bug_id}: regression test failed: {test_ref}")
                         matched_failure = True
-                if not matched_failure and result.stderr and result.stderr.strip():
-                    for line in result.stderr.strip().splitlines()[:5]:
-                        errors.append(f"  pytest: {line}")
+                if not matched_failure:
+                    out = (result.stderr or "").strip() or (result.stdout or "").strip()
+                    if out:
+                        for line in out.splitlines()[-10:]:
+                            errors.append(f"  pytest: {line}")
         except subprocess.TimeoutExpired:
             errors.append(f"Timeout running {len(all_refs)} regression tests (limit {budget} s)")
         except Exception as e:

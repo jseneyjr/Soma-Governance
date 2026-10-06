@@ -817,6 +817,13 @@ def execute_tool(name: str, args: dict):
     elif name == "soma_audit_security":
         content = args.get("proposed_content") or ""
         file_path = args.get("file_path") or ""
+        if file_path:
+            try:
+                workspace = confine_workspace(args.get('workspace') or resolve_workspace(args))
+                _, rel_path = confine_path(file_path, workspace)
+                file_path = rel_path
+            except ValueError as exc:
+                return {"error": str(exc), "status": _STATUS_FAIL}
         # Prototype: Basic keyword scanning for secrets and OWASP basics
         flags = []
         if "password=" in content.lower() or "secret=" in content.lower():
@@ -840,6 +847,13 @@ def execute_tool(name: str, args: dict):
     elif name == "soma_audit_performance":
         content = args.get("proposed_content") or ""
         file_path = args.get("file_path") or ""
+        if file_path:
+            try:
+                workspace = confine_workspace(args.get('workspace') or resolve_workspace(args))
+                _, rel_path = confine_path(file_path, workspace)
+                file_path = rel_path
+            except ValueError as exc:
+                return {"error": str(exc), "status": _STATUS_FAIL}
         # Prototype: Basic keyword scanning for hot-paths and inefficiencies
         flags = []
         if content.count("for ") > 2 and "in " in content:

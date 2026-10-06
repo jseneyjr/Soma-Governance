@@ -262,7 +262,7 @@ class Governance:
                 '--hypothesis', hypothesis]
         if target_paths:
             args.extend(['--target-paths', ','.join(target_paths)])
-        if minimum_mode != 'breeze':
+        if minimum_mode:
             args.extend(['--minimum-mode', minimum_mode])
         if tags:
             args.extend(['--tags', ','.join(tags)])
@@ -277,6 +277,7 @@ class Governance:
         minimum_mode: str = 'breeze',
         tags: Optional[list[str]] = None,
         cell_id: Optional[str] = None,
+        rule_id: Optional[str] = None,
     ) -> dict[str, Any] | str:
         """Create a new immune rule (porcelain alias for create_cell)."""
         return self.create_cell(
@@ -285,8 +286,13 @@ class Governance:
             target_paths=target_paths,
             minimum_mode=minimum_mode,
             tags=tags,
-            cell_id=cell_id,
+            cell_id=rule_id or cell_id,
         )
+
+    def parse_cell_file(self, filepath: str) -> tuple[dict, str]:
+        """Parse a cell markdown file into (frontmatter_dict, body_text)."""
+        from soma_sdk.cells import parse_cell_file
+        return parse_cell_file(filepath)
     
     def create_cell_from_description(
         self, description: str, domain: Optional[str] = None, cell_type: Optional[str] = None,

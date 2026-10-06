@@ -189,33 +189,11 @@ def parse_cell_file(filepath: str) -> Tuple[dict, str]:
     if not os.path.isfile(filepath):
         raise CellNotFoundError(f"Cell file not found: {filepath}")
 
-    # utf-8-sig: PowerShell 5.1 `Set-Content -Encoding UTF8` writes a BOM.
-    with open(filepath, encoding='utf-8-sig') as f:
-        content = f.read()
-
-    if not content.startswith('---'):
-        raise CellParseError(f"No frontmatter delimiter in {filepath}")
-
-    end_idx = content.find('---', 3)
-    if end_idx == -1:
-        raise CellParseError(f"Unclosed frontmatter in {filepath}")
-
-    yaml_text = content[3:end_idx].strip()
-    if yaml is not None:
-        try:
-            frontmatter = yaml.safe_load(yaml_text)
-        except yaml.YAMLError as e:
-            raise CellParseError(f"Invalid YAML in {filepath}: {e}") from e
-    else:
-        frontmatter = _stdlib_parse_frontmatter(yaml_text)
-
-    if not isinstance(frontmatter, dict):
-        raise CellParseError(f"Frontmatter is not a mapping in {filepath}")
-
-    # Body is everything after the closing ---
-    body = content[end_idx + 3:].lstrip('\n')
-
-    return frontmatter, body
+    from soma_core.frontmatter import parse_cell_frontmatter
+    try:
+        return parse_cell_frontmatter(filepath)
+    except ValueError as exc:
+        raise CellParseError(f"Error parsing cell {filepath}: {exc}") from exc
 
 
 def write_cell_frontmatter(
