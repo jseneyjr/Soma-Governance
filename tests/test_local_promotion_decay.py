@@ -15,6 +15,10 @@ sys.path.insert(0, REPO_ROOT)
 sys.path.insert(0, os.path.join(REPO_ROOT, 'enzymes'))
 
 
+@pytest.mark.skipif(
+    not os.path.exists(os.path.join(REPO_ROOT, "enzymes", "cell_promote.py")),
+    reason="enzymes directory purged in v0.97.0",
+)
 class TestLocalPromotionDecay:
     """Verify decay is applied during --local promotion evaluation."""
 

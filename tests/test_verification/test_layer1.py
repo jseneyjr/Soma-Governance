@@ -26,6 +26,8 @@ class TestPersistenceChecker:
     def test_post_fix_cell_promote_passes(self):
         """After v0.30 fixes, cell_promote.py should have no persistence gaps."""
         filepath = os.path.join(REPO_ROOT, "enzymes", "cell_promote.py")
+        if not os.path.exists(filepath):
+            pytest.skip("enzymes directory purged in v0.97.0")
         result = persistence_checker.check(filepath, "fitness")
         assert result.verdict is True, f"Expected PASS, got: {result.detail}"
         assert result.tool == "persistence_checker"
@@ -82,6 +84,8 @@ class TestCallGraph:
     def test_bayesian_score_has_callers(self):
         """bayesian_score.py's function should have callers in the repo."""
         filepath = os.path.join(REPO_ROOT, "enzymes", "bayesian_score.py")
+        if not os.path.exists(filepath):
+            pytest.skip("enzymes directory purged in v0.97.0")
         result = call_graph.check(filepath, REPO_ROOT)
         assert result.verdict is True, f"Expected PASS: {result.detail}"
 
@@ -107,6 +111,8 @@ class TestLayer1Runner:
 
     def test_runner_returns_results(self):
         """Runner should return ToolEvidence list for changed files."""
+        if not os.path.exists(os.path.join(REPO_ROOT, "enzymes", "cell_promote.py")):
+            pytest.skip("enzymes directory purged in v0.97.0")
         results = runner.run_layer1(
             changed_files=["enzymes/cell_promote.py"],
             repo_root=REPO_ROOT,
