@@ -799,8 +799,8 @@ def _parse_frontmatter(content: str, filepath: Optional[str] = None) -> dict:
     """
     if filepath is not None:
         try:
-            from soma_core.lifecycle import parse_cell as parse_cell_file
-            fm, _body = parse_cell_file(str(filepath))
+            from soma_core.frontmatter import parse_cell_frontmatter
+            fm, _body = parse_cell_frontmatter(str(filepath))
             return fm if isinstance(fm, dict) else {}
         except Exception:
             return {}

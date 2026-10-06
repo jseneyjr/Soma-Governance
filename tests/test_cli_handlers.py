@@ -1,4 +1,4 @@
-"""Tests for soma_cli.handlers lifecycle and sentinels modules."""
+"""Tests for soma_cli.handlers lifecycle, sentinels, telemetry, and sync modules."""
 import io
 from contextlib import redirect_stdout, redirect_stderr
 import pytest
@@ -19,6 +19,19 @@ from soma_cli.handlers.sentinels import (
     cli_escalation_sentinel,
     cli_immune_sweep,
 )
+from soma_cli.handlers.telemetry import (
+    cli_outcome_engine,
+    cli_fitness_updater,
+    cli_metrics_snapshot,
+    cli_cell_quorum,
+    cli_cell_coverage,
+    cli_immune_grade,
+)
+from soma_cli.handlers.sync import (
+    cli_team_sync,
+    cli_hgt_ribosome,
+    cli_post_session_hook,
+)
 import soma_cli.handlers as handlers
 
 
@@ -33,7 +46,7 @@ def _run_help(fn, *args, **kwargs) -> bool:
 
 
 def test_handlers_package_exports():
-    """Verify all lifecycle and sentinels handlers are exported from soma_cli.handlers."""
+    """Verify all lifecycle, sentinels, telemetry, and sync handlers are exported."""
     expected = [
         "cli_cell_create",
         "cli_cell_transfer",
@@ -47,6 +60,15 @@ def test_handlers_package_exports():
         "cli_liveness_sentinel",
         "cli_escalation_sentinel",
         "cli_immune_sweep",
+        "cli_outcome_engine",
+        "cli_fitness_updater",
+        "cli_metrics_snapshot",
+        "cli_cell_quorum",
+        "cli_cell_coverage",
+        "cli_immune_grade",
+        "cli_team_sync",
+        "cli_hgt_ribosome",
+        "cli_post_session_hook",
     ]
     for name in expected:
         assert hasattr(handlers, name), f"Missing export: {name}"
@@ -70,7 +92,23 @@ def test_sentinels_handlers_invocations():
     """Verify sentinels CLI handlers run cleanly."""
     buf = io.StringIO()
     with redirect_stdout(buf), redirect_stderr(buf):
-        # Empty payload shows usage and returns 0
         assert cli_liveness_sentinel([]) == 0
         assert cli_escalation_sentinel(["README.md"]) == 0
         assert cli_immune_sweep(["--active-only"]) == 0
+
+
+def test_telemetry_handlers_help_invocations():
+    """Verify telemetry CLI handlers run cleanly on --help."""
+    assert _run_help(cli_outcome_engine, ["--help"])
+    assert _run_help(cli_fitness_updater, ["--help"])
+    assert _run_help(cli_metrics_snapshot, ["--help"])
+    assert _run_help(cli_cell_quorum, ["--help"])
+    assert _run_help(cli_cell_coverage, ["--help"])
+    assert _run_help(cli_immune_grade, ["--help"])
+
+
+def test_sync_handlers_help_invocations():
+    """Verify sync CLI handlers run cleanly on --help."""
+    assert _run_help(cli_team_sync, ["--help"])
+    assert _run_help(cli_hgt_ribosome, ["--help"])
+    assert _run_help(cli_post_session_hook, ["--help"])
