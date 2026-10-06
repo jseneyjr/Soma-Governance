@@ -1693,7 +1693,10 @@ def cli_cell_crossover(argv: list[str] | None = None) -> int:
     workspace = resolve_workspace()
     try:
         pa, pb, out = crossover_cells(workspace, args.cell_a_id, args.cell_b_id)
-        print(f"Crossover: {pa} × {pb} → {out}")
+        try:
+            print(f"Crossover: {pa} × {pb} → {out}")
+        except (UnicodeEncodeError, UnicodeError):
+            print(f"Crossover: {pa} x {pb} -> {out}")
         return 0
     except Exception as exc:
         print(f"Crossover failed: {exc}", file=sys.stderr)
