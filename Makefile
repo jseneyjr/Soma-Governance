@@ -59,30 +59,29 @@ install: ## Install for configured platform (SOMA_PLATFORM)
 	  sed 's/^/      /' "$$log"; \
 	fi; \
 	rm -f "$$log"
-	@# install.sh ends with shell-aware PATH guidance if `soma` doesn't resolve (BUG-041).
-	@bash install/install.sh "$(SOMA_PLATFORM)"
+	@python3 -m soma_cli.cli install --platform "$(SOMA_PLATFORM)"
 
 install-gemini: ## Install rules for Gemini/Antigravity (alias)
-	@bash install/install.sh gemini
+	@python3 -m soma_cli.cli install --platform gemini
 
 install-kiro: ## Install rules for Kiro (alias)
-	@bash install/install.sh kiro
+	@python3 -m soma_cli.cli install --platform kiro
 
 install-copilot: ## Install rules for GitHub Copilot (alias)
-	@bash install/install.sh copilot $(if $(MODE),$(MODE),global)
+	@python3 -m soma_cli.cli install --platform copilot
 
 install-claude: ## Install rules for Claude Code
-	@bash install/install.sh claude
+	@python3 -m soma_cli.cli install --platform claude
 
 install-mcp: ## Install only .mcp.json for any MCP-compatible agent
-	@bash install/install.sh mcp
+	@python3 -m soma_cli.cli install --platform mcp
 
 install-windows: ## Install rules and skills for Windows using PowerShell
-	@powershell -ExecutionPolicy Bypass -File install/install.ps1 -Platform "$(SOMA_PLATFORM)"
+	@python3 -m soma_cli.cli install --platform "$(SOMA_PLATFORM)"
 
 uninstall: ## Remove installed genome, organs, and hooks
 	@echo "Uninstalling Soma for $(SOMA_PLATFORM)..."
-	@bash install/uninstall.sh "$(SOMA_PLATFORM)"
+	@python3 -m soma_cli.cli uninstall --platform "$(SOMA_PLATFORM)"
 
 doctor: ## Verify installation health & dependencies
 	@echo "Running health check..."
@@ -126,7 +125,7 @@ doctor: ## Verify installation health & dependencies
 validate: ## Check script syntax and config values
 	@echo "Validating..."
 	@failed=0; \
-	for s in install/install.sh install/uninstall.sh enzymes/*.sh install/hooks/*; do \
+	for s in enzymes/*.sh install/hooks/*; do \
 	  if [ -f "$$s" ]; then \
 	    if bash -n "$$s" 2>/dev/null; then echo "  ✅ $$s"; \
 	    else echo "  ❌ $$s (syntax error)"; bash -n "$$s" || true; failed=1; fi; \

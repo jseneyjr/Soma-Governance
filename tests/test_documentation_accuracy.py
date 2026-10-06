@@ -53,11 +53,6 @@ def _script_groups():
             if path.is_file() and path.suffix == ".py"
             and path.name not in {"__init__.py", "__main__.py"}
         },
-        "Install Scripts": {
-            ROOT / "install.sh", ROOT / "install.ps1",
-            ROOT / "install" / "install.sh", ROOT / "install" / "install.ps1",
-            ROOT / "install" / "uninstall.sh", ROOT / "install" / "uninstall.ps1",
-        },
         "Utility Scripts": all_enzymes - lifecycle_enzymes,
         "SDK Modules": {
             path for path in (ROOT / "soma_sdk").iterdir()

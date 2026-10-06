@@ -1,10 +1,10 @@
 # Scripts Reference
 
-This document catalogs 147 executable scripts, command modules, SDK modules, and MCP/core modules in the Soma governance framework.
+This document catalogs 144 executable scripts, command modules, SDK modules, and MCP/core modules in the Soma governance framework.
 
 ## Counting Method
 
-Counts are generated from the v0.96.0 source tree with mutually exclusive categories: package initializers (`__init__.py`, `__main__.py`) are excluded; the six lifecycle enzymes plus `install/hooks/pre-commit` are counted only as lifecycle scripts; all remaining top-level `enzymes/*.py` and `enzymes/*.sh` files are utilities; installer wrappers are counted separately; and all non-initializer `soma_core/*.py` modules are grouped with the MCP modules. This produces 147 unique paths with no double counting.
+Counts are generated from the source tree with mutually exclusive categories: package initializers (`__init__.py`, `__main__.py`) are excluded; the six lifecycle enzymes plus `install/hooks/pre-commit` are counted only as lifecycle scripts; all remaining top-level `enzymes/*.py` and `enzymes/*.sh` files are utilities; and all non-initializer `soma_core/*.py` modules are grouped with the MCP modules. This produces 144 unique paths with no double counting.
 
 ## Summary by Category
 
@@ -13,11 +13,10 @@ Counts are generated from the v0.96.0 source tree with mutually exclusive catego
 | [Lifecycle Scripts (Hooks)](#lifecycle-scripts-hooks--bash) | bash (`enzymes/`, `install/hooks/`) | 7 | Environment, agent execution, and pre-commit lifecycle hooks |
 | [Verification Scripts](#verification-scripts--python) | Python (`immune_system/verification/`) | 13 | Deterministic AST checkers, coverage tools, and adversarial verification |
 | [CLI Commands](#cli-commands--python-soma_cli) | Python and bash (`soma_cli/`, root) | 21 | CLI launcher and command implementation modules |
-| [Install Scripts](#install-scripts--bash-and-powershell) | Bash and PowerShell (`install/`, root) | 6 | Platform installers, uninstallers, and root wrappers |
 | [Utility Scripts](#utility-scripts) | Python and bash (`enzymes/`) | 67 | Cell genetics, runtime engines, evidence, telemetry, and shared utilities |
 | [SDK Modules](#sdk-modules--python-soma_sdk) | Python (`soma_sdk/`) | 8 | Canonical scoring, parsing, telemetry, hot-zone, and governance APIs |
 | [MCP and Core Modules](#mcp-and-core-modules) | Python (`soma_mcp/`, `soma_core/`) | 28 | MCP transport, dispatch, confinement, content inventory, canonical evidence, cache, errors, receipts, and atomic storage |
-| **Total** | | **150** | Unique paths under the method above |
+| **Total** | | **144** | Unique paths under the method above |
 
 ---
 
@@ -86,21 +85,6 @@ These 21 paths provide the root `soma` launcher and 20 non-initializer Python mo
 | **`sync.py`** | `soma_cli/sync.py` | `soma sync`: Rebuilds cell fitness frontmatter from canonical `.soma/evidence/signals.jsonl`. |
 | **`transfer.py`** | `soma_cli/transfer.py` | `soma transfer`: Transfers a governance cell to another project with fitness reset and generation incrementation. |
 | **`verify.py`** | `soma_cli/verify.py` | `soma verify`: Runs verification on changed files (Layer 1 deterministic tools and Layer 2 adversarial LLM pair). |
-
----
-
-## Install Scripts — bash and PowerShell
-
-These 6 scripts provide Bash and PowerShell install/uninstall entrypoints. `install/hooks/pre-commit` is excluded here because it is counted in Lifecycle Scripts.
-
-| Script | Location | Purpose |
-|:-------|:---------|:--------|
-| **`install.sh`** | `install/install.sh` | Unified Bash installer for Gemini, Kiro, Copilot, Claude Code, and generic MCP; this is the installer that migrates `.prism/` to `.soma/`. |
-| **`uninstall.sh`** | `install/uninstall.sh` | Bash uninstaller driven by the install manifest, with confinement, backup restoration, opt-in data purge, and exact removal of `soma doctor --fix-path` rc lines. |
-| **`install.sh`** | `install.sh` | Root Bash wrapper delegating to `install/install.sh`. |
-| **`install.ps1`** | `install/install.ps1` | PowerShell installer for native Windows; verified across PowerShell 7 and Windows PowerShell 5.1 with UTF-8 BOM encoding and full hook installation parity. |
-| **`uninstall.ps1`** | `install/uninstall.ps1` | Native PowerShell uninstaller with manifest path confinement. |
-| **`install.ps1`** | `install.ps1` | Root PowerShell wrapper delegating to `install/install.ps1`. |
 
 ---
 
