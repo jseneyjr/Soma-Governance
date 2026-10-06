@@ -313,7 +313,7 @@ def check_test_coverage(root: Path) -> list[dict]:
         if not matched:
             issues.append({
                 "check": "test_coverage",
-                "file": rel_posix,
+                "file": _relative(root, source_file),
                 "message": (
                     f"Missing test file for {source_file.name}: "
                     f"expected tests/test_{source_file.stem}.py"

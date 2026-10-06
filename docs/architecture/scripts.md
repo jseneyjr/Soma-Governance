@@ -1,10 +1,10 @@
 # Scripts Reference
 
-This document catalogs 149 executable scripts, command modules, SDK modules, and MCP/core modules in the Soma governance framework.
+This document catalogs 147 executable scripts, command modules, SDK modules, and MCP/core modules in the Soma governance framework.
 
 ## Counting Method
 
-Counts are generated from the v0.96.0 source tree with mutually exclusive categories: package initializers (`__init__.py`, `__main__.py`) are excluded; the six lifecycle enzymes plus `install/hooks/pre-commit` are counted only as lifecycle scripts; all remaining top-level `enzymes/*.py` and `enzymes/*.sh` files are utilities; installer wrappers are counted separately; and all non-initializer `soma_core/*.py` modules are grouped with the MCP modules. This produces 149 unique paths with no double counting.
+Counts are generated from the v0.96.0 source tree with mutually exclusive categories: package initializers (`__init__.py`, `__main__.py`) are excluded; the six lifecycle enzymes plus `install/hooks/pre-commit` are counted only as lifecycle scripts; all remaining top-level `enzymes/*.py` and `enzymes/*.sh` files are utilities; installer wrappers are counted separately; and all non-initializer `soma_core/*.py` modules are grouped with the MCP modules. This produces 147 unique paths with no double counting.
 
 ## Summary by Category
 
@@ -14,10 +14,10 @@ Counts are generated from the v0.96.0 source tree with mutually exclusive catego
 | [Verification Scripts](#verification-scripts--python) | Python (`immune_system/verification/`) | 13 | Deterministic AST checkers, coverage tools, and adversarial verification |
 | [CLI Commands](#cli-commands--python-soma_cli) | Python and bash (`soma_cli/`, root) | 21 | CLI launcher and command implementation modules |
 | [Install Scripts](#install-scripts--bash-and-powershell) | Bash and PowerShell (`install/`, root) | 6 | Platform installers, uninstallers, and root wrappers |
-| [Utility Scripts](#utility-scripts) | Python and bash (`enzymes/`) | 69 | Cell genetics, runtime engines, evidence, telemetry, and shared utilities |
+| [Utility Scripts](#utility-scripts) | Python and bash (`enzymes/`) | 67 | Cell genetics, runtime engines, evidence, telemetry, and shared utilities |
 | [SDK Modules](#sdk-modules--python-soma_sdk) | Python (`soma_sdk/`) | 8 | Canonical scoring, parsing, telemetry, hot-zone, and governance APIs |
 | [MCP and Core Modules](#mcp-and-core-modules) | Python (`soma_mcp/`, `soma_core/`) | 28 | MCP transport, dispatch, confinement, content inventory, canonical evidence, cache, errors, receipts, and atomic storage |
-| **Total** | | **152** | Unique paths under the method above |
+| **Total** | | **150** | Unique paths under the method above |
 
 ---
 
@@ -201,8 +201,6 @@ These 69 scripts are the top-level `enzymes/*.py` and `enzymes/*.sh` files not a
 | **`escalation_sentinel.py`** | `enzymes/escalation_sentinel.py` | Python engine managing review mode configuration and steering rules for protocol escalation. |
 | **`liveness_sentinel.py`** | `enzymes/liveness_sentinel.py` | Pure Python subagent liveness and watchdog sentinel detecting hung or stalled background commands. |
 | **`inference_provider.py`** | `enzymes/inference_provider.py` | Inference provider abstraction layer with secure credential lookup and key management for AI-assisted enzymes. |
-| **`bump_version.sh`** | `enzymes/bump_version.sh` | Updates versions in files across the repository to ensure consistency during releases. |
-| **`bump_version.py`** | `enzymes/bump_version.py` | Pure Python version synchronization engine updating version strings across all 6 project surfaces. |
 
 ---
 

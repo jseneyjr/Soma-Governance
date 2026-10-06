@@ -11,6 +11,16 @@ import sys
 import pytest
 
 REPO_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+TESTS_DIR = os.path.dirname(os.path.abspath(__file__))
+if TESTS_DIR not in sys.path:
+    sys.path.insert(0, TESTS_DIR)
+
+try:
+    import tests
+    if hasattr(tests, "__path__") and TESTS_DIR not in tests.__path__:
+        tests.__path__.insert(0, TESTS_DIR)
+except ImportError:
+    pass
 
 
 @pytest.fixture(scope="session")
