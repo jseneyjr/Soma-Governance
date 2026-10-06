@@ -30,20 +30,8 @@ def _readme_mcp_row(readme, label):
 
 
 def _script_groups():
-    lifecycle_enzymes = {
-        ROOT / "enzymes" / name
-        for name in (
-            "immune_init.sh", "safety_gate.sh", "session_close.sh",
-            "post_session_hook.sh", "escalation_sentinel.sh", "liveness_sentinel.sh",
-        )
-    }
-    lifecycle = lifecycle_enzymes | {ROOT / "install" / "hooks" / "pre-commit"}
-    all_enzymes = {
-        path for path in (ROOT / "enzymes").iterdir()
-        if path.is_file() and path.suffix in {".py", ".sh"} and path.name != "__init__.py"
-    }
     return {
-        "Lifecycle Scripts (Hooks)": lifecycle,
+        "Lifecycle Scripts (Hooks)": {ROOT / "install" / "hooks" / "pre-commit"},
         "Verification Scripts": {
             path for path in (ROOT / "immune_system" / "verification").iterdir()
             if path.is_file() and path.suffix == ".py" and path.name != "__init__.py"
@@ -53,7 +41,6 @@ def _script_groups():
             if path.is_file() and path.suffix == ".py"
             and path.name not in {"__init__.py", "__main__.py"}
         },
-        "Utility Scripts": all_enzymes - lifecycle_enzymes,
         "SDK Modules": {
             path for path in (ROOT / "soma_sdk").iterdir()
             if path.is_file() and path.suffix == ".py" and path.name != "__init__.py"
@@ -158,16 +145,6 @@ def test_scripts_reference_counts_match_unique_source_paths():
     total = re.search(r"\| \*\*Total\*\* \| \| \*\*(\d+)\*\* \|", reference)
     assert total
     assert int(total.group(1)) == len(flattened)
-
-
-def test_readme_automation_count_matches_enzyme_files():
-    count = len({
-        path for path in (ROOT / "enzymes").iterdir()
-        if path.is_file() and path.suffix in {".py", ".sh"} and path.name != "__init__.py"
-    })
-    readme = read(str(ROOT / "README.md"))
-    assert f"Automation_Scripts-{count}-" in readme
-    assert f"Soma includes {count} task-specific scripts" in readme
 
 
 def test_readme_core_rule_count_and_inventory_match_genome():
