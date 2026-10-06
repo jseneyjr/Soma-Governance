@@ -18,7 +18,6 @@ from soma_core.frontmatter import dump_frontmatter, parse_frontmatter
 
 REPO_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, REPO_ROOT)
-sys.path.insert(0, os.path.join(REPO_ROOT, 'enzymes'))
 
 
 def make_cell(cells_dir, name, cell_type="vacuole", created_days_ago=10,
@@ -60,7 +59,7 @@ class TestExpiryByDays:
     """Verify day-based expiry enforcement."""
 
     def test_fresh_cell_not_expired(self, workspace):
-        from cell_expiry import audit_expiry
+        from soma_core.defects import audit_expiry
         cells_dir = str(workspace / ".soma" / "cells")
         make_cell(cells_dir, "fresh-cell", created_days_ago=5, expiry_days=30)
         results = audit_expiry(str(workspace))
@@ -68,7 +67,7 @@ class TestExpiryByDays:
         assert len(expired) == 0
 
     def test_old_cell_is_expired(self, workspace):
-        from cell_expiry import audit_expiry
+        from soma_core.defects import audit_expiry
         cells_dir = str(workspace / ".soma" / "cells")
         make_cell(cells_dir, "stale-cell", created_days_ago=45, expiry_days=30)
         results = audit_expiry(str(workspace))
@@ -78,7 +77,7 @@ class TestExpiryByDays:
         assert expired[0]['reason'] == 'expiry_days'
 
     def test_cell_at_exact_expiry_not_expired(self, workspace):
-        from cell_expiry import audit_expiry
+        from soma_core.defects import audit_expiry
         cells_dir = str(workspace / ".soma" / "cells")
         make_cell(cells_dir, "edge-cell", created_days_ago=30, expiry_days=30)
         results = audit_expiry(str(workspace))
@@ -90,7 +89,7 @@ class TestExpiryBySessions:
     """Verify session-based expiry enforcement."""
 
     def test_cell_with_no_sessions_not_expired(self, workspace):
-        from cell_expiry import audit_expiry
+        from soma_core.defects import audit_expiry
         cells_dir = str(workspace / ".soma" / "cells")
         make_cell(cells_dir, "no-sessions", expiry_sessions=10)
         results = audit_expiry(str(workspace), session_count=0)
@@ -98,7 +97,7 @@ class TestExpiryBySessions:
         assert len(expired) == 0
 
     def test_cell_past_session_limit_is_expired(self, workspace):
-        from cell_expiry import audit_expiry
+        from soma_core.defects import audit_expiry
         cells_dir = str(workspace / ".soma" / "cells")
         make_cell(cells_dir, "overdue-cell", expiry_sessions=10)
         results = audit_expiry(str(workspace), session_count=15)
@@ -111,7 +110,7 @@ class TestWallProtection:
     """Walls are mandatory — they get warnings, not expiry."""
 
     def test_expired_wall_gets_warning_not_expiry(self, workspace):
-        from cell_expiry import audit_expiry
+        from soma_core.defects import audit_expiry
         cells_dir = str(workspace / ".soma" / "cells")
         make_cell(cells_dir, "wall-auth", cell_type="wall",
                   created_days_ago=100, expiry_days=30)
@@ -126,7 +125,7 @@ class TestPruneMode:
     """Verify --prune adds expired_at to cell frontmatter."""
 
     def test_prune_adds_expired_at_marker(self, workspace):
-        from cell_expiry import audit_expiry, prune_expired
+        from soma_core.defects import audit_expiry, prune_expired
         cells_dir = str(workspace / ".soma" / "cells")
         filepath = make_cell(cells_dir, "to-prune",
                              created_days_ago=60, expiry_days=30)
@@ -144,7 +143,7 @@ class TestPruneMode:
         assert 'expired_at' in fm, "Pruned cell should have expired_at marker"
 
     def test_prune_skips_non_expired(self, workspace):
-        from cell_expiry import audit_expiry, prune_expired
+        from soma_core.defects import audit_expiry, prune_expired
         cells_dir = str(workspace / ".soma" / "cells")
         make_cell(cells_dir, "healthy-cell", created_days_ago=5, expiry_days=30)
         results = audit_expiry(str(workspace))

@@ -9,11 +9,8 @@ import textwrap
 import pytest
 from soma_core.frontmatter import dump_frontmatter
 
-# Add enzymes/ to sys.path for direct imports
+# Imports from soma_core.enforcement
 REPO_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-_enzymes = os.path.join(REPO_ROOT, 'enzymes')
-if _enzymes not in sys.path:
-    sys.path.insert(0, _enzymes)
 
 def _make_cell(cells_dir, name, target_paths, cell_type='wall'):
     """Helper: create a minimal cell .md file with frontmatter."""
@@ -41,7 +38,7 @@ class TestCellMatching:
 
     def test_matched_cells_have_target_paths(self, tmp_path):
         """Only cells whose target_paths match a changed file appear in report."""
-        from ci_outcome_reporter import generate_ci_report
+        from soma_core.enforcement import generate_ci_report
 
         cells_dir = tmp_path / '.soma' / 'cells'
         _make_cell(str(cells_dir), 'membrane-enzymes', ['enzymes/*'])
@@ -61,7 +58,7 @@ class TestCellMatching:
 
     def test_no_matches_produces_empty_report(self, tmp_path):
         """Changed files matching no cells → empty matched_cells list."""
-        from ci_outcome_reporter import generate_ci_report
+        from soma_core.enforcement import generate_ci_report
 
         cells_dir = tmp_path / '.soma' / 'cells'
         _make_cell(str(cells_dir), 'wall-docs', ['docs/*'])
@@ -76,7 +73,7 @@ class TestCellMatching:
 
     def test_multiple_cells_match_same_file(self, tmp_path):
         """Multiple cells can match the same changed file."""
-        from ci_outcome_reporter import generate_ci_report
+        from soma_core.enforcement import generate_ci_report
 
         cells_dir = tmp_path / '.soma' / 'cells'
         _make_cell(str(cells_dir), 'cell-a', ['enzymes/*'])
@@ -98,7 +95,7 @@ class TestCreditWeights:
 
     def test_credit_weights_conserved(self, tmp_path):
         """If 2 cells match the same file, each gets credit_weight = 0.5."""
-        from ci_outcome_reporter import generate_ci_report
+        from soma_core.enforcement import generate_ci_report
 
         cells_dir = tmp_path / '.soma' / 'cells'
         _make_cell(str(cells_dir), 'cell-a', ['enzymes/*'])
@@ -115,7 +112,7 @@ class TestCreditWeights:
 
     def test_sole_cell_gets_full_credit(self, tmp_path):
         """A single matching cell gets credit_weight = 1.0."""
-        from ci_outcome_reporter import generate_ci_report
+        from soma_core.enforcement import generate_ci_report
 
         cells_dir = tmp_path / '.soma' / 'cells'
         _make_cell(str(cells_dir), 'cell-solo', ['enzymes/*'])
@@ -135,7 +132,7 @@ class TestSignalSemantics:
 
     def test_pass_generates_trigger_signals(self, tmp_path):
         """When tests pass, matched cells get signal='trigger'."""
-        from ci_outcome_reporter import generate_ci_report
+        from soma_core.enforcement import generate_ci_report
 
         cells_dir = tmp_path / '.soma' / 'cells'
         _make_cell(str(cells_dir), 'cell-a', ['enzymes/*'])
@@ -150,7 +147,7 @@ class TestSignalSemantics:
 
     def test_fail_generates_fp_signals(self, tmp_path):
         """When tests fail, matched cells get signal='fp'."""
-        from ci_outcome_reporter import generate_ci_report
+        from soma_core.enforcement import generate_ci_report
 
         cells_dir = tmp_path / '.soma' / 'cells'
         _make_cell(str(cells_dir), 'cell-a', ['enzymes/*'])
@@ -169,7 +166,7 @@ class TestMarkdownReport:
 
     def test_report_markdown_format(self, tmp_path):
         """Markdown output contains expected table headers."""
-        from ci_outcome_reporter import generate_ci_report
+        from soma_core.enforcement import generate_ci_report
 
         cells_dir = tmp_path / '.soma' / 'cells'
         _make_cell(str(cells_dir), 'membrane-enzymes', ['enzymes/*'])
@@ -188,7 +185,7 @@ class TestMarkdownReport:
 
     def test_report_includes_commit_sha(self, tmp_path):
         """Commit SHA appears in the report header."""
-        from ci_outcome_reporter import generate_ci_report
+        from soma_core.enforcement import generate_ci_report
 
         cells_dir = tmp_path / '.soma' / 'cells'
         _make_cell(str(cells_dir), 'cell-x', ['src/*'])
@@ -204,7 +201,7 @@ class TestMarkdownReport:
 
     def test_empty_report_still_valid_markdown(self, tmp_path):
         """Report with no matches still produces valid markdown."""
-        from ci_outcome_reporter import generate_ci_report
+        from soma_core.enforcement import generate_ci_report
 
         cells_dir = tmp_path / '.soma' / 'cells'
         os.makedirs(str(cells_dir), exist_ok=True)
@@ -221,7 +218,7 @@ class TestMarkdownReport:
 
     def test_cli_main_supports_skipped_and_cancelled(self, tmp_path, monkeypatch):
         """CLI main parser accepts skipped and cancelled outcomes without crashing."""
-        from ci_outcome_reporter import main
+        from soma_core.enforcement import main
 
         cells_dir = tmp_path / '.soma' / 'cells'
         _make_cell(str(cells_dir), 'cell-x', ['src/*'])

@@ -11,9 +11,8 @@ import pytest
 
 REPO_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, REPO_ROOT)
-sys.path.insert(0, os.path.join(REPO_ROOT, 'enzymes'))
 
-from inference_provider import resolve_key, read_config_key
+from soma_core.inference_provider import resolve_key, read_config_key
 
 
 # ── Helpers ───────────────────────────────────────────────────────────────
@@ -52,7 +51,7 @@ class TestResolveKeyKeyring:
         with patch.dict("sys.modules", {"keyring": mock_keyring}):
             # Re-import to pick up the mocked keyring
             import importlib
-            import inference_provider as mod
+            from soma_core import inference_provider as mod
             importlib.reload(mod)
             try:
                 result = mod.resolve_key(str(tmp_path), ["TEST_API_KEY"])
@@ -71,7 +70,7 @@ class TestResolveKeyConfigFallback:
         mock_keyring.get_password.return_value = None
         with patch.dict("sys.modules", {"keyring": mock_keyring}):
             import importlib
-            import inference_provider as mod
+            from soma_core import inference_provider as mod
             importlib.reload(mod)
             try:
                 result = mod.resolve_key(tmp_workspace, ["TEST_CONFIG_VAL"])
@@ -89,7 +88,7 @@ class TestResolveKeyNone:
         mock_keyring.get_password.return_value = None
         with patch.dict("sys.modules", {"keyring": mock_keyring}):
             import importlib
-            import inference_provider as mod
+            from soma_core import inference_provider as mod
             importlib.reload(mod)
             try:
                 result = mod.resolve_key(str(tmp_path), ["TEST_API_KEY"])
@@ -105,7 +104,7 @@ class TestResolveKeyNoKeyringPackage:
         """When keyring is not installed, fall back to config without error."""
         with patch.dict("sys.modules", {"keyring": None}):
             import importlib
-            import inference_provider as mod
+            from soma_core import inference_provider as mod
             importlib.reload(mod)
             try:
                 result = mod.resolve_key(tmp_workspace, ["TEST_CONFIG_VAL"])
@@ -123,7 +122,7 @@ class TestResolveKeyKeyringException:
         mock_keyring.get_password.side_effect = RuntimeError("dbus not available")
         with patch.dict("sys.modules", {"keyring": mock_keyring}):
             import importlib
-            import inference_provider as mod
+            from soma_core import inference_provider as mod
             importlib.reload(mod)
             try:
                 result = mod.resolve_key(tmp_workspace, ["TEST_CONFIG_VAL"])
@@ -142,7 +141,7 @@ class TestResolveKeyPriorityEnvOverKeyring:
         mock_keyring.get_password.return_value = "keyring-loses"
         with patch.dict("sys.modules", {"keyring": mock_keyring}):
             import importlib
-            import inference_provider as mod
+            from soma_core import inference_provider as mod
             importlib.reload(mod)
             try:
                 result = mod.resolve_key(tmp_workspace, ["TEST_CONFIG_VAL"])
@@ -159,7 +158,7 @@ class TestResolveKeySecretIgnoresConfig:
         mock_keyring.get_password.return_value = None
         with patch.dict("sys.modules", {"keyring": mock_keyring}):
             import importlib
-            import inference_provider as mod
+            from soma_core import inference_provider as mod
             importlib.reload(mod)
             try:
                 # The fixture puts TEST_API_KEY="leaked-secret" in soma.conf
@@ -178,7 +177,7 @@ class TestResolveKeyPriorityKeyringOverConfig:
         mock_keyring.get_password.return_value = "keyring-wins"
         with patch.dict("sys.modules", {"keyring": mock_keyring}):
             import importlib
-            import inference_provider as mod
+            from soma_core import inference_provider as mod
             importlib.reload(mod)
             try:
                 result = mod.resolve_key(tmp_workspace, ["TEST_API_KEY"])

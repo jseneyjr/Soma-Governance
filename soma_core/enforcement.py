@@ -864,6 +864,8 @@ def cli_ci_outcome_reporter(argv: Optional[List[str]] = None) -> int:
     return 0
 
 
+main = cli_ci_outcome_reporter
+
 __all__ = [
     "VALID_STATUSES",
     "CORE_FIELDS",
@@ -888,4 +890,5 @@ __all__ = [
     "generate_ci_report",
     "_match_cells",
     "cli_ci_outcome_reporter",
+    "main",
 ]
