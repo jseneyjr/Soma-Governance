@@ -31,7 +31,8 @@ class TestDecayIntegration:
         write_cell_with_fitness(cells_dir, "high-count", "advisory", 100, 90, 10)
 
         result = subprocess.run(
-            [sys.executable, os.path.join(REPO_ROOT, "enzymes", "cell_promote.py"),
+            [sys.executable, "-c",
+             "import sys; from soma_core.lifecycle import cli_cell_promote; sys.exit(cli_cell_promote(sys.argv[1:]))",
              "--tier-check", "--execute"],
             cwd=str(soma_workspace),
             capture_output=True, text=True, timeout=30,
@@ -61,7 +62,8 @@ class TestDecayIntegration:
         )
 
         result = subprocess.run(
-            [sys.executable, os.path.join(REPO_ROOT, "enzymes", "cell_promote.py"),
+            [sys.executable, "-c",
+             "import sys; from soma_core.lifecycle import cli_cell_promote; sys.exit(cli_cell_promote(sys.argv[1:]))",
              "--tier-check", "--execute"],
             cwd=str(soma_workspace),
             capture_output=True, text=True, timeout=30,
@@ -80,7 +82,8 @@ class TestDecayIntegration:
         write_cell_with_fitness(cells_dir, "dry-run-cell", "advisory", 100, 90, 10)
 
         result = subprocess.run(
-            [sys.executable, os.path.join(REPO_ROOT, "enzymes", "cell_promote.py"),
+            [sys.executable, "-c",
+             "import sys; from soma_core.lifecycle import cli_cell_promote; sys.exit(cli_cell_promote(sys.argv[1:]))",
              "--tier-check"],  # No --execute
             cwd=str(soma_workspace),
             capture_output=True, text=True, timeout=30,
@@ -97,7 +100,8 @@ class TestDecayIntegration:
         cells_dir = soma_workspace / ".soma" / "cells"
         write_cell_with_fitness(cells_dir, "idempotent-cell", "advisory", 100, 90, 10)
 
-        cmd = [sys.executable, os.path.join(REPO_ROOT, "enzymes", "cell_promote.py"),
+        cmd = [sys.executable, "-c",
+               "import sys; from soma_core.lifecycle import cli_cell_promote; sys.exit(cli_cell_promote(sys.argv[1:]))",
                "--tier-check", "--execute"]
         env = {**os.environ, "PYTHONPATH": REPO_ROOT}
 

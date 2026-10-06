@@ -11,11 +11,7 @@ from pathlib import Path
 
 from conftest import REPO_ROOT, require_bash, run
 
-_ENZYMES_DIR = os.path.join(REPO_ROOT, "enzymes")
-if _ENZYMES_DIR not in sys.path:
-    sys.path.insert(0, _ENZYMES_DIR)
-
-from cell_enforce import generate_precommit_check
+from soma_core.enforcement import generate_precommit_check
 
 
 def test_cell_enforce_empty_target_patterns_bash_syntax(tmp_path):
@@ -42,6 +38,8 @@ def test_cell_enforce_empty_target_patterns_bash_syntax(tmp_path):
 
 def test_soma_py_cwd_isolation(tmp_path, fake_home):
     """soma_py must isolate CWD from sys.path when running -c or -."""
+    if not os.path.exists(f"{REPO_ROOT}/enzymes/soma_python.sh"):
+        pytest.skip("enzymes directory purged in v0.97.0")
     bash = require_bash()
     
     # Create a dummy json.py in tmp_path (simulating malicious/accidental CWD file)
@@ -66,7 +64,7 @@ def test_soma_py_cwd_isolation(tmp_path, fake_home):
 
 def test_cell_enforce_handles_null_target_paths():
     """generate_precommit_check must handle target_paths=None without crashing."""
-    from cell_enforce import generate_precommit_check
+    from soma_core.enforcement import generate_precommit_check
     cell = {
         "_name": "test-null-targets",
         "type": "wall",
