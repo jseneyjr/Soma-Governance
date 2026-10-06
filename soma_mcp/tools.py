@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import importlib
 import json
 import os
@@ -5,6 +7,7 @@ import re
 import secrets
 import sys
 from datetime import datetime, timezone
+from typing import Optional
 
 from soma_core.cell_inventory import CellInventoryError, inventory_cells
 from soma_core.workspace import resolve_workspace
@@ -136,6 +139,17 @@ def normalize_tool_call(tool_name: str, arguments: dict) -> tuple[str, dict]:
     return canonical_name, normalized_args
 
 
+def _matches_cell_type_filter(rel: str, cell_type: Optional[str] = None) -> bool:
+    if not cell_type:
+        return True
+    parent_name = os.path.basename(os.path.dirname(rel))
+    return (
+        parent_name in (cell_type, f"{cell_type}s")
+        or f"/{cell_type}/" in rel
+        or f"/{cell_type}s/" in rel
+    )
+
+
 def _list_cells_stdlib(workspace, cell_type=None):
     """List cells from one canonical byte snapshot using the shared parser."""
     if cell_type:
@@ -150,13 +164,14 @@ def _list_cells_stdlib(workspace, cell_type=None):
         rel = entry.relative_path
         if os.path.basename(rel) == 'README.md':
             continue
+
+        path_matches = _matches_cell_type_filter(rel, cell_type)
+
         try:
             content = entry.content.decode('utf-8')
         except UnicodeDecodeError as exc:
-            if cell_type:
-                parent_name = os.path.basename(os.path.dirname(rel))
-                if not (parent_name in (cell_type, cell_type + 's') or f"/{cell_type}/" in rel or f"/{cell_type}s/" in rel):
-                    continue
+            if not path_matches:
+                continue
             message = f'invalid UTF-8: {exc}'
             warn(f'skipped cell {rel}: {message}')
             cells.append(_cell_diagnostic(rel, message))
@@ -164,29 +179,22 @@ def _list_cells_stdlib(workspace, cell_type=None):
 
         fm = _parse_frontmatter(content)
         if fm is None:
-            if cell_type:
-                parent_name = os.path.basename(os.path.dirname(rel))
-                if not (parent_name in (cell_type, cell_type + 's') or f"/{cell_type}/" in rel or f"/{cell_type}s/" in rel):
-                    continue
+            if not path_matches:
+                continue
             message = 'malformed YAML frontmatter'
             warn(f'skipped cell {rel}: {message}')
             cells.append(_cell_diagnostic(rel, message))
             continue
         if not fm:
-            if cell_type:
-                parent_name = os.path.basename(os.path.dirname(rel))
-                if not (parent_name in (cell_type, cell_type + 's') or f"/{cell_type}/" in rel or f"/{cell_type}s/" in rel):
-                    continue
+            if not path_matches:
+                continue
             message = 'no frontmatter metadata'
             warn(f'skipped cell {rel}: {message}')
             cells.append(_cell_diagnostic(rel, message))
             continue
 
-        if cell_type:
-            entry_type = fm.get('type')
-            parent_name = os.path.basename(os.path.dirname(rel))
-            if not (entry_type == cell_type or parent_name in (cell_type, cell_type + 's') or f"/{cell_type}/" in rel or f"/{cell_type}s/" in rel):
-                continue
+        if cell_type and not (fm.get('type') == cell_type or path_matches):
+            continue
 
         fm['_name'] = os.path.splitext(os.path.basename(rel))[0]
         fm['_path'] = rel
@@ -714,487 +722,515 @@ TOOL_DEFINITIONS = [
     }
 ]
 
+def _handle_create_cell(args: dict, gov) -> dict:
+    try:
+        prompt = build_cell_create_prompt(
+            description=args.get("description"),
+            domain_hint=args.get("domain"),
+            cell_type=args.get("cell_type"),
+            args=args,
+        )
+    except ValueError as exc:
+        return {"error": str(exc), "status": _STATUS_FAIL}
+    if args.get("dry_run"):
+        return {
+            "prompt": prompt,
+            "dry_run": True,
+            "instruction": "Dry run: showing prompt that would be used. No cell will be created.",
+        }
+    return {
+        "prompt": prompt,
+        "instruction": "Process this prompt and return the cell YAML. Then use a file-writing tool to save it to the appropriate .soma/cells/ directory.",
+    }
+
+
+def _handle_list_cells(args: dict, gov):
+    cell_type = args.get("cell_type")
+    if gov:
+        try:
+            return gov.list_cells(cell_type=cell_type)
+        except RuntimeError as exc:
+            return {"status": _STATUS_FAIL, "error": str(exc)}
+    try:
+        workspace = confine_workspace(args.get("workspace") or resolve_workspace(args))
+    except ValueError as exc:
+        return {"status": _STATUS_FAIL, "error": str(exc)}
+    return _list_cells_stdlib(workspace, cell_type=cell_type)
+
+
+def _handle_propose_change(args: dict, gov) -> dict:
+    if not soma_propose_change:
+        return {"error": "soma_propose_change not available"}
+    try:
+        workspace = confine_workspace(args.get("workspace") or resolve_workspace(args))
+    except ValueError as exc:
+        return {"error": str(exc), "status": _STATUS_FAIL}
+    file_path = args.get("file_path")
+    if not file_path:
+        return {"error": "file_path is required", "status": _STATUS_FAIL}
+    try:
+        _, rel_path = confine_path(file_path, workspace)
+        file_path = str(rel_path)
+    except ValueError as exc:
+        return {"error": str(exc), "status": _STATUS_FAIL}
+    proposed_content = args.get("proposed_content")
+
+    # Express JIT rules for the given file to get active playbooks
+    jit_result = jit_express(workspace, changed_files=[file_path])
+    active_playbooks = jit_result.get("relevant_cells", [])
+
+    result = soma_propose_change(file_path, proposed_content, active_playbooks, workspace=workspace)
+    status, verdict = _classify_propose_result(result)
+    payload = {"result": result, "status": status}
+    if verdict:
+        payload["verdict"] = verdict
+    return payload
+
+
+def _handle_audit_security(args: dict, gov) -> dict:
+    content = args.get("proposed_content") or ""
+    file_path = args.get("file_path") or ""
+    if file_path:
+        try:
+            workspace = confine_workspace(args.get("workspace") or resolve_workspace(args))
+            _, rel_path = confine_path(file_path, workspace)
+            file_path = rel_path
+        except ValueError as exc:
+            return {"error": str(exc), "status": _STATUS_FAIL}
+    flags = []
+    if "password=" in content.lower() or "secret=" in content.lower():
+        flags.append(f"- Hardcoded secret or password detected in {file_path}.")
+    if "eval(" in content:
+        flags.append(f"- eval() detected in {file_path}. Potential injection vector.")
+    if file_path:
+        ext = os.path.splitext(file_path)[1].lower()
+        if ext in ('.html', '.htm', '.js', '.jsx', '.ts', '.tsx'):
+            if 'innerHTML' in content or 'document.write' in content:
+                flags.append(f"- Potential XSS vector in {file_path}: innerHTML/document.write usage.")
+        if ext == '.sql' or ('execute(' in content and '%s' not in content and '?' not in content):
+            if 'f"' in content or "f'" in content or '% ' in content:
+                flags.append(f"- Potential SQL injection in {file_path}: string formatting in query.")
+
+    if flags:
+        return {"status": "FAIL", "feedback": "\n".join(flags), "file_path": file_path, "instruction": "Fix these issues and resubmit."}
+    return {"status": "PASS", "feedback": f"Security Audit passed for {file_path or 'input'}. No OWASP flaws or exposed secrets detected.", "file_path": file_path}
+
+
+def _handle_audit_performance(args: dict, gov) -> dict:
+    content = args.get("proposed_content") or ""
+    file_path = args.get("file_path") or ""
+    if file_path:
+        try:
+            workspace = confine_workspace(args.get("workspace") or resolve_workspace(args))
+            _, rel_path = confine_path(file_path, workspace)
+            file_path = rel_path
+        except ValueError as exc:
+            return {"error": str(exc), "status": _STATUS_FAIL}
+    flags = []
+    if content.count("for ") > 2 and "in " in content:
+        flags.append(f"- Potential O(N^2) or deeply nested loop detected in {file_path}.")
+    if ".query(" in content and "SELECT *" in content:
+        flags.append(f"- Inefficient DB query (SELECT *) detected in {file_path}. Select only needed columns.")
+    if file_path:
+        ext = os.path.splitext(file_path)[1].lower()
+        if ext == '.py':
+            if 'import *' in content:
+                flags.append(f"- Wildcard import in {file_path} may slow startup and increase memory.")
+
+    if flags:
+        return {"status": "FAIL", "feedback": "\n".join(flags), "file_path": file_path, "instruction": "Optimize the code and resubmit."}
+    return {"status": "PASS", "feedback": f"Performance Audit passed for {file_path or 'input'}. No obvious bottlenecks detected.", "file_path": file_path}
+
+
+def _handle_verify_changes(args: dict, gov) -> dict:
+    try:
+        workspace = confine_workspace(args.get('workspace') or resolve_workspace(args))
+    except ValueError as exc:
+        return {"error": str(exc), "status": _STATUS_FAIL}
+    files = args.get('files') or []
+    if not isinstance(files, (list, tuple)) or not all(isinstance(f, str) for f in files):
+        return {"error": "'files' must be a list of file paths", "status": _STATUS_FAIL}
+    try:
+        files = [confine_path(f, workspace)[1] for f in files]
+    except ValueError as exc:
+        return {"error": str(exc), "status": _STATUS_FAIL}
+    layer1_only = args.get('layer1_only', True)
+    async_mode = args.get('async_mode', False)
+    if async_mode:
+        from soma_core.verification_jobs import submit_verification_job
+        job = submit_verification_job(
+            workspace=workspace,
+            files=files,
+            layer1_only=layer1_only,
+            task_plan=args.get('task_plan', ''),
+            receipt=args.get('receipt'),
+        )
+        return {
+            "status": "QUEUED",
+            "job_id": job.job_id,
+            "message": "Verification job enqueued. Poll with soma_poll_verification.",
+            "created_at": job.created_at,
+        }
+
+    try:
+        from soma_core.verification import runner
+    except ImportError:
+        try:
+            from immune_system.verification import runner
+        except ImportError:
+            return {"error": "immune_system.verification is not importable. Install soma with immune_system package."}
+    results = runner.run_layer1(changed_files=files, repo_root=workspace)
+    verdict = runner.gate_verdict(results)
+    summary = runner.format_summary(results)
+    evidence = [
+        {"tool": r.tool, "target": r.target, "verdict": r.verdict, "detail": r.detail}
+        for r in results
+    ]
+    actual_layer1_only = True
+    response_payload = {
+        "status": "PASS" if verdict else "FAIL",
+        "summary": summary,
+        "layer1_only": actual_layer1_only,
+        "evidence": evidence,
+    }
+    if not layer1_only:
+        response_payload["note"] = "Synchronous Layer 2 verification is not supported over MCP transport; use async_mode=true or fell back to Layer 1."
+    return response_payload
+
+
+def _handle_poll_verification(args: dict, gov) -> dict:
+    job_id = args.get("job_id")
+    if not job_id:
+        return {"error": "Missing required argument 'job_id'", "status": _STATUS_FAIL}
+    from soma_core.verification_jobs import get_job
+    job = get_job(job_id)
+    if job is None:
+        return {"error": f"Verification job '{job_id}' not found or expired.", "status": _STATUS_FAIL}
+    if job.status == "COMPLETED":
+        return {
+            "status": "COMPLETED",
+            "job_id": job.job_id,
+            "completed_at": job.completed_at,
+            "result": job.result,
+            "receipt": job.receipt,
+        }
+    elif job.status == "FAILED":
+        return {
+            "status": "FAILED",
+            "job_id": job.job_id,
+            "error": job.error,
+            "completed_at": job.completed_at,
+        }
+    elif job.status == "RUNNING":
+        return {
+            "status": "RUNNING",
+            "job_id": job.job_id,
+            "started_at": job.started_at,
+        }
+    else:
+        return {
+            "status": job.status,
+            "job_id": job.job_id,
+            "created_at": job.created_at,
+        }
+
+
+def _handle_checkpoint(args: dict, gov) -> dict:
+    try:
+        workspace = confine_workspace(args.get('workspace') or resolve_workspace(args))
+    except ValueError as exc:
+        return {"error": str(exc), "status": _STATUS_FAIL}
+    if _run_checkpoint_checks is None:
+        return {"error": "immune_system module is not available", "status": _STATUS_FAIL}
+    from pathlib import Path
+    root = Path(workspace)
+    issues = _run_checkpoint_checks(root)
+    return {
+        "status": "PASS" if not issues else "FAIL",
+        "checks": _CHECKPOINT_NAMES,
+        "issue_count": len(issues),
+        "issues": issues,
+    }
+
+
+def _handle_scan(args: dict, gov) -> dict:
+    try:
+        workspace = confine_workspace(args.get('workspace') or resolve_workspace(args))
+    except ValueError as exc:
+        return {"error": str(exc), "status": _STATUS_FAIL}
+    files = args.get('files', None)
+    if files is not None:
+        if not isinstance(files, (list, tuple)) or not all(isinstance(f, str) for f in files):
+            return {"error": "'files' must be a list of file paths", "status": _STATUS_FAIL}
+        try:
+            files = [str(confine_path(f, workspace)[1]) for f in files]
+        except ValueError as exc:
+            return {"error": str(exc), "status": _STATUS_FAIL}
+    return jit_express(workspace, changed_files=files)
+
+
+def _handle_report_outcome(args: dict, gov) -> dict:
+    try:
+        workspace = confine_workspace(args.get('workspace') or resolve_workspace(args))
+    except ValueError as exc:
+        return {"error": str(exc), "status": _STATUS_FAIL}
+    raw_outcome = args.get('outcome')
+    outcome_value = raw_outcome.strip().lower() if isinstance(raw_outcome, str) else None
+    if outcome_value not in _VALID_OUTCOMES:
+        return {
+            "error": (
+                f"Invalid 'outcome': {raw_outcome!r}. "
+                f"Expected one of {list(_VALID_OUTCOMES)}."
+            ),
+            "status": _STATUS_FAIL,
+        }
+    idempotency_key = args.get('idempotency_key')
+    if not isinstance(idempotency_key, str) or not idempotency_key:
+        return {
+            "error": "'idempotency_key' must be a nonempty string.",
+            "status": _STATUS_FAIL,
+        }
+    raw_cells_used = args.get('cells_used')
+    if raw_cells_used is None:
+        if "cell_id" in args:
+            val = args["cell_id"]
+            raw_cells_used = [val] if isinstance(val, str) else val
+        elif "rule_id" in args:
+            val = args["rule_id"]
+            raw_cells_used = [val] if isinstance(val, str) else val
+    if raw_cells_used is not None:
+        if not isinstance(raw_cells_used, (list, tuple)) or not all(isinstance(c, str) for c in raw_cells_used):
+            return {
+                "error": "'cells_used' must be a list of cell names.",
+                "status": _STATUS_FAIL,
+            }
+        cells_used = list(raw_cells_used)
+    else:
+        cells_used = []
+
+    if cells_used:
+        invalid = validate_cell_names(cells_used, workspace)
+        if invalid:
+            return {
+                "error": f"Unknown cell(s): {invalid}. Only existing cells can be reported.",
+                "status": _STATUS_FAIL,
+            }
+    tests_passed = args.get('tests_passed')
+    rework_count = args.get('rework_count', 0)
+    notes = args.get('notes', '')
+    signal_map = {'success': 'tp', 'tp': 'tp', 'failure': 'fp',
+                  'fp': 'fp', 'partial': 'trigger', 'pass': 'tp', 'fail': 'fp'}
+    metadata = {
+        'notes': notes,
+        'tests_passed': tests_passed,
+        'rework_count': rework_count,
+    }
+    events = [
+        {
+            'cell_name': cell_id,
+            'signal_type': signal_map.get(outcome_value, 'trigger'),
+            'source': 'mcp',
+            'metadata': metadata,
+            'principal': 'mcp',
+            'idempotency_scope': 'report_outcome',
+            'idempotency_key': idempotency_key,
+        }
+        for cell_id in cells_used
+    ]
+    try:
+        from soma_core.telemetry import append_signals, read_generation
+        generation = read_generation(workspace)
+        records = append_signals(
+            workspace, events, expected_generation=generation)
+    except Exception as exc:
+        return {
+            'status': _STATUS_FAIL,
+            'error': f'Failed to record outcome: {exc}',
+        }
+    return {'status': 'recorded', 'records': records}
+
+
+def _handle_capture_insight(args: dict, gov) -> dict:
+    try:
+        workspace = confine_workspace(args.get('workspace') or resolve_workspace(args))
+    except ValueError as exc:
+        return {"error": str(exc), "status": _STATUS_FAIL}
+    try:
+        from soma_core.insights import capture_insight
+    except ImportError:
+        return {"error": "soma_core.insights is not importable.", "status": _STATUS_FAIL}
+    try:
+        context_files_arg = args.get('context_files') or []
+        if not isinstance(context_files_arg, (list, tuple)) or not all(isinstance(f, str) for f in context_files_arg):
+            return {"error": "'context_files' must be a list of file paths", "status": _STATUS_FAIL}
+        record = capture_insight(
+            workspace=workspace,
+            insight=args.get('insight', ''),
+            context_files=[str(confine_path(f, workspace)[1]) for f in context_files_arg],
+            source_conversation=args.get('source_conversation'),
+            category=args.get('category'),
+        )
+    except ValueError as exc:
+        return {"error": str(exc), "status": _STATUS_FAIL}
+    return {
+        'status': 'recorded',
+        'insight': record,
+    }
+
+
+def _handle_generate_manifest(args: dict, gov) -> dict:
+    try:
+        workspace = confine_workspace(args.get('workspace') or resolve_workspace(args))
+    except ValueError as exc:
+        return {"error": str(exc), "status": "FAIL"}
+    cells_dir = os.path.join(workspace, ".soma", "cells")
+
+    key_created = False
+    if args.get("generate_key") and load_key(workspace) is None:
+        generate_key(workspace)
+        key_created = True
+
+    manifest = generate_manifest(cells_dir)
+    save_manifest(workspace, manifest)
+
+    return {
+        "status": "OK",
+        "cell_count": manifest["cell_count"],
+        "signed": "signature" in manifest,
+        "key_generated": key_created,
+        "generated_at": manifest["generated_at"],
+    }
+
+
+def _handle_grade(args: dict, gov) -> dict:
+    if gov:
+        result = gov.grade()
+    else:
+        try:
+            from soma_core.telemetry import calculate_immune_grade
+            workspace = confine_workspace(args.get('workspace') or resolve_workspace(args))
+            result = calculate_immune_grade(workspace)
+        except Exception as exc:
+            return {"status": _STATUS_FAIL, "error": str(exc)}
+    if result is None:
+        return {
+            "coverage": {"pct": 0.0, "grade": "F"},
+            "avg_fitness": {"pct": 0.0, "grade": "F", "score": 0.0},
+            "diversity": {"pct": 0.0, "grade": "F"},
+            "staleness": {"pct": 0.0, "grade": "F"},
+            "wall_integrity": {"pct": 0.0, "grade": "F"},
+            "tiers": {},
+            "overall": {"pct": 0.0, "grade": "F"},
+            "status": "PASS",
+            "note": "No cells found to grade",
+        }
+    if not isinstance(result, dict):
+        return {"status": _STATUS_FAIL, "error": str(result)}
+    return result
+
+
+def _handle_coverage(args: dict, gov):
+    if gov:
+        result = gov.coverage_report()
+    else:
+        try:
+            from soma_core.telemetry import calculate_coverage
+            workspace = confine_workspace(args.get('workspace') or resolve_workspace(args))
+            result = calculate_coverage(workspace)
+        except Exception as exc:
+            return {"status": _STATUS_FAIL, "error": str(exc)}
+    if not isinstance(result, dict):
+        return {"status": _STATUS_FAIL, "error": str(result)}
+    return result
+
+
+def _handle_fitness(args: dict, gov):
+    bayesian = args.get("bayesian", False)
+    if gov:
+        result = gov.fitness_landscape(bayesian=bayesian)
+    else:
+        try:
+            from soma_core.lifecycle import compute_cells_fitness
+            workspace = confine_workspace(args.get('workspace') or resolve_workspace(args))
+            result = compute_cells_fitness(workspace=workspace, bayesian=bayesian)
+        except Exception as exc:
+            return {"status": _STATUS_FAIL, "error": str(exc)}
+    if isinstance(result, dict) and "error" in result:
+        result["status"] = _STATUS_FAIL
+    return result
+
+
+def _handle_request_receipt(args: dict, gov) -> dict:
+    operation = args.get("operation")
+    if not operation:
+        return {"error": "Missing required argument 'operation'", "status": _STATUS_FAIL}
+    op_args = args.get("arguments", {})
+    if not isinstance(op_args, dict):
+        return {"error": "arguments must be an object", "status": _STATUS_FAIL}
+    from soma_core.receipts import (
+        issue_receipt,
+        compute_file_digest,
+        compute_cell_digest,
+        target_paths,
+        strip_server_owned,
+    )
+    workspace = (
+        args.get("workspace")
+        or (str(gov.repo_root) if (gov and hasattr(gov, "repo_root")) else resolve_workspace())
+    )
+
+    clean_args = strip_server_owned(op_args)
+    session_id = args.get("session_id") or args.get("_sessionToken") or "local-session"
+    try:
+        file_digest = compute_file_digest(workspace, target_paths(clean_args))
+        cell_digest = compute_cell_digest(workspace)
+    except (ValueError, RuntimeError, OSError) as exc:
+        return {"error": str(exc), "status": _STATUS_FAIL}
+
+    receipt_id = issue_receipt(
+        session_id=session_id,
+        workspace=workspace,
+        operation=operation,
+        args=clean_args,
+        file_digest=file_digest,
+        cell_digest=cell_digest,
+        ttl_seconds=300,
+    )
+    return {
+        "receipt": receipt_id,
+        "operation": operation,
+        "status": "ISSUED",
+    }
+
+
+_TOOL_HANDLERS = {
+    "soma_create_cell": _handle_create_cell,
+    "soma_create_rule": _handle_create_cell,
+    "soma_list_cells": _handle_list_cells,
+    "soma_list_rules": _handle_list_cells,
+    "soma_propose_change": _handle_propose_change,
+    "soma_audit_security": _handle_audit_security,
+    "soma_audit_performance": _handle_audit_performance,
+    "soma_verify_changes": _handle_verify_changes,
+    "soma_poll_verification": _handle_poll_verification,
+    "soma_checkpoint": _handle_checkpoint,
+    "soma_scan": _handle_scan,
+    "soma_report_outcome": _handle_report_outcome,
+    "soma_capture_insight": _handle_capture_insight,
+    "soma_generate_manifest": _handle_generate_manifest,
+    "soma_grade": _handle_grade,
+    "soma_coverage": _handle_coverage,
+    "soma_fitness": _handle_fitness,
+    "soma_rule_fitness": _handle_fitness,
+    "soma_request_receipt": _handle_request_receipt,
+}
+
+
 def execute_tool(name: str, args: dict):
     name, args = normalize_tool_call(name, args)
     gov = get_governance(args)
-    
-    if name == "soma_create_cell":
-        try:
-            prompt = build_cell_create_prompt(
-                description=args.get("description"),
-                domain_hint=args.get("domain"),
-                cell_type=args.get("cell_type"),
-                args=args
-            )
-        except ValueError as exc:
-            return {"error": str(exc), "status": _STATUS_FAIL}
-        if args.get("dry_run"):
-            return {"prompt": prompt, "dry_run": True, "instruction": "Dry run: showing prompt that would be used. No cell will be created."}
-        return {"prompt": prompt, "instruction": "Process this prompt and return the cell YAML. Then use a file-writing tool to save it to the appropriate .soma/cells/ directory."}
-    
-    elif name == "soma_list_cells":
-        # Both SDK and stdlib paths use the same fail-closed canonical inventory.
-        cell_type = args.get("cell_type")
-        if gov:
-            try:
-                return gov.list_cells(cell_type=cell_type)
-            except RuntimeError as exc:
-                return {'status': _STATUS_FAIL, 'error': str(exc)}
-        try:
-            workspace = confine_workspace(
-                args.get('workspace') or resolve_workspace(args)
-            )
-        except ValueError as exc:
-            return {'status': _STATUS_FAIL, 'error': str(exc)}
-        return _list_cells_stdlib(workspace, cell_type=cell_type)
-
-    elif name == "soma_propose_change":
-        if not soma_propose_change:
-            return {"error": "soma_propose_change not available"}
-        try:
-            workspace = confine_workspace(args.get('workspace') or resolve_workspace(args))
-        except ValueError as exc:
-            return {"error": str(exc), "status": _STATUS_FAIL}
-        file_path = args.get('file_path')
-        if not file_path:
-            return {"error": "file_path is required", "status": _STATUS_FAIL}
-        try:
-            _, rel_path = confine_path(file_path, workspace)
-            file_path = str(rel_path)
-        except ValueError as exc:
-            return {"error": str(exc), "status": _STATUS_FAIL}
-        proposed_content = args.get('proposed_content')
-        
-        # Express JIT rules for the given file to get active playbooks
-        jit_result = jit_express(workspace, changed_files=[file_path])
-        active_playbooks = jit_result.get('relevant_cells', [])
-        
-        result = soma_propose_change(file_path, proposed_content, active_playbooks, workspace=workspace)
-        status, verdict = _classify_propose_result(result)
-        # Explicit status so the transport does not have to sniff the message text.
-        payload = {"result": result, "status": status}
-        if verdict:
-            payload["verdict"] = verdict
-        return payload
-        
-    elif name == "soma_audit_security":
-        content = args.get("proposed_content") or ""
-        file_path = args.get("file_path") or ""
-        if file_path:
-            try:
-                workspace = confine_workspace(args.get('workspace') or resolve_workspace(args))
-                _, rel_path = confine_path(file_path, workspace)
-                file_path = rel_path
-            except ValueError as exc:
-                return {"error": str(exc), "status": _STATUS_FAIL}
-        # Prototype: Basic keyword scanning for secrets and OWASP basics
-        flags = []
-        if "password=" in content.lower() or "secret=" in content.lower():
-            flags.append(f"- Hardcoded secret or password detected in {file_path}.")
-        if "eval(" in content:
-            flags.append(f"- eval() detected in {file_path}. Potential injection vector.")
-        # Scope checks by file extension when file_path is provided
-        if file_path:
-            ext = os.path.splitext(file_path)[1].lower()
-            if ext in ('.html', '.htm', '.js', '.jsx', '.ts', '.tsx'):
-                if 'innerHTML' in content or 'document.write' in content:
-                    flags.append(f"- Potential XSS vector in {file_path}: innerHTML/document.write usage.")
-            if ext == '.sql' or ('execute(' in content and '%s' not in content and '?' not in content):
-                if 'f"' in content or "f'" in content or '% ' in content:
-                    flags.append(f"- Potential SQL injection in {file_path}: string formatting in query.")
-
-        if flags:
-            return {"status": "FAIL", "feedback": "\n".join(flags), "file_path": file_path, "instruction": "Fix these issues and resubmit."}
-        return {"status": "PASS", "feedback": f"Security Audit passed for {file_path or 'input'}. No OWASP flaws or exposed secrets detected.", "file_path": file_path}
-
-    elif name == "soma_audit_performance":
-        content = args.get("proposed_content") or ""
-        file_path = args.get("file_path") or ""
-        if file_path:
-            try:
-                workspace = confine_workspace(args.get('workspace') or resolve_workspace(args))
-                _, rel_path = confine_path(file_path, workspace)
-                file_path = rel_path
-            except ValueError as exc:
-                return {"error": str(exc), "status": _STATUS_FAIL}
-        # Prototype: Basic keyword scanning for hot-paths and inefficiencies
-        flags = []
-        if content.count("for ") > 2 and "in " in content:
-            # Very naive nested loop check
-            flags.append(f"- Potential O(N^2) or deeply nested loop detected in {file_path}.")
-        if ".query(" in content and "SELECT *" in content:
-            flags.append(f"- Inefficient DB query (SELECT *) detected in {file_path}. Select only needed columns.")
-        # Scope checks by file extension when file_path is provided
-        if file_path:
-            ext = os.path.splitext(file_path)[1].lower()
-            if ext == '.py':
-                if 'import *' in content:
-                    flags.append(f"- Wildcard import in {file_path} may slow startup and increase memory.")
-
-        if flags:
-            return {"status": "FAIL", "feedback": "\n".join(flags), "file_path": file_path, "instruction": "Optimize the code and resubmit."}
-        return {"status": "PASS", "feedback": f"Performance Audit passed for {file_path or 'input'}. No obvious bottlenecks detected.", "file_path": file_path}
-
-    if name == "soma_verify_changes":
-        try:
-            workspace = confine_workspace(args.get('workspace') or resolve_workspace(args))
-        except ValueError as exc:
-            return {"error": str(exc), "status": _STATUS_FAIL}
-        files = args.get('files') or []
-        if not isinstance(files, (list, tuple)) or not all(isinstance(f, str) for f in files):
-            return {"error": "'files' must be a list of file paths", "status": _STATUS_FAIL}
-        # Confine each file path within the workspace
-        try:
-            files = [confine_path(f, workspace)[1] for f in files]
-        except ValueError as exc:
-            return {"error": str(exc), "status": _STATUS_FAIL}
-        layer1_only = args.get('layer1_only', True)
-        async_mode = args.get('async_mode', False)
-        if async_mode:
-            from soma_core.verification_jobs import submit_verification_job
-            job = submit_verification_job(
-                workspace=workspace,
-                files=files,
-                layer1_only=layer1_only,
-                task_plan=args.get('task_plan', ''),
-                receipt=args.get('receipt'),
-            )
-            return {
-                "status": "QUEUED",
-                "job_id": job.job_id,
-                "message": "Verification job enqueued. Poll with soma_poll_verification.",
-                "created_at": job.created_at,
-            }
-
-        try:
-            from soma_core.verification import runner
-        except ImportError:
-            return {"error": "soma_core.verification is not importable."}
-        results = runner.run_layer1(changed_files=files, repo_root=workspace)
-        verdict = runner.gate_verdict(results)
-        summary = runner.format_summary(results)
-        evidence = [
-            {"tool": r.tool, "target": r.target, "verdict": r.verdict, "detail": r.detail}
-            for r in results
-        ]
-        # Layer 2 execution is not implemented in synchronous MCP tools endpoint; force layer1_only to True
-        # so response accuracy is guaranteed.
-        actual_layer1_only = True
-        response_payload = {
-            "status": "PASS" if verdict else "FAIL",
-            "summary": summary,
-            "layer1_only": actual_layer1_only,
-            "evidence": evidence,
-        }
-        if not layer1_only:
-            response_payload["note"] = "Synchronous Layer 2 verification is not supported over MCP transport; use async_mode=true or fell back to Layer 1."
-        return response_payload
-
-    elif name == "soma_poll_verification":
-        job_id = args.get("job_id")
-        if not job_id:
-            return {"error": "Missing required argument 'job_id'", "status": _STATUS_FAIL}
-        from soma_core.verification_jobs import get_job
-        job = get_job(job_id)
-        if job is None:
-            return {"error": f"Verification job '{job_id}' not found or expired.", "status": _STATUS_FAIL}
-        if job.status == "COMPLETED":
-            return {
-                "status": "COMPLETED",
-                "job_id": job.job_id,
-                "completed_at": job.completed_at,
-                "result": job.result,
-                "receipt": job.receipt,
-            }
-        elif job.status == "FAILED":
-            return {
-                "status": "FAILED",
-                "job_id": job.job_id,
-                "error": job.error,
-                "completed_at": job.completed_at,
-            }
-        elif job.status == "RUNNING":
-            return {
-                "status": "RUNNING",
-                "job_id": job.job_id,
-                "started_at": job.started_at,
-            }
-        else:
-            return {
-                "status": job.status,
-                "job_id": job.job_id,
-                "created_at": job.created_at,
-            }
-
-    elif name == "soma_checkpoint":
-        try:
-            workspace = confine_workspace(args.get('workspace') or resolve_workspace(args))
-        except ValueError as exc:
-            return {"error": str(exc), "status": _STATUS_FAIL}
-        if _run_checkpoint_checks is None:
-            return {"error": "verification module is not available", "status": _STATUS_FAIL}
-        from pathlib import Path
-        root = Path(workspace)
-        issues = _run_checkpoint_checks(root)
-        return {
-            "status": "PASS" if not issues else "FAIL",
-            "checks": _CHECKPOINT_NAMES,
-            "issue_count": len(issues),
-            "issues": issues,
-        }
-
-    elif name == "soma_scan":
-        # v0.23: JIT expression — returns only relevant cells, not everything
-        try:
-            workspace = confine_workspace(args.get('workspace') or resolve_workspace(args))
-        except ValueError as exc:
-            return {"error": str(exc), "status": _STATUS_FAIL}
-        files = args.get('files', None)
-        if files is not None:
-            if not isinstance(files, (list, tuple)) or not all(isinstance(f, str) for f in files):
-                return {"error": "'files' must be a list of file paths", "status": _STATUS_FAIL}
-            try:
-                files = [str(confine_path(f, workspace)[1]) for f in files]
-            except ValueError as exc:
-                return {"error": str(exc), "status": _STATUS_FAIL}
-        return jit_express(workspace, changed_files=files)
-
-    elif name == "soma_report_outcome":
-        # v0.23: Agent reports execution outcome for fitness scoring
-        try:
-            workspace = confine_workspace(args.get('workspace') or resolve_workspace(args))
-        except ValueError as exc:
-            return {"error": str(exc), "status": _STATUS_FAIL}
-        # Enforce the advertised enum here: persisting 'unknown' would silently
-        # poison fitness scoring with un-gradeable rows.
-        raw_outcome = args.get('outcome')
-        outcome_value = raw_outcome.strip().lower() if isinstance(raw_outcome, str) else None
-        if outcome_value not in _VALID_OUTCOMES:
-            return {
-                "error": (
-                    f"Invalid 'outcome': {raw_outcome!r}. "
-                    f"Expected one of {list(_VALID_OUTCOMES)}."
-                ),
-                "status": _STATUS_FAIL,
-            }
-        idempotency_key = args.get('idempotency_key')
-        if not isinstance(idempotency_key, str) or not idempotency_key:
-            return {
-                "error": "'idempotency_key' must be a nonempty string.",
-                "status": _STATUS_FAIL,
-            }
-        raw_cells_used = args.get('cells_used')
-        if raw_cells_used is None:
-            if "cell_id" in args:
-                val = args["cell_id"]
-                raw_cells_used = [val] if isinstance(val, str) else val
-            elif "rule_id" in args:
-                val = args["rule_id"]
-                raw_cells_used = [val] if isinstance(val, str) else val
-        if raw_cells_used is not None:
-            if not isinstance(raw_cells_used, (list, tuple)) or not all(isinstance(c, str) for c in raw_cells_used):
-                return {
-                    "error": "'cells_used' must be a list of cell names.",
-                    "status": _STATUS_FAIL,
-                }
-            cells_used = list(raw_cells_used)
-        else:
-            cells_used = []
-        # Validate cell names against actual inventory
-        if cells_used:
-            invalid = validate_cell_names(cells_used, workspace)
-            if invalid:
-                return {
-                    "error": f"Unknown cell(s): {invalid}. Only existing cells can be reported.",
-                    "status": _STATUS_FAIL,
-                }
-        tests_passed = args.get('tests_passed')
-        rework_count = args.get('rework_count', 0)
-        notes = args.get('notes', '')
-        signal_map = {'success': 'tp', 'tp': 'tp', 'failure': 'fp',
-                      'fp': 'fp', 'partial': 'trigger', 'pass': 'tp', 'fail': 'fp'}
-        metadata = {
-            'notes': notes,
-            'tests_passed': tests_passed,
-            'rework_count': rework_count,
-        }
-        events = [
-            {
-                'cell_name': cell_id,
-                'signal_type': signal_map.get(outcome_value, 'trigger'),
-                'source': 'mcp',
-                'metadata': metadata,
-                'principal': 'mcp',
-                'idempotency_scope': 'report_outcome',
-                'idempotency_key': idempotency_key,
-            }
-            for cell_id in cells_used
-        ]
-        try:
-            from soma_core.telemetry import append_signals, read_generation
-            generation = read_generation(workspace)
-            records = append_signals(
-                workspace, events, expected_generation=generation)
-        except Exception as exc:  # fail closed: the canonical batch was not committed
-            return {
-                'status': _STATUS_FAIL,
-                'error': f'Failed to record outcome: {exc}',
-            }
-        return {'status': 'recorded', 'records': records}
-
-    elif name == "soma_capture_insight":
-        try:
-            workspace = confine_workspace(args.get('workspace') or resolve_workspace(args))
-        except ValueError as exc:
-            return {"error": str(exc), "status": _STATUS_FAIL}
-        try:
-            from soma_core.insights import capture_insight
-        except ImportError:
-            return {"error": "soma_core.insights is not importable.", "status": _STATUS_FAIL}
-        try:
-            context_files_arg = args.get('context_files') or []
-            if not isinstance(context_files_arg, (list, tuple)) or not all(isinstance(f, str) for f in context_files_arg):
-                return {"error": "'context_files' must be a list of file paths", "status": _STATUS_FAIL}
-            record = capture_insight(
-                workspace=workspace,
-                insight=args.get('insight', ''),
-                context_files=[str(confine_path(f, workspace)[1]) for f in context_files_arg],
-                source_conversation=args.get('source_conversation'),
-                category=args.get('category'),
-            )
-        except ValueError as exc:
-            return {"error": str(exc), "status": _STATUS_FAIL}
-        return {
-            'status': 'recorded',
-            'insight': record,
-        }
-
-    elif name == "soma_generate_manifest":
-        try:
-            workspace = confine_workspace(args.get('workspace') or resolve_workspace(args))
-        except ValueError as exc:
-            return {"error": str(exc), "status": "FAIL"}
-        cells_dir = os.path.join(workspace, ".soma", "cells")
-
-        # Optionally generate HMAC key
-        key_created = False
-        if args.get("generate_key") and load_key(workspace) is None:
-            generate_key(workspace)
-            key_created = True
-
-        manifest = generate_manifest(cells_dir)
-        save_manifest(workspace, manifest)  # auto-signs if key exists
-
-        return {
-            "status": "OK",
-            "cell_count": manifest["cell_count"],
-            "signed": "signature" in manifest,
-            "key_generated": key_created,
-            "generated_at": manifest["generated_at"],
-        }
-
-    if name == "soma_grade":
-        if gov:
-            result = gov.grade()
-        else:
-            try:
-                from soma_core.telemetry import calculate_immune_grade
-                workspace = confine_workspace(args.get('workspace') or resolve_workspace(args))
-                result = calculate_immune_grade(workspace)
-            except Exception as exc:
-                return {"status": _STATUS_FAIL, "error": str(exc)}
-        if result is None:
-            return {
-                "coverage": {"pct": 0.0, "grade": "F"},
-                "avg_fitness": {"pct": 0.0, "grade": "F", "score": 0.0},
-                "diversity": {"pct": 0.0, "grade": "F"},
-                "staleness": {"pct": 0.0, "grade": "F"},
-                "wall_integrity": {"pct": 0.0, "grade": "F"},
-                "tiers": {},
-                "overall": {"pct": 0.0, "grade": "F"},
-                "status": "PASS",
-                "note": "No cells found to grade",
-            }
-        if not isinstance(result, dict):
-            return {"status": _STATUS_FAIL, "error": str(result)}
-        return result
-        
-    elif name == "soma_coverage":
-        if gov:
-            result = gov.coverage_report()
-        else:
-            try:
-                from soma_core.telemetry import calculate_coverage
-                workspace = confine_workspace(args.get('workspace') or resolve_workspace(args))
-                result = calculate_coverage(workspace)
-            except Exception as exc:
-                return {"status": _STATUS_FAIL, "error": str(exc)}
-        if not isinstance(result, dict):
-            return {"status": _STATUS_FAIL, "error": str(result)}
-        return result
-
-    elif name == "soma_fitness":
-        bayesian = args.get("bayesian", False)
-        if gov:
-            result = gov.fitness_landscape(bayesian=bayesian)
-        else:
-            try:
-                from soma_core.lifecycle import compute_cells_fitness
-                workspace = confine_workspace(args.get('workspace') or resolve_workspace(args))
-                result = compute_cells_fitness(workspace=workspace, bayesian=bayesian)
-            except Exception as exc:
-                return {"status": _STATUS_FAIL, "error": str(exc)}
-        if isinstance(result, dict) and "error" in result:
-            result["status"] = _STATUS_FAIL
-        return result
-
-    # All other tools require the full SDK
-    if not gov:
-        return {"error": "soma_sdk is not importable from this workspace; requested tool is unavailable."}
-
-    elif name == "soma_request_receipt":
-        operation = args.get("operation")
-        if not operation:
-            return {"error": "Missing required argument 'operation'", "status": _STATUS_FAIL}
-        op_args = args.get("arguments", {})
-        if not isinstance(op_args, dict):
-            return {"error": "arguments must be an object", "status": _STATUS_FAIL}
-        from soma_core.receipts import (
-
-            issue_receipt,
-            compute_file_digest,
-            compute_cell_digest,
-            target_paths,
-            strip_server_owned,
-        )
-        workspace = (
-            args.get("workspace")
-            or (str(gov.repo_root) if (gov and hasattr(gov, "repo_root")) else resolve_workspace())
-        )
-
-        clean_args = strip_server_owned(op_args)
-        session_id = args.get("session_id") or args.get("_sessionToken") or "local-session"
-        try:
-            file_digest = compute_file_digest(workspace, target_paths(clean_args))
-            cell_digest = compute_cell_digest(workspace)
-        except (ValueError, RuntimeError, OSError) as exc:
-            return {"error": str(exc), "status": _STATUS_FAIL}
-
-        receipt_id = issue_receipt(
-            session_id=session_id,
-            workspace=workspace,
-            operation=operation,
-            args=clean_args,
-            file_digest=file_digest,
-            cell_digest=cell_digest,
-            ttl_seconds=300,
-        )
-        return {
-            "receipt": receipt_id,
-            "operation": operation,
-            "status": "ISSUED",
-        }
-
-    else:
+    handler = _TOOL_HANDLERS.get(name)
+    if not handler:
         raise ValueError(f"Unknown tool: {name}")
+    return handler(args, gov)
 

@@ -3,6 +3,27 @@
 All notable changes to Soma are documented here.
 This project uses [Semantic Versioning](https://semver.org/).
 
+## [0.102.0] — 2026-10-06 — "Facade Hardening & Final Prune"
+
+### Architecture & Pruning (Final Bloat Remediation Phase)
+- **Modularized MCP Tool Execution & Architecture (`soma_mcp/tools.py`)**:
+  - Decomposed 483-line monolithic `execute_tool()` into modular per-tool handlers with a declarative `_TOOL_HANDLERS` dispatch dictionary.
+  - Eliminated syntax anomalies (`if` vs `elif`) across verify and grade handlers.
+  - Streamlined `_list_cells_stdlib` with centralized path matching and canonical inventory traversal.
+  - Preserved `TOOL_DEFINITIONS = [...]` literal AST assignment ensuring 100% contract and documentation test compatibility.
+- **Hardened SDK Facades (`soma_sdk/`)**:
+  - Pruned 5 dead legacy enzyme stubs in `soma_sdk/governance.py` (`_run_script`, `replay`, `trends`, `dependencies`, `adversarial`).
+  - Pruned dead write hook registry (`_post_write_hook` and `register_write_hook`) from `soma_sdk/cells.py`.
+  - Cleaned obsolete legacy comments and verified typing across `soma_sdk/hot_zones.py`, `soma_sdk/scoring.py`, and `soma_sdk/telemetry.py`.
+- **Cleaned Leftover Empty Shims & Dead Patterns**:
+  - Pruned empty tuple `DESTRUCTIVE_PATTERNS: tuple[...] = ()` in `soma_cli/hooks.py`.
+  - Pruned unreferenced `STARTER_RULES_LEGACY` from `soma_cli/init.py`.
+- **Package Startup & Import Optimization (`soma_core/__init__.py`)**:
+  - Implemented PEP 562 dynamic attribute resolution (`__getattr__`) for submodules and heavy symbols in `soma_core/__init__.py`.
+  - Defers eager loading of `asyncio` and `storage`, dropping cold `import soma_core` latency by ~16x (from 54ms to ~3.3ms) and process startup (`soma --help`) to 41ms.
+- **Completed 5-Phase Bloat Elimination Initiative**:
+  - Verified 100% green verification battery: all 2,626 tests passing, 69 bug regressions verified, and all claims passing.
+
 ## [0.101.0] — 2026-10-06 — "Immune System Unification & Lifecycle Consolidation"
 
 ### Architecture & Unification (Bloat Remediation)

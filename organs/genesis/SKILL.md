@@ -1,13 +1,13 @@
 ---
 name: Genesis — Codebase Onboarding Reconnaissance
-description: Five-stage read-only reconnaissance protocol mapping structure, history, architecture, governance, and cytogenesis in unfamiliar codebases.
+description: Four-stage read-only reconnaissance protocol mapping structure, history, architecture, and governance in unfamiliar codebases.
 trigger: user_request
 aliases: ["genesis", "init", "onboard", "explore", "map this repo", "what is this codebase"]
 ---
 
 # Genesis — Codebase Onboarding Reconnaissance
 
-> **Role**: Maps an unfamiliar codebase across five stages — structure, history, architecture, governance fitness, and cytogenesis — then produces a persistent Genesis Report artifact and repo-local cells. Stages 1-4 are read-only; Stage 5 is additive only. The output feeds downstream skills (Spores priority, Mycelium blast-radius, Context Pre-Seeding) so the governance system has situational awareness from the first interaction.
+> **Role**: Maps an unfamiliar codebase across four read-only stages — structure, history, architecture, and governance fitness — then produces a persistent Genesis Report artifact. The output feeds downstream skills (Spores priority, Mycelium blast-radius, Context Pre-Seeding) so the governance system has situational awareness from the first interaction.
 
 ## Stages
 
@@ -17,9 +17,8 @@ aliases: ["genesis", "init", "onboard", "explore", "map this repo", "what is thi
 | 2 | 📜 **Rings** | Git History Analyst | 1 | Branch topology, commit frequency, churn heatmap, high-risk files |
 | 3 | 📖 **Taproot** | Architecture Analyst | 1–2 | API surface, data models, config patterns, external integrations, cross-repo boundaries |
 | 4 | 🧭 **Lichen** | Governance Advisor | 1 | Conventions, test patterns, deployment model, traps, governance config, Context Pre-Seeding |
-| 5 | 🧫 **Cytogenesis** | Cell Generator | 1 | Vacuoles (traps), Cell Walls (boundaries), Membranes (overrides), Chloroplasts (personas), Plasmodesmata (connections) |
 
-**Total dispatches**: 5–7 Flash subagents across all stages.
+**Total dispatches**: 4–6 Flash subagents across all stages.
 
 ### Stage Selection
 
@@ -30,8 +29,8 @@ Genesis stages are **incremental** — run any subset, in any order. Later stage
 | Quick layout | Canopy only | 1–2 | "What is this repo?" — fast directory orientation |
 | Risk assessment | Canopy + Rings | 2–3 | "Where are the hot spots?" — churn + structure |
 | Architecture audit | Canopy + Taproot | 2–4 | "How is this system designed?" — API and data model mapping |
-| Full onboarding | All 5 stages | 5–7 | "Onboard me to this codebase" — complete reconnaissance |
-| Governance setup | Lichen + Cytogenesis | 2 | "Configure governance for this project" — re-run synthesis |
+| Full onboarding | All 4 stages | 4–6 | "Onboard me to this codebase" — complete reconnaissance |
+| Governance setup | Lichen | 1 | "Configure governance for this project" — re-run synthesis |
 
 ---
 
@@ -386,188 +385,6 @@ Deliver:
 This block is nominally ~200 tokens (approximate target; ground-truth token count is measured via `enzymes/token_census.py`) and is used verbatim in all future subagent prompts.
 <!-- END CONTEXT -->
 ```
-
----
-
-## Stage 5: Cytogenesis (Adaptive Governance Generation)
-
-> **OPTIONAL**: Stage 5 is optional. Genesis can still run stages 1–4 independently without triggering Cytogenesis.
-> **INVARIANT**: Cells are additive only — they never override global governance rules.
-
-Dispatch 1 Flash cytogenesis orchestrator to read the Lichen output and generate repo-local immune cells.
-
-Before generating cells from Lichen output, check `templates/` for domain-matching template packs. Detect domain from: `requirements.txt` (Python/ML), `package.json` (JS/web), `Dockerfile`/`*.tf` (infra), `setup.py` with torch/tensorflow (RL/ML). Copy matching templates to `.soma/cells/` as seed cells.
-
-### Orchestrator Objectives
-
-| Objective | Method | Output |
-|:----------|:-------|:-------|
-| Vacuoles (Traps) | For each identified trap/anti-pattern from Lichen | Generate a Vacuole cell in `.soma/cells/vacuoles/trap-<slugified-name>.md` |
-| Vacuoles (Traps) | High density of hardcoded numeric literals (coordinates, ports, timeouts) | Generate a Vacuole cell in `.soma/cells/vacuoles/trap-magic-numbers.md` |
-| Cell Walls (Boundaries) | Detect security-sensitive paths (auth/, secrets/, .env files, config/credentials) | Generate a Cell Wall in `.soma/cells/walls/wall-<slugified-name>.md` |
-| Membranes (Escalation) | Identify high-risk directories (migrations/, infrastructure/, deploy/) | Generate a Membrane in `.soma/cells/membranes/membrane-<slugified-name>.md` |
-| Plasmodesmata (Connections) | Detect multi-service patterns: `pip install -e` references to sibling repos, shared database connections, event bus channels, protobuf/gRPC imports, API client libraries importing from other repos | Generate a Plasmodesmata cell in `.soma/cells/plasmodesmata/<connection-name>.md` |
-
-### Cell Formats
-
-#### Vacuoles
-```yaml
----
-type: vacuole
-hypothesis: "<what this trap catches>"
-prediction: "<what it will flag>"
-falsification: "0 findings in 10 sessions → prune"
-expiry_sessions: 10
-expiry_days: 30
-created: <date>
-impact_weight: 0.8
-fitness:
-  triggers: 0
-  true_positives: 0
-  false_positives: 0
-  score: null
----
-## Trap: <trap name>
-<description of the anti-pattern and correct approach>
-```
-
-#### Vacuole: Write-Only Knowledge Base (Anti-Pattern)
-```yaml
----
-type: vacuole
-hypothesis: "Knowledge base entries are being written but never read back"
-prediction: "Querying the KB during decisions will improve outcomes by >10%"
-falsification: "0 KB read calls detected in 10 sessions → prune"
-expiry_sessions: 10
-expiry_days: 30
-created: <date>
-impact_weight: 1.0
-fitness:
-  triggers: 0
-  true_positives: 0
-  false_positives: 0
-  score: null
----
-## Trap: Write-Only Knowledge Base
-The system accumulates lessons, rules, or post-mortems but never closes the loop. Query the knowledge base before making decisions.
-```
-
-#### Cell Walls
-```yaml
----
-type: wall
-hypothesis: "Changes to <path> require security review"
-prediction: "Will flag unreviewed changes to sensitive files"
-falsification: "0 findings in 15 sessions → prune"
-expiry_sessions: 15
-expiry_days: 60
-created: <date>
-impact_weight: 1.5
-fitness:
-  triggers: 0
-  true_positives: 0
-  false_positives: 0
-  score: null
----
-## Boundary: <sensitive area>
-<what this protects and why>
-```
-
-#### Membranes
-```yaml
----
-type: membrane
-hypothesis: "Changes to <path> need elevated review"
-prediction: "Escalation sentinel will apply minimum <mode>"
-falsification: "All escalated reviews are over-kill for 10 sessions → prune"
-expiry_sessions: 10
-expiry_days: 45
-created: <date>
-impact_weight: 1.2
-minimum_mode: trident
-fitness:
-  triggers: 0
-  true_positives: 0
-  false_positives: 0
-  score: null
----
-## Escalation Override: <area>
-<what gets escalated and why>
-```
-
-#### Plasmodesmata
-```yaml
----
-type: plasmodesmata
-hypothesis: "This repo connects to <target> via <mechanism>"
-prediction: "Changes to <interface> may break <target>"
-falsification: "0 cross-repo incidents in 15 sessions → prune"
-expiry_sessions: 15
-expiry_days: 60
-created: <date>
-impact_weight: 1.3
-connection:
-  target_repo: "<repo name or service>"
-  mechanism: "REST API | shared DB | event bus | file import | pip install -e"
-  shared_resource: "<table name, API endpoint, topic, etc>"
-fitness:
-  triggers: 0
-  true_positives: 0
-  false_positives: 0
-  score: null
----
-## Connection: <source> → <target>
-<description of the cross-repo relationship>
-```
-
----
-
-## Stage 5: Cytogenesis (Adaptive Immune Cell Generation)
-
-Dispatch 1 Flash cell generator to convert Lichen's synthesis into persistent immune cells.
-
-### Generator Objectives
-
-| Objective | Method | Output |
-|:----------|:-------|:-------|
-| Chloroplast generation | Analyze tech stack, API patterns, data models, test patterns, and dependency types | 2-3 repo-specific Personas |
-
-### Chloroplast Personas
-Genesis analyzes the repo's domain and generates 2-3 Chloroplast personas. These provide domain expertise that generic personas lack.
-- **Analysis inputs**:
-  - Tech stack (from Canopy stage)
-  - API patterns (REST, GraphQL, gRPC, event-driven)
-  - Data models (SQL, NoSQL, file-based, graph)
-  - Test patterns (unit-heavy, integration-heavy, E2E)
-  - Dependency types (monorepo, multi-service, standalone)
-- **Each Chloroplast file in `.soma/cells/chloroplasts/`**:
-  ```yaml
-  ---
-  type: chloroplast
-  persona_name: "<descriptive name>"
-  hypothesis: "<what domain expertise this persona brings>"
-  prediction: "<what kinds of issues this persona catches>"
-  falsification: "0 unique findings in 10 sessions → prune"
-  expiry_sessions: 10
-  expiry_days: 45
-  created: <date>
-  impact_weight: 1.0
-  domain: "<tech domain>"
-  expertise: ["<area1>", "<area2>"]
-  fitness:
-    triggers: 0
-    true_positives: 0
-    false_positives: 0
-    score: null
-  ---
-  ## Persona: <name>
-  <persona description, what they look for, their expertise>
-
-  ### Review Focus
-  - <what this persona prioritizes>
-  - <domain-specific patterns they catch>
-  ```
-
 ---
 
 ## Multi-Repo Mode
@@ -612,9 +429,6 @@ The Genesis Report is a structured markdown artifact persisted as `genesis-repor
 
 ## 🧭 Lichen
 [Stage 4 output — conventions, testing patterns, deployment model, traps, governance config]
-
-## 🧫 Cytogenesis
-[Stage 5 output — generated cells]
 
 ## Auto-Generated Context Block
 [Context pre-seeding block (~200 tokens approx, measured via `token_census.py`) ready for copy-paste into subagent prompts]

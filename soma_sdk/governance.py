@@ -38,7 +38,6 @@ class Governance:
         
         landscape = gov.fitness_landscape(bayesian=True)
         coverage = gov.coverage_report()
-        replay = gov.replay(commits=20)
         grade = gov.grade()
     """
     
@@ -46,10 +45,6 @@ class Governance:
         self.root: Path = Path(project_root).resolve()
         self.cells_dir: Path = self.root / '.soma' / 'cells'
         self.metrics_dir: Path = self.root / '.soma' / 'metrics'
-    
-    def _run_script(self, script_name: str, *args: str, json_output: bool = True) -> dict[str, Any] | str:
-        """Deprecated: enzyme scripts have been purged. Delegates to in-process APIs."""
-        raise RuntimeError(f"Enzyme script '{script_name}' is purged; use in-process Governance methods.")
     
     # === Cell & Rule Management ===
     
@@ -300,14 +295,6 @@ class Governance:
         from soma_core.telemetry import calculate_coverage
         return calculate_coverage(workspace=str(self.root), exclude=[exclude] if exclude else None)
     
-    def replay(self, commits: int = 20) -> dict[str, Any] | str:
-        """Replay governance against historical commits."""
-        raise NotImplementedError("Replay is deprecated and pending in-process migration.")
-    
-    def trends(self, days: int = 30) -> dict[str, Any] | str:
-        """Get cross-session governance trends."""
-        raise NotImplementedError("Trends is deprecated and pending in-process migration.")
-    
     def grade(self) -> dict[str, Any]:
         """Get governance report card."""
         from soma_core.telemetry import calculate_immune_grade
@@ -331,10 +318,6 @@ class Governance:
         from soma_core.telemetry import evaluate_quorum, _get_changed_files
         files = changed_files if changed_files is not None else _get_changed_files(str(self.root))
         return evaluate_quorum(cells_dir=self.cells_dir, changed_files=files, threshold=threshold)
-    
-    def dependencies(self, format: str = 'text') -> dict[str, Any] | str:
-        """Get cell dependency graph."""
-        raise NotImplementedError("Dependencies is deprecated and pending in-process migration.")
     
     def scan(self, files: Optional[list[str]] = None) -> list[dict[str, Any]]:
         """Scan current diff against cells."""
@@ -361,7 +344,3 @@ class Governance:
             "population": {"total": total},
             "type_entropy": {"value": round(type_entropy, 4), "distribution": type_counts},
         }
-
-    def adversarial(self, cell_name: Optional[str] = None) -> dict[str, Any] | str:
-        """Run adversarial stress test against a cell."""
-        raise NotImplementedError("Adversarial testing is deprecated and pending in-process migration.")

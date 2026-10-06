@@ -214,6 +214,12 @@ Decomposed `soma_core/telemetry.py` (1,911 LOC) into `soma_core/outcomes.py` and
 **Status**: ✅ Shipped (v0.101.0)  
 Unified the verification framework by establishing `soma_core/verification/` as the canonical package housing 12 deterministic and adversarial verification modules. Replaced the 3,672 LOC in `immune_system/verification/*.py` with lightweight backward-compatibility facade modules mirroring attributes and re-exporting all symbols. Consolidated `evaluate_promotions` and `evaluate_demotions` directly into `soma_core/lifecycle.py`, eliminating the duplicate lifecycle engine. Streamlined `cli_cell_create` description generation in `soma_core/lifecycle.py`. Rerouted internal CLI, MCP, and Core callers to canonical verification paths. Purged deprecated enzyme stubs (`_safe_import_enzyme` and `_ENZYME_ALLOWLIST`). Updated scripts reference to 74 total scripts.
 
+## Phase 5.13 — v0.102.0 ✅ Shipped
+
+### Facade Hardening & Final Prune (Bloat Initiative Completion)
+**Status**: ✅ Shipped (v0.102.0)  
+Decomposed monolithic `execute_tool()` in `soma_mcp/tools.py` into modular per-tool handlers with a declarative dispatch map, fixing syntax anomalies. Streamlined `_list_cells_stdlib` while preserving `TOOL_DEFINITIONS` literal AST compliance. Pruned dead legacy enzyme stubs in `soma_sdk/governance.py` (`_run_script`, `replay`, `trends`, `dependencies`, `adversarial`) and write-hook dead code in `soma_sdk/cells.py`. Eliminated leftover empty shims (`DESTRUCTIVE_PATTERNS = ()` and `STARTER_RULES_LEGACY`). Optimized `soma_core/__init__.py` with PEP 562 dynamic attribute resolution, accelerating cold package import by ~16x (down to 3.3ms) and process startup to 41ms. Completed comprehensive 5-phase bloat and latency audit.
+
 ## Research
 
 ### Antifragile Scaling
