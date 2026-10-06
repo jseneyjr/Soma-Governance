@@ -50,140 +50,93 @@ SAFE_COMMAND_PREFIXES: tuple[str, ...] = (
 )
 
 METACHARACTERS: frozenset[str] = frozenset({";", "&", "|", ">", "<", "`", "$", "\n", "\r", "(", ")", "\\"})
-DANGEROUS_FLAGS: tuple[str, ...] = ("-f", "--force", "-D", "-d", "-M", "--output", "--ext-cmd")
+DANGEROUS_FLAGS: tuple[str, ...] = ("-f", "--force", "-D", "-d", "-M", "--output", "--ext-cmd", "--delete")
 
-_GIT_CMD_PREFIX = r'(?:^|[;&|`\(\)\n\r]\s*|(?:sudo|env|time|xargs)\s+)git(?:\.exe)?'
-_GIT_GLOBAL_OPTS = r'(?:\s+(?:-[a-zA-Z0-9_\-]+(?:\s+(?:[^\s\-;&|]+|[\'"][^\'"]*[\'"]))?|--[a-zA-Z0-9_\-]+(?:=(?:[^\s;&|]+|[\'"][^\'"]*[\'"])|\s+(?:[^\s\-;&|]+|[\'"][^\'"]*[\'"]))?))*'
-_GIT_CMD = rf'{_GIT_CMD_PREFIX}{_GIT_GLOBAL_OPTS}\s+'
-
-DESTRUCTIVE_PATTERNS: list[tuple[re.Pattern[str], str]] = [
-    # git branch deletion or forced move/copy
-    (
-        re.compile(rf'{_GIT_CMD}branch\b.*(?:\s+-(?:[a-zA-Z0-9]*[dDMf][a-zA-Z0-9]*|-(?:delete|force))\b)'),
-        "Destructive branch operation (git branch -d/-D/-M/-f/--delete/--force)",
-    ),
-    # git config override / exec-path injection
-    (
-        re.compile(rf'{_GIT_CMD_PREFIX}\b.*(?:\s+-c\b|\s+--exec-path|\s+--config-env)'),
-        "git configuration override / exec-path injection (-c/--exec-path/--config-env)",
-    ),
-    # git diff file write or arbitrary command execution
-    (re.compile(rf'{_GIT_CMD}diff\b.*--(?:output|ext-cmd)'), "git diff write/execute flag detected"),
-    # rm: catch -rf, -r -f, -fr, --recursive targeting home, root, current dir or wildcard (including quotes/subshells)
-    (
-        re.compile(
-            r'(?:^|[;&|`\(\)\s\'"])(?:(?:sh|bash|zsh)\s+-c\s+[\'"])?(?:[^\s;`&|\'"\(\)]*[/\\])?rm\s+(?:-[a-zA-Z0-9_\-]*r[a-zA-Z0-9_\-]*f|-[a-zA-Z0-9_\-]*f[a-zA-Z0-9_\-]*r|-r\s+-f|-f\s+-r|--recursive)\s+.*[\'"]?(?:/|~|/home|\$HOME|\.|\.\.|\*)[\'"]?',
-            re.IGNORECASE,
-        ),
-        "Recursive delete targeting home/root directory or wildcard/current directory",
-    ),
-    # shutil.rmtree
-    (re.compile(r'rmtree\('), "Recursive directory deletion (rmtree) detected"),
-    # rmdir bypass
-    (
-        re.compile(r'rmdir\s+--ignore-fail-on-non-empty'),
-        "rmdir with --ignore-fail-on-non-empty — bypasses safety check",
-    ),
-    # mkfs: formatting filesystem
-    (
-        re.compile(r'(?:^|[^a-zA-Z0-9_])mkfs(?:[^a-zA-Z0-9_]|$)'),
-        "Filesystem format (mkfs) detected — destructive operation",
-    ),
-    # dd if=: raw disk write
-    (
-        re.compile(r'(?:^|[^a-zA-Z0-9_])dd\s+.*if='),
-        "Raw disk write (dd) detected — destructive operation",
-    ),
-    # chmod 777: overly permissive (including flags like -R and octal 0777)
-    (
-        re.compile(r'chmod\s+(?:-[a-zA-Z]+\s+)?0?777'),
-        "chmod 777 — overly permissive, potential security risk",
-    ),
-    # kill -9 -1: kill all processes
-    (
-        re.compile(r'kill\s+-9\s+-1'),
-        "kill -9 -1 — would kill all user processes",
-    ),
-    # sudo
-    (
-        re.compile(r'(?:^|[^a-zA-Z0-9_])sudo(?:[^a-zA-Z0-9_]|$)'),
-        "sudo detected — elevated privileges require confirmation",
-    ),
-    # Piping remote content to shell
-    (
-        re.compile(
-            r'(?:curl|wget|iwr|irm|Invoke-WebRequest|Invoke-RestMethod)\s+.*\|\s*(?:sh|bash|iex|Invoke-Expression)',
-            re.IGNORECASE,
-        ),
-        "Piping remote content to shell — potential code execution risk",
-    ),
-    # Git force push
-    (
-        re.compile(rf'{_GIT_CMD}push\s+.*(?:-f|--force|--force-with-lease)'),
-        "Force push detected — destructive-ops mandate requires confirmation",
-    ),
-    (
-        re.compile(rf'{_GIT_CMD}push\s+[^\s]+\s+\+'),
-        "Force push via +refspec detected — destructive-ops mandate requires confirmation",
-    ),
-    # Git reset --hard
-    (
-        re.compile(rf'{_GIT_CMD}reset\s+.*--hard'),
-        "Hard reset — will discard uncommitted changes",
-    ),
-    # Git checkout -f
-    (
-        re.compile(rf'{_GIT_CMD}checkout\s+.*(?:-f|--force)\b'),
-        "Force checkout — will discard uncommitted changes",
-    ),
-    # Git clean -f
-    (
-        re.compile(rf'{_GIT_CMD}clean\s+.*(?:-[a-zA-Z]*f[a-zA-Z]*|--force)'),
-        "git clean -f — will permanently remove untracked files",
-    ),
-    # Bulk git staging
-    (
-        re.compile(rf'{_GIT_CMD}add\s+(?:-A|\.|\./?|\*|--all)(?:\s+|$|[;&|>)])'),
-        "Bulk staging (git add -A/./*/--all) — run git status first to verify file count",
-    ),
-    # Database destruction without WHERE
-    (
-        re.compile(
-            r'(?:DROP\s+(?:TABLE|DATABASE)|DELETE\s+FROM\s+[a-zA-Z0-9_]+\s*|TRUNCATE\s+TABLE)',
-            re.IGNORECASE,
-        ),
-        "Destructive database operation without WHERE clause",
-    ),
-    # Windows disk formatting
-    (
-        re.compile(r'(?:Format-Volume|Initialize-Disk|Clear-Disk)', re.IGNORECASE),
-        "Disk partition format detected — destructive operation",
-    ),
-    # Windows PowerShell destructive delete (cmdlet and aliases rm, del, erase, rd, ri, with -r/-fo short flags)
-    (
-        re.compile(
-            r'(?:Remove-Item|rm|del|erase|rd|ri)\s+.*-(?:Recurse|r)\b.*-(?:Force|fo)\b|(?:Remove-Item|rm|del|erase|rd|ri)\s+.*-(?:Force|fo)\b.*-(?:Recurse|r)\b',
-            re.IGNORECASE,
-        ),
-        "PowerShell recursive force delete detected",
-    ),
-    # Windows cmd destructive delete
-    (
-        re.compile(r'(?:del|rmdir)\b(?=.*[/\\]s\b)(?=.*[/\\]q\b)', re.IGNORECASE),
-        "Windows command-line recursive delete (/s /q) detected",
-    ),
-]
+# Legacy pattern tuple maintained for backward compatibility (evaluations delegated to CommandAnalyzer)
+DESTRUCTIVE_PATTERNS: tuple[tuple[re.Pattern[str], str], ...] = ()
 
 SECRET_REPLACEMENTS: list[tuple[re.Pattern[str], str]] = [
-    (re.compile(r"AKIA[0-9A-Z]{16}"), "AKIA_REDACTED"),
-    (re.compile(r"ASIA[0-9A-Z]{16}"), "ASIA_REDACTED"),
-    (re.compile(r"ghp_[a-zA-Z0-9]{36}"), "ghp_REDACTED"),
-    (re.compile(r"gh[ousr]_[a-zA-Z0-9]{36}"), "gh_token_REDACTED"),
-    (re.compile(r"github_pat_[a-zA-Z0-9_]{20,}"), "github_pat_REDACTED"),
-    (re.compile(r"sk-(?:proj-|ant-)?[a-zA-Z0-9_-]{20,}"), "sk-REDACTED"),
-    (re.compile(r"AIzaSy[a-zA-Z0-9_-]{33}"), "AIzaSy_REDACTED"),
-    (re.compile(r"Bearer [a-zA-Z0-9._-]{20,}"), "Bearer REDACTED"),
-    (re.compile(r"GEMINI_API_KEY=[^\s]*"), "GEMINI_API_KEY=REDACTED"),
+    (
+        re.compile(
+            r"""
+            AKIA[0-9A-Z]{16}  # AWS standard access key
+            """,
+            re.VERBOSE,
+        ),
+        "AKIA_REDACTED",
+    ),
+    (
+        re.compile(
+            r"""
+            ASIA[0-9A-Z]{16}  # AWS temporary/session access key
+            """,
+            re.VERBOSE,
+        ),
+        "ASIA_REDACTED",
+    ),
+    (
+        re.compile(
+            r"""
+            ghp_[a-zA-Z0-9]{36}  # GitHub Personal Access Token (classic)
+            """,
+            re.VERBOSE,
+        ),
+        "ghp_REDACTED",
+    ),
+    (
+        re.compile(
+            r"""
+            gh[ousr]_[a-zA-Z0-9]{36}  # GitHub OAuth/user/server/refresh tokens
+            """,
+            re.VERBOSE,
+        ),
+        "gh_token_REDACTED",
+    ),
+    (
+        re.compile(
+            r"""
+            github_pat_[a-zA-Z0-9_]{20,}  # GitHub Fine-grained PAT
+            """,
+            re.VERBOSE,
+        ),
+        "github_pat_REDACTED",
+    ),
+    (
+        re.compile(
+            r"""
+            sk-(?:proj-|ant-)?[a-zA-Z0-9_-]{20,}  # OpenAI / Anthropic API keys
+            """,
+            re.VERBOSE,
+        ),
+        "sk-REDACTED",
+    ),
+    (
+        re.compile(
+            r"""
+            AIzaSy[a-zA-Z0-9_-]{33}  # Google API key
+            """,
+            re.VERBOSE,
+        ),
+        "AIzaSy_REDACTED",
+    ),
+    (
+        re.compile(
+            r"""
+            Bearer\s+[a-zA-Z0-9._-]{20,}  # HTTP Bearer authentication token
+            """,
+            re.VERBOSE,
+        ),
+        "Bearer REDACTED",
+    ),
+    (
+        re.compile(
+            r"""
+            GEMINI_API_KEY=[^\s]*  # Gemini API Key assignment
+            """,
+            re.VERBOSE,
+        ),
+        "GEMINI_API_KEY=REDACTED",
+    ),
 ]
 
 
@@ -274,37 +227,27 @@ def run_safety_gate(
             tokens = trimmed.split()
             is_dangerous = any(
                 t in DANGEROUS_FLAGS
-                or t.startswith(("-D", "-d", "-M", "--output", "--ext-cmd", "--force"))
+                or t.startswith(("-D", "-d", "-M", "--output", "--ext-cmd", "--force", "--delete"))
                 or (t.startswith("-") and not t.startswith("--") and any(c in t for c in "fDdM"))
                 for t in tokens
             )
             if not is_dangerous:
-                # Ensure no destructive pattern matches any candidate
-                if not any(pattern.search(cand) for cand in candidates for pattern, _ in DESTRUCTIVE_PATTERNS):
+                from soma_core.command_safety import CommandAnalyzer
+                eval_res = CommandAnalyzer.evaluate(cmd)
+                if not eval_res.is_destructive:
                     log_gate_event(cmd, "ALLOWED", "", root)
                     return 0, {"decision": "allow"}
 
     # Structured AST / Token Analyzer (soma_core.command_safety)
-    try:
-        from soma_core.command_safety import CommandAnalyzer
-        eval_res = CommandAnalyzer.evaluate(cmd)
+    from soma_core.command_safety import CommandAnalyzer
+    for cand in candidates:
+        eval_res = CommandAnalyzer.evaluate(cand)
         if eval_res.is_destructive:
             log_gate_event(cmd, "BLOCKED", eval_res.reason, root)
             return 0, {
                 "decision": "force_ask",
                 "reason": f"🛡️ Safety Gate: {eval_res.reason}",
             }
-    except Exception:
-        pass
-
-    for cand in candidates:
-        for pattern, reason in DESTRUCTIVE_PATTERNS:
-            if pattern.search(cand):
-                log_gate_event(cmd, "BLOCKED", reason, root)
-                return 0, {
-                    "decision": "force_ask",
-                    "reason": f"🛡️ Safety Gate: {reason}",
-                }
 
     log_gate_event(cmd, "ALLOWED", "", root)
     return 0, {"decision": "allow"}
