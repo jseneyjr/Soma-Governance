@@ -73,6 +73,8 @@ EXPECTED_ZSH = 'export PATH="$HOME/.local/bin:$PATH"  ' + FIX_PATH_MARKER
 
 
 def uninstall(lay, *extra):
+    if not os.path.exists(UNINSTALL_SH):
+        pytest.skip("legacy shell installers purged in v0.97.0")
     return run(
         [require_bash(), UNINSTALL_SH, "gemini", "--force", "--no-restore",
          "--keep-config", *extra],
@@ -439,6 +441,8 @@ def test_uninstall_without_python_leaves_rc_untouched(env_layout):
 def test_install_sh_preserves_path_lines(env_layout):
     """install.sh rewrites ~/.soma/manifest.json; it must carry path_lines over,
     or a reinstall would orphan the rc line from uninstall."""
+    if not os.path.exists(INSTALL_SH):
+        pytest.skip("legacy shell installers purged in v0.97.0")
     assert do_fix(env_layout) == 0
     recorded = manifest_of(env_layout)["path_lines"]
     proc = run([require_bash(), INSTALL_SH, "kiro"], cwd=str(env_layout["project"]),
@@ -452,7 +456,10 @@ def test_install_sh_preserves_path_lines(env_layout):
 # ── uninstall.ps1 (static; pwsh is not available in this environment) ────
 
 def _ps1():
-    with open(os.path.join(REPO_ROOT, "install", "uninstall.ps1"), encoding="utf-8-sig") as fh:
+    ps1_file = os.path.join(REPO_ROOT, "install", "uninstall.ps1")
+    if not os.path.exists(ps1_file):
+        pytest.skip("legacy shell/ps1 installers purged in v0.97.0")
+    with open(ps1_file, encoding="utf-8-sig") as fh:
         return fh.read()
 
 

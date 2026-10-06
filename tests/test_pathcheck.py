@@ -380,6 +380,8 @@ def _path_without_soma():
 @pytest.mark.skipif(os.name == "nt", reason="bash installer hint; pwsh covered by unit tests")
 @pytest.mark.parametrize("dry_run", [False, True])
 def test_install_sh_prints_zsh_hint(tmp_path, dry_run):
+    if not (REPO / "install" / "install.sh").exists():
+        pytest.skip("legacy shell installers purged in v0.97.0")
     from conftest import run
     from soma_cli.pathcheck import default_candidates
     home = tmp_path / "home"
