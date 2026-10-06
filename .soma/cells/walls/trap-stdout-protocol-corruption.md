@@ -10,10 +10,10 @@ prediction: Will fire when an enzyme or hook script adds echo/printf to stdout f
   debugging, status messages, or logging instead of redirecting to stderr
 falsification: 0 findings in 10 sessions → prune
 target_paths:
-- enzymes/*.sh
-- enzymes/immune_init.sh
-- enzymes/escalation_sentinel.sh
-- enzymes/safety_gate.sh
+- soma_cli/hooks.py
+- soma_core/sync.py
+- install/hooks/pre-commit
+- soma
 triggers:
 - enzyme_modification
 - hook_modification

@@ -9,11 +9,10 @@ prediction: New enzyme features added without corresponding MCP tool updates cre
 falsification: MCP and CLI are intentionally divergent by design → reclassify
 target_paths:
 - soma_mcp/tools.py
-- enzymes/cell_create_nl.py
-- enzymes/cell_scan.py
-- enzymes/immune_grade.py
-- enzymes/cell_fitness.py
-- enzymes/cell_coverage.py
+- soma_cli/genesis.py
+- soma_cli/verify.py
+- soma_cli/report.py
+- soma_core/telemetry.py
 expiry_sessions: 15
 expiry_days: 60
 created: '2026-09-28'
