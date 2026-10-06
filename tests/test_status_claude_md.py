@@ -167,6 +167,8 @@ def test_user_claude_md_without_soma_content_is_ignored(env, capsys):
                     reason="needs a POSIX bash to run install.sh")
 def test_real_install_sh_claude_merge_plus_loose_files(env, capsys, tmp_path):
     """The exact BUG-033 repro: install.sh claude, then 2 loose .md files."""
+    if not INSTALL_SH.exists():
+        pytest.skip("legacy shell installers purged in v0.97.0")
     home = env.parent
     proc = subprocess.run(
         ["bash", str(INSTALL_SH), "claude"],

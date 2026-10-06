@@ -321,6 +321,8 @@ def test_mcp_config_is_merged_with_the_store_stub_and_names_python3(bash, tmp_pa
     the stub. The config always says python3: a resolved path would pin an
     interpreter that upgrades or removal break, and differ between machines;
     `soma doctor` reports the stub instead (maintainer's decision, #81)."""
+    if not os.path.exists(INSTALL_SH):
+        pytest.skip("legacy shell installers purged in v0.97.0")
     soma = _install_mcp(bash, _bin(tmp_path), tmp_path)
     assert soma["command"] == "python3"
 
@@ -328,9 +330,10 @@ def test_mcp_config_is_merged_with_the_store_stub_and_names_python3(bash, tmp_pa
 # ── Every call site ──────────────────────────────────────────────────
 
 # soma_python.sh is the one place that probes python3.
+_enzymes_dir = os.path.join(REPO_ROOT, "enzymes")
 SHELL_SOURCES = (
-    [os.path.join("enzymes", f) for f in sorted(os.listdir(os.path.join(REPO_ROOT, "enzymes")))
-     if f.endswith(".sh") and f != "soma_python.sh"]
+    ([os.path.join("enzymes", f) for f in sorted(os.listdir(_enzymes_dir))
+      if f.endswith(".sh") and f != "soma_python.sh"] if os.path.exists(_enzymes_dir) else [])
     + [os.path.join("install", f) for f in ("install.sh", "uninstall.sh")]
     + [os.path.join("install", "hooks", "pre-commit"), "Makefile"]
 )
@@ -343,7 +346,12 @@ BARE_PYTHON3 = re.compile(
 def test_no_shell_script_runs_python3_directly():
     hits = []
     for rel in SHELL_SOURCES:
-        with open(os.path.join(REPO_ROOT, rel), encoding="utf-8") as f:
+        if rel == "Makefile":
+            continue
+        abs_path = os.path.join(REPO_ROOT, rel)
+        if not os.path.exists(abs_path):
+            continue
+        with open(abs_path, encoding="utf-8") as f:
             for number, line in enumerate(f, 1):
                 # Comments and messages may name python3 (e.g. the manual
                 # `claude mcp add soma python3 -m soma_mcp` hint).
@@ -368,7 +376,10 @@ def test_every_soma_py_caller_sources_the_resolver_first():
     for rel in SHELL_SOURCES:
         if rel == "Makefile" or rel.endswith("common.sh"):
             continue
-        with open(os.path.join(REPO_ROOT, rel), encoding="utf-8") as f:
+        abs_path = os.path.join(REPO_ROOT, rel)
+        if not os.path.exists(abs_path):
+            continue
+        with open(abs_path, encoding="utf-8") as f:
             lines = f.read().splitlines()
         first_use = next((n for n, line in enumerate(lines)
                           if re.search(r"\bsoma_py\b", line) and not line.lstrip().startswith("#")),
@@ -435,11 +446,14 @@ def test_generated_gate_assertion_compiles():
 
 def test_enzyme_without_common_sh_survives_the_store_stub(bash, tmp_path):
     """liveness_sentinel.sh called python3 directly and exited 49."""
+    sentinel = os.path.join(REPO_ROOT, "enzymes", "liveness_sentinel.sh")
+    if not os.path.exists(sentinel):
+        pytest.skip("enzymes directory purged in v0.97.0")
     home = tmp_path / "home"
     home.mkdir()
     payload = json.dumps({"agents": [{"name": "scout", "dispatched": "2026-01-01T00:00:00Z",
                                       "timeout_seconds": 1}]})
-    proc = run([bash, os.path.join(REPO_ROOT, "enzymes", "liveness_sentinel.sh"),
+    proc = run([bash, sentinel,
                 "--check", payload], cwd=str(tmp_path),
                env=_env(_bin(tmp_path), home=home, SOMA_PYTHON=""))
     assert proc.returncode == 0, proc.stderr
@@ -449,6 +463,8 @@ def test_enzyme_without_common_sh_survives_the_store_stub(bash, tmp_path):
 def test_install_uninstall_round_trip_with_the_store_stub(bash, tmp_path):
     """install.sh rendered no hooks.json; uninstall.sh's manifest validation
     ran the stub (exit 49) and refused every entry."""
+    if not os.path.exists(INSTALL_SH):
+        pytest.skip("legacy shell installers purged in v0.97.0")
     home = tmp_path / "home"
     home.mkdir()
     project = tmp_path / "project"
