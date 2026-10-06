@@ -226,7 +226,7 @@ Complex multi-step behaviors — each skill performs a specialized function.
 |:------|:--------|
 | [adaptive-reviewer](organs/adaptive-reviewer/SKILL.md) | Auto-escalating review orchestrator with subagent nesting |
 | [domain-researcher](organs/domain-researcher/SKILL.md) | Compiles verified external facts (wikis, API docs) |
-| [genesis](organs/genesis/SKILL.md) | Codebase onboarding: scans stack and seeds governance rules |
+| [genesis](organs/genesis/SKILL.md) | Codebase onboarding: four-stage read-only reconnaissance |
 | [governance-auditor](organs/governance-auditor/SKILL.md) | Mechanical per-rule PASS/FAIL compliance checks |
 | [incident-debug](organs/incident-debug/SKILL.md) | SRE: reproduce → isolate → diagnose → fix → verify |
 | [performance-audit](organs/performance-audit/SKILL.md) | Hot-path allocations, O(n²) patterns, GC pressure |
@@ -372,7 +372,6 @@ Features that are planned but not yet shipped are listed in [ROADMAP.md](docs/pr
 | [METRICS](docs/project/METRICS.md) | Users | Empirical measurement methodology |
 | [ABSTRACT](docs/research/abstract.md) | Researchers | Research paper abstract |
 | [CONTRIBUTING](docs/project/CONTRIBUTING.md) | Contributors | Contribution guidelines |
-| [Templates](templates/README.md) | Users | Domain-specific rule template packs |
 
 ## Uninstalling
 
