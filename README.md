@@ -1,10 +1,10 @@
 # Soma
 
 [![License: Apache 2.0](https://img.shields.io/badge/License-Apache_2.0-blue?style=flat-square)](LICENSE)
-[![Core Rules](https://img.shields.io/badge/Core_Rules-18-green?style=flat-square)](#-core-rules)
+[![Core Rules](https://img.shields.io/badge/Core_Rules-19-green?style=flat-square)](#-core-rules)
 [![Agent Skills](https://img.shields.io/badge/Agent_Skills-15-purple?style=flat-square)](#-agent-skills)
-[![Automation Scripts](https://img.shields.io/badge/Automation_Scripts-75-red?style=flat-square)](#%EF%B8%8F-automation-scripts)
-[![Version](https://img.shields.io/badge/Version-0.96.1-informational?style=flat-square)](docs/project/CHANGELOG.md)
+[![Automation Scripts](https://img.shields.io/badge/Automation_Scripts-73-red?style=flat-square)](#%EF%B8%8F-automation-scripts)
+[![Version](https://img.shields.io/badge/Version-0.96.2-informational?style=flat-square)](docs/project/CHANGELOG.md)
 [![Zero Runtime Dependencies](https://img.shields.io/badge/Dependencies-0-brightgreen?style=flat-square)](#)
 [![Blog Post](https://img.shields.io/badge/Blog-dev.to-black?style=flat-square&logo=devdotto)](https://dev.to/nseney1/your-ai-agents-rules-file-is-a-gentlemans-agreement-heres-what-happens-when-you-build-2dml)
 [![M8ven Score](https://m8ven.ai/badge/mcp/nseney1-soma-governance-yv4xbk)](https://m8ven.ai/mcp/nseney1/soma-governance?s=readme)
@@ -192,7 +192,7 @@ Soma models governance as a layered system of rules, skills, and automation. Eve
 
 ## 📐 Core Rules
 
-The system's foundational rules — 18 rules that define inherited behavior. Always-on rules are loaded every session; conditional rules activate on demand.
+The system's foundational rules — 19 rules that define inherited behavior. Always-on rules are loaded every session; conditional rules activate on demand.
 
 | Rule | Trigger | Purpose |
 |:-----|:--------|:--------|
@@ -200,6 +200,7 @@ The system's foundational rules — 18 rules that define inherited behavior. Alw
 | [cost-optimization](genome/cost-optimization.md) | always_on | Token efficiency, diffs-only edits, FPSR metric (>80%) |
 | [subagent-delegation](genome/subagent-delegation.md) | always_on | Context protection, concurrency limits, delegation floor |
 | [architectural-tenets](genome/.oracles/architectural-tenets.md) | model_decision | Pragmatism, trade-off analysis, scale-to-zero |
+| [atomic-workstream-protocol](genome/.oracles/atomic-workstream-protocol.md) | model_decision | Atomic 2-5 file micro-step decomposition and verification gates |
 | [polyglot-standards](genome/.oracles/polyglot-standards.md) | model_decision | Unified entrypoints (Makefiles), containerization |
 | [feature-specs](genome/.oracles/feature-specs.md) | model_decision | PRD structure, acceptance criteria, documentation |
 | [testing](genome/.oracles/testing.md) | model_decision | Behavioral testing, sad paths, ast.parse ban |
@@ -285,7 +286,7 @@ Generate → Score (Confidence Decay) → Adapt → Differentiate → Prune / Re
 
 ## ⚙️ Automation Scripts
 
-Soma includes 75 task-specific scripts driving rule lifecycles, verification, and evidence pipelines. See [SCRIPTS.md](docs/architecture/scripts.md) for full documentation.
+Soma includes 73 task-specific scripts driving rule lifecycles, verification, and evidence pipelines. See [SCRIPTS.md](docs/architecture/scripts.md) for full documentation.
 
 ---
 

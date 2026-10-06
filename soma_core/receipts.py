@@ -20,31 +20,135 @@ TARGET_PATH_KEYS = ("file_path", "files", "context_files")
 # dispatch; "workspace" is re-injected from the operator-configured value.
 SERVER_OWNED_KEYS = ("workspace", "receipt", "_sessionToken")
 
-# In-memory storage for receipts: receipt_id -> receipt_data
-_receipt_store: Dict[str, Dict[str, Any]] = {}
-_receipt_lock = threading.RLock()
 MAX_RECEIPTS = 1000
 DEFAULT_TTL_SECONDS = 3600.0  # 1 hour
 
 
-def _prune_expired_locked(now: float) -> None:
-    """Evict expired receipts and enforce MAX_RECEIPTS cap (caller must hold _receipt_lock)."""
-    expired = [
-        rid for rid, data in _receipt_store.items()
-        if data.get("expires_at") is not None and now > data["expires_at"]
-    ]
-    for rid in expired:
-        _receipt_store.pop(rid, None)
+class ReceiptStore:
+    """Thread-safe encapsulated storage for receipts with TTL and capacity pruning."""
 
-    if len(_receipt_store) >= MAX_RECEIPTS:
-        # Evict oldest entries by creation time
-        sorted_by_age = sorted(
-            _receipt_store.items(),
-            key=lambda item: item[1].get("created_at", 0)
-        )
-        to_evict = len(_receipt_store) - MAX_RECEIPTS + 1
-        for rid, _ in sorted_by_age[:to_evict]:
-            _receipt_store.pop(rid, None)
+    def __init__(
+        self,
+        max_receipts: int = MAX_RECEIPTS,
+        default_ttl: float = DEFAULT_TTL_SECONDS,
+    ) -> None:
+        self.max_receipts = max_receipts
+        self.default_ttl = default_ttl
+        self._store: Dict[str, Dict[str, Any]] = {}
+        self._lock = threading.RLock()
+
+    def prune_expired(self, now: Optional[float] = None) -> None:
+        """Evict expired receipts and enforce max_receipts cap."""
+        current_time = time.time() if now is None else now
+        effective_max = min(self.max_receipts, MAX_RECEIPTS)
+        with self._lock:
+            expired = [
+                rid for rid, data in self._store.items()
+                if data.get("expires_at") is not None and current_time > data["expires_at"]
+            ]
+            for rid in expired:
+                self._store.pop(rid, None)
+
+            if len(self._store) >= effective_max:
+                sorted_by_age = sorted(
+                    self._store.items(),
+                    key=lambda item: item[1].get("created_at", 0)
+                )
+                to_evict = len(self._store) - effective_max + 1
+                for rid, _ in sorted_by_age[:to_evict]:
+                    self._store.pop(rid, None)
+
+    def issue(
+        self,
+        session_id: str,
+        workspace: str,
+        operation: str,
+        args: Dict[str, Any],
+        file_digest: str,
+        cell_digest: str,
+        ttl_seconds: Optional[float] = None,
+    ) -> str:
+        """Issue an opaque, stateful, session-bound receipt."""
+        receipt_id = secrets.token_hex(32)
+        now = time.time()
+        data = {
+            "session_id": session_id,
+            "workspace": workspace,
+            "operation": operation,
+            "args_hash": _hash_args(args),
+            "file_digest": file_digest,
+            "cell_digest": cell_digest,
+            "created_at": now,
+            "expires_at": (now + ttl_seconds) if ttl_seconds is not None else (now + self.default_ttl),
+        }
+        with self._lock:
+            self.prune_expired(now)
+            self._store[receipt_id] = data
+        return receipt_id
+
+    def verify(
+        self,
+        receipt_id: str,
+        session_id: str,
+        workspace: str,
+        operation: str,
+        args: Dict[str, Any],
+        file_digest: str,
+        cell_digest: str,
+        consume: bool = True,
+    ) -> bool:
+        """Verify and optionally consume a receipt."""
+        if not isinstance(receipt_id, str):
+            return False
+
+        with self._lock:
+            self.prune_expired(time.time())
+            stored = self._store.pop(receipt_id, None) if consume else self._store.get(receipt_id)
+            if stored is None:
+                return False
+
+            if stored.get("expires_at") is not None and time.time() > stored["expires_at"]:
+                return False
+
+            if (
+                not isinstance(session_id, str)
+                or not isinstance(workspace, str)
+                or not isinstance(operation, str)
+                or not isinstance(file_digest, str)
+                or not isinstance(cell_digest, str)
+                or not isinstance(args, dict)
+            ):
+                return False
+
+            try:
+                return (
+                    _safe_compare(stored["session_id"], session_id) and
+                    _safe_compare(stored["workspace"], workspace) and
+                    _safe_compare(stored["operation"], operation) and
+                    _safe_compare(stored["args_hash"], _hash_args(args)) and
+                    _safe_compare(stored["file_digest"], file_digest) and
+                    _safe_compare(stored["cell_digest"], cell_digest)
+                )
+            except Exception:
+                return False
+
+    def clear(self) -> None:
+        """Clear all receipts (simulates process restart invalidation)."""
+        with self._lock:
+            self._store.clear()
+
+    def __len__(self) -> int:
+        with self._lock:
+            return len(self._store)
+
+
+_default_store = ReceiptStore(max_receipts=MAX_RECEIPTS, default_ttl=DEFAULT_TTL_SECONDS)
+_receipt_store: Dict[str, Dict[str, Any]] = _default_store._store
+_receipt_lock = _default_store._lock
+
+
+def _prune_expired_locked(now: float) -> None:
+    _default_store.prune_expired(now)
 
 
 def _hash_args(args: Dict[str, Any]) -> str:
@@ -145,25 +249,17 @@ def issue_receipt(
     cell_digest: str,
     ttl_seconds: Optional[float] = None
 ) -> str:
-    """
-    Issue an opaque, stateful, session-bound receipt.
-    """
-    receipt_id = secrets.token_hex(32)
-    now = time.time()
-    data = {
-        "session_id": session_id,
-        "workspace": workspace,
-        "operation": operation,
-        "args_hash": _hash_args(args),
-        "file_digest": file_digest,
-        "cell_digest": cell_digest,
-        "created_at": now,
-        "expires_at": (now + ttl_seconds) if ttl_seconds is not None else (now + DEFAULT_TTL_SECONDS),
-    }
-    with _receipt_lock:
-        _prune_expired_locked(now)
-        _receipt_store[receipt_id] = data
-    return receipt_id
+    """Issue an opaque, stateful, session-bound receipt."""
+    return _default_store.issue(
+        session_id=session_id,
+        workspace=workspace,
+        operation=operation,
+        args=args,
+        file_digest=file_digest,
+        cell_digest=cell_digest,
+        ttl_seconds=ttl_seconds,
+    )
+
 
 def verify_receipt(
     receipt_id: str,
@@ -175,49 +271,28 @@ def verify_receipt(
     cell_digest: str,
     consume: bool = True
 ) -> bool:
-    if not isinstance(receipt_id, str):
-        return False
+    """Verify and optionally consume a receipt."""
+    return _default_store.verify(
+        receipt_id=receipt_id,
+        session_id=session_id,
+        workspace=workspace,
+        operation=operation,
+        args=args,
+        file_digest=file_digest,
+        cell_digest=cell_digest,
+        consume=consume,
+    )
 
-    with _receipt_lock:
-        _prune_expired_locked(time.time())
-        stored = _receipt_store.pop(receipt_id, None) if consume else _receipt_store.get(receipt_id)
-        if stored is None:
-            return False
 
-        if stored.get("expires_at") is not None and time.time() > stored["expires_at"]:
-            return False
-
-        if (
-            not isinstance(session_id, str)
-            or not isinstance(workspace, str)
-            or not isinstance(operation, str)
-            or not isinstance(file_digest, str)
-            or not isinstance(cell_digest, str)
-            or not isinstance(args, dict)
-        ):
-            return False
-
-        try:
-            return (
-                _safe_compare(stored["session_id"], session_id) and
-                _safe_compare(stored["workspace"], workspace) and
-                _safe_compare(stored["operation"], operation) and
-                _safe_compare(stored["args_hash"], _hash_args(args)) and
-                _safe_compare(stored["file_digest"], file_digest) and
-                _safe_compare(stored["cell_digest"], cell_digest)
-            )
-        except Exception:
-            return False
-
-def clear_receipts():
+def clear_receipts() -> None:
     """Clear all receipts (simulates process restart invalidation)."""
-    with _receipt_lock:
-        _receipt_store.clear()
+    _default_store.clear()
 
 
 __all__ = [
     "DEFAULT_TTL_SECONDS",
     "MAX_RECEIPTS",
+    "ReceiptStore",
     "SERVER_OWNED_KEYS",
     "TARGET_PATH_KEYS",
     "clear_receipts",

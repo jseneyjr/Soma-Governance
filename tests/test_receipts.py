@@ -135,3 +135,64 @@ def test_confined_path_rejects_devices_and_streams(tmp_path):
     # Path traversal rejected
     with pytest.raises(ValueError, match="path traversal blocked"):
         _confined(ws, "../../etc/passwd")
+
+
+def test_receipt_store_class_isolation():
+    """Verify ReceiptStore provides encapsulated state isolation, capacity eviction, and thread safety."""
+    import concurrent.futures
+    from soma_core.receipts import ReceiptStore
+
+    store = ReceiptStore(max_receipts=10, default_ttl=60.0)
+    assert len(store) == 0
+
+    # Thread-safe concurrent issuance
+    def _issue_worker(i):
+        return store.issue(
+            session_id=f"sess_{i}",
+            workspace="/tmp/ws",
+            operation="test_op",
+            args={"i": i},
+            file_digest="fd",
+            cell_digest="cd",
+        )
+
+    with concurrent.futures.ThreadPoolExecutor(max_workers=4) as executor:
+        receipt_ids = list(executor.map(_issue_worker, range(20)))
+
+    assert len(receipt_ids) == 20
+    # Capacity pruning must enforce max_receipts=10
+    assert len(store) <= 10
+
+    # Verification of remaining receipts succeeds
+    last_rid = receipt_ids[-1]
+    assert store.verify(last_rid, "sess_19", "/tmp/ws", "test_op", {"i": 19}, "fd", "cd") is True
+
+    # Consumed receipt cannot be verified again
+    assert store.verify(last_rid, "sess_19", "/tmp/ws", "test_op", {"i": 19}, "fd", "cd") is False
+
+    # Store clear empties all receipts
+    store.clear()
+    assert len(store) == 0
+
+
+def test_receipt_dataclass_model():
+    """Verify Receipt frozen dataclass model contract."""
+    from dataclasses import FrozenInstanceError
+    from soma_core.schemas import Receipt
+
+    r = Receipt(
+        receipt_id="r-123",
+        session_id="sess-abc",
+        workspace="/tmp/ws",
+        operation="run_tool",
+        args_hash="hash123",
+        file_digest="fd123",
+        cell_digest="cd123",
+        created_at=1000.0,
+        expires_at=2000.0,
+    )
+    assert r.receipt_id == "r-123"
+    assert r.expires_at == 2000.0
+
+    with pytest.raises(FrozenInstanceError):
+        r.receipt_id = "r-456"  # type: ignore[misc]

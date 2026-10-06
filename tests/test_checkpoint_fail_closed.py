@@ -147,3 +147,22 @@ def test_checkpoint_is_recursively_read_only_on_pass_and_fail(
         assert result == (1 if malformed else 0)
     else:
         assert result['status'] == ('FAIL' if malformed else 'PASS')
+
+
+def test_resolve_canonical_test_candidates(tmp_path: Path):
+    """Verify deterministic test candidate resolution supports mirrored, subpackage, and fallback paths."""
+    from immune_system.verification.checkpoint_checks import _resolve_canonical_test_candidates
+
+    # Subpackage file
+    sub_src = tmp_path / "soma_core" / "schemas" / "cells.py"
+    candidates = [p.as_posix() for p in _resolve_canonical_test_candidates(tmp_path, sub_src)]
+
+    # Must include canonical mirrored path and subpackage grouped test
+    assert any("tests/core/schemas/test_cells.py" in c for c in candidates)
+    assert any("tests/test_schemas.py" in c for c in candidates)
+
+    # Standard module
+    cli_src = tmp_path / "soma_cli" / "promote.py"
+    candidates_cli = [p.as_posix() for p in _resolve_canonical_test_candidates(tmp_path, cli_src)]
+    assert any("tests/cli/test_promote.py" in c for c in candidates_cli)
+    assert any("tests/test_cli_promote.py" in c for c in candidates_cli)

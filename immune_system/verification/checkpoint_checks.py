@@ -26,7 +26,6 @@ DIR_TO_TYPE = {
 
 SOURCE_TO_TEST_MAP = {
     "enzymes/bayesian_score.py": "tests/test_bayesian_correctness.py",
-    "enzymes/bump_version.py": "tests/test_phase4_enzymes.py",
     "enzymes/cell_adapt.py": "tests/test_governance.py",
     "enzymes/cell_adversarial.py": "tests/test_enzyme_console_encoding.py",
     "enzymes/cell_coverage.py": "tests/test_enzyme_console_encoding.py",
@@ -223,6 +222,52 @@ def _source_dirs(root: Path, check: str, issues: list[dict]) -> list[str]:
     return names
 
 
+def _resolve_canonical_test_candidates(root: Path, source_file: Path) -> list[Path]:
+    """Resolve deterministic test candidates for a source file in canonical and legacy layouts."""
+    test_dir = root / "tests"
+    rel_posix = _relative(root, source_file)
+    candidates: list[Path] = []
+
+    # 1. Direct legacy mapping fallback (preserved through Phase 1)
+    if rel_posix in SOURCE_TO_TEST_MAP:
+        candidates.append(root / SOURCE_TO_TEST_MAP[rel_posix])
+
+    # 2. Canonical mirrored directory paths (tests/<pkg>/.../test_<stem>.py)
+    rel_path = Path(rel_posix)
+    parts = list(rel_path.parts)
+    if len(parts) >= 2:
+        top_pkg = parts[0]
+        subparts = parts[1:-1]
+        stem = rel_path.stem
+        # Strip "soma_" prefix for clean canonical mirrors (tests/core/..., tests/cli/...)
+        clean_pkg = top_pkg[5:] if top_pkg.startswith("soma_") else top_pkg
+        candidates.append(test_dir.joinpath(clean_pkg, *subparts, f"test_{stem}.py"))
+        candidates.append(test_dir.joinpath(top_pkg, *subparts, f"test_{stem}.py"))
+
+    # 3. Subpackage suite candidates (e.g. soma_core/schemas/cells.py -> tests/test_schemas.py)
+    parent_name = source_file.parent.name
+    if parent_name != "tests":
+        candidates.append(test_dir / f"test_{parent_name}.py")
+        candidates.append(test_dir / f"test_{parent_name}_{source_file.stem}.py")
+
+    # 4. Standard flat prefix candidates
+    top_dir = parts[0] if parts else ""
+    if top_dir == "soma_cli":
+        candidates.append(test_dir / f"test_cli_{source_file.stem}.py")
+    elif top_dir == "soma_core":
+        candidates.append(test_dir / f"test_core_{source_file.stem}.py")
+    elif top_dir == "soma_mcp":
+        candidates.append(test_dir / f"test_mcp_{source_file.stem}.py")
+    elif top_dir == "soma_sdk":
+        candidates.append(test_dir / f"test_sdk_{source_file.stem}.py")
+
+    # 5. Flat root candidates
+    candidates.append(test_dir / f"test_{source_file.stem}.py")
+    candidates.append(test_dir / "test_verification" / f"test_{source_file.stem}.py")
+
+    return candidates
+
+
 def check_test_coverage(root: Path) -> list[dict]:
     issues = []  # type: List[dict]
     source_files = []  # type: List[Path]
@@ -234,33 +279,13 @@ def check_test_coverage(root: Path) -> list[dict]:
                 "test_coverage", root, root / source_dir, "list", exc
             ))
 
-    test_dir = root / "tests"
     for source_file in source_files:
         if not _is_regular_file(
             "test_coverage", root, source_file, issues
         ):
             continue
 
-        rel_posix = _relative(root, source_file)
-        candidates: list[Path] = []
-
-        if rel_posix in SOURCE_TO_TEST_MAP:
-            candidates.append(root / SOURCE_TO_TEST_MAP[rel_posix])
-
-        parent_name = source_file.parent.name
-        if parent_name == "soma_cli":
-            candidates.append(test_dir / f"test_cli_{source_file.stem}.py")
-        elif parent_name == "soma_core":
-            candidates.append(test_dir / f"test_core_{source_file.stem}.py")
-        elif parent_name == "soma_mcp":
-            candidates.append(test_dir / f"test_mcp_{source_file.stem}.py")
-        elif parent_name == "soma_sdk":
-            candidates.append(test_dir / f"test_sdk_{source_file.stem}.py")
-        candidates.append(test_dir / f"test_{parent_name}_{source_file.stem}.py")
-
-        candidates.append(test_dir / f"test_{source_file.stem}.py")
-        candidates.append(test_dir / "test_verification" / f"test_{source_file.stem}.py")
-
+        candidates = _resolve_canonical_test_candidates(root, source_file)
         matched = False
         for expected in candidates:
             try:
@@ -288,7 +313,7 @@ def check_test_coverage(root: Path) -> list[dict]:
         if not matched:
             issues.append({
                 "check": "test_coverage",
-                "file": rel_posix,
+                "file": _relative(root, source_file),
                 "message": (
                     f"Missing test file for {source_file.name}: "
                     f"expected tests/test_{source_file.stem}.py"

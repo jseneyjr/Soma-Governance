@@ -11,6 +11,16 @@ import sys
 import pytest
 
 REPO_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+TESTS_DIR = os.path.dirname(os.path.abspath(__file__))
+if TESTS_DIR not in sys.path:
+    sys.path.insert(0, TESTS_DIR)
+
+try:
+    import tests
+    if hasattr(tests, "__path__") and TESTS_DIR not in tests.__path__:
+        tests.__path__.insert(0, TESTS_DIR)
+except ImportError:
+    pass
 
 
 @pytest.fixture(scope="session")
@@ -88,3 +98,13 @@ def iter_source_files(root, extensions):
         for fn in filenames:
             if any(fn.endswith(ext) for ext in extensions):
                 yield os.path.join(dirpath, fn)
+
+
+@pytest.fixture
+def harness(tmp_path):
+    """Yield an isolated SomaTestHarness instance rooted in tmp_path."""
+    try:
+        from harness import SomaTestHarness
+    except ImportError:
+        from tests.harness import SomaTestHarness
+    return SomaTestHarness(tmp_path)

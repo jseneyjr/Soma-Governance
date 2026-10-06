@@ -2,6 +2,38 @@
 
 All notable changes to Soma are documented here.
 This project uses [Semantic Versioning](https://semver.org/).
+## [0.96.2] — 2026-10-06 — "Architecture Bridge: Primitives Hardening, Value Schemas, Test Harness & CLI Handlers"
+
+### Added
+- **Core Value Object Schemas (`soma_core.schemas`)**:
+  - Introduced immutable dataclasses `CellMetadata`, `TransitionResult`, and `SignalEvent` in `soma_core.schemas` for domain modeling.
+  - Defined frozen `Receipt` schema in `soma_core.schemas.receipts` representing cryptographically authenticated tool execution receipts.
+- **Encapsulated `ReceiptStore` (`soma_core.receipts`)**:
+  - Replaced mutable module globals with thread-safe `ReceiptStore` class featuring bounded capacity eviction and TTL expiration.
+- **Test Harness (`tests.harness`)**:
+  - Implemented `SomaTestHarness` providing high-level cell creation, evidence generation, and workspace scaffolding with zero test base-class inheritance.
+  - Registered `harness` fixture in `tests/conftest.py`.
+- **Governance Wall (`.soma/cells/walls/wall-test-canonical-colocality.md`)**:
+  - Codified canonical test colocality requirement preventing base-class inheritance anti-patterns.
+- **Dual-Resolution Test Discovery (`immune_system/verification/checkpoint_checks.py`)**:
+  - Enhanced checkpoint checks with canonical mirrored test discovery supporting both mirrored paths and legacy lookup tables.
+- **CLI Handlers Package (`soma_cli.handlers`)**:
+  - Extracted CLI argument parsing and formatting out of `soma_core` into dedicated handler modules: `lifecycle`, `sentinels`, `telemetry`, and `sync`.
+- **Atomic Workstream Protocol**:
+  - Codified 2–5 file micro-step decomposition protocol in repository genome (`genome/.oracles/atomic-workstream-protocol.md`).
+
+### Changed
+- **Enzyme Shims Deprecation**:
+  - Added `DeprecationWarning` to `enzymes/__init__.py` signaling removal in upcoming v0.97.0 breaking release.
+- **MCP Client Direct Execution**:
+  - Repointed `soma_mcp/tools.py` directly to `soma_core.arbitration.soma_propose_change` and `soma_core.insights.capture_insight`.
+- **Decoupled Telemetry Frontmatter Parsing**:
+  - Repointed `soma_core.telemetry._parse_frontmatter` to `soma_core.frontmatter.parse_cell_frontmatter`, eliminating circular dependencies between `telemetry` and `lifecycle`.
+- **Storage & Locking Resilience**:
+  - Hardened POSIX/Windows locking CRT release guards in `soma_core.locking`.
+  - Scaled atomic storage retry backoff to 8 attempts (~2.55s) in `soma_core.storage`.
+- **Deadwood Pruning**:
+  - Removed deprecated `enzymes/bump_version.py` and `enzymes/bump_version.sh` and removed `bump` recipe from `Makefile`.
 
 ## [0.96.1] — 2026-10-06 — "100% Zero-Dependency Runtime & Stdlib Frontmatter Engine"
 
