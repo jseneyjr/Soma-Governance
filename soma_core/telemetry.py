@@ -1242,6 +1242,18 @@ def cli_outcome_engine(argv: Optional[List[str]] = None, mod: Any = None) -> int
     return run_outcome_engine(ws, mod=mod)
 
 
+def main(*args, **kwargs) -> int:
+    """Outcome engine main entrypoint."""
+    if hasattr(sys.stdout, "reconfigure"):
+        sys.stdout.reconfigure(errors="replace")
+    if args and isinstance(args[0], (list, tuple)):
+        return cli_outcome_engine(list(args[0]))
+    ws = kwargs.get("workspace")
+    if ws is not None:
+        return run_outcome_engine(ws)
+    return run_outcome_engine()
+
+
 # ── Fitness Updater ────────────────────────────────────────────────────────
 
 PLATFORMS = {
@@ -2195,6 +2207,7 @@ __all__ = [
     "append_fitness_log",
     "run_outcome_engine",
     "cli_outcome_engine",
+    "main",
     "INSIGHT_PRINCIPAL",
     "INSIGHT_SCOPE",
     "VERIFY_TIMEOUT",

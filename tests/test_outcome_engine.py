@@ -15,11 +15,6 @@ REPO_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 if REPO_ROOT not in sys.path:
     sys.path.insert(0, REPO_ROOT)
 
-# Add enzymes/ to path for soma_resolve
-_enzymes = os.path.join(REPO_ROOT, 'enzymes')
-if _enzymes not in sys.path:
-    sys.path.insert(0, _enzymes)
-
 from soma_sdk.cells import parse_cell_file
 
 
@@ -50,7 +45,7 @@ class TestMatchCellsToChanges:
     """Tests for matching cells to changed files."""
 
     def test_cell_with_matching_target_is_returned(self, tmp_path):
-        from enzymes.outcome_engine import match_cells_to_changes
+        from soma_core.telemetry import match_cells_to_changes
         ws = str(tmp_path)
         _make_cell(ws, 'cell-src', ['src/*.py'])
         result = match_cells_to_changes(ws, ['src/foo.py'])
@@ -59,7 +54,7 @@ class TestMatchCellsToChanges:
         assert any('cell-src' in cid for cid in cell_ids)
 
     def test_cell_with_non_matching_target_excluded(self, tmp_path):
-        from enzymes.outcome_engine import match_cells_to_changes
+        from soma_core.telemetry import match_cells_to_changes
         ws = str(tmp_path)
         _make_cell(ws, 'cell-tests', ['tests/*.py'])
         result = match_cells_to_changes(ws, ['src/foo.py'])
@@ -67,14 +62,14 @@ class TestMatchCellsToChanges:
         assert not any('cell-tests' in cid for cid in cell_ids)
 
     def test_empty_changed_files_returns_empty(self, tmp_path):
-        from enzymes.outcome_engine import match_cells_to_changes
+        from soma_core.telemetry import match_cells_to_changes
         ws = str(tmp_path)
         _make_cell(ws, 'cell-any', ['src/*.py'])
         result = match_cells_to_changes(ws, [])
         assert result == []
 
     def test_multiple_cells_only_matching_returned(self, tmp_path):
-        from enzymes.outcome_engine import match_cells_to_changes
+        from soma_core.telemetry import match_cells_to_changes
         ws = str(tmp_path)
         _make_cell(ws, 'cell-match', ['src/*.py'])
         _make_cell(ws, 'cell-nomatch', ['docs/*.md'])
@@ -84,7 +79,7 @@ class TestMatchCellsToChanges:
         assert not any('cell-nomatch' in cid for cid in cell_ids)
 
     def test_wildcard_glob_matching(self, tmp_path):
-        from enzymes.outcome_engine import match_cells_to_changes
+        from soma_core.telemetry import match_cells_to_changes
         ws = str(tmp_path)
         _make_cell(ws, 'cell-deep', ['src/**/*.py'])
         result = match_cells_to_changes(ws, ['src/sub/deep.py'])
@@ -95,7 +90,7 @@ class TestComputeFitnessSignals:
     """Tests for computing fitness signals from outcomes."""
 
     def test_test_passed_produces_positive_signal(self):
-        from enzymes.outcome_engine import compute_fitness_signals
+        from soma_core.telemetry import compute_fitness_signals
         cells = [{'id': 'c1', '_name': 'c1', '_path': '/tmp/c1.md',
                   'target_paths': ['src/*.py']}]
         outcomes = {'test': {'verified': True, 'passed': True, 'exit_code': 0}}
@@ -104,7 +99,7 @@ class TestComputeFitnessSignals:
         assert signals[0]['signal'] >= 0  # Non-negative for passed test
 
     def test_test_failed_produces_negative_signal(self):
-        from enzymes.outcome_engine import compute_fitness_signals
+        from soma_core.telemetry import compute_fitness_signals
         cells = [{'id': 'c1', '_name': 'c1', '_path': '/tmp/c1.md',
                   'target_paths': ['src/*.py']}]
         outcomes = {'test': {'verified': True, 'passed': False, 'exit_code': 1}}
@@ -113,7 +108,7 @@ class TestComputeFitnessSignals:
         assert signals[0]['signal'] <= 0  # Non-positive for failed test
 
     def test_signal_clamped_to_range(self):
-        from enzymes.outcome_engine import compute_fitness_signals
+        from soma_core.telemetry import compute_fitness_signals
         cells = [{'id': 'c1', '_name': 'c1', '_path': '/tmp/c1.md',
                   'target_paths': ['src/*.py']}]
         outcomes = {
@@ -127,7 +122,7 @@ class TestComputeFitnessSignals:
             assert -2.0 <= sig['signal'] <= 2.0
 
     def test_signal_has_required_keys(self):
-        from enzymes.outcome_engine import compute_fitness_signals
+        from soma_core.telemetry import compute_fitness_signals
         cells = [{'id': 'c1', '_name': 'c1', '_path': '/tmp/c1.md',
                   'target_paths': ['src/*.py']}]
         outcomes = {'test': {'verified': True, 'passed': True, 'exit_code': 0}}
@@ -138,7 +133,7 @@ class TestComputeFitnessSignals:
         assert 'signal' in sig
 
     def test_empty_cells_returns_empty_signals(self):
-        from enzymes.outcome_engine import compute_fitness_signals
+        from soma_core.telemetry import compute_fitness_signals
         signals = compute_fitness_signals([], {'test': {'passed': True}})
         assert signals == []
 
@@ -147,7 +142,7 @@ class TestUpdateCellFitness:
     """Tests for updating cell fitness in frontmatter."""
 
     def test_positive_signal_increments_true_positives(self, tmp_path):
-        from enzymes.outcome_engine import update_cell_fitness
+        from soma_core.telemetry import update_cell_fitness
         ws = str(tmp_path)
         path = _make_cell(ws, 'cell-pos', ['src/*.py'],
                           fitness={'triggers': 5, 'true_positives': 3,
@@ -160,7 +155,7 @@ class TestUpdateCellFitness:
         assert Fraction(str(fm['fitness']['true_positives'])) >= 4
 
     def test_negative_signal_increments_false_positives(self, tmp_path):
-        from enzymes.outcome_engine import update_cell_fitness
+        from soma_core.telemetry import update_cell_fitness
         ws = str(tmp_path)
         path = _make_cell(ws, 'cell-neg', ['src/*.py'],
                           fitness={'triggers': 5, 'true_positives': 3,
@@ -173,7 +168,7 @@ class TestUpdateCellFitness:
         assert Fraction(str(fm['fitness']['false_positives'])) >= 2
 
     def test_triggers_always_incremented(self, tmp_path):
-        from enzymes.outcome_engine import update_cell_fitness
+        from soma_core.telemetry import update_cell_fitness
         ws = str(tmp_path)
         path = _make_cell(ws, 'cell-trg', ['src/*.py'],
                           fitness={'triggers': 5, 'true_positives': 3,
@@ -185,7 +180,7 @@ class TestUpdateCellFitness:
         assert int(fm['fitness']['triggers']) >= 6
 
     def test_frontmatter_survives_roundtrip(self, tmp_path):
-        from enzymes.outcome_engine import update_cell_fitness
+        from soma_core.telemetry import update_cell_fitness
         ws = str(tmp_path)
         path = _make_cell(ws, 'cell-rt', ['src/*.py'],
                           fitness={'triggers': 5, 'true_positives': 3,
@@ -199,7 +194,7 @@ class TestUpdateCellFitness:
         assert 'Body text' in body
 
     def test_corrupt_cell_no_crash(self, tmp_path):
-        from enzymes.outcome_engine import update_cell_fitness
+        from soma_core.telemetry import update_cell_fitness
         ws = str(tmp_path)
         cells_dir = os.path.join(ws, '.soma', 'cells', 'vacuoles')
         os.makedirs(cells_dir, exist_ok=True)
@@ -212,7 +207,7 @@ class TestUpdateCellFitness:
         update_cell_fitness(ws, signals)
 
     def test_missing_fitness_field_initialized(self, tmp_path):
-        from enzymes.outcome_engine import update_cell_fitness
+        from soma_core.telemetry import update_cell_fitness
         ws = str(tmp_path)
         path = _make_cell(ws, 'cell-nofitness', ['src/*.py'])
         signals = [{'cell': 'cell-nofitness', '_path': path, 'signal': 1.0,
@@ -223,7 +218,7 @@ class TestUpdateCellFitness:
         assert int(fm['fitness'].get('triggers', 0)) >= 1
 
     def test_fractional_credit_deterministic(self, tmp_path):
-        from enzymes.outcome_engine import update_cell_fitness
+        from soma_core.telemetry import update_cell_fitness
         ws = str(tmp_path)
         path = _make_cell(ws, 'cell-frac', ['src/*.py'],
                           fitness={'triggers': 1, 'true_positives': "1/3",
@@ -240,7 +235,7 @@ class TestUpdateCellFitness:
 
 class TestAppendFitnessLogGenerationFence:
     def test_outcome_engine_appends_are_generation_fenced(self, tmp_path):
-        from enzymes.outcome_engine import append_fitness_log
+        from soma_core.telemetry import append_fitness_log
         ws = str(tmp_path)
         os.makedirs(os.path.join(ws, ".soma"), exist_ok=True)
         with open(os.path.join(ws, ".soma", "epoch_generation"), "w", encoding="utf-8") as f:
@@ -257,7 +252,7 @@ class TestBug1OutcomeEnginePath:
 
     def test_reads_from_evidence_dir(self, tmp_path):
         """outcome_engine reads from .soma/evidence/outcomes.jsonl, not .soma/outcomes.jsonl."""
-        from outcome_engine import capture_mcp_outcomes
+        from soma_core.telemetry import capture_mcp_outcomes
 
         # Write to the CORRECT path
         evidence_dir = tmp_path / '.soma' / 'evidence'
@@ -273,7 +268,7 @@ class TestBug1OutcomeEnginePath:
 
     def test_ignores_old_path(self, tmp_path):
         """outcome_engine does NOT read from the old .soma/outcomes.jsonl path."""
-        from outcome_engine import capture_mcp_outcomes
+        from soma_core.telemetry import capture_mcp_outcomes
 
         # Write to the OLD (wrong) path
         old_dir = tmp_path / '.soma'
@@ -291,7 +286,7 @@ class TestBug2OutcomeEngineSchema:
 
     def test_cell_id_schema_matches(self, tmp_path):
         """MCP records with cell_id (string) are matched to cells."""
-        from outcome_engine import compute_fitness_signals
+        from soma_core.telemetry import compute_fitness_signals
 
         triggered_cells = [{
             '_name': 'trap-example',
@@ -313,7 +308,7 @@ class TestBug2OutcomeEngineSchema:
 
     def test_cells_used_schema_still_works(self, tmp_path):
         """Legacy records with cells_used (list) still match."""
-        from outcome_engine import compute_fitness_signals
+        from soma_core.telemetry import compute_fitness_signals
 
         triggered_cells = [{
             '_name': 'trap-example',
