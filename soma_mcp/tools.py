@@ -58,11 +58,14 @@ def _safe_import_enzyme(module_name: str, attr: str):
     return getattr(mod, attr)
 
 
-# Import TTC Verifier via safe import
+# Import TTC Verifier (direct soma_core import with safe enzyme fallback)
 try:
-    soma_propose_change = _safe_import_enzyme("ttc_verifier", "soma_propose_change")
+    from soma_core.arbitration import soma_propose_change
 except ImportError:
-    soma_propose_change = None
+    try:
+        soma_propose_change = _safe_import_enzyme("ttc_verifier", "soma_propose_change")
+    except ImportError:
+        soma_propose_change = None
 
 # Try importing Governance SDK; its cell parser also has a stdlib fallback.
 try:
@@ -1079,9 +1082,12 @@ def execute_tool(name: str, args: dict):
         except ValueError as exc:
             return {"error": str(exc), "status": _STATUS_FAIL}
         try:
-            capture_insight = _safe_import_enzyme("insight_capture", "capture_insight")
+            from soma_core.insights import capture_insight
         except ImportError:
-            return {"error": "enzymes.insight_capture is not importable."}
+            try:
+                capture_insight = _safe_import_enzyme("insight_capture", "capture_insight")
+            except ImportError:
+                return {"error": "soma_core.insights is not importable."}
         try:
             context_files_arg = args.get('context_files') or []
             if not isinstance(context_files_arg, (list, tuple)) or not all(isinstance(f, str) for f in context_files_arg):
