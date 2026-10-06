@@ -68,12 +68,36 @@ export class Governance {
     tags?: string[];
     id?: string;
   }): Promise<string>;
+  createRule(options: {
+    hypothesis: string;
+    type?: string;
+    targetPaths?: string[];
+    minimumMode?: string;
+    tags?: string[];
+    id?: string;
+    ruleId?: string;
+  }): Promise<string>;
+  recordOutcome(
+    ruleId: string,
+    success: boolean | string | number,
+    options?: {
+      metric?: Record<string, any>;
+      sessionId?: string;
+      source?: string;
+      idempotencyKey?: string;
+      idempotencyScope?: string;
+      expectedGeneration?: number;
+      [key: string]: any;
+    }
+  ): Promise<string>;
+  parseCellFile(filePath: string): Promise<[Record<string, any>, string]>;
   createCellFromDescription(description: string, options?: {
     domain?: string;
     type?: string;
   }): Promise<string>;
   signal(cellName: string, signalType: 'tp' | 'fp', metric?: Record<string, any>): Promise<string>;
   fitnessLandscape(options?: { bayesian?: boolean }): Promise<any>;
+  ruleFitness(options?: { bayesian?: boolean }): Promise<any>;
   coverageReport(): Promise<CoverageReport>;
   replay(options?: { commits?: number }): Promise<any>;
   trends(options?: { days?: number }): Promise<any>;

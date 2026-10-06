@@ -23,7 +23,7 @@ Counts are generated from the v0.96.0 source tree with mutually exclusive catego
 
 ## Lifecycle Scripts (Hooks) — bash
 
-These 7 bash scripts are invoked automatically by the IDE, terminal hook systems, or git triggers.
+These 7 bash scripts are invoked automatically by the IDE, terminal hook systems, or git triggers. Following the v0.96.0 core consolidation, all `enzymes/*.sh` scripts function as backward-compatibility forwarding shims that delegate directly to canonical in-process Python implementations in `soma_core/` (such as `soma_core.lifecycle`, `soma_core.arbitration`, and `soma_core.sync`).
 
 | Script | Location | Purpose |
 |:-------|:---------|:--------|

@@ -851,9 +851,13 @@ def cli_ci_outcome_reporter(argv: Optional[List[str]] = None) -> int:
 
 
 __all__ = [
+    "VALID_STATUSES",
+    "CORE_FIELDS",
+    "FIX_FIELDS",
     "load_bug_registry",
     "load_registry",
     "bug_status",
+    "verify_unique_ids",
     "verify_bug_schema",
     "verify_schema",
     "verify_bug_tests",

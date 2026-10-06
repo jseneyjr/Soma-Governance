@@ -130,6 +130,57 @@ class Governance {
     return this._runScript('cell_create.sh', args, { json: false });
   }
 
+  async createRule(options) {
+    const opts = typeof options === 'object' ? Object.assign({}, options) : { hypothesis: options };
+    if (opts.ruleId && !opts.id) opts.id = opts.ruleId;
+    return this.createCell(opts);
+  }
+
+  async recordOutcome(ruleId, success, options = {}) {
+    let signalType;
+    if (typeof success === 'string') {
+      const norm = success.trim().toLowerCase();
+      if (['tp', 'pass', 'true', '1', 'success'].includes(norm)) {
+        signalType = 'tp';
+      } else if (['fp', 'fail', 'false', '0', 'failure'].includes(norm)) {
+        signalType = 'fp';
+      } else {
+        throw new Error(`Invalid outcome string: ${success}`);
+      }
+    } else if (typeof success === 'boolean' || typeof success === 'number') {
+      signalType = Boolean(success) ? 'tp' : 'fp';
+    } else {
+      throw new TypeError(`success must be a bool, number, or string, got ${typeof success}`);
+    }
+
+    const { metric, sessionId, source = 'manual', ...rest } = options;
+    const mergedMetric = Object.assign({}, metric, rest);
+    if (sessionId) mergedMetric.session_id = sessionId;
+
+    return this.signal(ruleId, signalType, mergedMetric);
+  }
+
+  async parseCellFile(filePath) {
+    const fullPath = path.isAbsolute(filePath) ? filePath : path.join(this.root, filePath);
+    if (!fs.existsSync(fullPath)) {
+      throw new Error(`Cell file not found: ${filePath}`);
+    }
+    const content = fs.readFileSync(fullPath, 'utf8');
+    const cleanContent = content.startsWith('\ufeff') ? content.slice(1) : content;
+    if (!cleanContent.startsWith('---')) {
+      throw new Error(`No frontmatter delimiter in ${filePath}`);
+    }
+    const endIdx = cleanContent.indexOf('---', 3);
+    if (endIdx === -1) {
+      throw new Error(`Unclosed frontmatter in ${filePath}`);
+    }
+    const yaml = await this._tryRequireYaml();
+    const yamlText = cleanContent.slice(3, endIdx).trim();
+    const frontmatter = yaml.load(yamlText) || {};
+    const body = cleanContent.slice(endIdx + 3).replace(/^\n+/, '');
+    return [frontmatter, body];
+  }
+
   async createCellFromDescription(description, { domain, type } = {}) {
     const args = [description];
     if (domain) args.push('--domain', domain);
@@ -152,6 +203,10 @@ class Governance {
   async fitnessLandscape({ bayesian = false } = {}) {
     const args = bayesian ? ['--bayesian'] : [];
     return this._runScript('cell_fitness.py', args);
+  }
+
+  async ruleFitness({ bayesian = false } = {}) {
+    return this.fitnessLandscape({ bayesian });
   }
 
   async coverageReport() {

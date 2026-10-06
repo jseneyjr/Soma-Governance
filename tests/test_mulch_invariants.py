@@ -77,6 +77,7 @@ class TestInvariant2_SymbolAuthority:
         for py_file in python_files:
             module_name = f"soma_core.{py_file.stem}"
             mod = importlib.import_module(module_name)
+            assert hasattr(mod, "__all__"), f"{module_name} lacks __all__ declaration"
             exported = getattr(mod, "__all__", [])
             for sym in exported:
                 if not hasattr(mod, sym):
@@ -302,7 +303,7 @@ class TestInvariant6_BugRegistryIntegrity:
     def test_registry_schema_and_regression_tests_pass(self):
         bugs = load_bug_registry(str(REPO_ROOT))
         bug_list = bugs.get("bugs", [])
-        assert len(bug_list) > 50, f"Expected >50 bug entries, got {len(bug_list)}"
+        assert len(bug_list) == 69, f"Expected exactly 69 bug entries, got {len(bug_list)}"
 
         unique_errors = verify_unique_ids(bugs)
         assert not unique_errors, f"Bug ID uniqueness errors: {unique_errors}"
