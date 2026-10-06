@@ -1,6 +1,6 @@
 """soma_core package - foundational state and security primitives."""
 
-__version__ = "0.99.0"
+__version__ = "0.100.0"
 
 from soma_core import (
     arbitration,
@@ -17,9 +17,12 @@ from soma_core import (
     insights,
     lifecycle,
     locking,
+    metrics,
+    outcomes,
     quarantine,
     receipts,
     scoring,
+    sentinels,
     storage,
     sweep_session,
     sync,
@@ -79,9 +82,12 @@ __all__ = [
     "insights",
     "lifecycle",
     "locking",
+    "metrics",
+    "outcomes",
     "quarantine",
     "receipts",
     "scoring",
+    "sentinels",
     "storage",
     "sweep_session",
     "sync",

@@ -554,47 +554,21 @@ def _match_cells(workspace: str, changed_files: List[str]) -> List[Dict[str, Any
 
     Returns list of dicts with keys: cell, type, target_match, path.
     """
-    matched = []
+    from soma_core.cell_inventory import find_matching_cells
+
     cells_dir = os.path.join(workspace, ".soma", "cells")
-    if not os.path.isdir(cells_dir):
-        return matched
-
-    for cell_file in glob.glob(
-        os.path.join(cells_dir, "**", "*.md"), recursive=True
-    ):
-        if os.path.basename(cell_file) == "README.md":
-            continue
-
-        try:
-            fm = _parse_cell_frontmatter(cell_file)
-        except Exception:
-            continue
-
-        target_paths = fm.get("target_paths", [])
-        if isinstance(target_paths, str):
-            target_paths = [target_paths]
-
-        matched_pattern = None
-        for fpath in changed_files:
-            for tp in target_paths:
-                if fnmatch.fnmatch(fpath, tp) or fnmatch.fnmatch(
-                    os.path.basename(fpath), tp
-                ):
-                    matched_pattern = tp
-                    break
-            if matched_pattern:
-                break
-
-        if matched_pattern:
-            cell_name = os.path.splitext(os.path.basename(cell_file))[0]
-            matched.append({
-                "cell": cell_name,
-                "type": fm.get("type", "unknown"),
-                "target_match": matched_pattern,
-                "path": cell_file,
-            })
-
+    matches = find_matching_cells(cells_dir, changed_files, allow_basename_match=True)
+    matched = []
+    for m in matches:
+        cell_name = os.path.splitext(os.path.basename(m.cell_path))[0]
+        matched.append({
+            "cell": cell_name,
+            "type": m.cell_type,
+            "target_match": m.first_matching_target or "",
+            "path": m.cell_path,
+        })
     return matched
+
 
 
 def _compute_credit_weights(matched_cells: List[Dict[str, Any]], changed_files: List[str]) -> Dict[str, float]:

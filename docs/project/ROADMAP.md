@@ -202,6 +202,12 @@ Consolidated 83 individual 1:1 mirrored stub files into a single high-speed para
 **Status**: ✅ Shipped (v0.99.0)  
 Decoupled command-line execution and argument parsing from `soma_core/`. Extracted pure `evaluate_cell_tiers()` into `soma_core.lifecycle` and wired `soma promote --tier-check`. Purged 29 dead `cli_*` functions across `soma_core/` (`lifecycle.py`, `homeostasis.py`, `defects.py`, `insights.py`, `sync.py`, `telemetry.py`, `arbitration.py`, `enforcement.py`). Deleted legacy pass-through `soma_cli/handlers/` and its test suite. Net code reduction of ~1,660 lines.
 
+## Phase 5.11 — v0.100.0 ✅ Shipped
+
+### Core God Module Decomposition & Verification Deduplication
+**Status**: ✅ Shipped (v0.100.0)  
+Decomposed `soma_core/telemetry.py` (1,911 LOC) into `soma_core/outcomes.py` and `soma_core/metrics.py`, leaving `soma_core/telemetry.py` as a ~450 LOC cohesive evidence ledger with proxy mutation mirroring. Decomposed `soma_core/sync.py` (1,206 LOC) into `soma_core/sentinels.py`. Deduplicated triplicate glob matchers across telemetry and enforcement into canonical `find_matching_cells` in `soma_core/cell_inventory.py`. Centralized OS locking inside `soma_core/locking.py`. Added colocated test suites `test_outcomes.py`, `test_metrics.py`, and `test_sentinels.py`.
+
 ## Research
 
 ### Antifragile Scaling

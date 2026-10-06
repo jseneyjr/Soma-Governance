@@ -1,7 +1,7 @@
 """Soma CLI — user-facing governance commands."""
 from __future__ import annotations
 
-__version__ = "0.99.0"
+__version__ = "0.100.0"
 
 import re
 from pathlib import Path

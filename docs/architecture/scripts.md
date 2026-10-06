@@ -1,10 +1,10 @@
 # Scripts Reference
 
-This document catalogs 72 executable scripts, command modules, SDK modules, and MCP/core modules in the Soma governance framework.
+This document catalogs 75 executable scripts, command modules, SDK modules, and MCP/core modules in the Soma governance framework.
 
 ## Counting Method
 
-Counts are generated from the source tree with mutually exclusive categories: package initializers (`__init__.py`, `__main__.py`) are excluded; `install/hooks/pre-commit` is counted as the lifecycle script; and all non-initializer `soma_core/*.py` modules are grouped with the MCP modules. This produces 72 unique paths with no double counting.
+Counts are generated from the source tree with mutually exclusive categories: package initializers (`__init__.py`, `__main__.py`) are excluded; `install/hooks/pre-commit` is counted as the lifecycle script; and all non-initializer `soma_core/*.py` modules are grouped with the MCP modules. This produces 75 unique paths with no double counting.
 
 ## Summary by Category
 
@@ -14,8 +14,8 @@ Counts are generated from the source tree with mutually exclusive categories: pa
 | [Verification Scripts](#verification-scripts--python) | Python (`immune_system/verification/`) | 13 | Deterministic AST checkers, coverage tools, and adversarial verification |
 | [CLI Commands](#cli-commands--python-soma_cli) | Python and bash (`soma_cli/`, root) | 21 | CLI launcher and command implementation modules |
 | [SDK Modules](#sdk-modules--python-soma_sdk) | Python (`soma_sdk/`) | 8 | Canonical scoring, parsing, telemetry, hot-zone, and governance APIs |
-| [MCP and Core Modules](#mcp-and-core-modules) | Python (`soma_mcp/`, `soma_core/`) | 29 | MCP transport, dispatch, confinement, content inventory, canonical evidence, cache, errors, receipts, and atomic storage |
-| **Total** | | **72** | Unique paths under the method above |
+| [MCP and Core Modules](#mcp-and-core-modules) | Python (`soma_mcp/`, `soma_core/`) | 32 | MCP transport, dispatch, confinement, content inventory, canonical evidence, cache, errors, receipts, and atomic storage |
+| **Total** | | **75** | Unique paths under the method above |
 
 ---
 
@@ -104,7 +104,7 @@ These 8 non-initializer modules provide the canonical Python APIs used by the CL
 
 ## MCP and Core Modules
 
-These 29 modules implement the MCP server, state-bound authorization, safe cell inventory, frontmatter parsing, lifecycle state machine, verification job orchestration, canonical evidence reading, transactional resource locking, self-healing quarantine, atomic storage, and standardized domain errors. Package initializers and `soma_mcp/__main__.py` are excluded from the count.
+These 32 modules implement the MCP server, state-bound authorization, safe cell inventory, frontmatter parsing, lifecycle state machine, verification job orchestration, canonical evidence reading, transactional resource locking, self-healing quarantine, atomic storage, and standardized domain errors. Package initializers and `soma_mcp/__main__.py` are excluded from the count.
 
 | Module | Location | Purpose |
 |:-------|:---------|:--------|
@@ -137,6 +137,9 @@ These 29 modules implement the MCP server, state-bound authorization, safe cell 
 | **`sweep_session.py`** | `soma_core/sweep_session.py` | Session transcript scanning, signal aggregation, and metric collection for sweep operations. |
 | **`evidence_collector.py`** | `soma_core/evidence_collector.py` | Ground-truth evidence collection and observation processing for rule evaluation. |
 | **`command_safety.py`** | `soma_core/command_safety.py` | Pure-stdlib lexical command tokenizer, wrapper unrolling automaton, and structured safety-gate analyzer. |
+| **`outcomes.py`** | `soma_core/outcomes.py` | Verifiable outcome reflection, credit assignment, fitness signals, transcript updater, and ACE reflector loop. |
+| **`metrics.py`** | `soma_core/metrics.py` | Metrics snapshots, token census aggregation, cell quorum sensing, coverage mapping, and immune report cards. |
+| **`sentinels.py`** | `soma_core/sentinels.py` | Subagent liveness & deadlock detection, protocol escalation recommender, and last-gasp apoptosis sentinels. |
 
 ---
 
