@@ -434,20 +434,16 @@ def test_entire_runtime_has_zero_third_party_imports():
     from immune_system.verification.import_guard import _get_stdlib_modules
 
     stdlib = set(_get_stdlib_modules()) | set(sys.builtin_module_names)
-    internal_prefixes = ("soma_", "enzymes", "immune_system", "install", "genome")
-    enzyme_dir = os.path.join(REPO_ROOT, "enzymes")
-    enzyme_modules = {
-        f[:-3] for f in os.listdir(enzyme_dir) if f.endswith(".py")
-    } if os.path.isdir(enzyme_dir) else set()
+    internal_prefixes = ("soma_", "immune_system", "install", "genome")
     soma_core_dir = os.path.join(REPO_ROOT, "soma_core")
     soma_core_modules = {
         f[:-3] for f in os.listdir(soma_core_dir) if f.endswith(".py")
     } if os.path.isdir(soma_core_dir) else set()
-    internal_names = enzyme_modules | soma_core_modules | {"conftest"}
+    internal_names = soma_core_modules | {"conftest"}
     optional_allowed = {"google", "anthropic", "openai", "keyring"}
 
     offenders = []
-    runtime_dirs = ["soma_cli", "soma_core", "soma_mcp", "soma_sdk", "enzymes"]
+    runtime_dirs = ["soma_cli", "soma_core", "soma_mcp", "soma_sdk"]
     for rdir in runtime_dirs:
         dir_path = os.path.join(REPO_ROOT, rdir)
         for path in iter_source_files(dir_path, (".py",)):

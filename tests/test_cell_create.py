@@ -1,34 +1,21 @@
 import os
+import sys
 import pytest
-from conftest import REPO_ROOT, run, symlink_or_skip
-
-ENZYMES = os.path.join(REPO_ROOT, "enzymes")
+from conftest import REPO_ROOT, run
 
 def _env(tmp_path, **extra):
-    import sys
     home = tmp_path / "home"
     home.mkdir(exist_ok=True)
     env = {"HOME": str(home), "USERPROFILE": str(home), "SOMA_PYTHON": sys.executable,
-           "SOMA_PYTHON_RESOLVED": ""}
+           "SOMA_PYTHON_RESOLVED": "", "PYTHONPATH": REPO_ROOT}
     env.update(extra)
     return env
 
-@pytest.fixture
-def link_dir(tmp_path):
-    d = tmp_path / "links"
-    d.mkdir()
-    return d
-
-def _link(link_dir, name):
-    link = link_dir / name
-    symlink_or_skip(os.path.join(ENZYMES, name), link)
-    return str(link)
-
-def test_cell_create_via_symlink(tmp_path, link_dir, bash):
+def test_cell_create_in_process(tmp_path):
     proj = tmp_path / "proj"
     (proj / ".soma" / "cells").mkdir(parents=True)
-    proc = run([bash, _link(link_dir, "cell_create.sh"), "--type", "vacuole",
-                "--hypothesis", "linked", "--id", "vac-linked"],
+    proc = run([sys.executable, "-c", "import sys; from soma_core.lifecycle import cli_cell_create; sys.exit(cli_cell_create(sys.argv[1:]))",
+                "--type", "vacuole", "--hypothesis", "linked", "--id", "vac-linked"],
                cwd=str(proj), env=_env(tmp_path))
     assert "No such file" not in proc.stderr, proc.stderr
     assert proc.returncode == 0, proc.stdout + proc.stderr

@@ -3,28 +3,14 @@ from unittest.mock import patch, MagicMock
 from pathlib import Path
 from soma_sdk.governance import Governance
 
-def test_governance_uses_importlib_resources_instead_of_relative_path(tmp_path, monkeypatch):
-    # If _find_scripts_dir is removed or doesn't find enzymes locally, 
-    # it should use importlib.resources.
+def test_governance_fitness_landscape_in_process(tmp_path):
+    _populate_governed_workspace(tmp_path)
     gov = Governance(project_root=tmp_path)
-    
-    # We will mock subprocess.run to avoid actually executing and test if it runs the script from importlib
-    with patch("subprocess.run") as mock_run:
-        mock_run.return_value.returncode = 0
-        mock_run.return_value.stdout = '{"status": "ok"}'
-        
-        # We need to make sure the scripts_dir is not relying on relative paths
-        # So we mock Path.exists to always return False for the local candidates if _find_scripts_dir still exists
-        
-        try:
-            res = gov.fitness_landscape()
-        except RuntimeError as e:
-            pytest.fail(f"Failed with {e}, likely because it still relies on relative enzymes/")
-            
-        assert mock_run.called
-        cmd_run = mock_run.call_args[0][0]
-        # Check that the script being executed is cell_fitness.py
-        assert any("cell_fitness.py" in str(arg) for arg in cmd_run)
+    res = gov.fitness_landscape(bayesian=True)
+    assert isinstance(res, list)
+    assert len(res) == 5
+    cell_names = {c['cell'] for c in res}
+    assert "vacuole-test-trap.md" in cell_names
 
 
 def _populate_governed_workspace(root: Path):
@@ -194,22 +180,12 @@ def test_record_outcome_unknown_rule_warning(tmp_path):
         assert any("not found in active inventory" in str(w.message) for w in recorded)
 
 
-def test_create_rule_and_type_translation(tmp_path, monkeypatch):
+def test_create_rule_and_type_translation(tmp_path):
     _populate_governed_workspace(tmp_path)
     gov = Governance(project_root=tmp_path)
-
-    captured_cmds = []
-    def fake_run(script_name, *args, **kwargs):
-        captured_cmds.append((script_name, args))
-        return "created"
-
-    monkeypatch.setattr(gov, "_run_script", fake_run)
-    gov.create_rule("Safety check test", type="safety-guard")
-    assert len(captured_cmds) == 1
-    script_name, args = captured_cmds[0]
-    assert script_name == "cell_create.py"
-    type_idx = args.index("--type")
-    assert args[type_idx + 1] == "wall"
+    created = gov.create_rule("Safety check test", type="safety-guard")
+    assert Path(created).exists()
+    assert "/walls/" in Path(created).as_posix()
 
 
 def test_rule_fitness_alias(tmp_path, monkeypatch):

@@ -24,8 +24,7 @@ def test_cell_enforce_empty_target_patterns_bash_syntax(tmp_path):
         "target_paths": []
     }
     hook_code = generate_precommit_check(cell, ".")
-
-    assert "../../enzymes" in hook_code, "Script dir should point to enzymes, not scripts"
+    assert "append_signal" in hook_code, "Hook code should use append_signal"
 
     # Write hook code to temp script inside tmp_path and execute under bash
     tmp_script = tmp_path / "test_hook.sh"
