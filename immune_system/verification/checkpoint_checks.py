@@ -213,7 +213,7 @@ def _resolve_canonical_test_candidates(root: Path, source_file: Path) -> list[Pa
     if stem == "tools":
         candidates.append(test_dir / "test_mcp_tools_contract.py")
     if stem == "analysis":
-        candidates.append(test_dir / "test_cell_deps_behavioral.py")
+        candidates.append(test_dir / "test_sdk_analysis.py")
     if stem == "cells":
         candidates.append(test_dir / "test_rule_content.py")
     if stem == "invariants":
