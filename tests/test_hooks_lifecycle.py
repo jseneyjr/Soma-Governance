@@ -136,6 +136,18 @@ class TestSafetyGate:
             "git branch -d bug-fix",
             "git branch --delete bug-fix",
             "git branch --force bug-fix",
+            "{ rm -rf /; }",
+            "if true; then rm -rf /; fi",
+            "command rm -rf /",
+            "eval 'rm -rf /'",
+            "exec rm -rf /",
+            "sudo -u root rm -rf /",
+            "env -i rm -rf /",
+            "time -p rm -rf /",
+            "$'\x72\x6d' -rf /",
+            "{rm,-rf,/}",
+            "/bin/r[m] -rf /",
+            "bash -c 'rm \"$@\"' bash -rf /",
         ],
     )
     def test_evasion_and_destructive_flags_blocked(self, cmd: str, tmp_path: Path):

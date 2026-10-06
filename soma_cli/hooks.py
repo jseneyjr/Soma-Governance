@@ -284,6 +284,19 @@ def run_safety_gate(
                     log_gate_event(cmd, "ALLOWED", "", root)
                     return 0, {"decision": "allow"}
 
+    # Structured AST / Token Analyzer (soma_core.command_safety)
+    try:
+        from soma_core.command_safety import CommandAnalyzer
+        eval_res = CommandAnalyzer.evaluate(cmd)
+        if eval_res.is_destructive:
+            log_gate_event(cmd, "BLOCKED", eval_res.reason, root)
+            return 0, {
+                "decision": "force_ask",
+                "reason": f"🛡️ Safety Gate: {eval_res.reason}",
+            }
+    except Exception:
+        pass
+
     for cand in candidates:
         for pattern, reason in DESTRUCTIVE_PATTERNS:
             if pattern.search(cand):
