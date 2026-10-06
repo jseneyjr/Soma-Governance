@@ -15,6 +15,11 @@ from conftest import REPO_ROOT, read, run
 INSTALL = os.path.join(REPO_ROOT, "install", "install.sh")
 UNINSTALL = os.path.join(REPO_ROOT, "install", "uninstall.sh")
 
+pytestmark = pytest.mark.skipif(
+    not os.path.exists(INSTALL),
+    reason="legacy shell installers purged in v0.97.0 in favor of soma install/uninstall",
+)
+
 
 def install(home, platform="kiro", *args, bash="/bin/bash"):
     env = {"HOME": str(home), "USERPROFILE": str(home)}
@@ -303,6 +308,9 @@ def _env(tmp_path, **extra):
     return env
 
 def _install_hooks(bash, tmp_path, repo, target, **extra):
+    common_sh = os.path.join(ENZYMES, "common.sh")
+    if not os.path.exists(common_sh):
+        pytest.skip("enzymes directory purged in v0.97.0")
     script = (f'source "{ENZYMES}/common.sh"; '
               f'install_hooks "{repo}" "{target}"')
     return run([bash, "-c", script], env=_env(tmp_path, **extra))
