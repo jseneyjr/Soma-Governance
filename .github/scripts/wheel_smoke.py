@@ -7,7 +7,7 @@ the current directory can shadow site-packages:
     cd "$(mktemp -d)" && python -I /path/to/wheel_smoke.py
 
 Fails (non-zero exit) if any Soma module resolves from outside site-packages,
-or if the CLI, the MCP server, or the packaged enzymes do not work.
+or if the CLI, the MCP server, or Governance SDK do not work.
 """
 import importlib
 import json

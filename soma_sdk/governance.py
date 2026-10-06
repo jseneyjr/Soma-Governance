@@ -48,44 +48,8 @@ class Governance:
         self.metrics_dir: Path = self.root / '.soma' / 'metrics'
     
     def _run_script(self, script_name: str, *args: str, json_output: bool = True) -> dict[str, Any] | str:
-        """Run a Soma enzyme script and return parsed output."""
-        import importlib.resources
-        from contextlib import ExitStack
-        
-        with ExitStack() as stack:
-            try:
-                # Use importlib.resources to locate the script in the packaged 'enzymes' module
-                ref = importlib.resources.files('enzymes').joinpath(script_name)
-                script_path = stack.enter_context(importlib.resources.as_file(ref))
-            except Exception as e:
-                raise RuntimeError(f'Soma enzyme script not found or failed to load: {script_name} ({e})')
-            
-            if not script_path.exists():
-                raise FileNotFoundError(f'Script not found: {script_name}')
-            
-            if script_path.suffix == '.sh':
-                cmd = ['bash', str(script_path)] + list(args)
-            else:
-                cmd = [sys.executable, str(script_path)] + list(args)
-            
-            if json_output:
-                cmd.append('--json')
-            
-            result = subprocess.run(cmd, capture_output=True, text=True, cwd=str(self.root))
-            
-            if result.returncode != 0:
-                err_msg = result.stderr.strip() or result.stdout.strip()
-                if json_output:
-                    return {'error': f'Command failed with exit code {result.returncode}', 'details': err_msg}
-                else:
-                    raise RuntimeError(f'Command failed with exit code {result.returncode}: {err_msg}')
-                    
-            if json_output and result.stdout.strip():
-                try:
-                    return json.loads(result.stdout)
-                except json.JSONDecodeError:
-                    return {'raw': result.stdout, 'error': 'JSON parse failed'}
-            return result.stdout
+        """Deprecated: enzyme scripts have been purged. Delegates to in-process APIs."""
+        raise RuntimeError(f"Enzyme script '{script_name}' is purged; use in-process Governance methods.")
     
     # === Cell & Rule Management ===
     
@@ -254,20 +218,20 @@ class Governance:
         cell_id: Optional[str] = None,
     ) -> dict[str, Any] | str:
         """Create a new immune cell."""
+        from soma_core.lifecycle import create_cell as core_create_cell
         raw_slug = cell_id or hypothesis[:40]
         safe_slug = re.sub(r'[^a-zA-Z0-9_.-]', '-', raw_slug).strip('-')
         canonical_type = TYPE_TRANSLATION_MAP.get(type, type)
-        
-        args = ['--id', safe_slug, '--type', canonical_type,
-                '--hypothesis', hypothesis]
-        if target_paths:
-            args.extend(['--target-paths', ','.join(target_paths)])
-        if minimum_mode:
-            args.extend(['--minimum-mode', minimum_mode])
-        if tags:
-            args.extend(['--tags', ','.join(tags)])
-        
-        return self._run_script('cell_create.py', *args, json_output=False)
+        created_path = core_create_cell(
+            cell_type=canonical_type,
+            hypothesis=hypothesis,
+            minimum_mode=minimum_mode,
+            tags=tags,
+            target_paths=target_paths,
+            id_override=safe_slug,
+            workspace=self.root,
+        )
+        return str(created_path)
 
     def create_rule(
         self,
@@ -297,86 +261,107 @@ class Governance:
     def create_cell_from_description(
         self, description: str, domain: Optional[str] = None, cell_type: Optional[str] = None,
     ) -> dict[str, Any] | str:
-        """Create a cell using natural language via Gemini API."""
-        args = [description]
-        if domain:
-            args.extend(['--domain', domain])
-        if cell_type:
-            canonical_type = TYPE_TRANSLATION_MAP.get(cell_type, cell_type)
-            args.extend(['--type', canonical_type])
-        return self._run_script('cell_create_nl.py', *args, json_output=False)
+        """Create a cell using natural language via configured inference provider."""
+        from soma_core.lifecycle import create_cell_from_description as core_create_cell_nl
+        canonical_type = TYPE_TRANSLATION_MAP.get(cell_type, cell_type) if cell_type else None
+        return core_create_cell_nl(
+            description=description,
+            domain_hint=domain,
+            cell_type=canonical_type,
+            workspace=str(self.root),
+        )
     
     def signal(
         self, cell_name: str, signal_type: str, metric: Optional[dict[str, Any]] = None,
     ) -> dict[str, Any] | str:
-        """Send a fitness signal to a cell.
-        
-        Args:
-            cell_name: Name of the cell to signal
-            signal_type: 'tp' (true positive) or 'fp' (false positive)
-            metric: Optional dict of metrics, e.g. {'survival_day': 12}
-        """
-        args = [cell_name, signal_type]
-        if metric:
-            for k, v in metric.items():
-                args.extend(['--metric', f'{k}={v}'])
-        
-        return self._run_script('cell_signal.py', *args, json_output=False)
+        """Send a fitness signal to a cell in-process."""
+        from soma_core.telemetry import append_signal
+        return append_signal(
+            workspace=str(self.root),
+            cell_name=cell_name,
+            signal_type=signal_type,
+            source="manual",
+            metadata={"metric": metric} if metric else None,
+        )
     
     # === Analysis ===
     
-    def fitness_landscape(self, bayesian: bool = False) -> dict[str, Any] | str:
+    def fitness_landscape(self, bayesian: bool = False) -> list[dict[str, Any]]:
         """Get fitness scores for all cells."""
-        args = []
-        if bayesian:
-            args.append('--bayesian')
-        return self._run_script('cell_fitness.py', *args)
+        from soma_core.lifecycle import compute_cells_fitness
+        return compute_cells_fitness(workspace=str(self.root), bayesian=bayesian)
 
-    def rule_fitness(self, bayesian: bool = False) -> dict[str, Any] | str:
+    def rule_fitness(self, bayesian: bool = False) -> list[dict[str, Any]]:
         """Get fitness scores for all rules (porcelain alias for fitness_landscape)."""
         return self.fitness_landscape(bayesian=bayesian)
     
-    def coverage_report(self, exclude: Optional[str] = None) -> dict[str, Any] | str:
+    def coverage_report(self, exclude: Optional[str] = None) -> dict[str, Any]:
         """Get cell coverage report."""
-        args = []
-        if exclude:
-            args.extend(['--exclude', exclude])
-        return self._run_script('cell_coverage.py', *args)
+        from soma_core.telemetry import calculate_coverage
+        return calculate_coverage(workspace=str(self.root), exclude=[exclude] if exclude else None)
     
     def replay(self, commits: int = 20) -> dict[str, Any] | str:
         """Replay governance against historical commits."""
-        return self._run_script('immune_replay.py', '--commits', str(commits))
+        raise NotImplementedError("Replay is deprecated and pending in-process migration.")
     
     def trends(self, days: int = 30) -> dict[str, Any] | str:
         """Get cross-session governance trends."""
-        return self._run_script('immune_trends.py', '--days', str(days))
+        raise NotImplementedError("Trends is deprecated and pending in-process migration.")
     
-    def grade(self) -> dict[str, Any] | str:
+    def grade(self) -> dict[str, Any]:
         """Get governance report card."""
-        return self._run_script('immune_grade.py')
+        from soma_core.telemetry import calculate_immune_grade
+        report = calculate_immune_grade(workspace=str(self.root))
+        if report is None:
+            return {
+                "coverage": {"pct": 0.0, "grade": "F"},
+                "avg_fitness": {"pct": 0.0, "grade": "F", "score": 0.0},
+                "diversity": {"pct": 0.0, "grade": "F"},
+                "staleness": {"pct": 0.0, "grade": "F"},
+                "wall_integrity": {"pct": 0.0, "grade": "F"},
+                "tiers": {},
+                "overall": {"pct": 0.0, "grade": "F"},
+                "status": "PASS",
+                "note": "No cells found to grade",
+            }
+        return report
     
-    def quorum(self, threshold: int = 3) -> dict[str, Any] | str:
+    def quorum(self, threshold: int = 3, changed_files: Optional[list[str]] = None) -> dict[str, Any]:
         """Check for quorum (systemic multi-cell triggers)."""
-        return self._run_script('cell_quorum.py', '--threshold', str(threshold))
+        from soma_core.telemetry import evaluate_quorum, _get_changed_files
+        files = changed_files if changed_files is not None else _get_changed_files(str(self.root))
+        return evaluate_quorum(cells_dir=self.cells_dir, changed_files=files, threshold=threshold)
     
     def dependencies(self, format: str = 'text') -> dict[str, Any] | str:
         """Get cell dependency graph."""
-        return self._run_script('cell_deps.py', '--format', format, json_output=(format != 'mermaid'))
+        raise NotImplementedError("Dependencies is deprecated and pending in-process migration.")
     
-    def scan(self) -> dict[str, Any] | str:
+    def scan(self, files: Optional[list[str]] = None) -> list[dict[str, Any]]:
         """Scan current diff against cells."""
-        return self._run_script('cell_scan.py')
+        from soma_core.telemetry import match_cells_to_changes, _get_changed_files
+        changed = files if files is not None else _get_changed_files(str(self.root))
+        return match_cells_to_changes(str(self.root), changed)
 
-    def entropy(self) -> dict[str, Any] | str:
+    def entropy(self) -> dict[str, Any]:
         """Compute immune entropy across all cells."""
-        return self._run_script('immune_entropy.py')
+        import math
+        cells = self.list_cells()
+        if not cells:
+            return {"population": {"total": 0, "active": 0, "dormant": 0}, "type_entropy": 0.0}
+        type_counts: dict[str, int] = {}
+        for c in cells:
+            ct = str(c.get('type', 'unknown'))
+            type_counts[ct] = type_counts.get(ct, 0) + 1
+        total = len(cells)
+        type_entropy = 0.0
+        if total > 0 and len(type_counts) > 1:
+            type_probs = [n / total for n in type_counts.values()]
+            type_entropy = -sum(p * math.log2(p) for p in type_probs if p > 0)
+        return {
+            "population": {"total": total},
+            "type_entropy": {"value": round(type_entropy, 4), "distribution": type_counts},
+        }
 
     def adversarial(self, cell_name: Optional[str] = None) -> dict[str, Any] | str:
-        """Run adversarial stress test against a cell.
-
-        Args:
-            cell_name: Optional name of the cell to test. If omitted,
-                       tests all cells.
-        """
-        args = [cell_name] if cell_name else []
-        return self._run_script('cell_adversarial.py', *args)
+        """Run adversarial stress test against a cell."""
+        raise NotImplementedError("Adversarial testing is deprecated and pending in-process migration.")
