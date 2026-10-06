@@ -3,7 +3,7 @@
 All notable changes to Soma are documented here.
 This project uses [Semantic Versioning](https://semver.org/).
 
-## [0.97.1] — Unreleased
+## [0.97.1] — 2026-10-06 — "Structured Command Safety & Pattern De-bloating"
 
 ### Added
 - **Structured Lexical Command Analyzer (`soma_core.command_safety`)**:
