@@ -20,6 +20,11 @@ COMMON = os.path.join(REPO_ROOT, "enzymes", "common.sh").replace("\\", "/")
 SAFETY_GATE = os.path.join(REPO_ROOT, "enzymes", "safety_gate.sh")
 INSTALL_SH = os.path.join(REPO_ROOT, "install", "install.sh")
 
+pytestmark = pytest.mark.skipif(
+    not os.path.exists(RESOLVER),
+    reason="enzymes and legacy shell resolution purged in v0.97.0",
+)
+
 STUB = ('#!/bin/sh\n'
         'echo "Python was not found; run without arguments to install from the '
         'Microsoft Store, or disable this shortcut" >&2\n'
@@ -411,6 +416,7 @@ PYTHON_SOURCES = [
     os.path.join(directory, name)
     for directory in ("enzymes", "soma_cli", "soma_mcp", "soma_core", "soma_sdk",
                       os.path.join("immune_system", "verification"))
+    if os.path.exists(os.path.join(REPO_ROOT, directory))
     for name in sorted(os.listdir(os.path.join(REPO_ROOT, directory)))
     if name.endswith(".py")
 ]

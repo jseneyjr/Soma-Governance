@@ -10,6 +10,7 @@ from datetime import datetime, timedelta
 from pathlib import Path
 
 from soma_core.frontmatter import dump_frontmatter
+import pytest
 
 ROOT = Path(__file__).resolve().parents[1]
 ENZYMES = ROOT / "enzymes"
@@ -113,7 +114,7 @@ def test_report_and_status_use_canonical_triggers_not_legacy(tmp_path, capsys):
 
 
 def test_oracle_and_lifecycle_use_weighted_canonical_signals(tmp_path):
-    from oracle_checkpoint import generate_checkpoint
+    from soma_core.arbitration import generate_checkpoint
     from immune_system.verification.lifecycle import evaluate_promotions
 
     cells = tmp_path / ".soma" / "cells" / "vacuoles"
@@ -150,6 +151,8 @@ def test_checkpoint_fails_closed_and_uses_weighted_outcomes(tmp_path):
 
 
 def test_cell_collision_and_resolver_use_canonical_signal_path(tmp_path, monkeypatch):
+    if not (ROOT / "enzymes" / "cell_create_nl.py").exists():
+        pytest.skip("enzymes directory purged in v0.97.0")
     import cell_create_nl
     import soma_resolve
 
@@ -169,11 +172,14 @@ def test_cell_collision_and_resolver_use_canonical_signal_path(tmp_path, monkeyp
 
 def test_owned_production_has_no_active_legacy_evidence_paths():
     production = [
-        ROOT / "soma_cli" / "sync.py", ROOT / "soma_cli" / "report.py", ROOT / "soma_cli" / "status.py",
-        ROOT / "enzymes" / "oracle_checkpoint.py", ROOT / "enzymes" / "session_close.sh",
-        ROOT / "enzymes" / "cell_create_nl.py", ROOT / "enzymes" / "soma_resolve.py",
-        ROOT / "enzymes" / "fitness_updater.py", ROOT / "immune_system" / "verification" / "checkpoint_checks.py",
-        ROOT / "immune_system" / "verification" / "lifecycle.py",
+        p for p in [
+            ROOT / "soma_cli" / "sync.py", ROOT / "soma_cli" / "report.py", ROOT / "soma_cli" / "status.py",
+            ROOT / "enzymes" / "oracle_checkpoint.py", ROOT / "enzymes" / "session_close.sh",
+            ROOT / "enzymes" / "cell_create_nl.py", ROOT / "enzymes" / "soma_resolve.py",
+            ROOT / "enzymes" / "fitness_updater.py", ROOT / "immune_system" / "verification" / "checkpoint_checks.py",
+            ROOT / "immune_system" / "verification" / "lifecycle.py",
+        ]
+        if p.exists()
     ]
     forbidden = (".soma/evidence/fitness.jsonl", ".soma/evidence/outcomes.jsonl", ".soma/evidence/sessions_processed.jsonl")
     offenders = {
@@ -183,8 +189,9 @@ def test_owned_production_has_no_active_legacy_evidence_paths():
         if needle in path.read_text(encoding="utf-8").replace("', 'evidence', '", "/evidence/").replace('\", \"evidence\", \"', "/evidence/")
     }
     assert offenders == {}
-    session_close = (ROOT / "enzymes" / "session_close.sh").read_text(encoding="utf-8")
-    assert session_close.count("signals.jsonl") >= 3
+    if (ROOT / "enzymes" / "session_close.sh").exists():
+        session_close = (ROOT / "enzymes" / "session_close.sh").read_text(encoding="utf-8")
+        assert session_close.count("signals.jsonl") >= 3
 
 
 def test_sync_malformed_ledger_does_not_apply_partial_counts(tmp_path, monkeypatch, capsys):
