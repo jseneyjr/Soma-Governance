@@ -715,13 +715,8 @@ def prune_expired(workspace: str, audit_results: list[dict]) -> int:
         metadata["expired_at"] = now_str
         metadata["expired_reason"] = result.get("reason", "unknown")
 
-        try:
-            import yaml
-            new_fm = yaml.dump(metadata, default_flow_style=False, sort_keys=False)
-            new_content = "---\n" + new_fm + "---\n" + body + ("\n" if not body.endswith("\n") else "")
-        except Exception:
-            new_fm = dump_frontmatter(metadata)
-            new_content = "---\n" + new_fm + "---\n" + body + ("\n" if not body.endswith("\n") else "")
+        new_fm = dump_frontmatter(metadata)
+        new_content = "---\n" + new_fm + "---\n" + body + ("\n" if not body.endswith("\n") else "")
 
         with open(filepath, "w", encoding="utf-8") as f:
             f.write(new_content)

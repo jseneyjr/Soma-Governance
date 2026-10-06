@@ -399,6 +399,88 @@ def test_mcp_server_answers_jsonrpc_without_pyyaml(tmp_path):
     assert len(tools) >= 1
 
 
+# ── SOMA-C02: Framework-wide zero third-party runtime dependencies ──────
+
+def test_entire_runtime_has_zero_third_party_imports():
+    """SOMA-C02: soma_cli/, soma_core/, soma_mcp/, soma_sdk/, and enzymes/
+    must have strictly ZERO third-party runtime package imports.
+    Only Python standard library modules and internal modules are permitted at runtime.
+    Optional inference providers must be strictly guarded by try/except."""
+    import ast
+    from immune_system.verification.import_guard import _get_stdlib_modules
+
+    stdlib = set(_get_stdlib_modules()) | set(sys.builtin_module_names)
+    internal_prefixes = ("soma_", "enzymes", "immune_system", "install", "genome")
+    enzyme_dir = os.path.join(REPO_ROOT, "enzymes")
+    enzyme_modules = {
+        f[:-3] for f in os.listdir(enzyme_dir) if f.endswith(".py")
+    } if os.path.isdir(enzyme_dir) else set()
+    soma_core_dir = os.path.join(REPO_ROOT, "soma_core")
+    soma_core_modules = {
+        f[:-3] for f in os.listdir(soma_core_dir) if f.endswith(".py")
+    } if os.path.isdir(soma_core_dir) else set()
+    internal_names = enzyme_modules | soma_core_modules | {"conftest"}
+    optional_allowed = {"google", "anthropic", "openai", "keyring"}
+
+    offenders = []
+    runtime_dirs = ["soma_cli", "soma_core", "soma_mcp", "soma_sdk", "enzymes"]
+    for rdir in runtime_dirs:
+        dir_path = os.path.join(REPO_ROOT, rdir)
+        for path in iter_source_files(dir_path, (".py",)):
+            try:
+                tree = ast.parse(read(path), filename=path)
+            except SyntaxError as e:
+                rel = os.path.relpath(path, REPO_ROOT)
+                offenders.append(f"{rel}:{e.lineno}: SyntaxError: {e.msg}")
+                continue
+
+            for node in ast.walk(tree):
+                modules: list[str] = []
+                if isinstance(node, ast.Import):
+                    modules = [alias.name.split(".")[0] for alias in node.names]
+                elif isinstance(node, ast.ImportFrom):
+                    if node.level > 0:
+                        continue  # relative imports within package are internal
+                    if node.module:
+                        modules = [node.module.split(".")[0]]
+                elif isinstance(node, ast.Call):
+                    if (
+                        isinstance(node.func, ast.Name)
+                        and node.func.id == "__import__"
+                        and node.args
+                        and isinstance(node.args[0], ast.Constant)
+                        and isinstance(node.args[0].value, str)
+                    ):
+                        modules = [node.args[0].value.split(".")[0]]
+                    elif (
+                        isinstance(node.func, ast.Attribute)
+                        and node.func.attr == "import_module"
+                        and node.args
+                        and isinstance(node.args[0], ast.Constant)
+                        and isinstance(node.args[0].value, str)
+                    ):
+                        modules = [node.args[0].value.split(".")[0]]
+
+                for mod in modules:
+                    if mod in stdlib:
+                        continue
+                    if any(mod.startswith(p) for p in internal_prefixes) or mod in internal_names:
+                        continue
+                    # Permitted optional dependencies must be guarded inside try body
+                    in_try = any(
+                        isinstance(p, ast.Try) and any(any(c is node for c in ast.walk(item)) for item in p.body)
+                        for p in ast.walk(tree)
+                    )
+                    if mod in optional_allowed and in_try:
+                        continue
+                    rel = os.path.relpath(path, REPO_ROOT)
+                    offenders.append(f"{rel}:{node.lineno}: {mod}")
+    assert not offenders, (
+        "SOMA-C02 violation: Runtime modules must have zero third-party imports:\n"
+        + "\n".join(offenders)
+    )
+
+
 # ── SOMA-M07: one source of truth for the version ───────────────────────
 
 def test_version_is_single_sourced():

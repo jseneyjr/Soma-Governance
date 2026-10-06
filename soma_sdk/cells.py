@@ -7,13 +7,11 @@ from dataclasses import dataclass, field
 from fractions import Fraction
 from typing import Callable, Optional, Tuple, Union
 
-try:
-    import yaml
-except ImportError:
-    yaml = None
 
 from soma_sdk.errors import CellParseError, CellNotFoundError, CellPathTraversalError
 from soma_sdk.scoring import bayesian_posterior, laplace_score
+
+yaml = None  # Backward-compatible sentinel: zero-dependency runtime
 
 
 def _stdlib_parse_frontmatter(yaml_text: str) -> dict:
@@ -210,16 +208,8 @@ def write_cell_frontmatter(
         frontmatter: Dict to serialize as YAML frontmatter.
         body: Markdown body text.
     """
-    if yaml is not None:
-        yaml_text = yaml.dump(
-            frontmatter,
-            default_flow_style=False,
-            sort_keys=False,
-            allow_unicode=True,
-        )
-    else:
-        from soma_core.frontmatter import dump_frontmatter
-        yaml_text = dump_frontmatter(frontmatter)
+    from soma_core.frontmatter import dump_frontmatter
+    yaml_text = dump_frontmatter(frontmatter)
 
     content = f"---\n{yaml_text.strip()}\n---\n"
     if body:

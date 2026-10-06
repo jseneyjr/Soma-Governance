@@ -16,7 +16,6 @@ fitness:
 
 @pytest.fixture
 def projects(tmp_path):
-    pytest.importorskip("yaml")
     src = tmp_path / "src"
     (src / ".soma" / "cells" / "vacuoles").mkdir(parents=True)
     (src / ".soma" / "cells" / "vacuoles" / "vac-transfer-me.md").write_text(CELL, encoding="utf-8")

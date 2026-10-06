@@ -76,6 +76,9 @@ def test_required_deps_in_pyproject():
             f"Oracle lists '{pkg}' as required, but it's not in "
             f"pyproject.toml [project.dependencies]: {pyproject_deps}"
         )
+    # v0.96.1 zero-dependency invariant: Soma has zero runtime dependencies
+    assert len(pyproject_deps) == 0, f"Expected 0 runtime dependencies, found: {pyproject_deps}"
+    assert len(required) == 0, f"Expected 0 required dependencies in oracle, found: {required}"
 
 
 def test_optional_deps_not_in_required():
@@ -99,7 +102,7 @@ def test_optional_deps_not_in_required():
 
 def _collect_target_paths_from_rules():
     """Collect target_paths values from all cell frontmatter."""
-    import yaml
+    from soma_core.frontmatter import parse_frontmatter
     results = []
     cells_dir = REPO_ROOT / ".soma" / "cells"
     if not cells_dir.exists():
@@ -108,13 +111,8 @@ def _collect_target_paths_from_rules():
         if md_file.name == "README.md":
             continue
         content = md_file.read_text(encoding="utf-8")
-        if not content.startswith("---"):
-            continue
-        end = content.find("---", 3)
-        if end == -1:
-            continue
         try:
-            fm = yaml.safe_load(content[3:end])
+            fm = parse_frontmatter(content)
         except Exception:
             continue
         if fm and isinstance(fm, dict):
@@ -206,7 +204,7 @@ def test_parsers_agree_on_id_and_domain():
 
 def _collect_glob_paths_from_cells():
     """Collect glob target_paths from all cell frontmatter."""
-    import yaml
+    from soma_core.frontmatter import parse_frontmatter
     results = []
     cells_dir = REPO_ROOT / ".soma" / "cells"
     if not cells_dir.exists():
@@ -215,13 +213,8 @@ def _collect_glob_paths_from_cells():
         if md_file.name == "README.md":
             continue
         content = md_file.read_text(encoding="utf-8")
-        if not content.startswith("---"):
-            continue
-        end = content.find("---", 3)
-        if end == -1:
-            continue
         try:
-            fm = yaml.safe_load(content[3:end])
+            fm = parse_frontmatter(content)
         except Exception:
             continue
         if fm and isinstance(fm, dict):

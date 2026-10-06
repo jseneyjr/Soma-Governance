@@ -7,7 +7,7 @@ import os
 import sys
 import textwrap
 import pytest
-import yaml
+from soma_core.frontmatter import dump_frontmatter
 
 # Add enzymes/ to sys.path for direct imports
 REPO_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -29,7 +29,7 @@ def _make_cell(cells_dir, name, target_paths, cell_type='wall'):
             'score': None,
         },
     }
-    content = f'---\n{yaml.dump(frontmatter, default_flow_style=False)}---\n\n# {name}\n\nTest cell.\n'
+    content = dump_frontmatter(frontmatter, body=f"# {name}\n\nTest cell.\n")
     os.makedirs(os.path.dirname(cell_path), exist_ok=True)
     with open(cell_path, 'w', encoding='utf-8') as f:
         f.write(content)

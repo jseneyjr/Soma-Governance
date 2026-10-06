@@ -6,7 +6,6 @@ and signal provenance.
 import json
 import os
 import sys
-import yaml
 import pytest
 
 REPO_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))

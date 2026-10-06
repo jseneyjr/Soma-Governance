@@ -32,11 +32,6 @@ import time
 from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional, Set, Tuple, Union
 
-try:
-    import yaml
-except ImportError:
-    yaml = None
-
 from soma_core.workspace import resolve_workspace
 from soma_core.frontmatter import parse_frontmatter, dump_frontmatter
 from soma_core.locking import workspace_lock
@@ -743,9 +738,7 @@ def cli_cell_create(argv: list[str] | None = None) -> int:
             fm = {}
             if cell_content.startswith("---"):
                 try:
-                    yaml_block = cell_content[3:cell_content.find("---", 3)]
-                    import yaml
-                    fm = yaml.safe_load(yaml_block) or {}
+                    fm = parse_frontmatter(cell_content) or {}
                 except Exception:
                     pass
             raw_cell_type = str(fm.get("type", args.cell_type or "vacuole"))
@@ -873,12 +866,7 @@ def transfer_cell(
     dest_dir = target_dir / ".soma" / "cells" / target_sub
     dest_dir.mkdir(parents=True, exist_ok=True)
     dest_path = dest_dir / source_path.name
-
-    if yaml is not None:
-        new_fm = yaml.dump(meta, sort_keys=False, default_flow_style=False)
-    else:
-        new_fm = dump_frontmatter(meta)
-
+    new_fm = dump_frontmatter(meta)
     end_idx = content.find("---", 3)
     body = content[end_idx + 3:].lstrip() if end_idx != -1 else ""
     new_content = f"---\n{new_fm.strip()}\n---\n\n{body}\n" if body else f"---\n{new_fm.strip()}\n---\n"
@@ -1348,11 +1336,7 @@ def metamorphose_cell(workspace: Path | str, cell_id: str) -> dict:
         target_path = target_dir / cell_path.name
 
     target_dir.mkdir(parents=True, exist_ok=True)
-    if yaml is not None:
-        nfm = yaml.dump(meta, sort_keys=False, default_flow_style=False)
-    else:
-        nfm = dump_frontmatter(meta)
-
+    nfm = dump_frontmatter(meta)
     end_idx = content.find("---", 3)
     body = content[end_idx + 3:].lstrip() if end_idx != -1 else ""
     target_path.write_text(f"---\n{nfm.strip()}\n---\n\n{body}\n" if body else f"---\n{nfm.strip()}\n---\n", encoding="utf-8")
@@ -1431,10 +1415,7 @@ def adapt_cell(workspace: Path | str, generate: bool = False) -> list[dict]:
                 meta_v2["fitness"] = {"triggers": 0, "true_positives": 0, "false_positives": 0, "score": None}
                 meta_v2["lineage"] = [fpath.name]
                 meta_v2["created"] = datetime.now(timezone.utc).strftime("%Y-%m-%d")
-                if yaml is not None:
-                    nfm = yaml.dump(meta_v2, sort_keys=False, default_flow_style=False)
-                else:
-                    nfm = dump_frontmatter(meta_v2)
+                nfm = dump_frontmatter(meta_v2)
                 end_idx = content.find("---", 3)
                 body = content[end_idx + 3:].lstrip() if end_idx != -1 else ""
                 v2_path.write_text(f"---\n{nfm.strip()}\n---\n\n{body}\n" if body else f"---\n{nfm.strip()}\n---\n", encoding="utf-8")
@@ -1676,10 +1657,7 @@ def crossover_cells(workspace: Path | str, cell_a_id: str, cell_b_id: str) -> tu
         }
     }
 
-    if yaml is not None:
-        nfm = yaml.dump(new_meta, sort_keys=False, default_flow_style=False)
-    else:
-        nfm = dump_frontmatter(new_meta)
+    nfm = dump_frontmatter(new_meta)
 
     content = f"---\n{nfm.strip()}\n---\n\n## {merged_type.capitalize()}: {merged_hypothesis[:60]}\n\n{merged_hypothesis}\n\n### Prediction\n{merged_prediction}\n"
     with open(out_path, 'w', encoding="utf-8") as f:

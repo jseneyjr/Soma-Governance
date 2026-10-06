@@ -7,7 +7,7 @@ import os
 import sys
 import time
 import pytest
-import yaml
+from soma_core.frontmatter import dump_frontmatter
 
 REPO_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 if REPO_ROOT not in sys.path:
@@ -46,7 +46,7 @@ def _make_cell(workspace, cell_id, cell_type='vacuole', target_paths=None,
         fm['fitness'] = fitness
     if expired:
         fm['expired_at'] = '2020-01-01'
-    content = '---\n' + yaml.dump(fm, default_flow_style=False) + '---\nGuidance text\n'
+    content = dump_frontmatter(fm, body="Guidance text\n")
     path = os.path.join(cells_dir, f'{cell_id}.md')
     with open(path, 'w', encoding='utf-8') as f:
         f.write(content)
@@ -172,12 +172,8 @@ class TestParseYamlSubset:
 
     def test_list_values(self):
         text = 'tags:\n- alpha\n- beta'
-        try:
-            result = parse_yaml_subset(text)
-            assert 'alpha' in result.get('tags', [])
-        except Exception:
-            # Zero-dep parser may not support top-level list values
-            pytest.skip('parse_yaml_subset does not support this list format')
+        result = parse_yaml_subset(text)
+        assert result.get('tags') == ['alpha', 'beta']
 
 
 class TestExpress:

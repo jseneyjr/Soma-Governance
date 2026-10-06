@@ -6,8 +6,9 @@ PyYAML parses the workflow key ``on`` as boolean ``True``; nothing here reads it
 """
 import os
 import re
+import pytest
 
-import yaml
+yaml = pytest.importorskip("yaml")
 
 REPO_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 GITHUB = os.path.join(REPO_ROOT, ".github")

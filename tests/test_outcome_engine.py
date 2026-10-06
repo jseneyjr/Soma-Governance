@@ -9,7 +9,7 @@ import os
 import sys
 import json
 import pytest
-import yaml
+from soma_core.frontmatter import dump_frontmatter
 
 REPO_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 if REPO_ROOT not in sys.path:
@@ -39,7 +39,7 @@ def _make_cell(workspace, cell_id, target_paths, cell_type='vacuole', fitness=No
     }
     if fitness is not None:
         fm['fitness'] = fitness
-    content = '---\n' + yaml.dump(fm, default_flow_style=False) + '---\nBody text\n'
+    content = dump_frontmatter(fm, body="Body text\n")
     path = os.path.join(cells_dir, f'{cell_id}.md')
     with open(path, 'w', encoding='utf-8') as f:
         f.write(content)

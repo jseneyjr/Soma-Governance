@@ -10,16 +10,10 @@ from soma_core.cell_inventory import CellInventoryError, inventory_cells
 from soma_core.workspace import resolve_workspace
 
 
-# pyyaml is an OPTIONAL dependency of soma_mcp. The server must start on a bare
-# interpreter (see .soma/cells/walls/wall-mcp-zero-deps.md), so we only use
-# pyyaml when it happens to be installed.
-try:
-    import yaml
-except ImportError:
-    yaml = None
-
 # Ensure soma_sdk is importable
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
+yaml = None  # Backward-compatible sentinel: zero-dependency runtime
 
 # Import JIT engine (stdlib only — parses frontmatter without pyyaml)
 from soma_mcp.jit_engine import express as jit_express
@@ -1130,10 +1124,8 @@ def execute_tool(name: str, args: dict):
             "generated_at": manifest["generated_at"],
         }
 
-    # All other tools require the full SDK (pyyaml)
+    # All other tools require the full SDK
     if not gov:
-        if yaml is None:
-            return {"error": "soma_sdk requires pyyaml. Install with: pip install pyyaml"}
         return {"error": "soma_sdk is not importable from this workspace; soma_grade, soma_coverage and soma_fitness are unavailable."}
 
     if name == "soma_grade":

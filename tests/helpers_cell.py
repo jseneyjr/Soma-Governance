@@ -9,7 +9,7 @@ import os
 from datetime import datetime, timedelta
 
 import pytest
-import yaml
+from soma_core.frontmatter import dump_frontmatter
 
 
 def make_cell(cells_dir, name, cell_type="vacuole", created_days_ago=10,
@@ -43,7 +43,7 @@ def make_cell(cells_dir, name, cell_type="vacuole", created_days_ago=10,
     cell_file = os.path.join(str(cells_dir), f"{name}.md")
     with open(cell_file, 'w') as f:
         f.write("---\n")
-        f.write(yaml.dump(fm, default_flow_style=False))
+        f.write(dump_frontmatter(fm))
         f.write("---\n")
         f.write(f"# {name}\nTest cell.\n")
     return cell_file

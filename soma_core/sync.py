@@ -396,24 +396,13 @@ def set_review_mode(workspace: str, mode: str) -> None:
 
 
 def write_frontmatter(filepath: str, metadata: dict[str, Any], body: str) -> None:
-    try:
-        import yaml
-        with open(filepath, "w", encoding="utf-8") as f:
-            f.write("---\n")
-            yaml.dump(metadata, f, default_flow_style=False, sort_keys=False)
-            f.write("---\n")
-            if body.startswith("\n"):
-                f.write(body[1:])
-            else:
-                f.write(body)
-    except ImportError:
-        dumped = dump_frontmatter(metadata)
-        with open(filepath, "w", encoding="utf-8") as f:
-            f.write(f"---\n{dumped}\n---\n")
-            if body.startswith("\n"):
-                f.write(body[1:])
-            else:
-                f.write(body)
+    dumped = dump_frontmatter(metadata)
+    with open(filepath, "w", encoding="utf-8") as f:
+        f.write(f"---\n{dumped}---\n")
+        if body.startswith("\n"):
+            f.write(body[1:])
+        else:
+            f.write(body)
 
 
 def run_last_gasp(workspace: Path | None = None) -> int:
@@ -1176,18 +1165,8 @@ def sync_frontmatter(
                 continue
 
             fm["fitness"] = updated
-            try:
-                import yaml
-                new_fm = yaml.safe_dump(
-                    fm,
-                    sort_keys=False,
-                    default_flow_style=False,
-                    allow_unicode=True,
-                )
-                new_content = f"---\n{new_fm}---\n{body}"
-            except ImportError:
-                new_fm = dump_frontmatter(fm)
-                new_content = f"---\n{new_fm}\n---\n{body}"
+            new_fm = dump_frontmatter(fm)
+            new_content = f"---\n{new_fm}---\n{body}"
 
             _atomic_write_cell(cell_file, new_content)
             changes.append(change)

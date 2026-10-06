@@ -5,7 +5,7 @@ import os
 import time
 
 import pytest
-import yaml
+from soma_core.frontmatter import dump_frontmatter
 
 
 def _rows(path):
@@ -26,8 +26,7 @@ def _cell(workspace, cell_id, triggers=0, tp=0, fp=0, score=None):
         "false_positives": fp,
     }
     fm = {"id": cell_id, "type": "vacuole", "fitness": fitness}
-    path.write_text("---\n" + yaml.safe_dump(fm, sort_keys=False) + "---\nBody\n",
-                    encoding="utf-8")
+    path.write_text(dump_frontmatter(fm, body="Body\n"), encoding="utf-8")
     return path
 
 

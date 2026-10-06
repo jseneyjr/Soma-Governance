@@ -9,8 +9,7 @@ import sys
 import subprocess
 import pytest
 
-import yaml
-
+from soma_core.frontmatter import parse_frontmatter
 from tests.helpers_cell import soma_workspace, write_cell_with_fitness
 
 REPO_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -23,8 +22,7 @@ class TestDecayIntegration:
     def _read_cell_fitness(self, cell_path):
         """Read fitness data back from a cell file."""
         content = cell_path.read_text()
-        end_idx = content.find('---', 3)
-        meta = yaml.safe_load(content[3:end_idx].strip())
+        meta = parse_frontmatter(content)
         return meta.get('fitness', {})
 
     def test_tier_check_decays_counts_on_disk(self, soma_workspace):
@@ -72,8 +70,7 @@ class TestDecayIntegration:
 
         # Should demote because of escaped defect
         content = (cells_dir / "stale-gate.md").read_text()
-        end_idx = content.find('---', 3)
-        meta = yaml.safe_load(content[3:end_idx].strip())
+        meta = parse_frontmatter(content)
         assert meta['enforcement'] == 'mechanical', \
             f"Gate cell with escaped defects should demote, got {meta['enforcement']}"
 

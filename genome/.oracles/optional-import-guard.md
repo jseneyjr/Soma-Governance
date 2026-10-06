@@ -23,15 +23,11 @@ except ImportError:
 
 ## Scope
 
-This applies to ALL files in `enzymes/`, `soma_mcp/`, `immune_system/`, and `install/`.
+This applies to ALL files in `enzymes/`, `soma_core/`, `soma_mcp/`, `soma_sdk/`, `immune_system/`, and `install/`.
 
 ## Required Dependencies (bare import OK)
 
-These are listed in `pyproject.toml [project.dependencies]` — bare `import` is correct:
-
-| Package | Used For |
-|:--------|:---------|
-| `yaml` (pyyaml) | YAML frontmatter parsing |
+*(None — Soma has zero runtime dependencies as of v0.96.1. All runtime code uses the Python standard library only.)*
 
 ## Known Optional Dependencies
 
@@ -39,6 +35,7 @@ These are listed in `pyproject.toml [project.dependencies]` — bare `import` is
 |:--------|:---------|:---------|
 | `anthropic` | Anthropic API provider | Skip provider |
 | `google.generativeai` | Gemini API provider | Skip provider |
+| `keyring` | Credential storage | Fallback to soma.conf / env |
 | `openai` | OpenAI API provider | Skip provider |
 
 ## Why This Matters
@@ -48,11 +45,10 @@ the dependency isn't installed. The blast radius is recursive: `test_foo.py`
 imports `module_a.py` which imports `module_b.py` which has `import optional_lib`
 → ALL tests touching `module_a` fail with `ModuleNotFoundError`.
 
-> **Historical note (2026-09-30):** `pyyaml` was previously listed in this
-> table as optional, which caused agents to add `try/except ImportError` guards
-> across 28 files. This contradicted `pyproject.toml` which declared pyyaml as
-> a required dependency. The guards introduced 118 lines of fragile fallback
-> code that produced bugs in 3 of 4 audit rounds. The table was the root cause.
+> **Historical note (v0.96.1):** PyYAML was previously a required runtime dependency
+> for YAML frontmatter parsing. In v0.96.1, `soma_core.frontmatter` was upgraded to a
+> pure standard library frontmatter engine, eliminating PyYAML completely from runtime
+> dependencies (`dependencies = []`).
 
 ## Enforcement
 
@@ -69,25 +65,35 @@ and indented imports inside functions. Use AST-based detection:
 
 ```bash
 # AST-based scan for unguarded optional imports
-# NOTE: yaml (pyyaml) is a REQUIRED dependency — bare import is fine.
+# NOTE: Soma has zero runtime dependencies as of v0.96.1.
 # This script checks for truly optional packages only.
 python3 -c "
-import ast, glob
-REQUIRED = {'yaml', 'pytest', 'pyyaml'}  # bare import OK
+import ast, glob, os, sys
+from immune_system.verification.import_guard import _get_stdlib_modules
+STDLIB = set(_get_stdlib_modules()) | set(sys.builtin_module_names)
+INTERNAL = {'soma_cli', 'soma_core', 'soma_mcp', 'soma_sdk', 'enzymes', 'immune_system', 'install'} | {os.path.splitext(os.path.basename(p))[0] for p in glob.glob('enzymes/*.py') + glob.glob('soma_core/*.py')}
 for f in glob.glob('enzymes/**/*.py', recursive=True) + \
+         glob.glob('soma_core/**/*.py', recursive=True) + \
          glob.glob('soma_mcp/**/*.py', recursive=True) + \
          glob.glob('soma_sdk/**/*.py', recursive=True):
     if '__pycache__' in f: continue
-    tree = ast.parse(open(f).read())
+    tree = ast.parse(open(f, encoding='utf-8').read())
     for node in ast.walk(tree):
+        modules = []
         if isinstance(node, ast.Import):
-            for alias in node.names:
-                if alias.name in REQUIRED: continue
-                in_try = any(isinstance(p, ast.Try) and
-                    any(c is node for c in ast.walk(p))
-                    for p in ast.walk(tree))
-                if not in_try:
-                    print(f'{f}:{node.lineno}: unguarded import {alias.name}')
+            modules = [a.name.split('.')[0] for a in node.names]
+        elif isinstance(node, ast.ImportFrom):
+            if node.level == 0 and node.module:
+                modules = [node.module.split('.')[0]]
+        for mod in modules:
+            if mod in STDLIB or mod in INTERNAL or mod.startswith('soma_'):
+                continue
+            in_try = any(
+                isinstance(p, ast.Try) and any(any(c is node for c in ast.walk(item)) for item in p.body)
+                for p in ast.walk(tree)
+            )
+            if not in_try:
+                print(f'{f}:{node.lineno}: unguarded import {mod}')
 "
 ```
 

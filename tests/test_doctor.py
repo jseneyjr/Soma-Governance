@@ -13,6 +13,7 @@ from soma_cli.doctor import (
     _check_cli_resolvable,
     _check_python_version,
     _check_pyyaml,
+    _check_zero_dependencies,
     run_doctor,
 )
 
@@ -26,8 +27,9 @@ def test_doctor_python_version_passes():
     assert _check_python_version() is True
 
 
-def test_doctor_pyyaml_check():
-    """pyyaml should be importable in the test environment."""
+def test_doctor_zero_dependencies_check():
+    """Zero-dependency frontmatter engine should be operational in test environment."""
+    assert _check_zero_dependencies() is True
     assert _check_pyyaml() is True
 
 

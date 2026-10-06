@@ -33,15 +33,21 @@ def _check_python_version() -> bool:
     return ok
 
 
-def _check_pyyaml() -> bool:
-    """Check that pyyaml is importable."""
-    try:
-        import yaml  # noqa: F401
-        print("  ✅ pyyaml installed")
-        return True
-    except ImportError:
-        print("  ❌ pyyaml not installed")
-        return False
+def _check_zero_dependencies() -> bool:
+    """Verify that the frontmatter engine is operational with zero dependencies."""
+    from soma_core.frontmatter import parse_frontmatter
+
+    test_fm = "---\nid: test\ntype: wall\n---\n"
+    ok = parse_frontmatter(test_fm) == {"id": "test", "type": "wall"}
+    if ok:
+        print("  ✅ zero-dependency runtime operational (pure standard library)")
+    else:
+        print("  ❌ frontmatter engine validation failed")
+    return ok
+
+
+# Backward-compatible alias
+_check_pyyaml = _check_zero_dependencies
 
 
 def _check_platform(project_root: Path | None = None) -> str | None:
@@ -429,7 +435,7 @@ def run_doctor(args: argparse.Namespace) -> int:
     results: list[bool] = []
 
     results.append(_check_python_version())
-    results.append(_check_pyyaml())
+    results.append(_check_zero_dependencies())
     platform = _check_platform(ws)
     results.append(platform is not None)
     results.append(_check_rules(platform, ws))

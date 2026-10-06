@@ -3,6 +3,31 @@
 All notable changes to Soma are documented here.
 This project uses [Semantic Versioning](https://semver.org/).
 
+## [0.96.1] — 2026-10-06 — "100% Zero-Dependency Runtime & Stdlib Frontmatter Engine"
+
+### Added
+- **Pure-Stdlib Frontmatter Engine (`soma_core.frontmatter`)**:
+  - Implemented 100% Python standard library YAML subset parser and dumper capable of round-tripping all repository governance cells and metadata files without PyYAML.
+  - Added support for wrapped multiline plain scalars with automatic indentation continuation.
+  - Added support for same-indent sequences (`key:\n- item`) matching standard YAML conventions.
+  - Added support for literal (`|`) and folded (`>`) block scalars with chomping indicators (`-`, `+`, clip).
+  - Added support for multiline quoted strings with unicode (`\uXXXX`) and escaped space/newline (`\ `, `\\\n`) escapes.
+  - Enhanced `dump_frontmatter` with optional `body` parameter for complete document generation and clean standard library formatting.
+  - Added comprehensive behavioral test suite `tests/test_frontmatter_engine.py` covering all supported YAML syntax features.
+- **Repository-Wide Zero Third-Party Import Invariant (SOMA-C02)**:
+  - Upgraded static invariant from MCP-only `SOMA-C01` to repo-wide `SOMA-C02` in `tests/test_static_invariants.py`, statically guaranteeing zero bare third-party package imports across `soma_cli/`, `soma_core/`, `soma_mcp/`, `soma_sdk/`, and `enzymes/`.
+
+### Changed
+- **Zero Runtime Dependencies**:
+  - Completely removed `pyyaml>=6.0` from `pyproject.toml [project.dependencies]`, making Soma a 100% zero-dependency framework at runtime (`dependencies = []`).
+  - Moved PyYAML to `[project.optional-dependencies] dev` solely for testing GitHub Actions workflows.
+  - Purged all `import yaml` statements across 14 runtime modules and 26 test suites in favor of stdlib `parse_frontmatter` and `dump_frontmatter`.
+  - Updated `soma doctor` to verify the zero-dependency runtime state via `_check_zero_dependencies()`.
+  - Updated `genome/.oracles/optional-import-guard.md` to reflect 0 required runtime dependencies.
+
+### Documented
+- Added ADR-012 (`docs/architecture/decisions/ADR-012-zero-dependency-frontmatter-engine.md`) detailing the motivation, syntax coverage, performance, and trade-offs of the pure standard library frontmatter engine.
+
 ## [0.96.0] — 2026-10-05 — "Core Domain Consolidation, Common Method Centralization & 1.0.0 Release Prep"
 
 ### Added

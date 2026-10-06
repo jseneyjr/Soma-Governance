@@ -172,6 +172,12 @@ Crash-resilient atomic storage (`soma_core/storage.py`) with exponential backoff
 **Status**: ✅ Shipped (v0.96.0)  
 Consolidated all functional domains (Scoring/Workspace, Arbitration, Enforcement, Defects, Insights, Homeostasis, Sync, Telemetry, and Cell Genetics/Lifecycle) into pure-stdlib `soma_core/`. Converted 58 enzyme modules into backward-compatible dual-mode forwarding shims with explicit re-exports, dynamic module dispatch, and console encoding compliance, reducing architectural bloat in preparation for 1.0.0.
 
+## Phase 5.6 — v0.96.1 ✅ Shipped
+
+### 100% Zero-Dependency Framework & Stdlib Frontmatter Engine
+**Status**: ✅ Shipped (v0.96.1)  
+Achieved complete zero-dependency architecture across all runtime surfaces (`soma_cli/`, `soma_core/`, `soma_mcp/`, `soma_sdk/`, `enzymes/`). Eliminated PyYAML from required dependencies (`dependencies = []` in `pyproject.toml`). Upgraded `soma_core.frontmatter` to support 100% of cell YAML patterns in pure Python standard library (wrapped plain scalars, same-indent sequences, literal/folded block scalars with chomping, and multiline quoted strings with unicode escapes), verified across 102 cells and 2,522 tests. Upgraded invariant SOMA-C01 to repository-wide SOMA-C02.
+
 ## Research
 
 ### Antifragile Scaling

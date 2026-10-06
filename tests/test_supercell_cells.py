@@ -8,10 +8,7 @@ import sys
 
 import pytest
 
-try:
-    import yaml
-except ImportError:
-    pytest.skip("pyyaml required", allow_module_level=True)
+from soma_core.frontmatter import parse_frontmatter
 
 REPO_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 CELLS_DIR = os.path.join(REPO_ROOT, ".soma", "cells")
@@ -86,8 +83,7 @@ def _load_cell(cell_id, cell_type):
         content = f.read()
     assert content.startswith("---"), f"Cell {cell_id} missing YAML frontmatter"
     end = content.find("---", 3)
-    assert end > 0, f"Cell {cell_id} missing closing --- delimiter"
-    fm = yaml.safe_load(content[3:end])
+    fm = parse_frontmatter(content)
     assert isinstance(fm, dict), f"Cell {cell_id} frontmatter is not a dict"
     return fm
 

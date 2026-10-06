@@ -8,7 +8,7 @@ import sys
 import time
 
 import pytest
-import yaml
+from soma_core.frontmatter import dump_frontmatter
 
 REPO_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 if REPO_ROOT not in sys.path:
@@ -26,7 +26,7 @@ def _make_cell(cells_dir, subdir, name, target_paths=None):
         'type': 'wall',
         'target_paths': target_paths or ['src/*.py'],
     }
-    content = f'---\n{yaml.dump(fm, default_flow_style=False)}---\n\n# {name}\nBody text.\n'
+    content = dump_frontmatter(fm, body=f"# {name}\nBody text.\n")
     with open(path, 'w', encoding='utf-8') as f:
         f.write(content)
     return path
@@ -128,7 +128,7 @@ class TestCellCacheBasic:
         path = os.path.join(cells_dir, 'walls', 'trap-expired.md')
         os.makedirs(os.path.dirname(path), exist_ok=True)
         fm = {'id': 'trap-expired', 'type': 'wall', 'expired_at': '2026-01-01'}
-        content = f'---\n{yaml.dump(fm)}---\n\nExpired.\n'
+        content = dump_frontmatter(fm, body="Expired.\n")
         with open(path, 'w') as f:
             f.write(content)
         cache = CellCache()

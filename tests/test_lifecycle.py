@@ -17,7 +17,6 @@ import sys
 from datetime import datetime, timedelta
 
 import pytest
-import yaml
 
 REPO_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, REPO_ROOT)
