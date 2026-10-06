@@ -422,8 +422,14 @@ def parse_frontmatter(content: str) -> dict[str, object] | None:
 _parse_frontmatter = parse_frontmatter
 
 
-def dump_frontmatter(data: dict) -> str:
-    """Serialize metadata dictionary to YAML frontmatter string without requiring PyYAML."""
+def dump_frontmatter(data: dict, body: str | None = None) -> str:
+    """Serialize metadata dictionary to YAML frontmatter string without requiring PyYAML.
+
+    If body is provided, returns the complete markdown document with delimiters:
+        ---\\n{yaml}---\\n{body}
+    If body is None, returns the YAML text only:
+        {yaml}\\n
+    """
     from datetime import date, datetime
 
     def _format_scalar(val: object) -> str:
@@ -476,7 +482,10 @@ def dump_frontmatter(data: dict) -> str:
                 lines.append(f"{prefix}{key_str}: {_format_scalar(v)}")
         return lines
 
-    return "\n".join(_dump_lines(data)) + "\n"
+    yaml_text = "\n".join(_dump_lines(data)) + "\n"
+    if body is not None:
+        return f"---\n{yaml_text}---\n{body}"
+    return yaml_text
 
 
 def _get_body(content: str) -> str:

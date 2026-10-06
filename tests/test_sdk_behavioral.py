@@ -12,7 +12,7 @@ import tempfile
 import textwrap
 
 import pytest
-import yaml
+from soma_core.frontmatter import dump_frontmatter, parse_yaml_subset
 
 REPO_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, REPO_ROOT)
@@ -157,8 +157,8 @@ class TestCellBaseline:
             'score': original.score,
             'stress_survived': original.stress_survived,
         }
-        yaml_str = yaml.dump(data)
-        loaded = yaml.safe_load(yaml_str)
+        yaml_str = dump_frontmatter(data)
+        loaded = parse_yaml_subset(yaml_str)
         restored = CellFitness(**loaded)
         assert restored.triggers == original.triggers
         assert restored.true_positives == original.true_positives

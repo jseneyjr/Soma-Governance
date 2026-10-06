@@ -9,7 +9,7 @@ import sys
 from datetime import datetime, timedelta
 from pathlib import Path
 
-import yaml
+from soma_core.frontmatter import dump_frontmatter
 
 ROOT = Path(__file__).resolve().parents[1]
 ENZYMES = ROOT / "enzymes"
@@ -41,7 +41,7 @@ def _cell(path: Path, cell_id: str, cell_type: str = "vacuole", age_days: int = 
         "expiry_days": 365,
         "expiry_sessions": 365,
     }
-    path.write_text(f"---\n{yaml.safe_dump(metadata, sort_keys=False)}---\n# {cell_id}\n", encoding="utf-8")
+    path.write_text(dump_frontmatter(metadata, body=f"# {cell_id}\n"), encoding="utf-8")
 
 
 def test_aggregate_signals_reports_errors_preserves_dimensions_and_weights(tmp_path):

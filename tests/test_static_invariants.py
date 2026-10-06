@@ -399,6 +399,35 @@ def test_mcp_server_answers_jsonrpc_without_pyyaml(tmp_path):
     assert len(tools) >= 1
 
 
+# ── SOMA-C02: Framework-wide zero third-party runtime dependencies ──────
+
+def test_entire_runtime_has_zero_third_party_imports():
+    """SOMA-C02: soma_cli/, soma_core/, soma_mcp/, soma_sdk/, and enzymes/
+    must have strictly ZERO third-party runtime package imports.
+    Only Python standard library modules are permitted at runtime."""
+    offenders = []
+    runtime_dirs = ["soma_cli", "soma_core", "soma_mcp", "soma_sdk", "enzymes"]
+    for rdir in runtime_dirs:
+        dir_path = os.path.join(REPO_ROOT, rdir)
+        for path in iter_source_files(dir_path, (".py",)):
+            lines = read(path).splitlines()
+            for lineno, line in enumerate(lines, 1):
+                stripped = line.strip()
+                if (
+                    stripped == "import yaml"
+                    or stripped.startswith("import yaml.")
+                    or stripped == "from yaml import"
+                    or stripped.startswith("from yaml.")
+                    or stripped.startswith("from yaml import")
+                ):
+                    rel = os.path.relpath(path, REPO_ROOT)
+                    offenders.append(f"{rel}:{lineno}: {stripped}")
+    assert not offenders, (
+        "SOMA-C02 violation: Runtime modules must have zero third-party imports:\n"
+        + "\n".join(offenders)
+    )
+
+
 # ── SOMA-M07: one source of truth for the version ───────────────────────
 
 def test_version_is_single_sourced():

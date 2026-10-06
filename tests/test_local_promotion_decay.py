@@ -8,8 +8,7 @@ import os
 import subprocess
 import sys
 import pytest
-
-import yaml
+from soma_core.frontmatter import dump_frontmatter, parse_frontmatter
 
 REPO_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, REPO_ROOT)
@@ -26,7 +25,6 @@ class TestLocalPromotionDecay:
         the CLI integration path to ensure the output matches decayed expectations.
         """
         import time
-        import yaml
 
         cells_dir = tmp_path / ".soma" / "cells" / "vacuoles"
         cells_dir.mkdir(parents=True)
@@ -45,7 +43,7 @@ class TestLocalPromotionDecay:
                 'last_decay_epoch': int(time.time()) - 7200
             }
         }
-        content = f"---\\n{yaml.dump(meta, default_flow_style=False)}---\\n# Stale Cell\\n"
+        content = dump_frontmatter(meta, body="# Stale Cell\n")
         cell_path.write_text(content, encoding='utf-8')
 
         # Run the local promote enzyme which uses the --local flag
@@ -64,7 +62,6 @@ class TestLocalPromotionDecay:
     def test_tier_check_persists_decay(self, tmp_path):
         """Verify cell_promote.py --tier-check actually persists decayed triggers to disk."""
         import time
-        import yaml
 
         cells_dir = tmp_path / ".soma" / "cells" / "vacuoles"
         cells_dir.mkdir(parents=True)
@@ -81,7 +78,7 @@ class TestLocalPromotionDecay:
                 'last_decay_epoch': int(time.time()) - 7200
             }
         }
-        content = f"---\\n{yaml.dump(meta, default_flow_style=False)}---\\n# Cell\\n"
+        content = dump_frontmatter(meta, body="# Cell\n")
         cell_path.write_text(content, encoding='utf-8')
 
         proc = subprocess.run(
@@ -94,8 +91,7 @@ class TestLocalPromotionDecay:
         
         # Read back the cell and verify decay was applied (triggers should be 95)
         new_content = cell_path.read_text(encoding='utf-8')
-        parts = new_content.split('---')
-        new_meta = yaml.safe_load(parts[1])
+        new_meta = parse_frontmatter(new_content)
         assert new_meta['fitness']['triggers'] == 95
 
 # ── Phase 3: C2 — Promotion Zero-Trigger Guard ───────────────────────────

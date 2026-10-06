@@ -11,7 +11,7 @@ from pathlib import Path
 from datetime import datetime, timezone
 
 import pytest
-import yaml
+from soma_core.frontmatter import dump_frontmatter
 
 # Will fail until implementation exists — that's the TDD red phase
 from enzymes.fitness_updater import (
@@ -54,7 +54,7 @@ def _make_cell(cells_dir, name, target_paths, subdir="vacuoles"):
         "type": "vacuole",
         "target_paths": target_paths,
     }
-    content = "---\n" + yaml.dump(fm, sort_keys=False) + "---\n\nTest cell.\n"
+    content = dump_frontmatter(fm, body="Test cell.\n")
     cell_file.write_text(content)
     return cell_file
 

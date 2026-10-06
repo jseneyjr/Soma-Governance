@@ -86,11 +86,9 @@ def test_cell_create_sh_escapes_quotes_in_hypothesis(tmp_path):
     cell_file = tmp_path / ".soma" / "cells" / "vacuoles" / "quote-test.md"
     assert cell_file.exists()
     content = cell_file.read_text(encoding="utf-8")
-    assert content.startswith("---")
     # Verify YAML parsing
-    import yaml
-    fm_text = content[3:content.find("---", 3)]
-    data = yaml.safe_load(fm_text)
+    from soma_core.frontmatter import parse_frontmatter
+    data = parse_frontmatter(content)
     assert data["hypothesis"] == 'hypo with "quotes" and -- markers'
 
 def test_load_cell_uses_created_field(tmp_path):

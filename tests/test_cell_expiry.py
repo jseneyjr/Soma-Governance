@@ -14,7 +14,7 @@ import shutil
 from datetime import datetime, timedelta
 
 import pytest
-import yaml
+from soma_core.frontmatter import dump_frontmatter, parse_frontmatter
 
 REPO_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, REPO_ROOT)
@@ -37,7 +37,7 @@ def make_cell(cells_dir, name, cell_type="vacuole", created_days_ago=10,
         'expiry_days': expiry_days,
         'created': created,
     }
-    content = f"---\n{yaml.dump(frontmatter, default_flow_style=False, sort_keys=False)}---\n# {name}\nTest content\n"
+    content = dump_frontmatter(frontmatter, body=f"# {name}\nTest content\n")
     subdir = os.path.join(cells_dir, f"{cell_type}s")
     os.makedirs(subdir, exist_ok=True)
     filepath = os.path.join(subdir, f"{name}.md")
@@ -140,8 +140,7 @@ class TestPruneMode:
         # Verify the file was updated
         with open(filepath) as f:
             content = f.read()
-        end = content.find('---', 3)
-        fm = yaml.safe_load(content[3:end])
+        fm = parse_frontmatter(content)
         assert 'expired_at' in fm, "Pruned cell should have expired_at marker"
 
     def test_prune_skips_non_expired(self, workspace):

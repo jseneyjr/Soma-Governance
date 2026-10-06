@@ -100,7 +100,6 @@ class TestOracleCLI:
     def test_oracle_healthy_workspace_exits_zero(self, tmp_path):
         """Workspace with healthy cells exits 0."""
         from soma_cli.oracle import run_oracle
-        import yaml
 
         cells_dir = tmp_path / ".soma" / "cells" / "vacuoles"
         cells_dir.mkdir(parents=True)

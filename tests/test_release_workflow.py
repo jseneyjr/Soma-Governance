@@ -8,8 +8,9 @@ where ``pythonpath = ["."]`` lets source modules shadow the installed wheel,
 import os
 import subprocess
 import sys
+import pytest
 
-import yaml
+yaml = pytest.importorskip("yaml")
 
 REPO_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 WORKFLOWS = os.path.join(REPO_ROOT, ".github", "workflows")

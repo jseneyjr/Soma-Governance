@@ -7,7 +7,7 @@ import sys
 import subprocess
 import random
 import pytest
-import yaml
+from soma_core.frontmatter import dump_frontmatter
 
 REPO_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 if REPO_ROOT not in sys.path:
@@ -34,7 +34,7 @@ def _make_cell(workspace, cell_id, fitness_score=0.8, cell_type='vacuole',
             'score': fitness_score,
         },
     }
-    content = '---\n' + yaml.dump(fm, default_flow_style=False) + '---\nBody\n'
+    content = dump_frontmatter(fm, body="Body\n")
     path = os.path.join(cells_dir, f'{cell_id}.md')
     with open(path, 'w', encoding='utf-8') as f:
         f.write(content)
@@ -120,7 +120,7 @@ class TestTournamentNullFitness:
         fm = {'id': 'no-fitness', 'type': 'vacuole',
               'hypothesis': 'test', 'prediction': 'test',
               'target_paths': ['src/*.py']}
-        content = '---\n' + yaml.dump(fm, default_flow_style=False) + '---\nBody\n'
+        content = dump_frontmatter(fm, body="Body\n")
         with open(os.path.join(cells_dir, 'no-fitness.md'), 'w', encoding='utf-8') as f:
             f.write(content)
         # Also add a cell with fitness so tournament has something to compare

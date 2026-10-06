@@ -15,7 +15,7 @@ from argparse import Namespace
 from pathlib import Path
 
 import pytest
-import yaml
+from soma_core.frontmatter import parse_frontmatter
 
 from soma_cli.genesis_scanner import (
     CellCandidate,
@@ -510,9 +510,7 @@ class TestGenerateCells:
         for c in sample_candidates:
             path = cells_dir / "vacuoles" / f"{c.name}.md"
             content = path.read_text()
-            # Parse YAML frontmatter
-            parts = content.split("---")
-            fm = yaml.safe_load(parts[1])
+            fm = parse_frontmatter(content)
             assert fm["type"] == "vacuole"
             assert fm["proposed_type"] == c.proposed_type
 
@@ -557,9 +555,7 @@ class TestGenerateCells:
         for c in sample_candidates:
             path = cells_dir / "vacuoles" / f"{c.name}.md"
             content = path.read_text()
-            parts = content.split("---")
-            assert len(parts) >= 3, "Missing YAML frontmatter delimiters"
-            fm = yaml.safe_load(parts[1])
+            fm = parse_frontmatter(content)
             assert isinstance(fm, dict)
             assert "type" in fm
             assert "hypothesis" in fm
@@ -572,8 +568,7 @@ class TestGenerateCells:
         for c in sample_candidates:
             path = cells_dir / "vacuoles" / f"{c.name}.md"
             content = path.read_text()
-            parts = content.split("---")
-            fm = yaml.safe_load(parts[1])
+            fm = parse_frontmatter(content)
             assert "genesis-generated" in fm["tags"]
 
     def test_expiry_fields_present(
@@ -583,8 +578,7 @@ class TestGenerateCells:
         generate_cells(sample_candidates, cells_dir)
         for c in sample_candidates:
             path = cells_dir / "vacuoles" / f"{c.name}.md"
-            parts = path.read_text().split("---")
-            fm = yaml.safe_load(parts[1])
+            fm = parse_frontmatter(path.read_text())
             assert fm["expiry_sessions"] == 10
             assert fm["expiry_days"] == 30
 

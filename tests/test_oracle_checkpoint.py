@@ -14,7 +14,7 @@ import sys
 from datetime import datetime, timedelta
 
 import pytest
-import yaml
+from soma_core.frontmatter import dump_frontmatter
 
 REPO_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, REPO_ROOT)
@@ -41,7 +41,7 @@ def make_cell(cells_dir, name, cell_type="vacuole", created_days_ago=10,
     os.makedirs(subdir, exist_ok=True)
     filepath = os.path.join(subdir, f"{name}.md")
     with open(filepath, 'w') as f:
-        f.write(f"---\n{yaml.dump(fm, default_flow_style=False, sort_keys=False)}---\n# {name}\n")
+        f.write(dump_frontmatter(fm, body=f"# {name}\n"))
     return filepath
 
 

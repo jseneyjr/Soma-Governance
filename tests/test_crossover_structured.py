@@ -7,7 +7,7 @@ import sys
 import json
 import subprocess
 import pytest
-import yaml
+from soma_core.frontmatter import dump_frontmatter
 
 REPO_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 if REPO_ROOT not in sys.path:
@@ -38,7 +38,7 @@ def _make_parent(workspace, cell_id, cell_type='vacuole', hypothesis='hyp',
         },
         'lineage': {'generation': generation, 'created_by': 'manual'},
     }
-    content = '---\n' + yaml.dump(fm, default_flow_style=False) + '---\nParent body\n'
+    content = dump_frontmatter(fm, body="Parent body\n")
     path = os.path.join(cells_dir, f'{cell_id}.md')
     with open(path, 'w', encoding='utf-8') as f:
         f.write(content)

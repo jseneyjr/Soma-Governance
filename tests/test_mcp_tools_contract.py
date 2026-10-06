@@ -6,7 +6,7 @@ import os
 import sys
 import json
 import pytest
-import yaml
+from soma_core.frontmatter import dump_frontmatter
 
 REPO_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 if REPO_ROOT not in sys.path:
@@ -28,7 +28,7 @@ def _setup_workspace(tmp_path):
         'hypothesis': 'Test hypothesis',
         'prediction': 'Test prediction',
     }
-    content = '---\n' + yaml.dump(fm, default_flow_style=False) + '---\nBody\n'
+    content = dump_frontmatter(fm, body="Body\n")
     with open(os.path.join(cells_dir, 'test-cell.md'), 'w', encoding='utf-8') as f:
         f.write(content)
     # Create genome dir

@@ -13,7 +13,7 @@ import os
 import sys
 
 import pytest
-import yaml
+from soma_core.frontmatter import dump_frontmatter, parse_frontmatter
 
 REPO_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, REPO_ROOT)
@@ -164,8 +164,7 @@ class TestSyncFrontmatter:
 
         # Verify file was updated
         content = (tmp_path / ".soma" / "cells" / "vacuoles" / "cell-a.md").read_text()
-        end = content.find("---", 3)
-        fm = yaml.safe_load(content[3:end])
+        fm = parse_frontmatter(content)
         assert fm["fitness"]["triggers"] == 1
         assert fm["fitness"]["true_positives"] == 1
         assert fm["fitness"]["false_positives"] == 0
@@ -203,8 +202,7 @@ class TestSyncFrontmatter:
 
         # File should NOT be modified
         content = (tmp_path / ".soma" / "cells" / "vacuoles" / "cell-a.md").read_text()
-        end = content.find("---", 3)
-        fm = yaml.safe_load(content[3:end])
+        fm = parse_frontmatter(content)
         assert fm["fitness"]["triggers"] == 0  # unchanged
 
     def test_score_calculation(self, tmp_path):
@@ -357,7 +355,7 @@ def _make_cell_file(cells_dir, name, fitness=None):
     }
     if fitness:
         fm['fitness'] = fitness
-    content = f'---\n{yaml.dump(fm, default_flow_style=False)}---\n\n# {name}\n'
+    content = dump_frontmatter(fm, body=f"# {name}\n")
     os.makedirs(os.path.dirname(cell_path), exist_ok=True)
     with open(cell_path, 'w', encoding='utf-8') as f:
         f.write(content)
@@ -367,8 +365,7 @@ def _read_frontmatter(cell_path):
     """Read YAML frontmatter from a cell file."""
     with open(cell_path, 'r', encoding='utf-8') as f:
         content = f.read()
-    end = content.find('---', 3)
-    return yaml.safe_load(content[3:end].strip())
+    return parse_frontmatter(content)
 
 class TestBug4ScoreClobber:
     """sync.py must NOT clobber scores when no outcome data exists."""
