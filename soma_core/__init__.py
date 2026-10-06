@@ -1,6 +1,6 @@
 """soma_core package - foundational state and security primitives."""
 
-__version__ = "0.100.0"
+__version__ = "0.101.0"
 
 from soma_core import (
     arbitration,
@@ -27,6 +27,7 @@ from soma_core import (
     sweep_session,
     sync,
     telemetry,
+    verification,
     workspace,
 )
 from soma_core.cell_inventory import (

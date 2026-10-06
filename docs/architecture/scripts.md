@@ -1,21 +1,21 @@
 # Scripts Reference
 
-This document catalogs 75 executable scripts, command modules, SDK modules, and MCP/core modules in the Soma governance framework.
+This document catalogs 74 executable scripts, command modules, SDK modules, and MCP/core modules in the Soma governance framework.
 
 ## Counting Method
 
-Counts are generated from the source tree with mutually exclusive categories: package initializers (`__init__.py`, `__main__.py`) are excluded; `install/hooks/pre-commit` is counted as the lifecycle script; and all non-initializer `soma_core/*.py` modules are grouped with the MCP modules. This produces 75 unique paths with no double counting.
+Counts are generated from the source tree with mutually exclusive categories: package initializers (`__init__.py`, `__main__.py`) are excluded; `install/hooks/pre-commit` is counted as the lifecycle script; and all non-initializer `soma_core/*.py` modules are grouped with the MCP modules. This produces 74 unique paths with no double counting.
 
 ## Summary by Category
 
 | Category | Primary Language / Location | Count | Description |
 |:---------|:----------------------------|:------|:------------|
 | [Lifecycle Scripts (Hooks)](#lifecycle-scripts-hooks--bash) | bash (`install/hooks/`) | 1 | Git pre-commit lifecycle hook |
-| [Verification Scripts](#verification-scripts--python) | Python (`immune_system/verification/`) | 13 | Deterministic AST checkers, coverage tools, and adversarial verification |
+| [Verification Scripts](#verification-scripts--python) | Python (`soma_core/verification/`) | 12 | Deterministic AST checkers, coverage tools, and adversarial verification |
 | [CLI Commands](#cli-commands--python-soma_cli) | Python and bash (`soma_cli/`, root) | 21 | CLI launcher and command implementation modules |
 | [SDK Modules](#sdk-modules--python-soma_sdk) | Python (`soma_sdk/`) | 8 | Canonical scoring, parsing, telemetry, hot-zone, and governance APIs |
 | [MCP and Core Modules](#mcp-and-core-modules) | Python (`soma_mcp/`, `soma_core/`) | 32 | MCP transport, dispatch, confinement, content inventory, canonical evidence, cache, errors, receipts, and atomic storage |
-| **Total** | | **75** | Unique paths under the method above |
+| **Total** | | **74** | Unique paths under the method above |
 
 ---
 
@@ -31,23 +31,22 @@ This bash script is invoked automatically by git triggers. Following the v0.97.0
 
 ## Verification Scripts — Python
 
-These 13 Python scripts form the deterministic and adversarial verification engine in `immune_system/verification/`.
+These 12 Python scripts form the deterministic and adversarial verification engine in `soma_core/verification/`.
 
 | Script | Location | Purpose |
 |:-------|:---------|:--------|
-| **`arbiter.py`** | `immune_system/verification/arbiter.py` | Deterministic divergence detector comparing Spec Agent predictions against Code Agent claims, backed by Layer 1 tool evidence. |
-| **`branch_coverage.py`** | `immune_system/verification/branch_coverage.py` | Deterministic branch coverage verification tool wrapping pytest-cov or Python's stdlib `trace` module. |
-| **`call_graph.py`** | `immune_system/verification/call_graph.py` | Layer 1 AST checker verifying function reachability from call sites across the codebase. |
-| **`checkpoint_checks.py`** | `immune_system/verification/checkpoint_checks.py` | Canonical stdlib-only verification implementations (test coverage, git cleanliness, docstring presence) shared by CLI and MCP. |
-| **`immune_verify.py`** | `immune_system/verification/immune_verify.py` | Adversarial pair enzyme orchestrating the information-partitioned Spec Agent vs Code Agent verification protocol. |
-| **`import_guard.py`** | `immune_system/verification/import_guard.py` | Layer 1 AST tool detecting unguarded third-party imports to prevent runtime `ImportError` failures. |
-| **`lifecycle.py`** | `immune_system/verification/lifecycle.py` | Deterministic cell lifecycle transition engine computing promotion, demotion, and retirement decisions from empirical evidence. |
-| **`mutation_tester.py`** | `immune_system/verification/mutation_tester.py` | Lightweight AST mutation tester that synthesizes mutant functions to evaluate test suite fault-detection capabilities. |
-| **`persistence_checker.py`** | `immune_system/verification/persistence_checker.py` | Layer 1 AST checker verifying that in-memory state mutations have corresponding persistent serialization paths. |
-| **`quality_gate.py`** | `immune_system/verification/quality_gate.py` | Deterministic AST test quality gate validating assertion presence, detecting hollow tests, and enforcing behavioral test standards. |
-| **`review_adapter.py`** | `immune_system/verification/review_adapter.py` | Converts multi-agent review findings into structured Prediction and Claim objects for Arbiter evaluation. |
-| **`runner.py`** | `immune_system/verification/runner.py` | Layer 1 orchestration runner executing all deterministic AST and coverage checks to produce a combined evidence package. |
-| **`transcript_verifier.py`** | `immune_system/verification/transcript_verifier.py` | Orchestrator-level subagent transcript verifier extracting objective metrics (test passes, file modifications, fix cycles) from JSONL logs. |
+| **`arbiter.py`** | `soma_core/verification/arbiter.py` | Deterministic divergence detector comparing Spec Agent predictions against Code Agent claims, backed by Layer 1 tool evidence. |
+| **`branch_coverage.py`** | `soma_core/verification/branch_coverage.py` | Deterministic branch coverage verification tool wrapping pytest-cov or Python's stdlib `trace` module. |
+| **`call_graph.py`** | `soma_core/verification/call_graph.py` | Layer 1 AST checker verifying function reachability from call sites across the codebase. |
+| **`checkpoint_checks.py`** | `soma_core/verification/checkpoint_checks.py` | Canonical stdlib-only verification implementations (test coverage, git cleanliness, docstring presence) shared by CLI and MCP. |
+| **`immune_verify.py`** | `soma_core/verification/immune_verify.py` | Adversarial pair enzyme orchestrating the information-partitioned Spec Agent vs Code Agent verification protocol. |
+| **`import_guard.py`** | `soma_core/verification/import_guard.py` | Layer 1 AST tool detecting unguarded third-party imports to prevent runtime `ImportError` failures. |
+| **`mutation_tester.py`** | `soma_core/verification/mutation_tester.py` | Lightweight AST mutation tester that synthesizes mutant functions to evaluate test suite fault-detection capabilities. |
+| **`persistence_checker.py`** | `soma_core/verification/persistence_checker.py` | Layer 1 AST checker verifying that in-memory state mutations have corresponding persistent serialization paths. |
+| **`quality_gate.py`** | `soma_core/verification/quality_gate.py` | Deterministic AST test quality gate validating assertion presence, detecting hollow tests, and enforcing behavioral test standards. |
+| **`review_adapter.py`** | `soma_core/verification/review_adapter.py` | Converts multi-agent review findings into structured Prediction and Claim objects for Arbiter evaluation. |
+| **`runner.py`** | `soma_core/verification/runner.py` | Layer 1 orchestration runner executing all deterministic AST and coverage checks to produce a combined evidence package. |
+| **`transcript_verifier.py`** | `soma_core/verification/transcript_verifier.py` | Orchestrator-level subagent transcript verifier extracting objective metrics (test passes, file modifications, fix cycles) from JSONL logs. |
 
 ---
 

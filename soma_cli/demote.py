@@ -129,7 +129,7 @@ def run_demote(args: argparse.Namespace) -> int:
             return 1
         return _force_demote(project_root, cell_id, dry_run, use_json)
 
-    from immune_system.verification.lifecycle import evaluate_demotions
+    from soma_core.lifecycle import evaluate_demotions
 
     candidates = evaluate_demotions(str(project_root))
     

@@ -118,7 +118,7 @@ def run_promote(args: argparse.Namespace) -> int:
             return 1
         return _force_promote(project_root, cell_id, dry_run, use_json)
 
-    from immune_system.verification.lifecycle import evaluate_promotions
+    from soma_core.lifecycle import evaluate_promotions
 
     candidates = evaluate_promotions(str(project_root))
     

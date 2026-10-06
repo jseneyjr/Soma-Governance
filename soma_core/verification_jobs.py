@@ -148,7 +148,10 @@ def get_runner() -> Any:
         return _RUNNER
     try:
         import importlib
-        return importlib.import_module("immune_system.verification.runner")
+        try:
+            return importlib.import_module("soma_core.verification.runner")
+        except ImportError:
+            return importlib.import_module("immune_system.verification.runner")
     except ImportError:
         return None
 
@@ -166,7 +169,7 @@ def _run_verification_pipeline(job: VerificationJob, llm_backend: Optional[Calla
         if runner is None:
             with _JOBS_LOCK:
                 job.status = JOB_STATUS_FAILED
-                job.error = "No verification runner available (immune_system.verification.runner)"
+                job.error = "No verification runner available (soma_core.verification.runner)"
                 job.completed_at = _utc_now_iso()
             return
 

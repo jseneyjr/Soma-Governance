@@ -21,7 +21,7 @@ import os
 import sys
 from pathlib import Path
 
-from immune_system.verification.checkpoint_checks import (
+from soma_core.verification.checkpoint_checks import (
     CHECK_NAMES,
     run_all_checks,
 )

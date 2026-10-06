@@ -53,6 +53,7 @@ develop ──→ release/v0.XX ──→ PR to main ──→ tag v0.XX.0 ─�
 | Phase 5.9 | v0.98.0 ✅ | Test Suite Rationalization & Deadwood Pruning |
 | Phase 5.10 | v0.99.0 ✅ | Core/CLI Decoupling & Legacy CLI Purge |
 | Phase 5.11 | v0.100.0 ✅ | Core God Module Decomposition & Verification Deduplication |
+| Phase 5.12 | v0.101.0 ✅ | Immune System Unification & Lifecycle Consolidation |
 
 ## Pre-Release Checklist
 
