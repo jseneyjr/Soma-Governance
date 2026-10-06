@@ -11,6 +11,8 @@ from typing import Callable, Optional, Tuple, Union
 from soma_sdk.errors import CellParseError, CellNotFoundError, CellPathTraversalError
 from soma_sdk.scoring import bayesian_posterior, laplace_score
 
+yaml = None  # Backward-compatible sentinel: zero-dependency runtime
+
 
 def _stdlib_parse_frontmatter(yaml_text: str) -> dict:
     from soma_core.frontmatter import parse_yaml_subset, FrontmatterError

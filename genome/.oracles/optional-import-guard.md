@@ -27,11 +27,7 @@ This applies to ALL files in `enzymes/`, `soma_mcp/`, `immune_system/`, and `ins
 
 ## Required Dependencies (bare import OK)
 
-These are listed in `pyproject.toml [project.dependencies]` — bare `import` is correct:
-
-| Package | Used For |
-|:--------|:---------|
-| `yaml` (pyyaml) | YAML frontmatter parsing |
+*(None — Soma has zero runtime dependencies as of v0.96.1. All runtime code uses the Python standard library only.)*
 
 ## Known Optional Dependencies
 
@@ -48,11 +44,10 @@ the dependency isn't installed. The blast radius is recursive: `test_foo.py`
 imports `module_a.py` which imports `module_b.py` which has `import optional_lib`
 → ALL tests touching `module_a` fail with `ModuleNotFoundError`.
 
-> **Historical note (2026-09-30):** `pyyaml` was previously listed in this
-> table as optional, which caused agents to add `try/except ImportError` guards
-> across 28 files. This contradicted `pyproject.toml` which declared pyyaml as
-> a required dependency. The guards introduced 118 lines of fragile fallback
-> code that produced bugs in 3 of 4 audit rounds. The table was the root cause.
+> **Historical note (v0.96.1):** PyYAML was previously a required runtime dependency
+> for YAML frontmatter parsing. In v0.96.1, `soma_core.frontmatter` was upgraded to a
+> pure standard library frontmatter engine, eliminating PyYAML completely from runtime
+> dependencies (`dependencies = []`).
 
 ## Enforcement
 
@@ -69,11 +64,11 @@ and indented imports inside functions. Use AST-based detection:
 
 ```bash
 # AST-based scan for unguarded optional imports
-# NOTE: yaml (pyyaml) is a REQUIRED dependency — bare import is fine.
+# NOTE: Soma has zero runtime dependencies as of v0.96.1.
 # This script checks for truly optional packages only.
 python3 -c "
 import ast, glob
-REQUIRED = {'yaml', 'pytest', 'pyyaml'}  # bare import OK
+REQUIRED = set()  # bare import OK
 for f in glob.glob('enzymes/**/*.py', recursive=True) + \
          glob.glob('soma_mcp/**/*.py', recursive=True) + \
          glob.glob('soma_sdk/**/*.py', recursive=True):

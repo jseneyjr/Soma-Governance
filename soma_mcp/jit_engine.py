@@ -25,6 +25,8 @@ import re
 import subprocess
 import fnmatch
 
+yaml = None  # Backward-compatible sentinel: zero-dependency runtime
+
 from soma_mcp.cell_cache import CellCache
 
 # Module-level singleton — persists across MCP tool invocations

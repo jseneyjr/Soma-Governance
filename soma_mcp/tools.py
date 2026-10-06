@@ -13,6 +13,8 @@ from soma_core.workspace import resolve_workspace
 # Ensure soma_sdk is importable
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
+yaml = None  # Backward-compatible sentinel: zero-dependency runtime
+
 # Import JIT engine (stdlib only — parses frontmatter without pyyaml)
 from soma_mcp.jit_engine import express as jit_express
 from soma_mcp.jit_engine import parse_frontmatter, warn

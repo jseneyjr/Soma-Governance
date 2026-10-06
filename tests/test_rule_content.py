@@ -76,6 +76,9 @@ def test_required_deps_in_pyproject():
             f"Oracle lists '{pkg}' as required, but it's not in "
             f"pyproject.toml [project.dependencies]: {pyproject_deps}"
         )
+    # v0.96.1 zero-dependency invariant: Soma has zero runtime dependencies
+    assert len(pyproject_deps) == 0, f"Expected 0 runtime dependencies, found: {pyproject_deps}"
+    assert len(required) == 0, f"Expected 0 required dependencies in oracle, found: {required}"
 
 
 def test_optional_deps_not_in_required():
