@@ -292,10 +292,10 @@ Wired the strongly-typed `Workspace` value object into perimeter and edge bounda
 **Status**: ✅ Shipped (v0.114.0)  
 Wired the strongly-typed `Workspace` value object into core engines: lifecycle (`creation.py`, `parsers.py`, `promotion.py`, `decay.py`, `selection.py`), arbitration (`arbitration.py`), outcome reflection (`outcomes.py`), defect tracking (`defects.py`), invariant enforcement (`enforcement.py`), and synchronization (`sync.py`). Added `as_workspace(workspace)` coercion helper to `soma_core.workspace` and added `DeprecationWarning` with `stacklevel=2` to legacy standalone directory getters (`get_cells_dir`, `get_metrics_dir`, `get_signals_file`, `get_outcomes_file`). Developed following strict TDD with 19 new behavioral tests in `tests/test_core_engines_workspace.py` and full regression verification (2,761 passing).
 
-## Phase 18 — v0.115.0 (In Progress)
+## Phase 18 — v0.115.0 ✅ Shipped
 
 ### CLI Porcelain & Final Deprecation Gate
-**Status**: 🔨 In Progress (v0.115.0)  
+**Status**: ✅ Shipped (v0.115.0)  
 Completes the Workspace migration across all user-facing CLI commands (`soma_cli/cli.py` root resolution attaching `args.ws: Workspace` to all subcommand handlers: `init`, `doctor`, `status`, `verify`, `promote`, `demote`, `transfer`, `checkpoint`, `genesis`). Performs AST audit to guarantee zero internal references to deprecated standalone getters while retaining permanent backward-compatible facades (`resolve_workspace`, `confine_workspace`, `confine_path`, `resolve_git_hooks_dir`).
 
 ## Phase 19 — v0.116.0 (Planned)
