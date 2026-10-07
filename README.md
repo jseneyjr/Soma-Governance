@@ -53,6 +53,12 @@ Rules in Soma are not permanent assumptions—they must mathematically prove the
 * **Wilson-Bounded Scoring**: Rules that consistently prevent defects without raising false alarms earn promotion from *candidate* to *invariant* to *core*.
 * **Scale-to-Zero Decay**: Unobserved or obsolete rules decay and expire on read without requiring background daemons, cron jobs, or network calls.
 
+### Security & Zero-Dependency Architecture
+* **Zero Runtime Dependencies**: The core framework runs purely on Python standard library modules (`dependencies = []`). No third-party packages are required to install, run the CLI, enforce pre-commit checks, or operate the MCP server—eliminating supply chain vulnerabilities and dependency conflicts.
+* **100% Local Privacy**: All rule files, evidence logs (`.soma/evidence/`), and telemetry remain strictly on your local filesystem. Zero telemetry or telemetry data is ever sent to external cloud backends.
+* **Scale-to-Zero Footprint**: Zero background daemons, zero recurring cron jobs, and zero persistent listening threads. Soma runs purely on-demand when invoked by git hooks, agent tool calls, or CLI commands, consuming 0% CPU and memory when idle.
+* **Command Safety & MCP Isolation**: Destructive commands (`rm -rf`, shell flag obfuscation) are intercepted by AST-level command inspection, and the MCP server enforces fail-closed session token authorization to block unauthorized tool access.
+
 ---
 
 ## Quick Start
