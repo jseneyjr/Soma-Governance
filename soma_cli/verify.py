@@ -248,6 +248,11 @@ def run_verify(args: argparse.Namespace) -> int:
             print(f"  {f}")
         return 0
 
+    # ── Clean Repository ──────────────────────────────────────────────
+    if not target_files:
+        print("Layer 1: 0 files changed (clean repository)")
+        return 0
+
     # ── Run Layer 1 ───────────────────────────────────────────────────
     results = runner.run_layer1(
         changed_files=target_files,

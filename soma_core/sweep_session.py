@@ -8,6 +8,7 @@ import sys
 import os
 from collections import Counter
 from datetime import datetime
+from pathlib import Path
 
 # Waste signal patterns to scan for
 WASTE_SIGNALS = {

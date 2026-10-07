@@ -3,11 +3,13 @@
 Runs mandatory checks on changed files and produces a combined evidence package.
 The output feeds directly into the Arbiter as Layer 1 evidence.
 """
+from __future__ import annotations
+
 import os
 import sys
 from typing import Optional
 
-from . import ToolEvidence
+from . import ToolEvidence, ArbitrationResult
 from . import persistence_checker
 from . import call_graph
 from . import import_guard

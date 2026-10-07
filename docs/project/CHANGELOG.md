@@ -18,8 +18,14 @@ This project uses [Semantic Versioning](https://semver.org/).
 - **Arbiter Output & Exit Code Mapping**:
   - Added `format_layer2_summary` to present human-readable Arbiter verdicts, divergences, and convergences.
   - Enforced strict exit code contract: `SHIP` maps to 0; `BLOCK` and `REVISE` map to 1.
+- **Clean Repository Zero-Exit**:
+  - Fixed false-alarm exit code 1 when running `soma verify` on clean repositories with 0 changed files. Reports `Layer 1: 0 files changed (clean repository)` and exits 0 immediately.
+- **Documentation & Import Integrity**:
+  - Purged phantom JavaScript SDK snippet (`const { Governance } = require('soma-governance')`) from `README.md`.
+  - Fixed 5 latent `NameError` missing imports in error branches across `soma_core.lifecycle.creation` (`os`), `soma_core.lifecycle.promotion` (`sys`), `soma_core.evidence` (`Path`), `soma_core.sweep_session` (`Path`), and `soma_core.verification.runner` (`ArbitrationResult`).
+  - Added automated `ruff check --select F821` invariant test in `tests/test_static_invariants.py` and updated `tdd-protocol.md` Gate 4 to mandate static import integrity checks before green phase sign-off.
 - **Strict TDD Compliance**:
-  - Full Red/Green TDD lifecycle adhering to `tdd-protocol.md` and `feature-specs.md §6` with 9 new behavioral and integration tests in `tests/test_cli_verify.py`.
+  - Full Red/Green TDD lifecycle adhering to `tdd-protocol.md` and `feature-specs.md §6` with 13 new behavioral and invariant tests in `tests/test_cli_verify.py` and `tests/test_static_invariants.py`.
 
 ## [0.103.0] — 2026-10-06 — "Legacy Sunset & Lifecycle Modularization"
 

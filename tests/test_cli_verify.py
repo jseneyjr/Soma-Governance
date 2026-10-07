@@ -668,3 +668,22 @@ class TestVerifyLayer2Execution:
         captured = capsys.readouterr()
         assert "BLOCK" in captured.out or "BLOCK" in captured.err
 
+
+class TestVerifyCleanRepository:
+    """Test verify behavior when repository has no changed files."""
+
+    def test_verify_clean_repo_layer1_only_exits_zero(self, tmp_path, capsys):
+        """When no files are changed/staged, verify --layer1-only exits 0."""
+        exit_code = main(["verify", "--layer1-only", "--repo-root", str(tmp_path)])
+        assert exit_code == 0
+        captured = capsys.readouterr()
+        assert "clean" in captured.out.lower() or "0 files" in captured.out.lower()
+
+    def test_verify_clean_repo_full_verify_exits_zero(self, tmp_path, capsys):
+        """When no files are changed/staged, full verify exits 0."""
+        exit_code = main(["verify", "--repo-root", str(tmp_path)])
+        assert exit_code == 0
+        captured = capsys.readouterr()
+        assert "clean" in captured.out.lower() or "0 files" in captured.out.lower()
+
+

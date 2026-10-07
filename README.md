@@ -117,13 +117,6 @@ grade = gov.grade()
 gov.signal('wall-gae-truncation', 'tp', metric={'survival_day': 12})
 ```
 
-```javascript
-const { Governance } = require('soma-governance');
-const gov = new Governance('.');
-const grade = await gov.grade();
-const entropy = await gov.entropy();
-```
-
 ---
 
 ## CLI Commands
