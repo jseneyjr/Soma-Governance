@@ -308,7 +308,7 @@ Resolves multi-repo onboarding friction by introducing porcelain `soma hook` sub
 
 ### Dual-Mode Verifier OOP & Frictionless In-Session Verification
 **Status**: 🔨 In Progress (v0.117.0)  
-Refactors the verification subsystem into a composable class hierarchy (`DeterministicVerifier`, `AdversarialVerifier`, `Arbiter`, `VerificationPipeline`). Introduces Dual-Mode Layer 2 Verification: zero-API-key in-session adversarial verification for interactive agent/MCP sessions (via in-band charge sheets and MCP Sampling `sampling/createMessage`), alongside headless SDK fallback for CI runners. Integrates `GitWorkspace(Workspace)` with zero-subprocess fast paths, and resolves interpreter discovery for mutation testing across virtualenvs.
+Refactors the verification subsystem into a composable class hierarchy (`DeterministicVerifier`, `AdversarialVerifier`, `Arbiter`, `VerificationPipeline`). Introduces Dual-Mode Layer 2 Verification: zero-API-key in-session adversarial verification for interactive agent/MCP sessions (via in-band charge sheets and MCP Sampling `sampling/createMessage`), alongside headless SDK fallback for CI runners. Integrates `GitWorkspace(Workspace)` with zero-subprocess fast paths, resolves interpreter discovery for mutation testing across virtualenvs, and enforces the Isolated CI Environment Invariant (`HOME=$(mktemp -d) pytest`) guaranteeing zero test runner divergence.
 
 ## Phase 21 — v0.118.0 (Planned)
 

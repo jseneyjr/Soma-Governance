@@ -184,6 +184,8 @@ class TestGitWorkspaceOperations:
         repo = tmp_path / "repo"
         repo.mkdir()
         subprocess.run(["git", "init"], cwd=str(repo), check=True, capture_output=True)
+        subprocess.run(["git", "config", "user.email", "test@example.com"], cwd=str(repo), check=True)
+        subprocess.run(["git", "config", "user.name", "Tester"], cwd=str(repo), check=True)
         (repo / ".gitignore").write_text("*.ignored\n", encoding="utf-8")
         subprocess.run(["git", "add", ".gitignore"], cwd=str(repo), check=True)
         subprocess.run(["git", "commit", "-m", "Ignore"], cwd=str(repo), check=True, capture_output=True)
