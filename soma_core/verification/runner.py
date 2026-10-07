@@ -70,6 +70,7 @@ def run_layer1(
     mutation_targets: Optional[list[tuple[str, str, str]]] = None,
     coverage_targets: Optional[list[tuple[str, str]]] = None,
     max_mutations: int = 5,
+    fast_mode: bool = False,
 ) -> list[ToolEvidence]:
     """Run all Layer 1 verification tools.
 
@@ -116,57 +117,59 @@ def run_layer1(
             results.append(import_guard.check(full_path, project_root=repo_root))
 
     # ── Mutation Testing ───────────────────────────────────────────────
-    if mutation_targets:
-        for source, func, test in mutation_targets:
-            src_path = os.path.join(repo_root, source)
-            tst_path = os.path.join(repo_root, test)
-            if os.path.exists(src_path) and os.path.exists(tst_path):
-                results.append(mutation_tester.check(
-                    src_path, func, tst_path, max_mutations=max_mutations,
-                ))
-    else:
-        # Auto-discover: for each changed .py file, find test file and functions
-        for filepath in changed_files:
-            if not filepath.endswith('.py'):
-                continue
-            basename = os.path.basename(filepath)
-            if basename.startswith('test_') or basename == '__init__.py':
-                continue
-            full_path = os.path.join(repo_root, filepath)
-            if not os.path.exists(full_path):
-                continue
-            test_file = _find_test_file(filepath, repo_root)
-            if test_file is None:
-                continue
-            funcs = _discover_functions(full_path)
-            for func_name in funcs[:3]:  # Limit auto-discovery to 3 functions
-                results.append(mutation_tester.check(
-                    full_path, func_name, test_file,
-                    max_mutations=max_mutations,
-                ))
+    if not fast_mode:
+        if mutation_targets:
+            for source, func, test in mutation_targets:
+                src_path = os.path.join(repo_root, source)
+                tst_path = os.path.join(repo_root, test)
+                if os.path.exists(src_path) and os.path.exists(tst_path):
+                    results.append(mutation_tester.check(
+                        src_path, func, tst_path, max_mutations=max_mutations,
+                    ))
+        else:
+            # Auto-discover: for each changed .py file, find test file and functions
+            for filepath in changed_files:
+                if not filepath.endswith('.py'):
+                    continue
+                basename = os.path.basename(filepath)
+                if basename.startswith('test_') or basename == '__init__.py':
+                    continue
+                full_path = os.path.join(repo_root, filepath)
+                if not os.path.exists(full_path):
+                    continue
+                test_file = _find_test_file(filepath, repo_root)
+                if test_file is None:
+                    continue
+                funcs = _discover_functions(full_path)
+                for func_name in funcs[:3]:  # Limit auto-discovery to 3 functions
+                    results.append(mutation_tester.check(
+                        full_path, func_name, test_file,
+                        max_mutations=max_mutations,
+                    ))
 
     # ── Branch Coverage ───────────────────────────────────────────────
-    if coverage_targets:
-        for source, test in coverage_targets:
-            src_path = os.path.join(repo_root, source)
-            tst_path = os.path.join(repo_root, test)
-            if os.path.exists(src_path) and os.path.exists(tst_path):
-                results.append(branch_coverage.check(src_path, tst_path))
-    else:
-        # Auto-discover: pair changed files with test files by convention
-        for filepath in changed_files:
-            if not filepath.endswith('.py'):
-                continue
-            basename = os.path.basename(filepath)
-            if basename.startswith('test_') or basename == '__init__.py':
-                continue
-            full_path = os.path.join(repo_root, filepath)
-            if not os.path.exists(full_path):
-                continue
-            test_file = _find_test_file(filepath, repo_root)
-            if test_file is None:
-                continue
-            results.append(branch_coverage.check(full_path, test_file))
+    if not fast_mode:
+        if coverage_targets:
+            for source, test in coverage_targets:
+                src_path = os.path.join(repo_root, source)
+                tst_path = os.path.join(repo_root, test)
+                if os.path.exists(src_path) and os.path.exists(tst_path):
+                    results.append(branch_coverage.check(src_path, tst_path))
+        else:
+            # Auto-discover: pair changed files with test files by convention
+            for filepath in changed_files:
+                if not filepath.endswith('.py'):
+                    continue
+                basename = os.path.basename(filepath)
+                if basename.startswith('test_') or basename == '__init__.py':
+                    continue
+                full_path = os.path.join(repo_root, filepath)
+                if not os.path.exists(full_path):
+                    continue
+                test_file = _find_test_file(filepath, repo_root)
+                if test_file is None:
+                    continue
+                results.append(branch_coverage.check(full_path, test_file))
 
     return results
 

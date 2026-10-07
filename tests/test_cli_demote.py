@@ -121,6 +121,9 @@ class TestDemoteCLI:
         cells_dir = tmp_path / ".soma" / "cells"
         walls_dir = cells_dir / "walls"
         walls_dir.mkdir(parents=True)
+        (tmp_path / "soma_core").mkdir(parents=True)
+        (tmp_path / "soma_cli").mkdir(parents=True)
+        (tmp_path / "pyproject.toml").write_text('name = "soma-governance"\n', encoding="utf-8")
 
         make_cell(str(genome_dir), "core-rule", cell_type="genome", created_days_ago=90)
 

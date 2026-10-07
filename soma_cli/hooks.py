@@ -521,6 +521,42 @@ def run_pre_commit(
         else:
             print(f"⚠️  Quality checkpoint found {len(issues)} issue(s) (warn mode; commit allowed).", file=info_file)
 
+    # 5. Non-Bypassable Layer 1 Deterministic Verification on staged files
+    staged_py_files = [
+        sf for sf in staged_files
+        if sf.endswith(".py") and os.path.exists(os.path.join(repo_root, sf))
+    ]
+    if staged_py_files:
+        try:
+            from soma_core.verification import runner
+            l1_results = runner.run_layer1(
+                changed_files=staged_py_files,
+                repo_root=str(repo_root),
+                fast_mode=True,
+            )
+            l1_passed = runner.gate_verdict(l1_results)
+            if not l1_passed:
+                print("❌ Staged-file Layer 1 deterministic verification failed:", file=sys.stderr)
+                for r in l1_results:
+                    if not r.verdict:
+                        print(f"  🔴 {r.tool}: {r.target} — {r.detail}", file=sys.stderr)
+                if use_json:
+                    print(json.dumps({
+                        "status": "blocked",
+                        "reason": "layer1_failed",
+                        "layer1_evidence": [
+                            {"tool": r.tool, "target": r.target, "verdict": r.verdict, "detail": r.detail}
+                            for r in l1_results
+                        ],
+                    }))
+                return 1
+            elif not use_json:
+                print(f"🛡️ Soma: Layer 1 deterministic verification passed ({len(staged_py_files)} staged file(s))", file=info_file)
+        except Exception as exc:
+            if strict:
+                print(f"❌ Failed to execute Layer 1 verification in strict mode: {exc}", file=sys.stderr)
+                return 1
+
     if use_json:
         print(json.dumps({
             "status": "ok",

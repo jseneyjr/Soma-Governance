@@ -304,16 +304,16 @@ Completes the Workspace migration across all user-facing CLI commands (`soma_cli
 **Status**: ✅ Shipped (v0.116.0)  
 Resolves multi-repo onboarding friction by introducing porcelain `soma hook` subcommands (`install`, `status`, `uninstall`), cross-platform dynamic interpreter resolution (Windows `Scripts/python.exe` and POSIX `bin/python`), uninitialized workspace bootstrapping (`Workspace.for_init()` and `ws.scaffold()`), and interactive hook installation in `soma genesis --install-hooks`.
 
-## Phase 20 — v0.117.0 (In Progress)
+## Phase 20 — v0.117.0 ✅ Shipped
 
 ### Dual-Mode Verifier OOP & Frictionless In-Session Verification
-**Status**: 🔨 In Progress (v0.117.0)  
+**Status**: ✅ Shipped (v0.117.0)  
 Refactors the verification subsystem into a composable class hierarchy (`DeterministicVerifier`, `AdversarialVerifier`, `Arbiter`, `VerificationPipeline`). Introduces Dual-Mode Layer 2 Verification: zero-API-key in-session adversarial verification for interactive agent/MCP sessions (via in-band charge sheets and MCP Sampling `sampling/createMessage`), alongside headless SDK fallback for CI runners. Integrates `GitWorkspace(Workspace)` with zero-subprocess fast paths, resolves interpreter discovery for mutation testing across virtualenvs, and enforces the Isolated CI Environment Invariant (`HOME=$(mktemp -d) pytest`) guaranteeing zero test runner divergence.
 
-## Phase 21 — v0.118.0 (Planned)
+## Phase 21 — v0.118.0 (In Progress)
 
-### Modular Workspace Package & Localized Cell Evolution
-**Status**: 📋 Planned (v0.118.0)  
+### Modular Workspace Package, Non-Bypassable Layer 1 & Localized Cell Evolution
+**Status**: 🔨 In Progress (v0.118.0)  
 Decomposes `soma_core/workspace.py` into a modular package directory (`soma_core/workspace/` with `base`, `git`, `discovery`, `confinement`, `scaffold`, and `hooks`). Restricts cell evolution strictly to the local workspace (`vacuole` $\rightarrow$ `wall` $\rightarrow$ `gate`), disconnecting automatic promotion to global `genome/`. Adds compound fingerprinting to `Workspace.is_soma_repo` to prevent false positives on external genomics repositories. Implements whitelist-only global rules cleanse with mandatory quarantine backups (`~/.soma/quarantine/`). Implements explicit tagged Horizontal Gene Transfer (`soma transfer export`).
 
 ## Phase 22 — v0.119.0 (Planned)

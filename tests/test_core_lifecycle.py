@@ -33,6 +33,9 @@ def workspace(tmp_path: Path) -> Path:
     (tmp_path / ".soma" / "cells" / "vacuoles").mkdir(parents=True)
     (tmp_path / ".soma" / "cells" / "walls").mkdir(parents=True)
     (tmp_path / "genome").mkdir(parents=True)
+    (tmp_path / "soma_core").mkdir(parents=True)
+    (tmp_path / "soma_cli").mkdir(parents=True)
+    (tmp_path / "pyproject.toml").write_text('name = "soma-governance"\n', encoding="utf-8")
     return tmp_path
 
 

@@ -24,6 +24,8 @@ from .constants import (
     PROMOTION_PATH,
     PROTECTED_RULES,
     TYPE_TO_DIR,
+    get_demotion_path,
+    get_promotion_path,
 )
 from .decay import (
     apply_decay,
@@ -40,6 +42,17 @@ from .parsers import (
 )
 from .quorum import is_promotable
 
+__all__ = [
+    "adapt_cell",
+    "cli_cell_promote",
+    "demote_cell",
+    "evaluate_cell_tiers",
+    "evaluate_demotions",
+    "evaluate_promotions",
+    "metamorphose_cell",
+    "promote_cell",
+]
+
 
 def evaluate_promotions(workspace: Workspace | Path | str) -> list[dict]:
     """Evaluate cells for promotion based on canonical signal evidence.
@@ -48,15 +61,19 @@ def evaluate_promotions(workspace: Workspace | Path | str) -> list[dict]:
         List of promotion candidate dicts:
         [{cell_id, from_type, to_type, triggers, tp_rate, age_days}]
     """
-    evidence = _load_evidence(workspace)
-    cells = _load_cells(workspace)
+    ws = workspace if isinstance(workspace, Workspace) else (
+        Workspace(root=Path(workspace).resolve()) if workspace else Workspace.resolve()
+    )
+    promotion_path = get_promotion_path(ws)
+    evidence = _load_evidence(ws)
+    cells = _load_cells(ws)
     candidates = []
 
     for cell in cells:
         cell_id = cell["id"]
         cell_type = cell["type"]
 
-        if cell_type not in PROMOTION_PATH:
+        if cell_type not in promotion_path:
             continue
 
         ev = evidence.get(cell_id, {
@@ -78,7 +95,7 @@ def evaluate_promotions(workspace: Workspace | Path | str) -> list[dict]:
         candidates.append({
             "cell_id": cell_id,
             "from_type": cell_type,
-            "to_type": PROMOTION_PATH[cell_type],
+            "to_type": promotion_path[cell_type],
             "triggers": triggers,
             "tp_rate": round(tp_rate, 4),
             "age_days": age_days,
@@ -94,15 +111,19 @@ def evaluate_demotions(workspace: Workspace | Path | str) -> list[dict]:
         List of demotion candidate dicts:
         [{cell_id, from_type, to_type, reason, fp_rate, triggers}]
     """
-    evidence = _load_evidence(workspace)
-    cells = _load_cells(workspace)
+    ws = workspace if isinstance(workspace, Workspace) else (
+        Workspace(root=Path(workspace).resolve()) if workspace else Workspace.resolve()
+    )
+    demotion_path = get_demotion_path(ws)
+    evidence = _load_evidence(ws)
+    cells = _load_cells(ws)
     candidates = []
 
     for cell in cells:
         cell_id = cell["id"]
         cell_type = cell["type"]
 
-        if cell_type not in DEMOTION_PATH:
+        if cell_type not in demotion_path:
             continue
 
         clean_id = cell_id[:-3] if cell_id.endswith(".md") else cell_id
@@ -148,7 +169,7 @@ def evaluate_demotions(workspace: Workspace | Path | str) -> list[dict]:
         candidates.append({
             "cell_id": cell_id,
             "from_type": cell_type,
-            "to_type": DEMOTION_PATH[cell_type],
+            "to_type": demotion_path[cell_type],
             "reason": reason,
             "fp_rate": round(fp_rate, 4) if triggers > 0 else 0.0,
             "triggers": triggers,
@@ -175,7 +196,8 @@ def promote_cell(
             "message": f"Cell '{cell_id}' not found in workspace",
         }
 
-    next_type = PROMOTION_PATH.get(current_type)
+    promotion_path = get_promotion_path(ws)
+    next_type = promotion_path.get(current_type)
     if next_type is None:
         return {
             "status": "already_terminal",
@@ -212,6 +234,11 @@ def promote_cell(
         }
 
     if next_type == "genome":
+        if not ws.is_soma_repo:
+            return {
+                "status": "error",
+                "message": "Cannot promote to genome in non-soma repository",
+            }
         target_dir = ws.root / "genome"
     else:
         target_dir = ws.cells_dir / TYPE_TO_DIR[next_type]
@@ -232,6 +259,7 @@ def promote_cell(
             "target_path": str(target_path),
         }
 
+    target_dir.mkdir(parents=True, exist_ok=True)
     with workspace_lock(ws.root, "cells"):
         content = cell_path.read_text(encoding="utf-8")
         new_content = _transform_frontmatter_type(content, next_type)
@@ -273,7 +301,8 @@ def demote_cell(
             "message": f"Cell '{clean_id}' not found in workspace",
         }
 
-    next_type = DEMOTION_PATH.get(current_type)
+    demotion_path = get_demotion_path(ws)
+    next_type = demotion_path.get(current_type)
     if next_type is None:
         return {
             "status": "already_base",
@@ -298,6 +327,7 @@ def demote_cell(
             "target_path": str(target_path),
         }
 
+    target_dir.mkdir(parents=True, exist_ok=True)
     with workspace_lock(ws.root, "cells"):
         content = cell_path.read_text(encoding="utf-8")
         new_content = _transform_frontmatter_type(content, next_type)
@@ -488,13 +518,16 @@ def cli_cell_promote(argv: list[str] | None = None, workspace: Optional[str] = N
     return 0
 
 
-def metamorphose_cell(workspace: Workspace | Path | str, cell_id: str) -> dict:
+def metamorphose_cell(workspace: Workspace | Path | str, cell_id: str | Path) -> dict:
     """Transforms cell between types based on maturity criteria."""
     ws = workspace if isinstance(workspace, Workspace) else (
         Workspace(root=Path(workspace).resolve()) if workspace else Workspace.resolve()
     )
     cells_dir = ws.cells_dir
-    matches = list(cells_dir.rglob(f"*{cell_id}*.md"))
+    clean_id = cell_id.stem if isinstance(cell_id, Path) else str(cell_id)
+    if clean_id.endswith(".md"):
+        clean_id = clean_id[:-3]
+    matches = list(cells_dir.rglob(f"*{clean_id}*.md"))
     if not matches:
         return {"status": "not_found", "message": f"Cell '{cell_id}' not found"}
 
@@ -525,8 +558,14 @@ def metamorphose_cell(workspace: Workspace | Path | str, cell_id: str) -> dict:
     meta["metamorphosis_date"] = datetime.now(timezone.utc).isoformat() + "Z"
 
     if new_type == "rule":
-        target_dir = ws.root / "genome"
-        target_path = target_dir / f"rule-{cell_path.name}"
+        if ws.is_soma_repo:
+            target_dir = ws.root / "genome"
+            target_path = target_dir / f"rule-{cell_path.name}"
+        else:
+            target_dir = cells_dir / "gates"
+            target_path = target_dir / cell_path.name
+            new_type = "gate"
+            meta["type"] = "gate"
     else:
         target_dir = cells_dir / f"{new_type}s"
         target_path = target_dir / cell_path.name
