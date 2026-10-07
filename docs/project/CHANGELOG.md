@@ -3,6 +3,32 @@
 All notable changes to Soma are documented here.
 This project uses [Semantic Versioning](https://semver.org/).
 
+## [0.109.0] — 2026-10-06 — "Security & Core Hardening"
+
+### Security & Inference Hardening
+- **SSRF & Credential Exfiltration Prevention (`BUG-073`)**:
+  - Hardened `resolve_key()` in `soma_core/inference_provider.py` to reject network endpoint configuration (`*_BASE_URL`, `*_URL`, `ENDPOINT`, `HOST`) from untrusted workspace configuration files (`.soma/soma.conf`), preventing malicious repositories from exfiltrating host credentials.
+- **Command Safety Bundled Flag Unwrapping (`BUG-074`)**:
+  - Enhanced `unwrap_command_stage()` in `soma_core/command_safety.py` to parse POSIX short flag bundles (`-*c`, e.g. `bash -lc`, `sh -ec`), closing a command inspection evasion vector.
+- **Destructive Command Trailing Slash Normalization (`BUG-075`)**:
+  - Normalized path arguments in `evaluate_rm()` to strip trailing slashes (`rstrip("/\\")`) and added `/root` to `RM_DANGEROUS_TARGETS`, closing destructive command detection bypasses.
+- **MCP Session Authentication Enforcement (`BUG-076`)**:
+  - Enforced fail-closed session token authentication in `soma_mcp/server.py` when session tokens are active or when `SOMA_REQUIRE_SESSION_TOKEN=1` is set, eliminating unauthenticated execution bypasses.
+- **Google GenAI SDK Automatic Function Calling (AFC) Advisory Warning Silencing (`BUG-081`)**:
+  - Explicitly configured `config={"automatic_function_calling": {"disable": True}}` in `GeminiProvider.generate()`, suppressing upstream SDK advisory warnings on stderr during single-turn LLM inference.
+
+### Core Decoupling & Verification Integrity
+- **Layer 0 Core Decoupling (`BUG-079`)**:
+  - Relocated and canonicalized `parse_frontmatter` into `soma_core.cell_inventory` with zero external dependencies, eliminating layer inversion imports in `checkpoint_checks.py`.
+- **Layer 1 Multi-Target Evidence Grouping (`BUG-078`)**:
+  - Indexed Layer 1 evidence as multi-target lists in `soma_core/verification/arbiter.py`, preventing dictionary key overwrites and ensuring all tool failures are surfaced to the Arbiter.
+- **AST Default Argument Fallback (`BUG-077`)**:
+  - Wrapped `ast.literal_eval` with `ast.unparse` fallback in `soma_core/verification/immune_verify.py` to robustly handle complex non-literal default arguments.
+- **C1 Control Sequence & Stderr Display Sanitization (`BUG-080`)**:
+  - Extended `sanitize_display()` to strip 8-bit C1 control characters (`[\x80-\x9f]`) and wrapped out-of-tree filenames in `soma_cli/verify.py` to prevent terminal injection.
+- **Call Graph Trailing `__all__` Export Resolution**:
+  - Re-evaluated `is_exported` post-traversal in `soma_core/verification/call_graph.py` to accurately recognize exports declared after function and class definitions.
+
 ## [0.108.0] — 2026-10-06 — "Two-Layer Adversarial Rebuttal & Verification Test Harness"
 
 ### Verification Engine & Adversarial Rebuttal Protocol

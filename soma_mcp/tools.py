@@ -850,6 +850,8 @@ def _handle_verify_changes(args: dict, gov) -> dict:
     files = args.get('files') or []
     if not isinstance(files, (list, tuple)) or not all(isinstance(f, str) for f in files):
         return {"error": "'files' must be a list of file paths", "status": _STATUS_FAIL}
+    if not files and not args.get('async_mode', False):
+        return {"status": _STATUS_FAIL, "summary": "No files specified to verify.", "layer1_only": True, "evidence": []}
     try:
         files = [confine_path(f, workspace)[1] for f in files]
     except ValueError as exc:

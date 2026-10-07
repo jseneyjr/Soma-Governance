@@ -72,7 +72,8 @@ def resolve_target_files(args: argparse.Namespace) -> list[str]:
         for f in args.files:
             resolved = os.path.realpath(os.path.join(repo_root, f))
             if not resolved.startswith(repo_root + os.sep) and resolved != repo_root:
-                print(f"Warning: skipping out-of-tree file: {f}", file=sys.stderr)
+                from soma_cli import sanitize_display
+                print(f"Warning: skipping out-of-tree file: {sanitize_display(f)}", file=sys.stderr)
                 continue
             safe_files.append(f)
         if not safe_files:
@@ -245,7 +246,7 @@ def resolve_cli_provider(args: argparse.Namespace, repo_root: str):
 
     try:
         provider = resolve_provider(workspace=repo_root, provider_name=explicit_provider)
-        if isinstance(provider, PromptOnlyProvider) and explicit_provider not in ("prompt-only", "prompt"):
+        if not is_usable_provider(provider) and explicit_provider not in ("prompt-only", "prompt"):
             return None
         return provider
     except Exception as e:

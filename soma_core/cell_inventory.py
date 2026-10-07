@@ -333,6 +333,8 @@ def find_matching_cells(
     return matches
 
 
+from soma_core.frontmatter import parse_frontmatter
+
 __all__ = [
     "CellInventory",
     "CellInventoryEntry",
@@ -340,6 +342,7 @@ __all__ = [
     "CellMatch",
     "find_matching_cells",
     "inventory_cells",
+    "parse_frontmatter",
 ]
 
 

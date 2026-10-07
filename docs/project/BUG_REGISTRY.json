@@ -1296,6 +1296,151 @@
       "regression_test": "tests/test_jit_preseed_constraints.py",
       "pattern": "Downstream validation gates reject changes that could have been prevented with upstream pre-seed context",
       "changelog_ref": "v0.107.0"
+    },
+    {
+      "id": "BUG-073",
+      "status": "fixed",
+      "title": "Host API Key Exfiltration & SSRF via Workspace Config",
+      "discovered_in": "v0.108.0",
+      "fixed_in": "v0.109.0",
+      "root_cause": "silent_failure",
+      "severity": "critical",
+      "description": "resolve_key() only excludes keys containing 'API_KEY', allowing OPENAI_BASE_URL to be loaded from an untrusted workspace soma.conf. Soma resolves host OPENAI_API_KEY and forwards it to the attacker-specified endpoint in HTTP Authorization headers during inference.",
+      "affected_files": [
+        "soma_core/inference_provider.py"
+      ],
+      "regression_test": "tests/test_security_ssrf_config.py",
+      "pattern": "Network base URLs read from untrusted workspace configs without isolating host credential forwarding",
+      "changelog_ref": "v0.109.0"
+    },
+    {
+      "id": "BUG-074",
+      "status": "fixed",
+      "title": "Command Safety Shell Interpreter Bypass via Bundled Short Flags",
+      "discovered_in": "v0.108.0",
+      "fixed_in": "v0.109.0",
+      "root_cause": "silent_failure",
+      "severity": "critical",
+      "description": "unwrap_command_stage() checks shell flags strictly against ('-c', '/c', '-Command', '-command'). Commands invoked with bundled short flags (e.g. bash -lc, sh -ec) fail to match and evade destructive command inspection.",
+      "affected_files": [
+        "soma_core/command_safety.py"
+      ],
+      "regression_test": "tests/test_command_safety_bundled_flags.py",
+      "pattern": "Exact string equality checks on command-line flags fail against POSIX short-flag bundling",
+      "changelog_ref": "v0.109.0"
+    },
+    {
+      "id": "BUG-075",
+      "status": "fixed",
+      "title": "Destructive rm -rf Screening Bypass via Trailing Slashes",
+      "discovered_in": "v0.108.0",
+      "fixed_in": "v0.109.0",
+      "root_cause": "path_error",
+      "severity": "critical",
+      "description": "evaluate_rm() checks targets against RM_DANGEROUS_TARGETS without path normalization or trailing slash stripping. Dangerous targets with trailing slashes (rm -rf ./, rm -rf ../, rm -rf ~/ ) bypass destructive command detection.",
+      "affected_files": [
+        "soma_core/command_safety.py"
+      ],
+      "regression_test": "tests/test_command_safety_trailing_slashes.py",
+      "pattern": "String matching on filesystem paths fails due to unnormalized trailing slashes",
+      "changelog_ref": "v0.109.0"
+    },
+    {
+      "id": "BUG-076",
+      "status": "fixed",
+      "title": "Authentication Bypass in MCP Server tools/call on Omitted Session Token",
+      "discovered_in": "v0.108.0",
+      "fixed_in": "v0.109.0",
+      "root_cause": "silent_failure",
+      "severity": "critical",
+      "description": "_sessionToken validation in tools/call is guarded by 'if client_token is not None:'. If a client omits _sessionToken, verification is skipped entirely and active_session_id falls back to _session_token or 'default', granting unauthenticated callers tool execution authority.",
+      "affected_files": [
+        "soma_mcp/server.py"
+      ],
+      "regression_test": "tests/test_mcp_session_auth_enforcement.py",
+      "pattern": "Authentication check guards skip validation entirely when credentials are absent instead of failing closed",
+      "changelog_ref": "v0.109.0"
+    },
+    {
+      "id": "BUG-077",
+      "status": "fixed",
+      "title": "ast.literal_eval Unhandled Exceptions in Function Signature Reconstructor",
+      "discovered_in": "v0.108.0",
+      "fixed_in": "v0.109.0",
+      "root_cause": "schema_drift",
+      "severity": "moderate",
+      "description": "During AST signature reconstruction for LLM verification prompts, default_val = ast.literal_eval(default_node) crashes on non-literal default expressions (e.g. function calls, path objects, module constants), failing signature extraction.",
+      "affected_files": [
+        "soma_core/verification/immune_verify.py"
+      ],
+      "regression_test": "tests/test_verification/test_signature_ast_fallback.py",
+      "pattern": "ast.literal_eval called on arbitrary AST expressions without handling ValueError/SyntaxError or falling back to ast.unparse",
+      "changelog_ref": "v0.109.0"
+    },
+    {
+      "id": "BUG-078",
+      "status": "fixed",
+      "title": "layer1_by_tool Dictionary Collision Overwrites Multi-Target Evidence in Arbiter",
+      "discovered_in": "v0.108.0",
+      "fixed_in": "v0.109.0",
+      "root_cause": "mapping_error",
+      "severity": "moderate",
+      "description": "layer1_by_tool = {e.tool: e for e in layer1_evidence} overwrites earlier tool results when multiple target files produce evidence for the same tool. If target A failed and target B passed, only target B is retained, masking failures in adjudication.",
+      "affected_files": [
+        "soma_core/verification/arbiter.py"
+      ],
+      "regression_test": "tests/test_verification/test_arbiter_multitarget_evidence.py",
+      "pattern": "Dictionary comprehension keys on tool name instead of (tool, target) tuple or list grouping, causing evidence overwrites",
+      "changelog_ref": "v0.109.0"
+    },
+    {
+      "id": "BUG-079",
+      "status": "fixed",
+      "title": "Architectural Layer Inversion: soma_core Importing soma_mcp",
+      "discovered_in": "v0.108.0",
+      "fixed_in": "v0.109.0",
+      "root_cause": "dead_code",
+      "severity": "moderate",
+      "description": "checkpoint_checks.py in soma_core imports parse_frontmatter from soma_mcp.jit_engine. Layer 0 Core violates architectural boundary by depending upwards on Layer 2 MCP server.",
+      "affected_files": [
+        "soma_core/verification/checkpoint_checks.py"
+      ],
+      "regression_test": "tests/test_architecture_decoupling.py",
+      "pattern": "Low-level core module imports higher-level porcelain server module, breaking layer decoupling",
+      "changelog_ref": "v0.109.0"
+    },
+    {
+      "id": "BUG-080",
+      "status": "fixed",
+      "title": "Missing CLI Output Sanitization & C1 Terminal Escape Injection Gaps",
+      "discovered_in": "v0.108.0",
+      "fixed_in": "v0.109.0",
+      "root_cause": "platform_compat",
+      "severity": "low",
+      "description": "sanitize_display() ignores 8-bit C1 control codes (\\u0080-\\u009F) and DCS sequences. In addition, soma_cli/verify.py prints out-of-tree filenames directly to stderr without sanitization, permitting terminal control injection via crafted filenames.",
+      "affected_files": [
+        "soma_cli/__init__.py",
+        "soma_cli/verify.py"
+      ],
+      "regression_test": "tests/test_cli_sanitize_c1.py",
+      "pattern": "Terminal display sanitization omits 8-bit control sequences and CLI handlers output raw filenames to stderr",
+      "changelog_ref": "v0.109.0"
+    },
+    {
+      "id": "BUG-081",
+      "status": "fixed",
+      "title": "Google GenAI SDK Automatic Function Calling (AFC) Advisory Warning Stderr Pollution",
+      "discovered_in": "v0.108.0",
+      "fixed_in": "v0.109.0",
+      "root_cause": "platform_compat",
+      "severity": "low",
+      "description": "google-genai SDK defaults to enabling Automatic Function Calling (AFC) in Models.generate_content when config is omitted, emitting an advisory warning to stderr advising against direct AFC in generate_content. GeminiProvider must pass config with automatic_function_calling disabled.",
+      "affected_files": [
+        "soma_core/inference_provider.py"
+      ],
+      "regression_test": "tests/test_gemini_afc_config.py",
+      "pattern": "Upstream SDK defaults trigger advisory warnings on stderr when default configuration options are omitted",
+      "changelog_ref": "v0.109.0"
     }
   ]
 }

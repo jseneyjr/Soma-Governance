@@ -4,7 +4,7 @@
 [![Core Rules](https://img.shields.io/badge/Core_Rules-19-green?style=flat-square)](#-core-rules)
 [![Agent Skills](https://img.shields.io/badge/Agent_Skills-15-purple?style=flat-square)](#-agent-skills)
 [![Architecture](https://img.shields.io/badge/Architecture-Pure_Python-blue?style=flat-square)](#-architecture)
-[![Version](https://img.shields.io/badge/Version-0.108.0-informational?style=flat-square)](docs/project/CHANGELOG.md)
+[![Version](https://img.shields.io/badge/Version-0.109.0-informational?style=flat-square)](docs/project/CHANGELOG.md)
 [![Zero Runtime Dependencies](https://img.shields.io/badge/Dependencies-0-brightgreen?style=flat-square)](#)
 [![Blog Post](https://img.shields.io/badge/Blog-dev.to-black?style=flat-square&logo=devdotto)](https://dev.to/nseney1/your-ai-agents-rules-file-is-a-gentlemans-agreement-heres-what-happens-when-you-build-2dml)
 [![M8ven Score](https://m8ven.ai/badge/mcp/nseney1-soma-governance-yv4xbk)](https://m8ven.ai/mcp/nseney1/soma-governance?s=readme)
@@ -174,11 +174,74 @@ Soma models governance as a layered system of rules, skills, and automation. Eve
 
 | Layer | Directory | What It Contains |
 |:------|:----------|:-----------------|
-| **Core Rules** | `genome/` | 18 rules — inherited behavioral defaults, rarely changed. |
+| **Core Rules** | `genome/` | 19 rules — inherited behavioral defaults, rarely changed. |
 | **Agent Skills** | `organs/` | 15 skills — complex multi-step behaviors like adaptive-reviewer, genesis, security-audit. |
 | **Core & CLI** | `soma_core/`, `soma_cli/` | Pure Python governance engine, cross-platform CLI, and evidence pipeline. |
-| **Verification** | `immune_system/` | AST analysis tools for code checking. |
+| **Verification** | `soma_core/verification/` | Deterministic Layer 1 AST tools & Layer 2 adversarial rebuttal. |
 | **Adaptive Rules** | `.soma/cells/` | Per-repo adaptive invariants. Generated, tested, evolved, or retired. |
+
+---
+
+## 🛡️ Two-Layer Verification Architecture
+
+Soma eliminates "guess-and-check" coding loops and unverified agent completions by gating changes through two distinct, complementary verification layers before code is accepted:
+
+```text
+┌────────────────────────────────────────────────────────────────────────┐
+│  LAYER 1: Deterministic Immune Tools (Fast, Offline, Pure Python AST)  │
+│  ├── Call Graph Reachability    ├── Mutation Testing (Surviving Mutants)│
+│  ├── Import & Boundary Guards   ├── Branch & Statement Coverage        │
+│  └── Persistence Completeness                                          │
+└───────────────────────────────────┬────────────────────────────────────┘
+                                    │ (passes clean)
+                                    ▼
+┌────────────────────────────────────────────────────────────────────────┐
+│  LAYER 2: Adversarial Rebuttal Protocol (Two-Phase Debate)             │
+│                                                                        │
+│   Task Plan ───►  [ Spec Agent ]  (Prosecution)                        │
+│                         │                                              │
+│                         ▼ Predicted Failure Modes                      │
+│   Code + Tests ─► [ Code Agent ]  (Defense Rebuttal)                   │
+│                         │                                              │
+│                         ▼ Defended / Conceded Charges                  │
+│                   [ Arbiter ]     (Impartial Adjudication)             │
+│                         │                                              │
+│                         ▼                                              │
+│              ✅ SHIP  |  ⚠️ REVISE  |  🔴 BLOCK                         │
+└────────────────────────────────────────────────────────────────────────┘
+```
+
+### Layer 1 — Deterministic Immune Tools (Zero LLM)
+Fast, deterministic static analysis running purely via Python AST inspection and targeted test execution:
+- **Call Graph Completeness**: Proves every defined function or method is reachable from at least one call site or public export (`__all__`).
+- **Mutation Testing**: Injects AST mutations into modified code to verify tests fail for the right reasons.
+- **Import & Boundary Guards**: Ensures modules respect architectural layers (e.g. core never imports server or CLI).
+- **Branch Coverage**: Validates branch-level test execution across changed code paths.
+- **Persistence Completeness**: Asserts state schemas match serialized storage fields.
+
+### Layer 2 — Adversarial Rebuttal Protocol
+When Layer 1 passes, Layer 2 executes a structured adversarial debate between two independent personas:
+1. **Spec Agent (Prosecution)**: Evaluates the proposed plan and implementation to predict specific failure modes, unhandled edge cases, and architectural regressions.
+2. **Code Agent (Defense)**: Receives the specific charges from the Spec Agent and must defend or concede each charge using concrete code references and test evidence.
+3. **Arbiter**: Evaluates the evidence, divergences, and concessions to issue an authoritative verdict:
+   - **`SHIP` (Exit 0)**: All charges defended with verified evidence; Layer 1 clean.
+   - **`REVISE` (Exit 1)**: Actionable defects identified with clear fix instructions.
+   - **`BLOCK` (Exit 1)**: Critical defects, regression risks, or unsubstantiated claims.
+
+> [!NOTE]
+> **Optional API Keys & Graceful Fallback**:
+> Layer 2 requires an optional inference provider API key (`GEMINI_API_KEY`, `ANTHROPIC_API_KEY`, or `OPENAI_API_KEY`, resolved from environment variables or the system keyring via `keyring`).
+> 
+> **Zero-Breakage Fallback**: If no API key is configured or no `--plan` is supplied, Soma **gracefully falls back to Layer 1 deterministic checks alone**. The command passes cleanly (`exit 0`) if all Layer 1 AST checks succeed, ensuring offline developers, sandboxed environments, and CI/CD pipelines never fail due to missing keys. An interactive prompt-and-paste fallback (`--provider prompt`) is also supported for air-gapped terminal workflows.
+
+Run it directly from the CLI:
+```bash
+# Deterministic checks only (offline / CI)
+soma verify --layer1-only
+
+# Full Two-Layer Verification
+soma verify --files path/to/file.py --plan "Task description"
+```
 
 ---
 

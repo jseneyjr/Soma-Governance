@@ -256,6 +256,12 @@ Resolved GitHub Issue #77 and enhanced developer ergonomics across CLI commands 
 **Status**: ✅ Shipped (v0.108.0)  
 Resolved the uncoordinated "Battleship" guessing flaw in Layer 2 verification by implementing the Two-Phase Adversarial Exchange (Prosecution $\rightarrow$ Defense Rebuttal). Serialized Layer 2 execution to pass Spec Agent predicted risk charges directly into the Code Agent defense prompt, prompting targeted defenses with code and test evidence while preserving strict information partitioning. Implemented `discover_test_evidence()` in `soma_cli/verify.py` to auto-discover matching test files, extract test names via AST, execute tests, and feed real test evidence to Layer 2. Enhanced `call_graph.py` AST traversal to inspect dictionary dispatch tables, container elements, and callback arguments, eliminating false-positive orphan function warnings on CLI command handlers. Developed following strict TDD with 11 new behavioral tests across `tests/test_verification/test_adversarial_rebuttal.py`, `tests/test_cli_verify_test_harness.py`, and `tests/test_verification/test_call_graph_dispatch.py`.
 
+## Phase 12 — v0.109.0 ✅ Shipped
+
+### Security Hardening & Core Architecture Decoupling
+**Status**: ✅ Shipped (v0.109.0)  
+Resolved 9 security, architectural, and reliability defects identified during the multi-perspective Tempest review (BUG-073 through BUG-081). Prevented host API key exfiltration and SSRF by strictly rejecting network endpoint configuration from untrusted workspace configuration files (`.soma/soma.conf`). Closed command safety evasion vectors by parsing POSIX bundled short flags (`-*c`) and normalizing trailing slashes in destructive `rm` commands. Enforced fail-closed session token authentication in the MCP server. Decoupled Layer 0 Core from Layer 2 MCP by canonicalizing frontmatter parsing inside `cell_inventory.py`. Fixed Layer 1 multi-target evidence collisions in the Arbiter, non-literal default argument AST crashes, and C1 terminal control escape code sanitization. Silenced upstream `google-genai` Automatic Function Calling (AFC) advisory warnings on single-turn inference. Developed following strict TDD with 29 new behavioral tests and full regression test suite passing.
+
 ## Research
 
 ### Antifragile Scaling

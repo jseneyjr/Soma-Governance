@@ -65,7 +65,11 @@ def resolve_key(workspace, env_keys):
                     return val
             except Exception:
                 pass
-        if "API_KEY" not in key:
+        # Security Guard (BUG-073): Never permit untrusted workspace configs
+        # (.soma/soma.conf) to specify API keys or external network base URLs/endpoints.
+        # Doing so prevents malicious repositories from exfiltrating developer host
+        # environment or keyring credentials via Authorization header forwarding.
+        if "API_KEY" not in key and not any(k in key for k in ("BASE_URL", "_URL", "ENDPOINT", "HOST")):
             val = read_config_key(workspace, key)
             if val:
                 return val
@@ -103,7 +107,8 @@ class GeminiProvider(InferenceProvider):
         model_name = model or self.DEFAULT_MODEL
         response = self.client.models.generate_content(
             model=model_name,
-            contents=prompt
+            contents=prompt,
+            config={"automatic_function_calling": {"disable": True}},
         )
         return response.text
 
@@ -138,6 +143,7 @@ class OpenAIProvider(InferenceProvider):
     DEFAULT_MODEL = "gpt-4o"
 
     def __init__(self, api_key=None, base_url=None):
+        self.base_url = base_url
         try:
             from openai import OpenAI
             self.client = OpenAI(api_key=api_key, base_url=base_url)

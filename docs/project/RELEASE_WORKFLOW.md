@@ -21,6 +21,7 @@ develop ──→ release/v0.XX ──→ PR to main ──→ tag v0.XX.0 ─�
    - Run `pytest tests/test_static_invariants.py::test_version_is_single_sourced` and the release-specific checks.
 4. **Push branch**: `git push -u origin release/v0.XX`
 5. **Create PR**: `gh pr create --base main --head release/v0.XX --title "release(v0.XX): <summary>"`
+   - The PR body must follow the structured format codified in `genome/.oracles/git-workflow.md §5` (Executive Summary, Categorized Deliverables & Defect fixes with root cause/fix, Quantitative Test Evidence & Layer 2 Adversarial verdicts, and Human Review Gate).
 6. **Wait for CI**: All matrix jobs must pass before merge. CI builds one wheel and one sdist, records `dist/SHA256SUMS`, verifies the digests in downstream jobs, and smoke-tests both distributions from outside the source checkout with `PYTHONPATH` unset and isolated Python mode. The `test-windows` job runs the full pytest suite on `windows-latest` (Python 3.9 and 3.12) under Git Bash, with `HOME` and `USERPROFILE` set to a directory under `runner.temp` (BUG-010) and `PYTHONUTF8=0`, so the cp1252 defaults Windows users hit are exercised. Its failures fail the job; any Windows failure is a regression.
 7. **⛔ HUMAN REVIEW GATE**: Stop here. The maintainer reviews the PR and merges via GitHub UI. Agents must not merge directly to `main`.
 8. **Tag release** (after merge): `git checkout main && git pull && git tag -a v0.XX.0 -m "<message>" && git push origin v0.XX.0`
@@ -60,6 +61,7 @@ develop ──→ release/v0.XX ──→ PR to main ──→ tag v0.XX.0 ─�
 | Phase 9 | v0.106.0 ✅ | JIT Context Budget Clamping & Two-Layer Verification Gate |
 | Phase 10 | v0.107.0 ✅ | Porcelain Aliases, Output Ergonomics & Pre-Seed Target Constraints |
 | Phase 11 | v0.108.0 ✅ | Two-Layer Adversarial Rebuttal & Verification Test Harness |
+| Phase 12 | v0.109.0 ✅ | Security Hardening & Core Architecture Decoupling |
 
 ## Pre-Release Checklist
 
