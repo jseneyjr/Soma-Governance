@@ -56,12 +56,14 @@ def _print_report(report: dict) -> None:
     icons = {
         "healthy": "✅",
         "active": "⚡",
+        "decaying": "🍂",
+        "dormant": "💤",
         "unobserved": "🔍",
         "noisy": "📢",
         "expired": "⏰",
     }
 
-    for category in ["healthy", "active", "unobserved", "noisy", "expired"]:
+    for category in ["healthy", "active", "decaying", "dormant", "unobserved", "noisy", "expired"]:
         cells = classifications.get(category, [])
         if not cells:
             continue

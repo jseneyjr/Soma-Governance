@@ -62,6 +62,7 @@ develop ──→ release/v0.XX ──→ PR to main ──→ tag v0.XX.0 ─�
 | Phase 10 | v0.107.0 ✅ | Porcelain Aliases, Output Ergonomics & Pre-Seed Target Constraints |
 | Phase 11 | v0.108.0 ✅ | Two-Layer Adversarial Rebuttal & Verification Test Harness |
 | Phase 12 | v0.109.0 ✅ | Security Hardening & Core Architecture Decoupling |
+| Phase 13 | v0.110.0 ✅ | Ambient Telemetry & Zero-Touch Evolution |
 
 ## Pre-Release Checklist
 

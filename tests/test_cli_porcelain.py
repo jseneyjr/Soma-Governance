@@ -53,6 +53,22 @@ class TestCliPorcelainAliases(unittest.TestCase):
             self.assertEqual(exit_code, 0)
             mock_doctor.assert_called_once()
 
+    def test_parser_recognizes_harvest_command(self):
+        """soma harvest should be recognized by the parser."""
+        parser = _build_parser()
+        args = parser.parse_args(["harvest", "--git", "--limit", "15", "--dry-run"])
+        self.assertEqual(args.command, "harvest")
+        self.assertTrue(args.git)
+        self.assertEqual(args.limit, 15)
+        self.assertTrue(args.dry_run)
+
+    def test_harvest_command_dispatches_to_run_harvest(self):
+        """Executing 'soma harvest' should dispatch to run_harvest handler."""
+        with patch("soma_cli.harvest.run_harvest", return_value=0) as mock_harvest:
+            exit_code = main(["harvest", "--dry-run"])
+            self.assertEqual(exit_code, 0)
+            mock_harvest.assert_called_once()
+
     def test_common_parser_supports_plain_and_no_emoji_flags(self):
         """The CLI parser must support global --plain and --no-emoji flags."""
         parser = _build_parser()

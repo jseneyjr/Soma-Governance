@@ -178,6 +178,15 @@ def _build_parser() -> argparse.ArgumentParser:
     p_demote.add_argument("--cell", type=str, default=None,
                           help="Target cell ID for --force demotion")
 
+    # soma harvest
+    p_harvest = sub.add_parser("harvest", parents=[common_parser], help="Retroactively harvest telemetry and fitness evidence")
+    p_harvest.add_argument("--git", action="store_true", default=True,
+                           help="Harvest recent git commit history to seed cell fitness")
+    p_harvest.add_argument("--limit", type=int, default=30,
+                           help="Maximum number of commits to inspect (default: 30)")
+    p_harvest.add_argument("--dry-run", action="store_true",
+                           help="Preview harvested evidence without writing to disk")
+
     # soma genesis
     p_genesis = sub.add_parser("genesis", aliases=["analyze"], parents=[common_parser], help="Analyze codebase and generate governance cells")
     p_genesis.add_argument("--dry-run", action="store_true",
@@ -329,6 +338,12 @@ def cmd_demote(args: argparse.Namespace) -> int:
     return run_demote(args)
 
 
+def cmd_harvest(args: argparse.Namespace) -> int:
+    """Retroactively harvest telemetry and fitness evidence."""
+    from soma_cli.harvest import run_harvest
+    return run_harvest(args)
+
+
 def cmd_genesis(args: argparse.Namespace) -> int:
     """Analyze codebase and generate governance cells."""
     from soma_cli.genesis import run_genesis
@@ -424,6 +439,7 @@ COMMANDS = {
     "oracle": cmd_oracle,
     "promote": cmd_promote,
     "demote": cmd_demote,
+    "harvest": cmd_harvest,
     "genesis": cmd_genesis,
     "analyze": cmd_genesis,
     "completion": cmd_completion,

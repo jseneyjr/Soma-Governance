@@ -163,6 +163,7 @@ def _run_trace_fallback(test_file, target_file, target_dir, tmpdir):
 
 _TRACE_SCRIPT_TEMPLATE = '''\
 """Trace runner: executes pytest under trace and reports uncovered lines."""
+import dis
 import json
 import os
 import sys
@@ -188,28 +189,72 @@ for (fname, lineno), count in counts.items():
     if count > 0 and os.path.abspath(fname) == target_file:
         executed_lines.add(lineno)
 
-# Parse the target source to find all executable lines
-# The trace module does not fire events for bare structural keywords
-# (else:, try:, finally:) — only their body lines are counted.
+# Determine all executable lines in the target file.
+# Disassembly via dis.findlinestarts precisely identifies executable bytecode
+# statements while ignoring comments, multiline docstrings, and bare structural keywords.
 all_lines = set()
-with open(target_file, encoding='utf-8', errors='replace') as f:
-    for i, line in enumerate(f, 1):
-        stripped = line.strip()
-        if not stripped:
-            continue
-        if stripped.startswith("#"):
-            continue
-        if stripped.startswith("@"):
-            continue
-        # Exclude bare structural keywords that trace doesn't count
-        if stripped in ("else:", "try:", "finally:"):
-            continue
-        all_lines.add(i)
+try:
+    with open(target_file, encoding='utf-8', errors='replace') as f:
+        src = f.read()
+    co = compile(src, target_file, "exec")
+    def _extract_linestarts(code_obj):
+        for offset, lineno in dis.findlinestarts(code_obj):
+            if lineno > 0:
+                all_lines.add(lineno)
+        for const in code_obj.co_consts:
+            if hasattr(const, "co_code"):
+                _extract_linestarts(const)
+    _extract_linestarts(co)
+except Exception:
+    all_lines = set()
+
+# Fallback to source-line heuristic with multiline docstring state tracking
+if not all_lines:
+    in_triple_double = False
+    in_triple_single = False
+    with open(target_file, encoding='utf-8', errors='replace') as f:
+        for i, line in enumerate(f, 1):
+            stripped = line.strip()
+            if not stripped:
+                continue
+            if stripped.startswith("#"):
+                continue
+            if stripped.startswith("@"):
+                continue
+
+            # Handle triple-quote boundaries
+            if not in_triple_single:
+                if in_triple_double:
+                    if '"""' in stripped:
+                        in_triple_double = False
+                    continue
+                elif stripped.startswith('"""') or stripped.startswith('r"""') or stripped.startswith('f"""'):
+                    content_after = stripped[stripped.find('"""') + 3:]
+                    if '"""' not in content_after:
+                        in_triple_double = True
+                    continue
+
+            if not in_triple_double:
+                if in_triple_single:
+                    if "\\'\\'\\'" in stripped:
+                        in_triple_single = False
+                    continue
+                elif stripped.startswith("\\'\\'\\'") or stripped.startswith("r\\'\\'\\'") or stripped.startswith("f\\'\\'\\'"):
+                    content_after = stripped[stripped.find("\\'\\'\\'") + 3:]
+                    if "\\'\\'\\'" not in content_after:
+                        in_triple_single = True
+                    continue
+
+            # Exclude bare structural keywords and closing brackets
+            if stripped in ("else:", "try:", "finally:", ")", "]", "}}", "):", "],", "}},", "),"):
+                continue
+            all_lines.add(i)
 
 missing = sorted(all_lines - executed_lines)
 with open(results_file, "w") as f:
     json.dump(missing, f)
 '''
+
 
 
 def _parse_coverage(json_report, target_file, target_basename):

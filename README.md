@@ -4,7 +4,7 @@
 [![Core Rules](https://img.shields.io/badge/Core_Rules-19-green?style=flat-square)](#-core-rules)
 [![Agent Skills](https://img.shields.io/badge/Agent_Skills-15-purple?style=flat-square)](#-agent-skills)
 [![Architecture](https://img.shields.io/badge/Architecture-Pure_Python-blue?style=flat-square)](#-architecture)
-[![Version](https://img.shields.io/badge/Version-0.109.0-informational?style=flat-square)](docs/project/CHANGELOG.md)
+[![Version](https://img.shields.io/badge/Version-0.110.0-informational?style=flat-square)](docs/project/CHANGELOG.md)
 [![Zero Runtime Dependencies](https://img.shields.io/badge/Dependencies-0-brightgreen?style=flat-square)](#)
 [![Blog Post](https://img.shields.io/badge/Blog-dev.to-black?style=flat-square&logo=devdotto)](https://dev.to/nseney1/your-ai-agents-rules-file-is-a-gentlemans-agreement-heres-what-happens-when-you-build-2dml)
 [![M8ven Score](https://m8ven.ai/badge/mcp/nseney1-soma-governance-yv4xbk)](https://m8ven.ai/mcp/nseney1/soma-governance?s=readme)
@@ -20,6 +20,38 @@ Soma makes AI agents trustworthy by providing observably traceable governance �
 > **Internal naming convention**: Soma uses a biological metaphor internally (genome, organs, cells) to model rule evolution — see the codebase for details.
 
 See the [NOTICE](NOTICE) and [PRIVACY.md](PRIVACY.md) files for our full Data Privacy Statement.
+
+---
+
+## How It Works
+
+Soma replaces static, unverified prompt rules (`.cursorrules`, `CLAUDE.md`) with a closed-loop governance engine that injects constraints just-in-time, verifies generated code, and evolves rules based on evidence.
+
+```mermaid
+flowchart LR
+    A["Agent Action"] --> B["1. JIT Rule Injection<br/><i>Relevant constraints & traps</i>"]
+    B --> C["Code Generation"]
+    C --> D["2. Two-Layer Verification<br/><i>Deterministic AST + Adversarial Arbiter</i>"]
+    D --> E["3. Ambient Telemetry<br/><i>Trigger & outcome signals</i>"]
+    E --> F["Self-Evolving Lifecycle<br/><i>Rules promote or decay</i>"]
+    F -.-> B
+```
+
+### 1. Just-In-Time (JIT) Context Injection
+Static rule files waste context tokens and suffer from instruction dilution. Soma intercepts agent tool calls (via MCP or CLI) and injects **only the rules, architectural invariants, and known traps** that match the specific files the agent is currently reading or editing. Agents stay within their context budget while seeing the exact constraints that matter.
+
+### 2. Two-Layer Verification Gate (`soma verify`)
+Before changes are merged or committed, Soma runs an automated two-layer verification suite:
+* **Layer 1: Deterministic AST Analysis (Zero API Keys)**  
+  Fast, local Python Abstract Syntax Tree tools check call graph completeness, test uncovered branches, identify dead code, detect surviving mutations, and ensure import safety.
+* **Layer 2: Adversarial Rebuttal Protocol (Optional LLM)**  
+  An information-partitioned verification harness where a **Spec Agent** predicts hidden failure modes from the task plan, a **Code Agent** mounts a defense backed by real code and test execution evidence, and an **Arbiter** renders a binding `SHIP` or `BLOCK` verdict.
+
+### 3. Zero-Touch Evolutionary Lifecycle
+Rules in Soma are not permanent assumptions—they must mathematically prove their value:
+* **Ambient Evidence**: Verification outcomes and historical git commits automatically mint fitness signals (`.soma/evidence/signals.jsonl`).
+* **Wilson-Bounded Scoring**: Rules that consistently prevent defects without raising false alarms earn promotion from *candidate* to *invariant* to *core*.
+* **Scale-to-Zero Decay**: Unobserved or obsolete rules decay and expire on read without requiring background daemons, cron jobs, or network calls.
 
 ---
 
@@ -135,6 +167,7 @@ All governance workflows are available via the `soma` CLI:
 | `soma hook` | Native lifecycle hooks (`pre-commit`, `safety-gate`, `pre-invocation`, `session-close`) |
 | `soma sync` | Reconcile evidence JSONL with rule frontmatter (`--dry-run`, `--json`) |
 | `soma oracle` | Rule health classification — healthy, noisy, expired, unobserved |
+| `soma harvest` | Bootstrap cell fitness from git history (`--git`, `--limit`, `--dry-run`, `--json`) |
 | `soma promote` | Evaluate rules for promotion (candidate → invariant → core). `--force --cell <id>` for manual |
 | `soma demote` | Evaluate rules for demotion (high FP rate or dormant). `--force --cell <id>` for manual |
 

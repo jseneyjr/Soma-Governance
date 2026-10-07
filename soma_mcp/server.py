@@ -493,6 +493,19 @@ def _handle_request_impl(request: Dict[str, Any]) -> Dict[str, Any]:
             }
         }
 
+def _on_session_close(workspace: Optional[str] = None) -> None:
+    """Trigger background ACE outcome reflection upon session termination."""
+    ws = workspace or _canonical_workspace
+    if not ws:
+        return
+    try:
+        from soma_core.outcomes import run_outcome_engine
+        with contextlib.redirect_stdout(sys.stderr):
+            run_outcome_engine(ws)
+    except Exception:
+        pass
+
+
 def run_stdio_server():
     global _canonical_workspace
     global _execution_enabled
@@ -536,6 +549,9 @@ def run_stdio_server():
                     send_error(request["id"], -32603, "Internal error")
     except (BrokenPipeError, KeyboardInterrupt):
         pass
+    finally:
+        if _canonical_workspace:
+            _on_session_close(_canonical_workspace)
                     
     return 0
 

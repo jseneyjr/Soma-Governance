@@ -9,6 +9,7 @@ import argparse
 import os
 import subprocess
 import sys
+from typing import Any
 
 
 # Lazy imports to keep CLI responsive
@@ -335,12 +336,28 @@ def run_verify(args: argparse.Namespace) -> int:
     summary = runner.format_summary(results)
     print(summary)
 
+    def _record_telemetry(passed: bool, verdict: Any):
+        try:
+            from soma_core.outcomes import record_verification_telemetry
+            record_verification_telemetry(
+                workspace=repo_root,
+                target_files=target_files,
+                passed=passed,
+                verdict=verdict,
+                layer1_evidence=results,
+                source="session",
+            )
+        except Exception:
+            pass
+
     if getattr(args, 'layer1_only', False):
+        _record_telemetry(layer1_pass, "PASS" if layer1_pass else "FAIL")
         return 0 if layer1_pass else 1
 
     # ── Run Layer 2 (full verification) ───────────────────────────────
     provider = resolve_cli_provider(args, repo_root)
     if provider is None:
+        _record_telemetry(layer1_pass, "PASS" if layer1_pass else "FAIL")
         if not layer1_pass:
             return 1
         print("Notice: No inference provider configured. Layer 2 skipped (Layer 1 deterministic checks passed).",
@@ -352,6 +369,7 @@ def run_verify(args: argparse.Namespace) -> int:
         return 1
 
     if not task_plan:
+        _record_telemetry(layer1_pass, "PASS" if layer1_pass else "FAIL")
         if not layer1_pass:
             return 1
         print("Notice: No task plan provided (--plan or --plan-file). Layer 2 skipped (Layer 1 deterministic checks passed).",
@@ -372,10 +390,13 @@ def run_verify(args: argparse.Namespace) -> int:
         )
     except Exception as e:
         print(f"Error: Layer 2 verification failed: {e}", file=sys.stderr)
+        _record_telemetry(False, "BLOCK")
         return 1
 
     print(format_layer2_summary(l2_result))
     l2_exit = verdict_to_exit_code(l2_result.verdict)
+    overall_passed = bool(layer1_pass and l2_exit == 0)
+    _record_telemetry(overall_passed, l2_result.verdict)
     if not layer1_pass or l2_exit != 0:
         return 1
 

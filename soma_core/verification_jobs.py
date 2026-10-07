@@ -218,6 +218,19 @@ def _run_verification_pipeline(job: VerificationJob, llm_backend: Optional[Calla
                         result_payload["layer2_error"] = str(exc)
                         result_payload["status"] = "FAIL"
 
+            try:
+                from soma_core.outcomes import record_verification_telemetry
+                record_verification_telemetry(
+                    workspace=job.workspace,
+                    target_files=job.files,
+                    passed=(result_payload.get("status") == "PASS"),
+                    verdict=result_payload.get("status"),
+                    layer1_evidence=l1_evidence,
+                    source="mcp",
+                )
+            except Exception:
+                pass
+
             with _JOBS_LOCK:
                 if job.status == JOB_STATUS_RUNNING:
                     job.status = JOB_STATUS_COMPLETED

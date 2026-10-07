@@ -690,6 +690,197 @@ def append_fitness_log(
     return True
 
 
+def record_verification_telemetry(
+    workspace: str,
+    target_files: list[str],
+    passed: bool,
+    verdict: Any = None,
+    layer1_evidence: Any = None,
+    source: str = "session",
+    run_id: Optional[str] = None,
+) -> bool:
+    """Record ambient verification evidence (triggers and outcomes) for matched cells."""
+    if not workspace or not target_files:
+        return False
+
+    cells_dir = os.path.join(workspace, '.soma', 'cells')
+    if not os.path.isdir(cells_dir):
+        return False
+
+    matched = match_cells_to_changes(workspace, target_files)
+    if not matched:
+        return False
+
+    from soma_core.telemetry import append_signals
+
+    if run_id is None:
+        run_id = secrets.token_hex(16)
+
+    credit_weights = compute_credit_weights(matched, target_files)
+    events = []
+    fitness_signals = []
+    sig_type = "tp" if passed else "fp"
+    signal_val = 1.0 if passed else -1.0
+
+    for cell in matched:
+        cell_id = cell.get("_name") or cell.get("id")
+        if not cell_id:
+            continue
+        weight = float(credit_weights.get(cell_id, 1.0))
+        weight = max(0.0, min(1.0, weight))
+
+        # 1. Trigger event
+        events.append({
+            "cell_name": cell_id,
+            "signal_type": "trigger",
+            "source": source,
+            "metadata": {
+                "credit_weight": 1.0,
+                "verdict": str(verdict) if verdict is not None else ("PASS" if passed else "FAIL"),
+                "target_files": target_files[:20],
+            },
+            "principal": "verification",
+            "idempotency_scope": "run",
+            "idempotency_key": f"{run_id}:trig:{cell_id}",
+        })
+
+        # 2. Outcome event
+        events.append({
+            "cell_name": cell_id,
+            "signal_type": sig_type,
+            "source": source,
+            "metadata": {
+                "credit_weight": weight,
+                "verdict": str(verdict) if verdict is not None else ("PASS" if passed else "FAIL"),
+                "passed": passed,
+                "evidence_checks": len(layer1_evidence) if layer1_evidence else 0,
+            },
+            "principal": "verification",
+            "idempotency_scope": "run",
+            "idempotency_key": f"{run_id}:out:{cell_id}",
+        })
+
+        fitness_signals.append({
+            "cell": cell_id,
+            "_path": cell.get("_path"),
+            "signal": signal_val,
+            "credit_weight": weight,
+        })
+
+    try:
+        append_signals(workspace, events)
+        if fitness_signals:
+            update_cell_fitness(workspace, fitness_signals)
+        return True
+    except Exception as exc:
+        print(f"    ! failed to record ambient verification telemetry: {exc}", file=sys.stderr)
+        return False
+
+
+def harvest_git_history(workspace: str, limit: int = 30, dry_run: bool = False) -> dict:
+    """Inspect recent git commit diffs, match touched files to cells, and seed baseline fitness evidence."""
+    cells_dir = os.path.join(workspace, '.soma', 'cells')
+    if not os.path.isdir(cells_dir):
+        return {"commits_inspected": 0, "cells_matched": 0, "signals_minted": 0}
+
+    try:
+        cmd = ["git", "log", f"-n{max(1, limit)}", "--name-only", "--format=commit:%H:%cI"]
+        res = subprocess.run(cmd, cwd=workspace, capture_output=True, text=True, timeout=15)
+        if res.returncode != 0:
+            return {"commits_inspected": 0, "cells_matched": 0, "signals_minted": 0, "error": res.stderr}
+    except Exception as exc:
+        return {"commits_inspected": 0, "cells_matched": 0, "signals_minted": 0, "error": str(exc)}
+
+    commits = []
+    current_commit = None
+    current_date = None
+    current_files = []
+
+    for line in res.stdout.splitlines():
+        line = line.strip()
+        if not line:
+            continue
+        if line.startswith("commit:"):
+            if current_commit:
+                commits.append((current_commit, current_date, current_files))
+            parts = line.split(":", 2)
+            current_commit = parts[1]
+            current_date = parts[2] if len(parts) > 2 else datetime.now(timezone.utc).isoformat()
+            current_files = []
+        else:
+            current_files.append(line)
+
+    if current_commit:
+        commits.append((current_commit, current_date, current_files))
+
+    all_events = []
+    fitness_updates_by_cell = {}
+    matched_cell_ids = set()
+
+    for commit_hash, commit_date, files in commits:
+        if not files:
+            continue
+        matched = match_cells_to_changes(workspace, files)
+        if not matched:
+            continue
+
+        credit_weights = compute_credit_weights(matched, files)
+        for cell in matched:
+            cell_id = cell.get("_name") or cell.get("id")
+            if not cell_id:
+                continue
+            matched_cell_ids.add(cell_id)
+            weight = float(credit_weights.get(cell_id, 1.0))
+            weight = max(0.0, min(1.0, weight))
+
+            all_events.append({
+                "cell_name": cell_id,
+                "signal_type": "trigger",
+                "source": "ci",
+                "metadata": {
+                    "credit_weight": 1.0,
+                    "commit": commit_hash[:10],
+                    "commit_date": commit_date,
+                },
+                "principal": "git_harvest",
+                "idempotency_scope": "commit",
+                "idempotency_key": f"{commit_hash[:12]}:trig:{cell_id}",
+            })
+            all_events.append({
+                "cell_name": cell_id,
+                "signal_type": "tp",
+                "source": "ci",
+                "metadata": {
+                    "credit_weight": weight,
+                    "commit": commit_hash[:10],
+                    "commit_date": commit_date,
+                },
+                "principal": "git_harvest",
+                "idempotency_scope": "commit",
+                "idempotency_key": f"{commit_hash[:12]}:tp:{cell_id}",
+            })
+
+            if cell_id not in fitness_updates_by_cell:
+                fitness_updates_by_cell[cell_id] = {
+                    "cell": cell_id,
+                    "_path": cell.get("_path"),
+                    "signal": 1.0,
+                    "credit_weight": weight,
+                }
+
+    if not dry_run and all_events:
+        from soma_core.telemetry import append_signals
+        append_signals(workspace, all_events)
+        if fitness_updates_by_cell:
+            update_cell_fitness(workspace, list(fitness_updates_by_cell.values()))
+
+    return {
+        "commits_inspected": len(commits),
+        "cells_matched": len(matched_cell_ids),
+        "signals_minted": len(all_events),
+    }
+
+
 def run_outcome_engine(workspace: Optional[str] = None, mod: Any = None) -> int:
     """Canonical ACE reflector loop."""
     m = mod if mod is not None else sys.modules.get('soma_core.telemetry') or sys.modules[__name__]
@@ -989,4 +1180,6 @@ __all__ = [
     "extract_modified_files",
     "match_cells",
     "update_fitness",
+    "record_verification_telemetry",
+    "harvest_git_history",
 ]
