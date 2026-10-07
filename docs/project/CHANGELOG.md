@@ -3,6 +3,31 @@
 All notable changes to Soma are documented here.
 This project uses [Semantic Versioning](https://semver.org/).
 
+## [0.107.0] — 2026-10-06 — "Porcelain Aliases, Output Ergonomics & Pre-Seed Target Constraints"
+
+### CLI Porcelain Aliases & Output Ergonomics
+- **Intuitive Porcelain Subcommand Aliases**:
+  - Added `soma check` as a direct porcelain alias for `soma verify`, supporting identical parameters (`--files`, `--layer1-only`, `--plan`, `--plan-file`, `--provider`, `--dry-run`).
+  - Added `soma rules` as a porcelain alias for `soma status`, allowing developers to inspect active governance rules naturally.
+  - Added `soma audit` as a porcelain alias for `soma doctor`, unifying health and governance policy audits.
+- **Ergonomic Output Controls (`--plain` / `--no-emoji`)**:
+  - Added `--plain` and `--no-emoji` global CLI flags to `common_parser` to strip Unicode emojis and ANSI formatting.
+  - Implemented `format_plain()` in `soma_cli` to convert emojis (e.g. `[WALL]`, `[TRAP]`, `[PASS]`, `[FAIL]`) for clean, parseable output across non-UTF-8 terminals (e.g. Windows cp1252) and CI/CD log pipelines.
+  - Added `format_status_summary()` in `soma_cli/status.py` decoupling default status outputs from internal biological metaphors unless `--plumbing` is explicitly passed.
+
+### JIT Engine Pre-Seed Target Constraints (GitHub Issue #77)
+- **Pre-Edit File Constraint Injection**:
+  - Implemented `extract_target_constraints()` in `soma_mcp/jit_engine.py` to inspect target files during `soma_scan` and extract non-negotiable invariants and traps before code generation occurs.
+  - Returns structured `target_constraints` summary key in `express()` payload containing target file, invariants, traps, and rule tiers.
+  - Prepends a prominent `## Pre-Edit Invariants & Constraints` early-warning section to JIT prompt context, eliminating post-generation rejection token waste.
+  - Seeded early-warning section length into JIT token accounting to strictly adhere to `max_jit_tokens`.
+
+### Bug Registry Updates
+- Logged and tracked:
+  - `BUG-070`: CI ModuleNotFoundError on `google.genai` during optional test execution.
+  - `BUG-071`: GitHub Issue #75 JIT token bloat and lack of budget clamping.
+  - `BUG-072`: GitHub Issue #77 lack of pre-seeded active target file constraints in `soma_scan`.
+
 ## [0.106.0] — 2026-10-06 — "JIT Context Budget Clamping & Two-Layer Verification Gate"
 
 ### JIT Engine & Context Budget (GitHub Issue #75)

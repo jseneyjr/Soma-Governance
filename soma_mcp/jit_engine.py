@@ -279,6 +279,27 @@ def format_cell_guidance(cell: dict[str, object]) -> dict[str, object]:
     }
 
 
+def extract_target_constraints(cells: list[dict[str, object]], changed_files: list[str]) -> list[dict[str, object]]:
+    """Extract structured constraints for target files to pre-seed invariants before editing (Issue #77)."""
+    constraints = []
+    for cell in cells:
+        name = cell.get('_name') or cell.get('name', 'unnamed')
+        ctype = cell.get('type', 'advisory')
+        enforcement = cell.get('enforcement', ctype)
+        hypothesis = cell.get('hypothesis', '')
+        prediction = cell.get('prediction', '')
+        matched = cell.get('_matched_files', [])
+        constraints.append({
+            'name': name,
+            'type': ctype,
+            'tier': enforcement,
+            'hypothesis': hypothesis,
+            'prediction': prediction,
+            'matched_files': matched or list(changed_files),
+        })
+    return constraints
+
+
 def load_genome_rules(workspace: str, changed_files: list[str]) -> list[dict[str, str]]:
     """Load genome rules marked as non_standard that match changed files."""
     genome_dir = os.path.join(workspace, 'genome')
@@ -354,6 +375,7 @@ def express(
         return {
             'relevant_cells': [],
             'genome_guidance': [],
+            'target_constraints': [],
             'context': 'No changed files detected. Governance guidance will be provided when files are modified.',
             'stats': {
                 'total_cells': 0,
@@ -408,8 +430,19 @@ def express(
     ranked = rank_cells(candidates)
     selected_candidates = ensure_type_diversity(ranked, remaining_budget)
 
-    # Stage 3: Token budget clamping (Issue #75)
-    accumulated_tokens = 0
+    # Stage 3: Pre-seed constraints and token budget clamping (Issue #75 & Issue #77)
+    target_constraints = extract_target_constraints(matched, changed_files)
+    early_warning_parts = []
+    wall_constraints = [c for c in target_constraints if c.get('tier') == 'wall' or c.get('type') == 'wall']
+
+    if wall_constraints:
+        early_warning_parts.append("## Pre-Edit Invariants & Constraints\n")
+        early_warning_parts.append("CRITICAL: You must adhere to the following invariants when modifying target files:\n")
+        for wc in wall_constraints:
+            early_warning_parts.append(f"- 🧱 [INVARIANT] {wc['name']}: {wc['hypothesis']}\n")
+
+    early_warning_text = "".join(early_warning_parts)
+    accumulated_tokens = estimate_tokens(early_warning_text)
     expressed_cells = []
     clamped = False
 
@@ -449,6 +482,9 @@ def express(
 
     # Build the combined guidance text
     guidance_parts = []
+    if early_warning_parts:
+        guidance_parts.extend(early_warning_parts)
+
     if expressed_cells:
         guidance_parts.append("## Active Governance Cells\n")
         for cg in expressed_cells:
@@ -465,6 +501,7 @@ def express(
     return {
         'relevant_cells': expressed_cells,
         'genome_guidance': expressed_genome,
+        'target_constraints': target_constraints,
         'context': combined,
         'stats': {
             'total_cells': len(all_cells),

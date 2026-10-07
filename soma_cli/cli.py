@@ -38,6 +38,12 @@ class SomaParser(argparse.ArgumentParser):
         ns = super().parse_args(args=args, namespace=namespace)
         if not hasattr(ns, "plumbing"):
             ns.plumbing = False
+        if not hasattr(ns, "plain"):
+            ns.plain = False
+        if not hasattr(ns, "no_emoji"):
+            ns.no_emoji = False
+        if getattr(ns, "no_emoji", False):
+            ns.plain = True
         if not hasattr(ns, "verbose"):
             ns.verbose = False
         if not hasattr(ns, "quiet"):
@@ -54,6 +60,12 @@ def _build_parser() -> argparse.ArgumentParser:
     common_parser.add_argument("--plumbing", "--internal", action="store_true",
                                default=argparse.SUPPRESS,
                                help="Display raw internal biological terms")
+    common_parser.add_argument("--plain", action="store_true",
+                               default=argparse.SUPPRESS,
+                               help="Strip ANSI styling and Unicode emojis for plain logs")
+    common_parser.add_argument("--no-emoji", action="store_true",
+                               default=argparse.SUPPRESS,
+                               help="Strip Unicode emojis from output (alias for --plain)")
     common_parser.add_argument("--format", choices=["text", "json", "mermaid"],
                                default=argparse.SUPPRESS,
                                help="Output format")
@@ -105,7 +117,7 @@ def _build_parser() -> argparse.ArgumentParser:
                           help="Session index (default: latest)")
 
     # soma doctor
-    p_doctor = sub.add_parser("doctor", parents=[common_parser], help="System health check")
+    p_doctor = sub.add_parser("doctor", aliases=["audit"], parents=[common_parser], help="System health and governance audit")
     p_doctor.add_argument("--fix-path", action="store_true",
                           help="Add soma's scripts directory to your shell startup file "
                                "(dry run unless confirmed or --yes; zsh/bash/fish only)")
@@ -113,7 +125,7 @@ def _build_parser() -> argparse.ArgumentParser:
                           help="With --fix-path: apply without asking")
 
     # soma verify
-    p_verify = sub.add_parser("verify", parents=[common_parser], help="Run verification on changed files")
+    p_verify = sub.add_parser("verify", aliases=["check"], parents=[common_parser], help="Run verification on changed files")
     p_verify.add_argument("--files", nargs="*", default=None,
                           help="Explicit list of files to verify")
     p_verify.add_argument("--layer1-only", action="store_true",
@@ -271,10 +283,20 @@ def cmd_doctor(args: argparse.Namespace) -> int:
     return run_doctor(args)
 
 
+def cmd_audit(args: argparse.Namespace) -> int:
+    """Run system and policy health audit (porcelain alias for doctor)."""
+    return cmd_doctor(args)
+
+
 def cmd_verify(args: argparse.Namespace) -> int:
     """Run verification on changed files."""
     from soma_cli.verify import run_verify
     return run_verify(args)
+
+
+def cmd_check(args: argparse.Namespace) -> int:
+    """Run verification on changed files (porcelain alias for verify)."""
+    return cmd_verify(args)
 
 
 def cmd_checkpoint(args: argparse.Namespace) -> int:
@@ -394,7 +416,9 @@ COMMANDS = {
     "rules": cmd_status,
     "report": cmd_report,
     "doctor": cmd_doctor,
+    "audit": cmd_audit,
     "verify": cmd_verify,
+    "check": cmd_check,
     "checkpoint": cmd_checkpoint,
     "sync": cmd_sync,
     "oracle": cmd_oracle,
