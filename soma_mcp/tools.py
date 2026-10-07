@@ -23,11 +23,19 @@ from soma_mcp.jit_engine import express as jit_express
 from soma_mcp.jit_engine import parse_frontmatter, warn
 
 # Import security utilities
-from soma_mcp.security import confine_workspace, confine_path, validate_cell_names
+from soma_mcp.security import Workspace, confine_workspace, confine_path, validate_cell_names
 from soma_mcp.integrity import (
     load_manifest, verify_manifest, generate_manifest, save_manifest,
     generate_key, load_key,
 )
+
+
+def _get_workspace(args: dict | None = None) -> Workspace:
+    """Resolve and confine the target workspace into a Workspace value object."""
+    raw = (args.get("workspace") if args else None) or resolve_workspace(args)
+    if isinstance(raw, Workspace):
+        return raw
+    return Workspace.confine(raw)
 
 # Import TTC Verifier directly from soma_core
 try:
@@ -246,14 +254,14 @@ def get_governance(args=None):
     if not _HAS_SDK:
         return None
     try:
-        workspace = confine_workspace(args.get('workspace') or resolve_workspace(args))
+        workspace = _get_workspace(args)
     except ValueError:
         return None
     return Governance(project_root=workspace)
 
 
 def build_cell_create_prompt(description: str, domain_hint: str = None, cell_type: str = None, args=None) -> str:
-    workspace = confine_workspace(args.get('workspace') or resolve_workspace(args))
+    workspace = _get_workspace(args)
     
     examples = []
     inventory = inventory_cells(workspace)
@@ -754,7 +762,7 @@ def _handle_list_cells(args: dict, gov):
         except RuntimeError as exc:
             return {"status": _STATUS_FAIL, "error": str(exc)}
     try:
-        workspace = confine_workspace(args.get("workspace") or resolve_workspace(args))
+        workspace = _get_workspace(args)
     except ValueError as exc:
         return {"status": _STATUS_FAIL, "error": str(exc)}
     return _list_cells_stdlib(workspace, cell_type=cell_type)
@@ -764,14 +772,14 @@ def _handle_propose_change(args: dict, gov) -> dict:
     if not soma_propose_change:
         return {"error": "soma_propose_change not available"}
     try:
-        workspace = confine_workspace(args.get("workspace") or resolve_workspace(args))
+        workspace = _get_workspace(args)
     except ValueError as exc:
         return {"error": str(exc), "status": _STATUS_FAIL}
     file_path = args.get("file_path")
     if not file_path:
         return {"error": "file_path is required", "status": _STATUS_FAIL}
     try:
-        _, rel_path = confine_path(file_path, workspace)
+        _, rel_path = workspace.confine_path(file_path)
         file_path = str(rel_path)
     except ValueError as exc:
         return {"error": str(exc), "status": _STATUS_FAIL}
@@ -794,8 +802,8 @@ def _handle_audit_security(args: dict, gov) -> dict:
     file_path = args.get("file_path") or ""
     if file_path:
         try:
-            workspace = confine_workspace(args.get("workspace") or resolve_workspace(args))
-            _, rel_path = confine_path(file_path, workspace)
+            workspace = _get_workspace(args)
+            _, rel_path = workspace.confine_path(file_path)
             file_path = rel_path
         except ValueError as exc:
             return {"error": str(exc), "status": _STATUS_FAIL}
@@ -823,8 +831,8 @@ def _handle_audit_performance(args: dict, gov) -> dict:
     file_path = args.get("file_path") or ""
     if file_path:
         try:
-            workspace = confine_workspace(args.get("workspace") or resolve_workspace(args))
-            _, rel_path = confine_path(file_path, workspace)
+            workspace = _get_workspace(args)
+            _, rel_path = workspace.confine_path(file_path)
             file_path = rel_path
         except ValueError as exc:
             return {"error": str(exc), "status": _STATUS_FAIL}
@@ -846,7 +854,7 @@ def _handle_audit_performance(args: dict, gov) -> dict:
 
 def _handle_verify_changes(args: dict, gov) -> dict:
     try:
-        workspace = confine_workspace(args.get('workspace') or resolve_workspace(args))
+        workspace = _get_workspace(args)
     except ValueError as exc:
         return {"error": str(exc), "status": _STATUS_FAIL}
     files = args.get('files') or []
@@ -855,7 +863,7 @@ def _handle_verify_changes(args: dict, gov) -> dict:
     if not files and not args.get('async_mode', False):
         return {"status": _STATUS_FAIL, "summary": "No files specified to verify.", "layer1_only": True, "evidence": []}
     try:
-        files = [confine_path(f, workspace)[1] for f in files]
+        files = [workspace.confine_path(f)[1] for f in files]
     except ValueError as exc:
         return {"error": str(exc), "status": _STATUS_FAIL}
     layer1_only = args.get('layer1_only', True)
@@ -950,14 +958,12 @@ def _handle_poll_verification(args: dict, gov) -> dict:
 
 def _handle_checkpoint(args: dict, gov) -> dict:
     try:
-        workspace = confine_workspace(args.get('workspace') or resolve_workspace(args))
+        workspace = _get_workspace(args)
     except ValueError as exc:
         return {"error": str(exc), "status": _STATUS_FAIL}
     if _run_checkpoint_checks is None:
         return {"error": "checkpoint verification is not available", "status": _STATUS_FAIL}
-    from pathlib import Path
-    root = Path(workspace)
-    issues = _run_checkpoint_checks(root)
+    issues = _run_checkpoint_checks(workspace.root)
     return {
         "status": "PASS" if not issues else "FAIL",
         "checks": _CHECKPOINT_NAMES,
@@ -968,7 +974,7 @@ def _handle_checkpoint(args: dict, gov) -> dict:
 
 def _handle_scan(args: dict, gov) -> dict:
     try:
-        workspace = confine_workspace(args.get('workspace') or resolve_workspace(args))
+        workspace = _get_workspace(args)
     except ValueError as exc:
         return {"error": str(exc), "status": _STATUS_FAIL}
     files = args.get('files', None)
@@ -976,7 +982,7 @@ def _handle_scan(args: dict, gov) -> dict:
         if not isinstance(files, (list, tuple)) or not all(isinstance(f, str) for f in files):
             return {"error": "'files' must be a list of file paths", "status": _STATUS_FAIL}
         try:
-            files = [str(confine_path(f, workspace)[1]) for f in files]
+            files = [str(workspace.confine_path(f)[1]) for f in files]
         except ValueError as exc:
             return {"error": str(exc), "status": _STATUS_FAIL}
     return jit_express(workspace, changed_files=files)
@@ -984,7 +990,7 @@ def _handle_scan(args: dict, gov) -> dict:
 
 def _handle_report_outcome(args: dict, gov) -> dict:
     try:
-        workspace = confine_workspace(args.get('workspace') or resolve_workspace(args))
+        workspace = _get_workspace(args)
     except ValueError as exc:
         return {"error": str(exc), "status": _STATUS_FAIL}
     raw_outcome = args.get('outcome')
@@ -1022,7 +1028,7 @@ def _handle_report_outcome(args: dict, gov) -> dict:
         cells_used = []
 
     if cells_used:
-        invalid = validate_cell_names(cells_used, workspace)
+        invalid = workspace.validate_cell_names(cells_used)
         if invalid:
             return {
                 "error": f"Unknown cell(s): {invalid}. Only existing cells can be reported.",
@@ -1065,7 +1071,7 @@ def _handle_report_outcome(args: dict, gov) -> dict:
 
 def _handle_capture_insight(args: dict, gov) -> dict:
     try:
-        workspace = confine_workspace(args.get('workspace') or resolve_workspace(args))
+        workspace = _get_workspace(args)
     except ValueError as exc:
         return {"error": str(exc), "status": _STATUS_FAIL}
     try:
@@ -1079,7 +1085,7 @@ def _handle_capture_insight(args: dict, gov) -> dict:
         record = capture_insight(
             workspace=workspace,
             insight=args.get('insight', ''),
-            context_files=[str(confine_path(f, workspace)[1]) for f in context_files_arg],
+            context_files=[str(workspace.confine_path(f)[1]) for f in context_files_arg],
             source_conversation=args.get('source_conversation'),
             category=args.get('category'),
         )
@@ -1093,10 +1099,10 @@ def _handle_capture_insight(args: dict, gov) -> dict:
 
 def _handle_generate_manifest(args: dict, gov) -> dict:
     try:
-        workspace = confine_workspace(args.get('workspace') or resolve_workspace(args))
+        workspace = _get_workspace(args)
     except ValueError as exc:
         return {"error": str(exc), "status": "FAIL"}
-    cells_dir = os.path.join(workspace, ".soma", "cells")
+    cells_dir = str(workspace.cells_dir)
 
     key_created = False
     if args.get("generate_key") and load_key(workspace) is None:
@@ -1121,7 +1127,7 @@ def _handle_grade(args: dict, gov) -> dict:
     else:
         try:
             from soma_core.telemetry import calculate_immune_grade
-            workspace = confine_workspace(args.get('workspace') or resolve_workspace(args))
+            workspace = _get_workspace(args)
             result = calculate_immune_grade(workspace)
         except Exception as exc:
             return {"status": _STATUS_FAIL, "error": str(exc)}
@@ -1148,7 +1154,7 @@ def _handle_coverage(args: dict, gov):
     else:
         try:
             from soma_core.telemetry import calculate_coverage
-            workspace = confine_workspace(args.get('workspace') or resolve_workspace(args))
+            workspace = _get_workspace(args)
             result = calculate_coverage(workspace)
         except Exception as exc:
             return {"status": _STATUS_FAIL, "error": str(exc)}
@@ -1164,7 +1170,7 @@ def _handle_fitness(args: dict, gov):
     else:
         try:
             from soma_core.lifecycle import compute_cells_fitness
-            workspace = confine_workspace(args.get('workspace') or resolve_workspace(args))
+            workspace = _get_workspace(args)
             result = compute_cells_fitness(workspace=workspace, bayesian=bayesian)
         except Exception as exc:
             return {"status": _STATUS_FAIL, "error": str(exc)}

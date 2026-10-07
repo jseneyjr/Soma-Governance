@@ -23,7 +23,7 @@ from .tools import (
     _CANONICAL_ARG_MAP,
     _TYPE_TRANSLATION_MAP,
 )
-from .security import confine_workspace
+from .security import Workspace
 from soma_core.receipts import (
     issue_receipt,
     verify_receipt,
@@ -35,7 +35,7 @@ from soma_core.receipts import (
 
 _session_tokens: set[str] = set()
 _session_token = None
-_canonical_workspace = None
+_canonical_workspace: Workspace | None = None
 _execution_enabled = False
 
 
@@ -512,8 +512,8 @@ def run_stdio_server():
 
     workspace_env = os.environ.get("SOMA_WORKSPACE") or os.getcwd()
     try:
-        from .security import confine_workspace
-        _canonical_workspace = confine_workspace(workspace_env)
+        from .security import Workspace
+        _canonical_workspace = Workspace.confine(workspace_env)
     except ValueError as e:
         print(f"Error: Invalid canonical workspace: {e}", file=sys.stderr)
         return 1

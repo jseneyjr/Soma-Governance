@@ -7,6 +7,7 @@ from __future__ import annotations
 
 from soma_core.workspace import (
     _WINDOWS_DEVICE_NAMES,
+    Workspace,
     confine_path,
     confine_workspace,
     validate_cell_names,
@@ -14,7 +15,8 @@ from soma_core.workspace import (
 
 __all__ = [
     "_WINDOWS_DEVICE_NAMES",
-    "confine_workspace",
+    "Workspace",
     "confine_path",
+    "confine_workspace",
     "validate_cell_names",
 ]
