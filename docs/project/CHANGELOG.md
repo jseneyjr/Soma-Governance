@@ -3,6 +3,23 @@
 All notable changes to Soma are documented here.
 This project uses [Semantic Versioning](https://semver.org/).
 
+## [0.105.0] — 2026-10-06 — "True AST Call Graph Traversal & Static Analysis"
+
+### Verification & Core Engine (Phase 8 Scorecard Remediation)
+- **True AST Call Graph Traversal Engine**:
+  - Replaced shallow regex matching (`re.compile(rf'\b{func_name}\s*\(')`) in `soma_core.verification.call_graph` with a robust Python AST visitor (`FunctionDefinitionVisitor`, `InternalCallCollector`, `ExternalModuleInspector`).
+  - Added scope-aware call site resolution ignoring mentions in docstrings, block comments, and string literals.
+  - Eliminated external module identifier collisions: external module invocations like `subprocess.run()`, `sys.exit()`, and `math.sqrt()` no longer collide with or masquerade as internal definitions.
+  - Added export recognition: functions and classes exposed via module-level `__all__` (such as public SDK and package exports) are recognized as public interfaces and exempted from orphan flags.
+  - Added cross-module direct invocation tracking resolving imports across files in the target root.
+  - Maintained sub-millisecond execution performance through AST candidate pre-filtering.
+- **Inference Provider Modernization & Default Models**:
+  - Added explicit `DEFAULT_MODEL` class attribute and `default_model` property across all inference providers: Gemini (`gemini-3.8-flash`), Anthropic (`claude-3-5-sonnet-latest`), OpenAI (`gpt-4o`), and Prompt-Only (`human`).
+  - Migrated `GeminiProvider`, `compute_token_census`, and Layer 2 arbitration from retired `gemini-2.0-flash` / `gemini-2.5-flash` to active `gemini-3.8-flash`.
+  - Authored unit test suite in `tests/test_inference_provider.py` verifying default model resolution and token counting contracts.
+- **Strict TDD Compliance**:
+  - Authored comprehensive behavioral test suite in `tests/test_verification/test_call_graph_ast.py` adhering to `tdd-protocol.md` and `feature-specs.md §6` with 10 test cases proving Red/Green correctness across comments, string literals, collisions, class methods, exports, and syntax handling.
+
 ## [0.104.0] — 2026-10-06 — "Layer 2 Adversarial Verification CLI Wiring"
 
 ### CLI & Verification (Phase 7 Scorecard Remediation)

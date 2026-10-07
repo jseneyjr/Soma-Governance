@@ -72,6 +72,12 @@ def resolve_key(workspace, env_keys):
     return None
 
 class InferenceProvider(ABC):
+    DEFAULT_MODEL: str = ""
+
+    @property
+    def default_model(self) -> str:
+        return self.DEFAULT_MODEL
+
     @abstractmethod
     def generate(self, prompt: str, model: str = None) -> str:
         pass
@@ -81,6 +87,8 @@ class InferenceProvider(ABC):
         pass
 
 class GeminiProvider(InferenceProvider):
+    DEFAULT_MODEL = "gemini-3.8-flash"
+
     def __init__(self, api_key=None):
         try:
             from google import genai
@@ -92,7 +100,7 @@ class GeminiProvider(InferenceProvider):
             raise ImportError("google-genai package required. Install with: pip install google-genai")
 
     def generate(self, prompt: str, model: str = None) -> str:
-        model_name = model or "gemini-2.0-flash"
+        model_name = model or self.DEFAULT_MODEL
         response = self.client.models.generate_content(
             model=model_name,
             contents=prompt
@@ -100,11 +108,13 @@ class GeminiProvider(InferenceProvider):
         return response.text
 
     def count_tokens(self, text: str, model: str = None) -> int:
-        model_name = model or "gemini-2.0-flash"
+        model_name = model or self.DEFAULT_MODEL
         response = self.client.models.count_tokens(model=model_name, contents=text)
         return response.total_tokens
 
 class AnthropicProvider(InferenceProvider):
+    DEFAULT_MODEL = "claude-3-5-sonnet-latest"
+
     def __init__(self, api_key=None):
         try:
             from anthropic import Anthropic
@@ -113,7 +123,7 @@ class AnthropicProvider(InferenceProvider):
             raise ImportError("anthropic package required. Install with: pip install anthropic")
 
     def generate(self, prompt: str, model: str = None) -> str:
-        model_name = model or "claude-3-5-sonnet-latest"
+        model_name = model or self.DEFAULT_MODEL
         response = self.client.messages.create(
             model=model_name,
             max_tokens=8192,
@@ -125,6 +135,8 @@ class AnthropicProvider(InferenceProvider):
         return int(len(text.split()) * 1.35)
 
 class OpenAIProvider(InferenceProvider):
+    DEFAULT_MODEL = "gpt-4o"
+
     def __init__(self, api_key=None, base_url=None):
         try:
             from openai import OpenAI
@@ -133,7 +145,7 @@ class OpenAIProvider(InferenceProvider):
             raise ImportError("openai package required. Install with: pip install openai")
 
     def generate(self, prompt: str, model: str = None) -> str:
-        model_name = model or "gpt-4o"
+        model_name = model or self.DEFAULT_MODEL
         response = self.client.chat.completions.create(
             model=model_name,
             messages=[{"role": "user", "content": prompt}]
@@ -145,6 +157,7 @@ class OpenAIProvider(InferenceProvider):
 
 class PromptOnlyProvider(InferenceProvider):
     """Last-resort provider: hands the prompt to a human on an interactive TTY."""
+    DEFAULT_MODEL = "human"
 
     def generate(self, prompt: str, model: str = None) -> str:
         if not _stdin_is_interactive():

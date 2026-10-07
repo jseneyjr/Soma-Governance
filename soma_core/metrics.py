@@ -58,7 +58,7 @@ def resolve_metrics_dir(workspace: Path | str) -> Path:
     return default
 
 
-def compute_token_census(workspace: Path | str | None = None, model: str = "gemini-2.0-flash") -> dict:
+def compute_token_census(workspace: Path | str | None = None, model: str = "gemini-3.8-flash") -> dict:
     """Compute token census across genome rules and organ skills without subprocess."""
     ws = Path(workspace).resolve() if workspace else Path(resolve_workspace()).resolve()
     rules_dir = ws / "genome"
