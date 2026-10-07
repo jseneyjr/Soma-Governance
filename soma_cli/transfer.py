@@ -160,12 +160,206 @@ def transfer_cell(
     return 0
 
 
-def run_transfer(args: argparse.Namespace) -> int:
-    """Entry point called from soma CLI dispatcher."""
-    if not getattr(args, "cell_id", None) or not getattr(args, "target_dir", None):
-        print("Error: Missing cell_id or --to directory", file=sys.stderr)
-        print("Usage: soma transfer <cell_id> --to /path/to/target/project", file=sys.stderr)
+def export_cell(
+    cell_id: str,
+    tags: str | list[str] = "",
+    output_path: str | Path | None = None,
+    source_workspace: Workspace | Path | None = None,
+) -> int:
+    """Export a cell as a portable, self-contained JSON packet with tags."""
+    try:
+        ws = source_workspace if isinstance(source_workspace, Workspace) else (
+            Workspace.resolve(source_workspace) if source_workspace is not None else Workspace.resolve()
+        )
+        repo_dir = ws.root
+    except Exception:
+        repo_dir = None
+
+    if repo_dir is None or not (repo_dir / ".soma" / "cells").is_dir():
+        print(
+            f"Error: No Soma project found: no .soma/cells/ in {repo_dir or os.getcwd()} or any parent directory.",
+            file=sys.stderr,
+        )
         return 1
 
+    cells_dir = repo_dir / ".soma" / "cells"
+    clean_id = cell_id[:-3] if cell_id.endswith(".md") else cell_id
+    matches = list(cells_dir.rglob(f"*{clean_id}*.md"))
+    if not matches:
+        print(f"Error: Cell matching '{cell_id}' not found in {cells_dir}/", file=sys.stderr)
+        return 1
+
+    source_cell = matches[0]
+    try:
+        content = source_cell.read_text(encoding="utf-8-sig")
+    except Exception as e:
+        print(f"Error reading {source_cell}: {e}", file=sys.stderr)
+        return 1
+
+    clean_content = content.lstrip("\ufeff")
+    if not clean_content.startswith("---"):
+        print("Error: Cell does not have YAML frontmatter.", file=sys.stderr)
+        return 1
+
+    end_idx = clean_content.find("---", 3)
+    if end_idx == -1:
+        print("Error: Cell has malformed YAML frontmatter.", file=sys.stderr)
+        return 1
+
+    metadata = parse_frontmatter(clean_content) or {}
+    body_str = clean_content[end_idx + 3:].lstrip("\n")
+
+    cell_type = metadata.get("type", "wall")
+    tag_list = [t.strip() for t in tags.split(",") if t.strip()] if isinstance(tags, str) else list(tags)
+
+    export_meta = dict(metadata)
+    export_meta["fitness"] = {
+        "triggers": 0,
+        "true_positives": 0,
+        "false_positives": 0,
+        "score": None,
+    }
+    export_meta["expiry_sessions"] = 5
+    gen = metadata.get("lineage", {}).get("generation", 0) if isinstance(metadata.get("lineage"), dict) else 0
+    export_meta["lineage"] = {
+        "parent_id": source_cell.stem,
+        "created_by": "hgt_export",
+        "generation": gen + 1,
+        "siblings": [],
+    }
+
+    packet = {
+        "schema_version": "1.0",
+        "cell_id": source_cell.stem,
+        "type": cell_type,
+        "tags": tag_list,
+        "metadata": export_meta,
+        "content": body_str,
+        "exported_at": datetime.now(timezone.utc).isoformat() + "Z",
+    }
+
+    packet_json = json.dumps(packet, indent=2) + "\n"
+    if output_path:
+        out = Path(output_path)
+        out.parent.mkdir(parents=True, exist_ok=True)
+        out.write_text(packet_json, encoding="utf-8")
+        print(f"Exported: {source_cell.stem} -> {out} (tags: {tag_list})")
+    else:
+        print(packet_json)
+    return 0
+
+
+def import_cell(
+    packet_path: str | Path,
+    target_workspace: Workspace | Path | None = None,
+) -> int:
+    """Import a cell from a portable JSON packet into target workspace."""
+    p = Path(packet_path)
+    if not p.is_file():
+        print(f"Error: Packet file '{packet_path}' not found.", file=sys.stderr)
+        return 1
+
+    try:
+        packet = json.loads(p.read_text(encoding="utf-8"))
+    except Exception as e:
+        print(f"Error parsing packet JSON: {e}", file=sys.stderr)
+        return 1
+
+    cell_id = packet.get("cell_id")
+    cell_type = packet.get("type", "wall")
+    metadata = packet.get("metadata", {})
+    body_str = packet.get("content", "")
+
+    if not cell_id:
+        print("Error: Invalid packet: missing cell_id", file=sys.stderr)
+        return 1
+
+    try:
+        ws = target_workspace if isinstance(target_workspace, Workspace) else (
+            Workspace.resolve(target_workspace) if target_workspace is not None else Workspace.resolve()
+        )
+        target_dir = ws.root
+    except Exception:
+        target_dir = None
+
+    if target_dir is None or not (target_dir / ".soma").is_dir():
+        print("Error: Target workspace does not have a .soma/ directory.", file=sys.stderr)
+        return 1
+
+    plural_type = CELL_TYPE_DIRS.get(str(cell_type), f"{cell_type}s")
+    dest_dir = target_dir / ".soma" / "cells" / plural_type
+    dest_dir.mkdir(parents=True, exist_ok=True)
+    dest_file = dest_dir / f"{cell_id}.md"
+
+    metadata["fitness"] = {
+        "triggers": 0,
+        "true_positives": 0,
+        "false_positives": 0,
+        "score": None,
+    }
+    metadata["expiry_sessions"] = 5
+    metadata["imported_date"] = datetime.now(timezone.utc).isoformat() + "Z"
+
+    frontmatter = dump_frontmatter(metadata)
+    full_content = f"---\n{frontmatter}---\n\n{body_str}" if body_str else f"---\n{frontmatter}---\n"
+    dest_file.write_text(full_content, encoding="utf-8")
+
+    metrics_dir = target_dir / ".soma" / "metrics"
+    metrics_dir.mkdir(parents=True, exist_ok=True)
+    transfers_log = metrics_dir / "transfers.jsonl"
+    log_entry = {
+        "timestamp": datetime.now(timezone.utc).isoformat() + "Z",
+        "cell": dest_file.name,
+        "action": "hgt_import",
+        "tags": packet.get("tags", []),
+    }
+    try:
+        with open(transfers_log, "a", encoding="utf-8") as f:
+            f.write(json.dumps(log_entry) + "\n")
+    except Exception:
+        pass
+
+    print(f"Imported: {cell_id} -> {dest_file} (fitness reset, 5-session probation)")
+    return 0
+
+
+def run_transfer(args: argparse.Namespace) -> int:
+    """Entry point called from soma CLI dispatcher."""
+    action_or_cell_id = getattr(args, "action_or_cell_id", None) or getattr(args, "cell_id", "")
+    extra_cell_id = getattr(args, "extra_cell_id", "")
+    target_dir = getattr(args, "target_dir", "")
+    output_path = getattr(args, "output", "")
+    tags = getattr(args, "tags", "")
     ws = getattr(args, "ws", None) or getattr(args, "workspace", None) or getattr(args, "_project_root", None)
-    return transfer_cell(cell_id=args.cell_id, target_dir_str=args.target_dir, source_workspace=ws)
+
+    # Subcommand: export
+    if action_or_cell_id == "export":
+        cell_id = extra_cell_id
+        if not cell_id:
+            print("Error: Missing cell_id for export", file=sys.stderr)
+            print("Usage: soma transfer export <cell_id> --tags 'python,pytest' --output rule.soma.json", file=sys.stderr)
+            return 1
+        return export_cell(cell_id=cell_id, tags=tags, output_path=output_path, source_workspace=ws)
+
+    # Subcommand: import
+    if action_or_cell_id == "import":
+        packet_path = extra_cell_id
+        if not packet_path:
+            print("Error: Missing packet_path for import", file=sys.stderr)
+            print("Usage: soma transfer import <packet.soma.json> [--to /path/to/target]", file=sys.stderr)
+            return 1
+        return import_cell(packet_path=packet_path, target_workspace=target_dir or ws)
+
+    # Direct flag export: soma transfer <cell_id> --output ...
+    if output_path or getattr(args, "export", False):
+        return export_cell(cell_id=action_or_cell_id, tags=tags, output_path=output_path, source_workspace=ws)
+
+    # Direct transfer to another repo: soma transfer <cell_id> --to /path/to/target
+    if not action_or_cell_id or not target_dir:
+        print("Error: Missing cell_id or --to directory", file=sys.stderr)
+        print("Usage: soma transfer <cell_id> --to /path/to/target/project", file=sys.stderr)
+        print("   or: soma transfer export <cell_id> --tags 'tag1,tag2' --output rule.soma.json", file=sys.stderr)
+        print("   or: soma transfer import <rule.soma.json>", file=sys.stderr)
+        return 1
+
+    return transfer_cell(cell_id=action_or_cell_id, target_dir_str=target_dir, source_workspace=ws)

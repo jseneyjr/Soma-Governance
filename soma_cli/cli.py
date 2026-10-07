@@ -244,9 +244,12 @@ def _build_parser() -> argparse.ArgumentParser:
         p_hook_sub.add_parser(alias, parents=[common_parser], help=f"Hook phase {alias}")
 
     # soma transfer
-    p_transfer = sub.add_parser("transfer", parents=[common_parser], help="Transfer a cell to another project with fitness reset")
-    p_transfer.add_argument("cell_id", nargs="?", default="", help="ID of cell to transfer")
+    p_transfer = sub.add_parser("transfer", parents=[common_parser], help="Transfer a cell to another project or export/import for HGT")
+    p_transfer.add_argument("action_or_cell_id", nargs="?", default="", help="Subcommand ('export'/'import') or ID of cell to transfer")
+    p_transfer.add_argument("extra_cell_id", nargs="?", default="", help="ID of cell or path to packet file")
     p_transfer.add_argument("--to", dest="target_dir", default="", help="Path to target project")
+    p_transfer.add_argument("--tags", type=str, default="", help="Comma-separated compatibility tags (e.g. 'python,pytest')")
+    p_transfer.add_argument("--output", "-o", type=str, default="", help="Output path for exported JSON rule (e.g. 'rule.soma.json')")
 
     # soma quarantine
     p_quarantine = sub.add_parser("quarantine", parents=[common_parser], help="Inspect and manage quarantined corrupt files")
@@ -278,6 +281,12 @@ def _build_parser() -> argparse.ArgumentParser:
                              help="Target platform (default: auto-detected or gemini)")
     p_uninstall.add_argument("--local", action="store_true", help="Uninstall from project-local directory")
     p_uninstall.add_argument("--dry-run", action="store_true", help="Show what would be uninstalled without deleting files")
+
+    # soma clean-global-rules
+    p_clean_rules = sub.add_parser("clean-global-rules", parents=[common_parser], help="Cleanse leaked internal rules from global platform directories")
+    p_clean_rules.add_argument("--dry-run", action="store_true", help="Simulate cleanse without removing files (default)")
+    p_clean_rules.add_argument("--force", action="store_true", help="Execute removal of leaked rules with quarantine backup")
+    p_clean_rules.add_argument("--quarantine-dir", type=str, default="", help="Custom quarantine directory (default: ~/.soma/quarantine)")
 
     return parser
 
@@ -439,6 +448,12 @@ def cmd_uninstall(args: argparse.Namespace) -> int:
         return 1
 
 
+def cmd_clean_global_rules(args: argparse.Namespace) -> int:
+    """Cleanse leaked internal rules from global platform directories."""
+    from soma_cli.clean_rules import run_clean_rules
+    return run_clean_rules(args)
+
+
 COMMANDS = {
     "init": cmd_init,
     "status": cmd_status,
@@ -463,6 +478,7 @@ COMMANDS = {
     "prune": cmd_prune,
     "install": cmd_install,
     "uninstall": cmd_uninstall,
+    "clean-global-rules": cmd_clean_global_rules,
 }
 
 

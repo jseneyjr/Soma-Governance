@@ -134,6 +134,9 @@ class TestPromotionCriteria:
         cells_dir.mkdir(parents=True)
         evidence_dir = tmp_path / ".soma" / "evidence"
         evidence_dir.mkdir(parents=True)
+        (tmp_path / "soma_core").mkdir(parents=True)
+        (tmp_path / "soma_cli").mkdir(parents=True)
+        (tmp_path / "pyproject.toml").write_text('name = "soma-governance"\n', encoding="utf-8")
 
         make_cell(str(cells_dir), "proven-wall", cell_type="wall",
                   created_days_ago=60)

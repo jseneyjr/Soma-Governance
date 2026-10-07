@@ -24,9 +24,15 @@ PROTECTED_RULES = frozenset({
     "desktop-automation",
 })
 
-PROMOTION_PATH = {"vacuole": "wall", "wall": "genome"}
-DEMOTION_PATH = {"genome": "wall", "wall": "vacuole"}
-TYPE_TO_DIR = {"vacuole": "vacuoles", "wall": "walls"}
+GLOBAL_PROMOTION_PATH = {"vacuole": "wall", "wall": "genome"}
+LOCAL_PROMOTION_PATH = {"vacuole": "wall", "wall": "gate"}
+PROMOTION_PATH = GLOBAL_PROMOTION_PATH
+
+GLOBAL_DEMOTION_PATH = {"genome": "wall", "wall": "vacuole"}
+LOCAL_DEMOTION_PATH = {"gate": "wall", "wall": "vacuole"}
+DEMOTION_PATH = GLOBAL_DEMOTION_PATH
+
+TYPE_TO_DIR = {"vacuole": "vacuoles", "wall": "walls", "gate": "gates"}
 
 EXTINCTION_THRESHOLD = 0.15
 PROMOTION_THRESHOLD = 0.85
@@ -45,7 +51,21 @@ VALID_TYPES = {
     "wall": "walls",
     "membrane": "membranes",
     "plasmodesmata": "plasmodesmata",
+    "gate": "gates",
 }
+
+
+def get_promotion_path(ws: object) -> dict[str, str]:
+    """Return promotion path based on whether workspace is a Soma repository."""
+    is_soma = getattr(ws, "is_soma_repo", False)
+    return GLOBAL_PROMOTION_PATH if is_soma else LOCAL_PROMOTION_PATH
+
+
+def get_demotion_path(ws: object) -> dict[str, str]:
+    """Return demotion path based on whether workspace is a Soma repository."""
+    is_soma = getattr(ws, "is_soma_repo", False)
+    return GLOBAL_DEMOTION_PATH if is_soma else LOCAL_DEMOTION_PATH
+
 
 VALID_ENFORCEMENT = ("advisory", "mechanical", "gate")
 

@@ -302,6 +302,14 @@ def extract_target_constraints(cells: list[dict[str, object]], changed_files: li
 
 def load_genome_rules(workspace: str, changed_files: list[str]) -> list[dict[str, str]]:
     """Load genome rules marked as non_standard that match changed files."""
+    try:
+        from soma_core.workspace import Workspace
+        ws = Workspace.resolve(workspace)
+        if not ws.is_soma_repo:
+            return []
+    except Exception:
+        return []
+
     genome_dir = os.path.join(workspace, 'genome')
     if not os.path.isdir(genome_dir):
         return []
