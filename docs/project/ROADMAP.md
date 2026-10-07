@@ -238,6 +238,12 @@ Wired Layer 2 Adversarial Verification into `soma verify` CLI using existing inf
 **Status**: ✅ Shipped (v0.105.0)  
 Upgraded call graph completeness checker from naive regex string matching to a full Python Abstract Syntax Tree (AST) engine. Resolves true function definitions, ignores docstrings/comments/string literals, isolates external module calls (preventing collisions with `subprocess.run`, `sys.exit`, etc.), tracks cross-module call sites, and respects module `__all__` export declarations. Developed following strict TDD with 10 behavioral tests in `tests/test_verification/test_call_graph_ast.py`.
 
+## Phase 9 — v0.106.0 ✅ Shipped
+
+### JIT Context Budget Clamping & Two-Layer Verification Gate
+**Status**: ✅ Shipped (v0.106.0)  
+Resolved GitHub Issue #75 by introducing configurable JIT context budget clamping (`max_jit_tokens`, defaulting to 2,000 tokens) across `soma_mcp/jit_engine.py` and `soma.conf`. Implemented deterministic character-based token estimation and multi-tiered precedence resolution (explicit parameter > environment variable > `soma.conf` > default 2,000). Prioritized active cell injection by frontmatter wall rules (`enforcement: wall` / `tier: wall`) while clamping lower-tier rules when the budget is saturated. Systematically integrated Gate 4.5 (Two-Layer Adversarial Verification) into `docs/project/RELEASE_WORKFLOW.md` and verified live with Gemini 3.8 Flash. Developed following strict TDD with 7 new behavioral tests in `tests/test_jit_context_budget.py`.
+
 ## Research
 
 ### Antifragile Scaling

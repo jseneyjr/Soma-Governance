@@ -3,6 +3,31 @@
 All notable changes to Soma are documented here.
 This project uses [Semantic Versioning](https://semver.org/).
 
+## [0.106.0] — 2026-10-06 — "JIT Context Budget Clamping & Two-Layer Verification Gate"
+
+### JIT Engine & Context Budget (GitHub Issue #75)
+- **Configurable JIT Context Budget Clamping**:
+  - Implemented token estimation and cumulative token budget clamping in `soma_mcp/jit_engine.py` (`express()` and helper functions).
+  - Added `estimate_tokens()` using industry-standard ~4 chars/token heuristic with non-string type safety.
+  - Added `resolve_token_budget()` supporting multi-tiered precedence: explicit `max_tokens` argument > `SOMA_MAX_JIT_TOKENS` environment variable > `MAX_JIT_TOKENS` from `soma.conf` > default 2,000 tokens. Handles `workspace=None` gracefully.
+  - Added priority cell injection: frontmatter wall rules (`enforcement: wall` or `tier: wall`) are prioritized before non-wall rules, ensuring non-negotiable security boundaries are never clamped out in favor of soft guidelines.
+  - Saturated budgets cap rule injection and append an explicit `<!-- JIT Budget Exceeded: remaining rules clamped -->` disclosure tag.
+  - Added default `MAX_JIT_TOKENS=2000` to `install/soma.conf.example`.
+
+### Release Workflow & Verification Governance
+- **Mandatory Gate 4.5 Integration**:
+  - Formally codified Gate 4.5 (Two-Layer Adversarial Verification) into `docs/project/RELEASE_WORKFLOW.md`.
+  - Added pre-release verification protocol executing `soma verify --plan ...` with real-time Arbiter convergence/divergence analysis.
+  - Verified live against Gemini 3.8 Flash (`gemini-3.8-flash`) achieving clean `SHIP` verdict (6 convergences, 0 divergences).
+
+### Strict TDD Compliance
+- Authored behavioral unit test suite in `tests/test_jit_context_budget.py` adhering to `tdd-protocol.md` and `feature-specs.md §6` with 7 test cases covering default limits, environment variable overrides, config file parsing, priority cell inclusion, and Gate 4.5 workflow documentation invariants.
+
+### CI/CD & Test Isolation
+- **Hermetic Optional Dependency Mocking**:
+  - Replaced direct `patch("google.genai.Client")` in `tests/test_inference_provider.py` with `patch.dict(sys.modules, ...)` module mocking.
+  - Resolves CI test suite failures across Ubuntu, Windows, and macOS environments where optional dependency `google-genai` is not pre-installed in the clean runner environment.
+
 ## [0.105.0] — 2026-10-06 — "True AST Call Graph Traversal & Static Analysis"
 
 ### Verification & Core Engine (Phase 8 Scorecard Remediation)
