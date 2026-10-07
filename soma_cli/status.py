@@ -256,6 +256,40 @@ def _merged_claude_rules(claude_md: Path, heading_map: dict[str, str]) -> tuple[
     return has_soma, rules
 
 
+def format_status_summary(data: dict, plumbing: bool = False, plain: bool = False) -> str:
+    """Format status summary text for porcelain vs plumbing mode."""
+    if plumbing:
+        active = data.get("active_rules", data.get("active_cells", 0))
+        vacuoles = data.get("trap_count", data.get("vacuole_count", 0))
+        walls = data.get("wall_count", 0)
+        archived = data.get("archived_count", data.get("apoptotic_count", 0))
+        lines = [
+            "🧬 Soma Status (Plumbing / Genome Diagnostics)",
+            f"  Genome / Cells:  {active} active",
+            f"  Vacuoles/Traps:  {vacuoles} active",
+            f"  Walls/Invariants:{walls} active",
+            f"  Apoptosis Queue: {archived} archived",
+        ]
+    else:
+        active = data.get("active_rules", 0)
+        traps = data.get("trap_count", 0)
+        invariants = data.get("wall_count", 0)
+        archived = data.get("archived_count", 0)
+        lines = [
+            "📊 Soma Governance Status",
+            f"  Active Rules:    {active} active",
+            f"  Invariants:      {invariants} enforced",
+            f"  Adaptive Traps:  {traps} active",
+            f"  Archived Rules:  {archived} archived",
+        ]
+
+    text = "\n".join(lines)
+    if plain:
+        from soma_cli import format_plain
+        text = format_plain(text)
+    return text
+
+
 def run_status(args: argparse.Namespace) -> int:
     """Show active rules and stats."""
     root = _repo_root(args)

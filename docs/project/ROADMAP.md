@@ -244,6 +244,12 @@ Upgraded call graph completeness checker from naive regex string matching to a f
 **Status**: ✅ Shipped (v0.106.0)  
 Resolved GitHub Issue #75 by introducing configurable JIT context budget clamping (`max_jit_tokens`, defaulting to 2,000 tokens) across `soma_mcp/jit_engine.py` and `soma.conf`. Implemented deterministic character-based token estimation and multi-tiered precedence resolution (explicit parameter > environment variable > `soma.conf` > default 2,000). Prioritized active cell injection by frontmatter wall rules (`enforcement: wall` / `tier: wall`) while clamping lower-tier rules when the budget is saturated. Systematically integrated Gate 4.5 (Two-Layer Adversarial Verification) into `docs/project/RELEASE_WORKFLOW.md` and verified live with Gemini 3.8 Flash. Developed following strict TDD with 7 new behavioral tests in `tests/test_jit_context_budget.py`.
 
+## Phase 10 — v0.107.0 ✅ Shipped
+
+### Porcelain Aliases, Output Ergonomics & Pre-Seed Target Constraints
+**Status**: ✅ Shipped (v0.107.0)  
+Resolved GitHub Issue #77 and enhanced developer ergonomics across CLI commands and JIT engine. Added intuitive porcelain aliases (`soma check` -> `verify`, `soma rules` -> `status`, `soma audit` -> `doctor`). Added `--plain` and `--no-emoji` global output controls and plain text formatters for non-UTF-8 terminals (Windows cp1252) and CI log pipelines. Decoupled default status outputs from internal biological metaphors unless `--plumbing` is explicitly passed. Pre-seeded target file invariants and traps during `soma_scan` and JIT engine expression, rendering early-warning constraint summaries at the top of context to eliminate post-generation rejection token waste. Developed following strict TDD with 13 new behavioral tests across `tests/test_cli_porcelain.py` and `tests/test_jit_preseed_constraints.py`.
+
 ## Research
 
 ### Antifragile Scaling

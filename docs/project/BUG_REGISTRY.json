@@ -1246,6 +1246,56 @@
       "regression_test": "tests/test_bayesian_fitness.py",
       "pattern": "Division by unvalidated zero or None metadata configuration value",
       "changelog_ref": "v0.92.3"
+    },
+    {
+      "id": "BUG-070",
+      "status": "fixed",
+      "title": "tests/test_inference_provider.py patch('google.genai.Client') ModuleNotFoundError in clean CI",
+      "discovered_in": "v0.105.0",
+      "fixed_in": "v0.106.0",
+      "root_cause": "platform_compat",
+      "severity": "critical",
+      "description": "Direct patch('google.genai.Client') in test suite caused ModuleNotFoundError across Ubuntu, Windows, and macOS CI runners where optional google-genai dependency was not pre-installed in the clean environment.",
+      "affected_files": [
+        "tests/test_inference_provider.py"
+      ],
+      "regression_test": "tests/test_inference_provider.py",
+      "pattern": "Optional third-party dependencies patched directly instead of hermetically mocked via sys.modules",
+      "changelog_ref": "v0.106.0"
+    },
+    {
+      "id": "BUG-071",
+      "status": "fixed",
+      "title": "soma_mcp/jit_engine.py unconstrained JIT context token bloat (Issue #75)",
+      "discovered_in": "v0.105.0",
+      "fixed_in": "v0.106.0",
+      "root_cause": "schema_drift",
+      "severity": "moderate",
+      "description": "Lack of token budget clamping in express() permitted long cell bodies to flood agent context windows, causing output token waste and context degradation.",
+      "affected_files": [
+        "soma_mcp/jit_engine.py",
+        "install/soma.conf.example"
+      ],
+      "regression_test": "tests/test_jit_context_budget.py",
+      "pattern": "Context injection engine lacks cumulative token estimation and budget enforcement clamps",
+      "changelog_ref": "v0.106.0"
+    },
+    {
+      "id": "BUG-072",
+      "status": "fixed",
+      "title": "soma_mcp/jit_engine.py post-generation rejection token waste from unseeded constraints (Issue #77)",
+      "discovered_in": "v0.106.0",
+      "fixed_in": "v0.107.0",
+      "root_cause": "silent_failure",
+      "severity": "moderate",
+      "description": "Agents generated complete file diffs before inspecting file-specific invariants and anti-pattern traps. Subsequent rejection in proposal evaluation wasted drafting tokens.",
+      "affected_files": [
+        "soma_mcp/jit_engine.py",
+        "soma_mcp/tools.py"
+      ],
+      "regression_test": "tests/test_jit_preseed_constraints.py",
+      "pattern": "Downstream validation gates reject changes that could have been prevented with upstream pre-seed context",
+      "changelog_ref": "v0.107.0"
     }
   ]
 }
