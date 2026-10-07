@@ -199,6 +199,10 @@ def _build_parser() -> argparse.ArgumentParser:
                            help="Skip confirmation prompts")
     p_genesis.add_argument("--project-root", default=None,
                            help="Override project root path")
+    p_genesis.add_argument("--install-hooks", action="store_true",
+                           help="Install git pre-commit hook automatically")
+    p_genesis.add_argument("--no-hooks", action="store_true",
+                           help="Do not install git pre-commit hook")
 
     # soma completion
     from soma_cli.completion import SHELLS
@@ -207,27 +211,35 @@ def _build_parser() -> argparse.ArgumentParser:
                               help="Target shell")
 
     # soma hook
-    p_hook = sub.add_parser("hook", parents=[common_parser], help="Run cross-platform lifecycle hooks")
-    p_hook.add_argument(
-        "phase",
-        choices=[
-            "pre-commit",
-            "safety-gate",
-            "pre-invocation",
-            "session-close",
-            "post-session",
-            "governance-monitor",
-            "immune-init",
-            "stop",
-        ],
-        help="Hook lifecycle phase to execute",
-    )
-    p_hook.add_argument("--cmd", type=str, default=None,
-                        help="Command line string for safety-gate check")
-    p_hook.add_argument("--strict", action="store_true",
-                        help="In pre-commit, exit 1 on issues")
-    p_hook.add_argument("--transcript", default=None,
-                        help="Path to transcript.jsonl for post-session hook")
+    p_hook = sub.add_parser("hook", parents=[common_parser], help="Manage and run cross-platform lifecycle hooks")
+    p_hook_sub = p_hook.add_subparsers(dest="hook_action", parser_class=SomaParser)
+
+    # Porcelain subcommands
+    p_hook_install = p_hook_sub.add_parser("install", parents=[common_parser], help="Install pre-commit hook into git repository")
+    p_hook_install.add_argument("--force", action="store_true", help="Overwrite symlinks pointing outside repository")
+    p_hook_install.add_argument("--dry-run", action="store_true", help="Preview without creating or modifying hook")
+
+    p_hook_status = p_hook_sub.add_parser("status", parents=[common_parser], help="Inspect pre-commit hook and interpreter status")
+
+    p_hook_uninstall = p_hook_sub.add_parser("uninstall", parents=[common_parser], help="Safely remove Soma pre-commit hook")
+    p_hook_uninstall.add_argument("--force", action="store_true", help="Force removal")
+    p_hook_uninstall.add_argument("--dry-run", action="store_true", help="Preview without modifying disk")
+
+    # Lifecycle phases
+    p_h_precommit = p_hook_sub.add_parser("pre-commit", parents=[common_parser], help="Run pre-commit quality check")
+    p_h_precommit.add_argument("--strict", action="store_true", help="In pre-commit, exit 1 on issues")
+
+    p_h_safety = p_hook_sub.add_parser("safety-gate", parents=[common_parser], help="PreToolUse safety check")
+    p_h_safety.add_argument("--cmd", type=str, default=None, help="Command line string for safety-gate check")
+
+    p_h_preinv = p_hook_sub.add_parser("pre-invocation", parents=[common_parser], help="PreInvocation monitor")
+    p_h_close = p_hook_sub.add_parser("session-close", parents=[common_parser], help="Post-session close")
+
+    p_h_post = p_hook_sub.add_parser("post-session", parents=[common_parser], help="Post-session hook")
+    p_h_post.add_argument("--transcript", default=None, help="Path to transcript.jsonl for post-session hook")
+
+    for alias in ("governance-monitor", "immune-init", "stop"):
+        p_hook_sub.add_parser(alias, parents=[common_parser], help=f"Hook phase {alias}")
 
     # soma transfer
     p_transfer = sub.add_parser("transfer", parents=[common_parser], help="Transfer a cell to another project with fitness reset")

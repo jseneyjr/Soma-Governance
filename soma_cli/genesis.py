@@ -137,16 +137,36 @@ def run_genesis(args: argparse.Namespace) -> int:
     created = sum(1 for r in results if r["action"] == "created")
     skipped = sum(1 for r in results if r["action"] == "skipped")
 
+    install_hooks_flag = getattr(args, "install_hooks", False)
+    no_hooks_flag = getattr(args, "no_hooks", False)
+    hook_installed = False
+
+    if not dry_run and not no_hooks_flag:
+        from soma_cli.hooks import install_hook
+        if install_hooks_flag:
+            hook_installed = install_hook(project_root)
+        elif not getattr(args, "yes", False) and not use_json and sys.stdin.isatty():
+            try:
+                answer = input("  🪝 Install git pre-commit hook in this repository? [Y/n] ")
+                if answer.strip().lower() not in ("n", "no"):
+                    hook_installed = install_hook(project_root)
+            except (EOFError, KeyboardInterrupt):
+                pass
+
     if use_json:
         print(json.dumps({
             "status": "done",
             "created": created,
             "skipped": skipped,
             "results": results,
+            "hook_installed": hook_installed,
         }))
     else:
         print(f"\n✅ Created {created} cells, skipped {skipped} existing")
         print(f"📄 Organelle map: {report_path}")
+        if hook_installed:
+            print("🪝 Git pre-commit hook installed (.git/hooks/pre-commit)")
+        print("🚀 Repository is fully governed! Next step: run 'git commit' or 'soma verify'")
 
     return 0
 

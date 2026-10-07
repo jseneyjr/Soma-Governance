@@ -3,6 +3,26 @@
 All notable changes to Soma are documented here.
 This project uses [Semantic Versioning](https://semver.org/).
 
+## [0.116.0] — 2026-10-07 — "Multi-Repo Hook Ergonomics & Dedicated Hook Management"
+
+### Porcelain Hook Management & Multi-Repo Worktree Ergonomics
+- **Dedicated Porcelain Hook Subcommands (`soma_cli/hooks.py`)**:
+  - `soma hook install`: Installs or updates Format 3 pre-commit hook into `.git/hooks/pre-commit`, with support for `--force` and `--dry-run`. Atomically written via PID temporary files with strictly normalized POSIX LF newlines (`\n`) to guard against Windows CRLF syntax errors in Git Bash.
+  - `soma hook status`: Comprehensive hook diagnostics reporting installation status (`installed`, `outdated`, `not_installed`, `no_git_repository`), format version, worktree layout detection, and active interpreter resolution (`soma` on PATH, `$VIRTUAL_ENV`, `$PWD/.venv`, system `python3`), with full `--json` support.
+  - `soma hook uninstall`: Safely strips the Soma managed block from `.git/hooks/pre-commit` while preserving any existing user-defined hooks or external tool runners. If only Soma content was present, deletes the file completely.
+- **Hybrid Dispatcher (`soma_cli/hooks.py`, `soma_cli/cli.py`)**:
+  - Maintains 100% backward compatibility with internal lifecycle hooks (`soma hook pre-commit`, `safety-gate`, `pre-invocation`, `session-close`, `post-session`).
+  - Seamlessly disambiguates porcelain actions (`install`, `status`, `uninstall`) from lifecycle phases, defaulting to `status` when no subcommand or phase is provided.
+- **Portable Cross-Platform Dynamic Hook Script (Format 3)**:
+  - Dynamically probes active virtualenvs at hook runtime (`$VIRTUAL_ENV/bin/python`, `$VIRTUAL_ENV/Scripts/python.exe`, `$PWD/.venv/bin/python`, `$PWD/.venv/Scripts/python.exe`) without baking transient virtualenvs into shared `.git/hooks`.
+  - Guards against the Microsoft Store exit-49 Python stub on Windows via `python3 -c "import sys; sys.exit(0)"` verification.
+  - Enforces strict symlink security: refuses to modify symlinks pointing outside the repository boundary unless `--force` is specified.
+- **Genesis & Init Integration (`soma_cli/genesis.py`, `soma_cli/init.py`)**:
+  - `soma genesis`: Added `--install-hooks` and `--no-hooks` flags, with interactive user prompts in interactive sessions and confirmation output.
+  - `soma init`: Added smart platform rules detection; when global platform rules already exist, skips the global rules prompt and immediately attaches Soma to the local repository.
+- **Comprehensive Behavioral Test Suite (`tests/test_hook_ergonomics.py`)**:
+  - 20 unit and behavioral tests validating porcelain commands, idempotency, non-Soma preservation, symlink guards, dynamic interpreter resolution, and Genesis hook automation.
+
 ## [0.115.0] — 2026-10-07 — "CLI Porcelain & Final Deprecation Gate"
 
 ### CLI Porcelain Architecture & Object Model Adoption

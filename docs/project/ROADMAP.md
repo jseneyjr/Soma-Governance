@@ -298,10 +298,10 @@ Wired the strongly-typed `Workspace` value object into core engines: lifecycle (
 **Status**: ✅ Shipped (v0.115.0)  
 Completes the Workspace migration across all user-facing CLI commands (`soma_cli/cli.py` root resolution attaching `args.ws: Workspace` to all subcommand handlers: `init`, `doctor`, `status`, `verify`, `promote`, `demote`, `transfer`, `checkpoint`, `genesis`). Performs AST audit to guarantee zero internal references to deprecated standalone getters while retaining permanent backward-compatible facades (`resolve_workspace`, `confine_workspace`, `confine_path`, `resolve_git_hooks_dir`).
 
-## Phase 19 — v0.116.0 (Planned)
+## Phase 19 — v0.116.0 (In Progress)
 
 ### Multi-Repo Hook Ergonomics & Dedicated Hook Management
-**Status**: 📋 Planned (v0.116.0)  
+**Status**: 🔨 In Progress (v0.116.0)  
 Resolves multi-repo onboarding friction by introducing porcelain `soma hook` subcommands (`install`, `status`, `uninstall`), cross-platform dynamic interpreter resolution (Windows `Scripts/python.exe` and POSIX `bin/python`), uninitialized workspace bootstrapping (`Workspace.for_init()` and `ws.scaffold()`), and interactive hook installation in `soma genesis --install-hooks`.
 
 ## Phase 20 — v0.117.0 (Planned)
@@ -322,6 +322,11 @@ Restricts cell evolution strictly to the local workspace (`vacuole` $\rightarrow
 **Status**: 📋 Planned (v0.119.0)  
 Extends JIT matching from path globs to syntactic AST triggers (imports, decorators, call sites). Implements closed-form Salience scoring with an exploration prior ($S_{\text{base}} = 0.20$), 95% Wilson lower bound, and temporal decay within an invariant-preserving 2-tier token budget. Automatically attributes commit and verification outcomes from the Phase 20 Verifier to active cells in real time via `.soma/evidence/signals.jsonl`.
 
+## Phase 23 — v0.120.0 (Planned)
+
+### Documentation Architecture, SEO Optimization & Legacy Purge
+**Status**: 📋 Planned (v0.120.0)  
+Redesigns project documentation for developer discoverability, SEO optimization, and immediate value delivery above the fold. Deconstructs monolithic README into modular deep-dive guides (`docs/architecture/salience_and_evolution.md`, `docs/guides/mcp_integration.md`, `docs/guides/multi_repo_worktrees.md`, `docs/guides/authoring_cells.md`). Purges deprecated shell installer instructions and obsolete historical bug warnings. Re-aligns and automates verification across `CLAIM_REGISTRY.json` and single-source versioning surfaces.
 
 ## Research
 

@@ -125,110 +125,17 @@ def get_rules_dir(platform: str, home: Path | None = None,
         )
     return dirs[platform]
 
-# ── Pre-commit Hook ─────────────────────────────────────────────────────────
+# ── Pre-commit Hook (Delegated to soma_cli.hooks) ───────────────────────────
 
-_SOMA_HOOK_START = "# >>> soma pre-commit >>>"
-_SOMA_HOOK_END = "# <<< soma pre-commit <<<"
-# Bump when the block body changes; `soma doctor` flags blocks without it.
-SOMA_HOOK_FORMAT = "# soma-hook-format: 2"
-
-
-def _hook_block(python: str | None = None) -> str:
-    """The marked pre-commit block (POSIX sh).
-
-    BUG-047: a bare `soma checkpoint` aborted every commit with only
-    `soma: not found` when soma was not on the hook's PATH (GUI clients,
-    non-login shells, BUG-041 setups). Try `soma`, then the interpreter that
-    ran `soma init`; otherwise fail closed with a message that names the fix.
-    """
-    py = python if python is not None else sys.executable
-    if os.name == "nt":
-        py = py.replace("\\", "/")  # Git for Windows runs hooks in MSYS sh
-    q = shlex.quote(py)
-    return (
-        f"{_SOMA_HOOK_START}\n"
-        "# Installed by soma init — runs deterministic quality checks before commit.\n"
-        f"{SOMA_HOOK_FORMAT}\n"
-        "if command -v soma >/dev/null 2>&1; then\n"
-        "  soma checkpoint --pre-commit || exit $?\n"
-        f"elif {q} -c 'import soma_cli' >/dev/null 2>&1; then\n"
-        f"  {q} -m soma_cli checkpoint --pre-commit || exit $?\n"
-        "else\n"
-        "  echo \"soma pre-commit: cannot run the checkpoint. 'soma' is not on this hook's PATH\" >&2\n"
-        f"  echo \"  and the interpreter that ran 'soma init' cannot import soma_cli: \"{q} >&2\n"
-        "  echo \"  Run 'soma doctor' (or: python3 -m soma_cli doctor --fix-path) to put soma on PATH,\" >&2\n"
-        "  echo \"  then re-run 'soma init' to refresh this hook.\" >&2\n"
-        "  exit 1\n"
-        "fi\n"
-        f"{_SOMA_HOOK_END}\n"
-    )
-
-
-def _replace_hook_block(content: str, block: str) -> str | None:
-    """content with its marked block swapped for block, or None if malformed."""
-    start = content.find(_SOMA_HOOK_START)
-    end = content.find(_SOMA_HOOK_END, start)
-    if start < 0 or end < 0:
-        return None
-    # Whole lines: from the start of the START line through the END line.
-    line_start = content.rfind("\n", 0, start) + 1
-    end += len(_SOMA_HOOK_END)
-    if content.startswith("\r\n", end):
-        end += 2
-    elif content.startswith("\n", end):
-        end += 1
-    return content[:line_start] + block + content[end:]
-
-
-def install_hook(project_root: Path, dry_run: bool = False,
-                 python: str | None = None) -> bool:
-    """Install a git pre-commit hook that runs soma checkpoint.
-
-    Args:
-        project_root: Root of the git repository.
-        dry_run: If True, preview without creating files.
-        python: Interpreter for the fallback (default: sys.executable).
-
-    Returns:
-        True if hook was installed (or would be in dry-run), False if
-        no .git directory exists.
-    """
-    project_root = Path(project_root)
-    from soma_core.workspace import resolve_git_hooks_dir
-
-    git_hooks_dir = resolve_git_hooks_dir(project_root)
-    if not git_hooks_dir:
-        return False
-
-    if dry_run:
-        return True
-
-    git_hooks_dir.mkdir(parents=True, exist_ok=True)
-    hook_file = git_hooks_dir / "pre-commit"
-    block = _hook_block(python)
-
-    if hook_file.exists():
-        content = hook_file.read_text(encoding="utf-8")
-        if _SOMA_HOOK_START in content:
-            # Re-init refreshes the block in place; user lines stay put.
-            updated = _replace_hook_block(content, block)
-            if updated is None:
-                print(f"  ⚠️  {hook_file} has an unterminated soma block; left unchanged")
-                return True
-            if updated != content:
-                hook_file.write_text(updated, encoding="utf-8")
-        else:
-            # Append to existing hook
-            if not content.endswith("\n"):
-                content += "\n"
-            content += "\n" + block
-            hook_file.write_text(content, encoding="utf-8")
-    else:
-        hook_file.write_text("#!/bin/sh\n\n" + block, encoding="utf-8")
-
-    # Ensure executable
-    hook_file.chmod(hook_file.stat().st_mode | 0o755)
-    return True
+from soma_cli.hooks import (
+    _SOMA_HOOK_START,
+    _SOMA_HOOK_END,
+    SOMA_HOOK_FORMAT,
+    _replace_hook_block,
+    generate_hook_block,
+    install_hook,
+)
+_hook_block = generate_hook_block
 
 
 # ── Installation ────────────────────────────────────────────────────────────
@@ -510,6 +417,11 @@ def run_init(args: argparse.Namespace) -> int:
 
     # 5. Confirmation prompt (unless --yes or --dry-run)
     skip_confirm = getattr(args, "yes", False) or dry_run
+    global_rules_exist = rules_dir.is_dir() and any(rules_dir.glob("*.md"))
+    if global_rules_exist and not getattr(args, "force", False):
+        print(f"  ℹ️  Global platform rules detected in {rules_dir}. Attaching Soma to local repository.")
+        skip_confirm = True
+
     if not skip_confirm:
         print(f"  Will install starter rules to: {rules_dir}")
         try:
