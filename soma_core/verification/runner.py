@@ -238,31 +238,15 @@ def run_layer2(
 
     implementation_text = "\n\n".join(all_implementation)
 
-    # ── 2. Build prompts with information partitioning ─────────────────
+    # ── 2. Phase 1: Prosecution (Spec Agent) ──────────────────────────
     # Spec Agent sees: plan + signatures + test names (NEVER implementation)
     spec_prompt = immune_verify.build_spec_prompt(
         plan=task_plan,
         signatures=all_signatures,
         test_names=test_names or [],
     )
-
-    # Code Agent sees: implementation + test results + Layer 1 (NEVER plan)
-    layer1_output: dict[str, list] = {}
-    for e in layer1_evidence:
-        layer1_output.setdefault(e.tool, []).append(
-            {"target": e.target, "verdict": e.verdict, "detail": e.detail}
-        )
-    code_prompt = immune_verify.build_code_prompt(
-        implementation=implementation_text,
-        test_results=test_results or "",
-        layer1_output=layer1_output,
-    )
-
-    # ── 3. Dispatch to LLM backend ────────────────────────────────────
     spec_response = llm_backend(spec_prompt)
-    code_response = llm_backend(code_prompt)
 
-    # ── 4. Parse structured responses ─────────────────────────────────
     spec_agent_failed = False
     try:
         raw_predictions = _json.loads(_strip_code_fence(spec_response))
@@ -274,11 +258,27 @@ def run_layer2(
         raw_predictions = []
         spec_agent_failed = True
 
+    # ── 3. Phase 2: Defense / Rebuttal (Code Agent) ───────────────────
+    # Code Agent sees: implementation + test results + Layer 1 + Spec charges (NEVER plan)
+    layer1_output: dict[str, list] = {}
+    for e in layer1_evidence:
+        layer1_output.setdefault(e.tool, []).append(
+            {"target": e.target, "verdict": e.verdict, "detail": e.detail}
+        )
+    code_prompt = immune_verify.build_code_prompt(
+        implementation=implementation_text,
+        test_results=test_results or "",
+        layer1_output=layer1_output,
+        spec_predictions=raw_predictions,
+    )
+    code_response = llm_backend(code_prompt)
+
     try:
         raw_claims = _json.loads(_strip_code_fence(code_response))
     except (_json.JSONDecodeError, TypeError):
         raw_claims = []
 
+    # ── 4. Parse structured models ────────────────────────────────────
     predictions = immune_verify.parse_predictions(raw_predictions)
     claims = immune_verify.parse_claims(raw_claims)
 

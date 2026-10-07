@@ -4,9 +4,12 @@ Provides the information-partitioned interface between the Spec Agent
 (sees plan + signatures only) and the Code Agent (sees implementation +
 test results only). Neither agent sees the other's input.
 """
+from __future__ import annotations
+
 import ast
 import json
 import textwrap
+from typing import Optional
 
 from . import (
     RiskCategory,
@@ -112,16 +115,46 @@ def build_code_prompt(
     implementation: str,
     test_results: str,
     layer1_output: dict,
+    spec_predictions: Optional[list[dict | Prediction]] = None,
 ) -> str:
     """Build the prompt for the Code Agent.
 
-    The prompt contains the implementation source, test results, and
-    layer-1 tool output, but NEVER the plan or spec predictions.  It
-    embeds the full claim schema and the complete ``RiskCategory``
+    The prompt contains the implementation source, test results, layer-1 tool
+    output, and optionally the Spec Agent's predicted risk charges (the
+    prosecution charges to defend against), but NEVER the task plan text.
+    It embeds the full claim schema and the complete ``RiskCategory``
     taxonomy.
     """
     schema_json = json.dumps(CLAIM_SCHEMA, indent=2)
     layer1_json = json.dumps(layer1_output, indent=2)
+
+    charges_section = ""
+    if spec_predictions:
+        charge_lines = []
+        for p in spec_predictions:
+            if isinstance(p, dict):
+                cat = p.get("category", "")
+                sev = p.get("severity", "")
+                risk = p.get("risk", "")
+                func = p.get("affected_function", "")
+            else:
+                cat = getattr(p.category, "value", str(p.category))
+                sev = getattr(p.severity, "value", str(p.severity))
+                risk = getattr(p, "risk", "")
+                func = getattr(p, "affected_function", "")
+            charge_lines.append(f"- [category: {cat}, severity: {sev}] {risk} (Affected: {func})")
+        charges_formatted = "\n".join(charge_lines)
+        charges_section = textwrap.dedent(f"""\
+
+            ## Predicted Risk Charges
+            The specification review has predicted the following potential risks:
+            {charges_formatted}
+
+            ### Defense Mandate
+            Your task is to defend the implementation against these predicted risks or concede if unaddressed.
+            For each predicted risk category, provide concrete claims with exact evidence_file, evidence_line, and tests_covering.
+        """)
+
     return textwrap.dedent(f"""\
         You are the Code Agent in an adversarial verification pair.
 
@@ -133,7 +166,7 @@ def build_code_prompt(
 
         ## Layer 1 Tool Output
         {layer1_json}
-
+        {charges_section}
         ## Required Output Schema
         Return a JSON array matching this schema. Each object MUST have these keys:
         category, claim, evidence_file, evidence_line
