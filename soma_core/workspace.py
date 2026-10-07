@@ -16,13 +16,31 @@ import warnings
 from dataclasses import dataclass, field
 from pathlib import Path
 
-from soma_core.errors import PathTraversalError, WorkspaceError, WorkspaceNotFoundError
+from soma_core.errors import (
+    PathTraversalError,
+    WorkspaceBareRepoError,
+    WorkspaceError,
+    WorkspaceNotFoundError,
+)
 
 _WINDOWS_DEVICE_NAMES = frozenset(
     {"CON", "PRN", "AUX", "NUL", "CONIN$", "CONOUT$"}
     | {f"COM{i}" for i in range(1, 10)}
     | {f"LPT{i}" for i in range(1, 10)}
 )
+
+
+def _is_workspace_dir(d: str) -> bool:
+    if os.path.isdir(os.path.join(d, ".soma", "cells")):
+        return True
+    try:
+        home_str = str(Path.home())
+    except Exception:
+        home_str = ""
+    if d not in ("/tmp", "/var/tmp", home_str):
+        if os.path.isdir(os.path.join(d, ".soma")):
+            return True
+    return False
 
 
 @dataclass(frozen=True, eq=False)
@@ -100,6 +118,53 @@ class Workspace(os.PathLike[str]):
         return self.root / other
 
     @classmethod
+    def for_init(cls, path: str | Path | os.PathLike[str]) -> Workspace:
+        """Construct a Workspace for initialization without requiring pre-existing .soma directory.
+
+        Guards against symlink traversal escapes and non-directory files.
+        """
+        p = Path(path)
+        if p.is_symlink():
+            raise WorkspaceError(f"Workspace path cannot be a symlink: {p}")
+        resolved = p.resolve()
+        if resolved.is_file():
+            raise WorkspaceError(f"Workspace path must be a directory, not a file: {resolved}")
+        return cls(root=resolved)
+
+    def scaffold(self, minimal: bool = False, dry_run: bool = False) -> list[Path]:
+        """Scaffold standard directory structure for Soma governance.
+
+        Creates .soma/cells/ and .soma/evidence/ (and .soma/metrics/).
+        Guards against bare git repositories.
+        """
+        if (
+            (self.root / "HEAD").is_file()
+            and (self.root / "config").is_file()
+            and (self.root / "objects").is_dir()
+            and not (self.root / ".git").exists()
+        ):
+            raise WorkspaceBareRepoError(
+                f"Cannot scaffold soma in a bare git repository: {self.root}"
+            )
+
+        dirs_to_create: list[Path] = [
+            self.cells_dir / "walls",
+            self.evidence_dir,
+        ]
+        if not minimal:
+            dirs_to_create.extend([
+                self.cells_dir / "vacuoles",
+                self.cells_dir / "gates",
+                self.metrics_dir,
+            ])
+
+        if not dry_run:
+            for d in dirs_to_create:
+                d.mkdir(parents=True, exist_ok=True)
+
+        return dirs_to_create
+
+    @classmethod
     def resolve(
         cls,
         start: str | Path | os.PathLike[str] | Workspace | None = None,
@@ -155,20 +220,20 @@ class Workspace(os.PathLike[str]):
             cand = os.path.abspath(str(start))
             d = cand if os.path.isdir(cand) else os.path.dirname(cand)
             while d != os.path.dirname(d):
-                if os.path.isdir(os.path.join(d, ".soma", "cells")) or os.path.isdir(os.path.join(d, ".soma")):
+                if _is_workspace_dir(d):
                     return cls(root=Path(d))
                 d = os.path.dirname(d)
             return cls(root=Path(cand if os.path.isdir(cand) else os.path.dirname(cand)))
 
         # 4. Check CWD directly
         cwd = os.getcwd()
-        if os.path.isdir(os.path.join(cwd, ".soma", "cells")):
+        if _is_workspace_dir(cwd):
             return cls(root=Path(cwd))
 
         # 5. Walk up from CWD
         d = cwd
         while d != os.path.dirname(d):
-            if os.path.isdir(os.path.join(d, ".soma", "cells")) or os.path.isdir(os.path.join(d, ".soma")):
+            if _is_workspace_dir(d):
                 return cls(root=Path(d))
             d = os.path.dirname(d)
 
@@ -177,7 +242,7 @@ class Workspace(os.PathLike[str]):
             d = os.path.dirname(os.path.abspath(str(caller_file)))
             while d != os.path.dirname(d):
                 if (
-                    os.path.isdir(os.path.join(d, ".soma", "cells"))
+                    _is_workspace_dir(d)
                     and "/vendor/" not in d
                     and os.path.basename(os.path.dirname(d)) != "vendor"
                 ):
@@ -403,6 +468,10 @@ def resolve_git_hooks_dir(project_root: str | Path | os.PathLike[str] | None = N
     Returns Path to hooks directory, or None if not inside a git repository.
     """
     root = Path(project_root or Path.cwd()).resolve()
+
+    dot_git = root / ".git"
+    if not dot_git.exists():
+        return None
 
     # 1. Try git CLI if available (handles core.hooksPath and custom setups)
     try:

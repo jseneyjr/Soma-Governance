@@ -82,7 +82,16 @@ def resolve_target_files(args: argparse.Namespace) -> list[str]:
         return safe_files
 
     # Default: query git for staged/changed files
-    git_cwd = getattr(args, 'repo_root', None) or os.getcwd()
+    git_cwd = (
+        str(getattr(args, 'ws', None).root)
+        if getattr(args, 'ws', None) is not None
+        else (
+            getattr(args, 'workspace', None)
+            or getattr(args, 'repo_root', None)
+            or getattr(args, '_project_root', None)
+            or os.getcwd()
+        )
+    )
     try:
         result = subprocess.run(
             ["git", "diff", "--name-only", "--diff-filter=ACMR", "HEAD"],
@@ -290,8 +299,15 @@ def run_verify(args: argparse.Namespace) -> int:
     """
     runner, Verdict = _get_verification()
 
+    from soma_core.workspace import Workspace
+
     # Resolve repo root
-    repo_root = getattr(args, 'workspace', None) or getattr(args, 'repo_root', None) or getattr(args, '_project_root', None) or os.getcwd()
+    ws_obj = getattr(args, 'ws', None) or Workspace.resolve(
+        getattr(args, 'workspace', None)
+        or getattr(args, 'repo_root', None)
+        or getattr(args, '_project_root', None)
+    )
+    repo_root = str(ws_obj.root)
     if not os.path.isdir(repo_root):
         print(f"Error: repo root does not exist: {repo_root}", file=sys.stderr)
         return 1

@@ -38,8 +38,19 @@ def run_checkpoint(args: argparse.Namespace) -> int:
     """
     if hasattr(sys.stdout, "reconfigure"):
         sys.stdout.reconfigure(errors="replace")
-    workspace = getattr(args, "workspace", None) or os.getcwd()
-    root = Path(workspace)
+    from soma_core.workspace import Workspace
+
+    ws = getattr(args, "ws", None)
+    if ws is None:
+        raw_ws = getattr(args, "workspace", None) or getattr(args, "_project_root", None)
+        if raw_ws and not os.path.exists(str(raw_ws)):
+            root = Path(raw_ws)
+        else:
+            ws = Workspace.resolve(raw_ws)
+            root = ws.root
+    else:
+        root = ws.root
+    workspace = str(root)
 
     pre_commit = getattr(args, "pre_commit", False)
     strict = getattr(args, "strict", False)

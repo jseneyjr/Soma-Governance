@@ -98,6 +98,18 @@ class PathTraversalError(WorkspaceError):
         super().__init__(message, code=code, **kwargs)
 
 
+class WorkspaceBareRepoError(WorkspaceError):
+    """Raised when attempting to scaffold or initialize in a bare git repository."""
+
+    def __init__(
+        self,
+        message: str = "",
+        code: str = "ERR_WORKSPACE_BARE_REPO",
+        **kwargs: Any,
+    ) -> None:
+        super().__init__(message, code=code, **kwargs)
+
+
 __all__ = [
     "CellCorruptError",
     "LockTimeoutError",
@@ -105,7 +117,9 @@ __all__ = [
     "ReceiptExpiredError",
     "SomaError",
     "SomaValidationError",
+    "WorkspaceBareRepoError",
     "WorkspaceError",
     "WorkspaceNotFoundError",
 ]
+
 
