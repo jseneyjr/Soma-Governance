@@ -23,6 +23,11 @@ This project uses [Semantic Versioning](https://semver.org/).
 ### Strict TDD Compliance
 - Authored behavioral unit test suite in `tests/test_jit_context_budget.py` adhering to `tdd-protocol.md` and `feature-specs.md §6` with 7 test cases covering default limits, environment variable overrides, config file parsing, priority cell inclusion, and Gate 4.5 workflow documentation invariants.
 
+### CI/CD & Test Isolation
+- **Hermetic Optional Dependency Mocking**:
+  - Replaced direct `patch("google.genai.Client")` in `tests/test_inference_provider.py` with `patch.dict(sys.modules, ...)` module mocking.
+  - Resolves CI test suite failures across Ubuntu, Windows, and macOS environments where optional dependency `google-genai` is not pre-installed in the clean runner environment.
+
 ## [0.105.0] — 2026-10-06 — "True AST Call Graph Traversal & Static Analysis"
 
 ### Verification & Core Engine (Phase 8 Scorecard Remediation)

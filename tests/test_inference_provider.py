@@ -30,7 +30,10 @@ class TestInferenceProviderModels(unittest.TestCase):
 
     def test_default_model_property(self):
         """Ensure the default_model property returns DEFAULT_MODEL."""
-        with patch("google.genai.Client"):
+        mock_google = MagicMock()
+        mock_genai = MagicMock()
+        mock_google.genai = mock_genai
+        with patch.dict(sys.modules, {"google": mock_google, "google.genai": mock_genai}):
             p1 = GeminiProvider(api_key="k")
             self.assertEqual(p1.default_model, "gemini-3.8-flash")
 
@@ -49,9 +52,12 @@ class TestInferenceProviderModels(unittest.TestCase):
 
     def test_gemini_provider_default_model(self):
         """Ensure GeminiProvider defaults to active gemini-3.8-flash."""
-        with patch("google.genai.Client") as mock_client_cls:
-            mock_client = MagicMock()
-            mock_client_cls.return_value = mock_client
+        mock_google = MagicMock()
+        mock_genai = MagicMock()
+        mock_google.genai = mock_genai
+        mock_client = MagicMock()
+        mock_genai.Client.return_value = mock_client
+        with patch.dict(sys.modules, {"google": mock_google, "google.genai": mock_genai}):
             provider = GeminiProvider(api_key="fake-key")
             self.assertEqual(provider.DEFAULT_MODEL, "gemini-3.8-flash")
 
@@ -63,9 +69,12 @@ class TestInferenceProviderModels(unittest.TestCase):
 
     def test_gemini_provider_count_tokens_default_model(self):
         """Ensure GeminiProvider token counting defaults to gemini-3.8-flash."""
-        with patch("google.genai.Client") as mock_client_cls:
-            mock_client = MagicMock()
-            mock_client_cls.return_value = mock_client
+        mock_google = MagicMock()
+        mock_genai = MagicMock()
+        mock_google.genai = mock_genai
+        mock_client = MagicMock()
+        mock_genai.Client.return_value = mock_client
+        with patch.dict(sys.modules, {"google": mock_google, "google.genai": mock_genai}):
             provider = GeminiProvider(api_key="fake-key")
 
             provider.count_tokens("test text")
