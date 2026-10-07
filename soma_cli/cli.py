@@ -381,8 +381,8 @@ def cmd_prune(args: argparse.Namespace) -> int:
     execute = getattr(args, "execute", False)
     if dry_run:
         execute = False
-    workspace = getattr(args, "workspace", None)
-    return prune_cells(workspace=workspace, execute=execute)
+    ws = getattr(args, "ws", None) or getattr(args, "workspace", None) or getattr(args, "_project_root", None)
+    return prune_cells(workspace=ws, execute=execute)
 
 
 def cmd_install(args: argparse.Namespace) -> int:
@@ -469,10 +469,6 @@ def main(argv: list[str] | None = None) -> int:
     if is_json and not fmt:
         args.format = "json"
 
-    ws_arg = getattr(args, "workspace", None)
-    if ws_arg:
-        args._project_root = Path(ws_arg)
-
     if args.command is None:
         parser.print_help()
         return 0
@@ -483,7 +479,32 @@ def main(argv: list[str] | None = None) -> int:
         return 1
 
     try:
-        return handler(args)
+        from soma_core.workspace import Workspace
+
+        if args.command == "completion":
+            args.ws = None
+        elif args.command == "init":
+            raw_ws = getattr(args, "workspace", None) or getattr(args, "_project_root", None) or Path.cwd()
+            args.ws = Workspace.for_init(raw_ws)
+        else:
+            raw_ws = (
+                getattr(args, "workspace", None)
+                or getattr(args, "repo_root", None)
+                or getattr(args, "project_root", None)
+                or getattr(args, "_project_root", None)
+            )
+            args.ws = Workspace.resolve(raw_ws)
+
+        if args.ws is not None:
+            args._project_root = args.ws.root
+            args.workspace = str(args.ws.root)
+            if hasattr(args, "repo_root"):
+                args.repo_root = str(args.ws.root)
+            if hasattr(args, "project_root"):
+                args.project_root = str(args.ws.root)
+
+        func = globals().get(handler.__name__, handler)
+        return func(args)
     except KeyboardInterrupt:
         return 130
     except Exception as e:

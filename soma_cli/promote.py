@@ -84,7 +84,12 @@ def run_promote(args: argparse.Namespace) -> int:
     """
     if hasattr(sys.stdout, "reconfigure"):
         sys.stdout.reconfigure(errors="replace")
-    project_root = Path(getattr(args, "workspace", None) or getattr(args, "_project_root", None) or Path.cwd())
+    from soma_core.workspace import Workspace
+
+    ws = getattr(args, "ws", None) or Workspace.resolve(
+        getattr(args, "workspace", None) or getattr(args, "_project_root", None)
+    )
+    project_root = ws.root
     use_json = getattr(args, "json", False)
     dry_run = getattr(args, "dry_run", False)
     force = getattr(args, "force", False)

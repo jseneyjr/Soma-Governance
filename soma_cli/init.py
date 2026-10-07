@@ -454,9 +454,13 @@ def generate_mcp_config(project_root: Path, dry_run: bool = False) -> None:
 
 def run_init(args: argparse.Namespace) -> int:
     """Main init flow. Returns exit code."""
+    from soma_core.workspace import Workspace
+
     # Allow test override of project root
-    project_root = getattr(args, "workspace", None) or getattr(args, "_project_root", None) or Path.cwd()
-    project_root = Path(project_root)
+    ws = getattr(args, "ws", None) or Workspace.for_init(
+        getattr(args, "workspace", None) or getattr(args, "_project_root", None) or Path.cwd()
+    )
+    project_root = ws.root
 
     dry_run = args.dry_run
     forced_platform = args.platform
@@ -527,6 +531,7 @@ def run_init(args: argparse.Namespace) -> int:
     else:
         print(f"  Installing rules (preset={preset})...")
 
+    ws.scaffold(minimal=(preset == "minimal"), dry_run=dry_run)
     installed = install_rules(rules_dir, preset=preset, dry_run=dry_run, force=force)
 
     for name in installed:

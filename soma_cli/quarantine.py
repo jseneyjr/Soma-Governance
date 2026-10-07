@@ -22,24 +22,15 @@ from soma_core.quarantine import (
 )
 
 
-def resolve_workspace() -> Optional[Path]:
-    """Find current project root with .soma/ directory."""
-    soma_root = os.environ.get("SOMA_WORKSPACE") or os.environ.get("SOMA_ROOT")
-    if soma_root and os.path.isdir(soma_root):
-        return Path(soma_root).resolve()
-    cwd = Path.cwd().resolve()
-    for candidate in [cwd, *cwd.parents]:
-        if "vendor" in candidate.parts:
-            continue
-        if (candidate / ".soma").is_dir():
-            return candidate
-    return cwd
+from soma_core.workspace import Workspace, resolve_workspace_path as resolve_workspace
 
 
 def run_quarantine(args: argparse.Namespace) -> int:
     """Entry point for soma quarantine commands."""
-    target_ws = getattr(args, "workspace", None) or getattr(args, "_project_root", None)
-    ws = resolve_workspace(target_ws) if target_ws else resolve_workspace()
+    ws_obj = getattr(args, "ws", None) or Workspace.resolve(
+        getattr(args, "workspace", None) or getattr(args, "_project_root", None)
+    )
+    ws = ws_obj.root
     action = getattr(args, "quarantine_action", None) or "list"
 
     if action == "list":

@@ -292,6 +292,37 @@ Wired the strongly-typed `Workspace` value object into perimeter and edge bounda
 **Status**: ✅ Shipped (v0.114.0)  
 Wired the strongly-typed `Workspace` value object into core engines: lifecycle (`creation.py`, `parsers.py`, `promotion.py`, `decay.py`, `selection.py`), arbitration (`arbitration.py`), outcome reflection (`outcomes.py`), defect tracking (`defects.py`), invariant enforcement (`enforcement.py`), and synchronization (`sync.py`). Added `as_workspace(workspace)` coercion helper to `soma_core.workspace` and added `DeprecationWarning` with `stacklevel=2` to legacy standalone directory getters (`get_cells_dir`, `get_metrics_dir`, `get_signals_file`, `get_outcomes_file`). Developed following strict TDD with 19 new behavioral tests in `tests/test_core_engines_workspace.py` and full regression verification (2,761 passing).
 
+## Phase 18 — v0.115.0 (In Progress)
+
+### CLI Porcelain & Final Deprecation Gate
+**Status**: 🔨 In Progress (v0.115.0)  
+Completes the Workspace migration across all user-facing CLI commands (`soma_cli/cli.py` root resolution attaching `args.ws: Workspace` to all subcommand handlers: `init`, `doctor`, `status`, `verify`, `promote`, `demote`, `transfer`, `checkpoint`, `genesis`). Performs AST audit to guarantee zero internal references to deprecated standalone getters while retaining permanent backward-compatible facades (`resolve_workspace`, `confine_workspace`, `confine_path`, `resolve_git_hooks_dir`).
+
+## Phase 19 — v0.116.0 (Planned)
+
+### Multi-Repo Hook Ergonomics & Dedicated Hook Management
+**Status**: 📋 Planned (v0.116.0)  
+Resolves multi-repo onboarding friction by introducing porcelain `soma hook` subcommands (`install`, `status`, `uninstall`), cross-platform dynamic interpreter resolution (Windows `Scripts/python.exe` and POSIX `bin/python`), uninitialized workspace bootstrapping (`Workspace.for_init()` and `ws.scaffold()`), and interactive hook installation in `soma genesis --install-hooks`.
+
+## Phase 20 — v0.117.0 (Planned)
+
+### Dual-Mode Verifier OOP & Frictionless In-Session Verification
+**Status**: 📋 Planned (v0.117.0)  
+Refactors the verification subsystem into a composable class hierarchy (`DeterministicVerifier`, `AdversarialVerifier`, `Arbiter`, `VerificationPipeline`). Introduces Dual-Mode Layer 2 Verification: zero-API-key in-session adversarial verification for interactive agent/MCP sessions (via in-band charge sheets and MCP Sampling `sampling/createMessage`), alongside headless SDK fallback for CI runners. Resolves interpreter discovery for mutation testing across virtualenvs.
+
+## Phase 21 — v0.118.0 (Planned)
+
+### Localized Cell Evolution, Quarantine & Global Rule Cleanse
+**Status**: 📋 Planned (v0.118.0)  
+Restricts cell evolution strictly to the local workspace (`vacuole` $\rightarrow$ `wall` $\rightarrow$ `gate`), disconnecting automatic promotion to global `genome/`. Adds compound fingerprinting to `Workspace.is_soma_repo` to prevent false positives on external genomics repositories. Implements whitelist-only global rules cleanse with mandatory quarantine backups (`~/.soma/quarantine/`). Implements explicit tagged Horizontal Gene Transfer (`soma transfer export`).
+
+## Phase 22 — v0.119.0 (Planned)
+
+### Intelligent JIT Targeting, Salience Engine & Closed-Loop Attribution
+**Status**: 📋 Planned (v0.119.0)  
+Extends JIT matching from path globs to syntactic AST triggers (imports, decorators, call sites). Implements closed-form Salience scoring with an exploration prior ($S_{\text{base}} = 0.20$), 95% Wilson lower bound, and temporal decay within an invariant-preserving 2-tier token budget. Automatically attributes commit and verification outcomes from the Phase 20 Verifier to active cells in real time via `.soma/evidence/signals.jsonl`.
+
+
 ## Research
 
 ### Antifragile Scaling

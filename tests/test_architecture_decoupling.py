@@ -44,3 +44,59 @@ def test_parse_frontmatter_in_soma_core():
     fm = parse_frontmatter(content)
     assert isinstance(fm, dict)
     assert fm.get("type") == "learned-trap"
+
+
+def test_zero_internal_calls_to_deprecated_workspace_getters():
+    """Verify that soma_core, soma_cli, soma_mcp, soma_sdk have zero calls to deprecated getters.
+
+    Target deprecated getters:
+    - get_cells_dir
+    - get_metrics_dir
+    - get_signals_file
+    - get_outcomes_file
+    """
+    repo_root = Path(__file__).resolve().parent.parent
+    deprecated_symbols = {
+        "get_cells_dir",
+        "get_metrics_dir",
+        "get_signals_file",
+        "get_outcomes_file",
+    }
+    checked_packages = ["soma_core", "soma_cli", "soma_mcp", "soma_sdk"]
+    violations = []
+
+    for pkg_name in checked_packages:
+        pkg_dir = repo_root / pkg_name
+        if not pkg_dir.is_dir():
+            continue
+        for py_file in pkg_dir.rglob("*.py"):
+            # Exclude soma_core/workspace.py where the deprecated functions are defined
+            if py_file.resolve() == (repo_root / "soma_core" / "workspace.py").resolve():
+                continue
+            try:
+                tree = ast.parse(py_file.read_text(encoding="utf-8"))
+            except Exception as exc:
+                violations.append(f"Failed to parse {py_file}: {exc}")
+                continue
+
+            for node in ast.walk(tree):
+                # Check direct calls: get_cells_dir(...)
+                if isinstance(node, ast.Call):
+                    if isinstance(node.func, ast.Name) and node.func.id in deprecated_symbols:
+                        violations.append(
+                            f"{py_file.relative_to(repo_root)}:{node.lineno} calls deprecated function '{node.func.id}'"
+                        )
+                    elif isinstance(node.func, ast.Attribute) and node.func.attr in deprecated_symbols:
+                        violations.append(
+                            f"{py_file.relative_to(repo_root)}:{node.lineno} calls deprecated attribute '{node.func.attr}'"
+                        )
+                # Check imports: from soma_core.workspace import get_cells_dir
+                elif isinstance(node, ast.ImportFrom):
+                    for alias in node.names:
+                        if alias.name in deprecated_symbols:
+                            violations.append(
+                                f"{py_file.relative_to(repo_root)}:{node.lineno} imports deprecated function '{alias.name}'"
+                            )
+
+    assert not violations, "Found internal usage of deprecated workspace getters:\n" + "\n".join(violations)
+

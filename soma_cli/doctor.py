@@ -432,8 +432,12 @@ def run_doctor(args: argparse.Namespace) -> int:
         return fix_path(yes=getattr(args, "yes", False))
     if getattr(args, "yes", False):
         print("--yes only applies to --fix-path", file=sys.stderr)
-        return 2
-    ws = Path(getattr(args, "workspace", None) or getattr(args, "_project_root", None) or Path.cwd())
+    from soma_core.workspace import Workspace
+
+    ws_obj = getattr(args, "ws", None) or Workspace.resolve(
+        getattr(args, "workspace", None) or getattr(args, "_project_root", None)
+    )
+    ws = ws_obj.root
     print(f"soma doctor — running health checks ({ws}):\n")
     results: list[bool] = []
 

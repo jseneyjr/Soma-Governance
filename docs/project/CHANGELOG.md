@@ -3,6 +3,29 @@
 All notable changes to Soma are documented here.
 This project uses [Semantic Versioning](https://semver.org/).
 
+## [0.115.0] — 2026-10-07 — "CLI Porcelain & Final Deprecation Gate"
+
+### CLI Porcelain Architecture & Object Model Adoption
+- **Uninitialized Workspace Model (`soma_core/workspace.py`)**:
+  - `Workspace.for_init(path)`: Pure immutable constructor that validates target paths, rejects symlink traversal escapes (`not path.is_symlink()`), and returns a typed `Workspace` instance without requiring a pre-existing `.soma/cells/` directory.
+  - `ws.scaffold(minimal=False, dry_run=False)`: Explicit filesystem method creating `.soma/cells/{vacuoles,walls,gates}` and `.soma/evidence/` directories, respecting dry-run and guarding against bare git repositories (`WorkspaceBareRepoError`).
+  - Isolated git hooks attachment: `resolve_git_hooks_dir()` attaches hooks only if `(ws.root / ".git").exists()`, preventing nested monorepo subprojects from ambiently hijacking parent repository hooks.
+  - Safe system directory resolution: Workspace walk-up avoids stopping at system temporary directories (`/tmp`, `/var/tmp`) or user home directory without explicit `.soma/cells/`.
+- **Root Workspace Resolution (`soma_cli/cli.py`)**:
+  - Centralized root resolution in `main()`:
+    - `completion`: Exempt from workspace resolution.
+    - `init`: Resolves via `Workspace.for_init(target_path)`.
+    - All other subcommands: Resolve via `Workspace.resolve(target_path)` with strict argument precedence: `--workspace` > `--repo-root` / `--project-root` > `--_project_root` > CWD.
+  - Attaches canonical `args.ws: Workspace` along with backward-compatible bridge attributes (`args._project_root`, `args.workspace`, `args.repo_root`, `args.project_root`).
+- **Subcommand Migration & Decoupling (`soma_cli/`)**:
+  - Migrated `init.py`, `doctor.py`, `status.py`, `verify.py`, `promote.py`, `demote.py`, `transfer.py`, `checkpoint.py`, `genesis.py`, `report.py`, `quarantine.py`, `prune.py`.
+  - All command handlers consume `args.ws` with robust fallback (`getattr(args, 'ws', None) or Workspace.resolve(...)`) for direct test invocations bypassing `main()`.
+  - Eliminated duplicate local `resolve_workspace()` helper definitions in `quarantine.py` and `transfer.py`, consolidating on `soma_core.workspace.Workspace`.
+- **Architectural Deprecation Gate & AST Enforcement (`tests/test_architecture_decoupling.py`)**:
+  - Added AST test verifying zero internal imports or invocations of deprecated standalone getters (`get_cells_dir`, `get_metrics_dir`, `get_signals_file`, `get_outcomes_file`) across `soma_core/`, `soma_cli/`, `soma_mcp/`, and `soma_sdk/`.
+- **Comprehensive Behavioral Test Coverage (`tests/test_cli_workspace.py`, `tests/test_workspace_uninitialized.py`)**:
+  - Added 15 new unit and behavioral tests verifying root resolution, argument precedence, handler fallback, subfolder isolation, uninitialized scaffolding, and symlink rejection.
+
 ## [0.114.0] — 2026-10-07 — "Core Engines Workspace Migration"
 
 ### Core Engines Architecture & Object Model Adoption

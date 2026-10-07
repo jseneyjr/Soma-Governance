@@ -12,7 +12,19 @@ def run_genesis(args: argparse.Namespace) -> int:
     from soma_cli.genesis_scanner import scan, detect_project_type
     from soma_cli.genesis_generator import generate_cells, generate_report
 
-    project_root = Path(getattr(args, "project_root", None) or ".").resolve()
+    from soma_core.workspace import Workspace
+
+    raw_root = (
+        getattr(args, "project_root", None)
+        or getattr(args, "workspace", None)
+        or getattr(args, "_project_root", None)
+    )
+    if raw_root is not None and not Path(raw_root).is_dir():
+        print(f"Error: {raw_root} is not a directory", file=sys.stderr)
+        return 1
+
+    ws = getattr(args, "ws", None) or Workspace.resolve(raw_root)
+    project_root = ws.root
     if not project_root.is_dir():
         print(f"Error: {project_root} is not a directory", file=sys.stderr)
         return 1

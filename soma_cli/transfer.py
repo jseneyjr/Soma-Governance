@@ -14,6 +14,7 @@ from pathlib import Path
 from typing import Optional
 
 from soma_core.frontmatter import dump_frontmatter, parse_frontmatter
+from soma_core.workspace import Workspace, resolve_workspace_path as resolve_workspace
 
 CELL_TYPE_DIRS: dict[str, str] = {
     "vacuole": "vacuoles",
@@ -24,28 +25,20 @@ CELL_TYPE_DIRS: dict[str, str] = {
 }
 
 
-
-def resolve_workspace() -> Optional[Path]:
-    """Walk up from CWD to find project root with .soma/cells/."""
-    soma_root = os.environ.get("SOMA_ROOT")
-    if soma_root and os.path.isdir(soma_root):
-        return Path(soma_root).resolve()
-    cwd = Path.cwd().resolve()
-    for candidate in [cwd, *cwd.parents]:
-        if "vendor" in candidate.parts:
-            continue
-        if (candidate / ".soma" / "cells").is_dir():
-            return candidate
-    return None
-
-
 def transfer_cell(
     cell_id: str,
     target_dir_str: str,
-    source_workspace: Path | None = None,
+    source_workspace: Workspace | Path | None = None,
 ) -> int:
     """Transfer a cell from source workspace to target directory with fitness reset."""
-    repo_dir = source_workspace or resolve_workspace()
+    try:
+        ws = source_workspace if isinstance(source_workspace, Workspace) else (
+            Workspace.resolve(source_workspace) if source_workspace is not None else Workspace.resolve()
+        )
+        repo_dir = ws.root
+    except Exception:
+        repo_dir = None
+
     if repo_dir is None or not (repo_dir / ".soma" / "cells").is_dir():
         print(
             f"Error: No Soma project found: no .soma/cells/ in {repo_dir or os.getcwd()} or any parent directory.",
@@ -174,6 +167,5 @@ def run_transfer(args: argparse.Namespace) -> int:
         print("Usage: soma transfer <cell_id> --to /path/to/target/project", file=sys.stderr)
         return 1
 
-    ws = getattr(args, "workspace", None) or getattr(args, "_project_root", None)
-    source_workspace = Path(ws) if ws else None
-    return transfer_cell(cell_id=args.cell_id, target_dir_str=args.target_dir, source_workspace=source_workspace)
+    ws = getattr(args, "ws", None) or getattr(args, "workspace", None) or getattr(args, "_project_root", None)
+    return transfer_cell(cell_id=args.cell_id, target_dir_str=args.target_dir, source_workspace=ws)
