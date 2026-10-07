@@ -222,9 +222,14 @@ def _apply_mutation_by_index(
 
 def _run_tests(test_file: str, timeout: int = 30) -> bool:
     """Run pytest on *test_file*. Returns True if tests PASS."""
+    from soma_core.verification.test_runner import resolve_pytest_cmd
+
+    pytest_cmd = resolve_pytest_cmd()
+    if not pytest_cmd:
+        return False
     try:
         result = subprocess.run(
-            [sys.executable, "-m", "pytest", test_file, "-x", "-q", "--no-header", "--tb=no"],
+            pytest_cmd + [test_file, "-x", "-q", "--no-header", "--tb=no"],
             capture_output=True,
             timeout=timeout,
         )

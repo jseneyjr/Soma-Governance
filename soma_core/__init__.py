@@ -4,7 +4,7 @@ from __future__ import annotations
 import importlib
 from typing import Any
 
-__version__ = "0.116.0"
+__version__ = "0.117.0"
 
 # Explicit mapping of exported symbol name -> (module_name, attribute_name)
 _EXPORTS: dict[str, tuple[str, str | None]] = {
@@ -64,6 +64,7 @@ _EXPORTS: dict[str, tuple[str, str | None]] = {
     "parse_cell_frontmatter": ("soma_core.frontmatter", "parse_cell_frontmatter"),
     "append_signal": ("soma_core.telemetry", "append_signal"),
     "Workspace": ("soma_core.workspace", "Workspace"),
+    "GitWorkspace": ("soma_core.workspace", "GitWorkspace"),
     "WorkspaceError": ("soma_core.errors", "WorkspaceError"),
     "WorkspaceNotFoundError": ("soma_core.errors", "WorkspaceNotFoundError"),
     "PathTraversalError": ("soma_core.errors", "PathTraversalError"),

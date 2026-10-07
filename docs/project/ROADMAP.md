@@ -298,23 +298,23 @@ Wired the strongly-typed `Workspace` value object into core engines: lifecycle (
 **Status**: ✅ Shipped (v0.115.0)  
 Completes the Workspace migration across all user-facing CLI commands (`soma_cli/cli.py` root resolution attaching `args.ws: Workspace` to all subcommand handlers: `init`, `doctor`, `status`, `verify`, `promote`, `demote`, `transfer`, `checkpoint`, `genesis`). Performs AST audit to guarantee zero internal references to deprecated standalone getters while retaining permanent backward-compatible facades (`resolve_workspace`, `confine_workspace`, `confine_path`, `resolve_git_hooks_dir`).
 
-## Phase 19 — v0.116.0 (In Progress)
+## Phase 19 — v0.116.0 ✅ Shipped
 
 ### Multi-Repo Hook Ergonomics & Dedicated Hook Management
-**Status**: 🔨 In Progress (v0.116.0)  
+**Status**: ✅ Shipped (v0.116.0)  
 Resolves multi-repo onboarding friction by introducing porcelain `soma hook` subcommands (`install`, `status`, `uninstall`), cross-platform dynamic interpreter resolution (Windows `Scripts/python.exe` and POSIX `bin/python`), uninitialized workspace bootstrapping (`Workspace.for_init()` and `ws.scaffold()`), and interactive hook installation in `soma genesis --install-hooks`.
 
-## Phase 20 — v0.117.0 (Planned)
+## Phase 20 — v0.117.0 (In Progress)
 
 ### Dual-Mode Verifier OOP & Frictionless In-Session Verification
-**Status**: 📋 Planned (v0.117.0)  
-Refactors the verification subsystem into a composable class hierarchy (`DeterministicVerifier`, `AdversarialVerifier`, `Arbiter`, `VerificationPipeline`). Introduces Dual-Mode Layer 2 Verification: zero-API-key in-session adversarial verification for interactive agent/MCP sessions (via in-band charge sheets and MCP Sampling `sampling/createMessage`), alongside headless SDK fallback for CI runners. Resolves interpreter discovery for mutation testing across virtualenvs.
+**Status**: 🔨 In Progress (v0.117.0)  
+Refactors the verification subsystem into a composable class hierarchy (`DeterministicVerifier`, `AdversarialVerifier`, `Arbiter`, `VerificationPipeline`). Introduces Dual-Mode Layer 2 Verification: zero-API-key in-session adversarial verification for interactive agent/MCP sessions (via in-band charge sheets and MCP Sampling `sampling/createMessage`), alongside headless SDK fallback for CI runners. Integrates `GitWorkspace(Workspace)` with zero-subprocess fast paths, resolves interpreter discovery for mutation testing across virtualenvs, and enforces the Isolated CI Environment Invariant (`HOME=$(mktemp -d) pytest`) guaranteeing zero test runner divergence.
 
 ## Phase 21 — v0.118.0 (Planned)
 
-### Localized Cell Evolution, Quarantine & Global Rule Cleanse
+### Modular Workspace Package & Localized Cell Evolution
 **Status**: 📋 Planned (v0.118.0)  
-Restricts cell evolution strictly to the local workspace (`vacuole` $\rightarrow$ `wall` $\rightarrow$ `gate`), disconnecting automatic promotion to global `genome/`. Adds compound fingerprinting to `Workspace.is_soma_repo` to prevent false positives on external genomics repositories. Implements whitelist-only global rules cleanse with mandatory quarantine backups (`~/.soma/quarantine/`). Implements explicit tagged Horizontal Gene Transfer (`soma transfer export`).
+Decomposes `soma_core/workspace.py` into a modular package directory (`soma_core/workspace/` with `base`, `git`, `discovery`, `confinement`, `scaffold`, and `hooks`). Restricts cell evolution strictly to the local workspace (`vacuole` $\rightarrow$ `wall` $\rightarrow$ `gate`), disconnecting automatic promotion to global `genome/`. Adds compound fingerprinting to `Workspace.is_soma_repo` to prevent false positives on external genomics repositories. Implements whitelist-only global rules cleanse with mandatory quarantine backups (`~/.soma/quarantine/`). Implements explicit tagged Horizontal Gene Transfer (`soma transfer export`).
 
 ## Phase 22 — v0.119.0 (Planned)
 
@@ -324,9 +324,21 @@ Extends JIT matching from path globs to syntactic AST triggers (imports, decorat
 
 ## Phase 23 — v0.120.0 (Planned)
 
-### Comprehensive Sunset, Code Cleanse & Documentation Architecture
+### The Great Project-Wide Legacy Cleanse & Sunset ("The Great Purge")
 **Status**: 📋 Planned (v0.120.0)  
-Final hardening and polish milestone executing a complete codebase deadwood sweep and transitional deprecation purge (pruning deprecated shims, obsolete test fixtures, and lingering internal bridges). Re-architects project documentation for developer discoverability and SEO optimization above the fold (30-second Quickstart with Genesis auto-scan and direct hook install). Deconstructs monolithic README into modular deep-dive guides (`docs/architecture/salience_and_evolution.md`, `docs/architecture/dual_mode_verifier.md`, `docs/guides/mcp_integration.md`, `docs/guides/multi_repo_worktrees.md`, `docs/guides/authoring_cells.md`). Purges deprecated shell installer instructions and obsolete historical bug warnings. Re-aligns and automates verification across `CLAIM_REGISTRY.json` and single-source versioning surfaces.
+The designated clean-slate release. Purges all accumulated rapid-iteration backwards-compatibility shims across the entire project (CLI, Core, MCP, SDK, and Tests) to establish the pristine baseline for permanent backwards compatibility. Removes deprecated standalone getters (`get_cells_dir`, etc.), obsolete wrapper facades, legacy CLI flags (`--repo-root`, `--project-root`), legacy pre-commit hook migration shims, and deprecated MCP tool parameters. Official project-wide backwards compatibility contract begins here.
+
+## Phase 24 — v0.121.0 (Planned)
+
+### Documentation Architecture, Developer Experience & Compatibility Contract
+**Status**: 📋 Planned (v0.121.0)  
+Re-architects project documentation for developer discoverability and SEO optimization above the fold (30-second Quickstart with Genesis auto-scan and direct hook install). Deconstructs monolithic README into modular deep-dive guides (`docs/architecture/salience_and_evolution.md`, `docs/architecture/dual_mode_verifier.md`, `docs/guides/mcp_integration.md`, `docs/guides/multi_repo_worktrees.md`, `docs/guides/authoring_cells.md`). Publishes official Backwards Compatibility Guarantee starting from `v0.120.0`. Re-aligns and automates verification across `CLAIM_REGISTRY.json` and single-source versioning surfaces.
+
+## Phase 25 — v1.0.0 (Planned)
+
+### Production GA Hardening & Multi-Lens Staff Review
+**Status**: 📋 Planned (v1.0.0)  
+Exhaustive, multi-perspective production readiness review across security, correctness, test integrity, and end-to-end behavior. Conducts 4 orthogonal review lenses (Security & Confinement Audit, Invariants & Edge Cases, Test Suite Integrity & Flakiness Sweep, Behavioral Ergonomics & API Contract). Addresses and resolves every identified issue through strict TDD. Delivers a bulletproof, zero-deadwood, enterprise-ready v1.0.0 General Availability release.
 
 ## Research
 

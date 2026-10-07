@@ -110,9 +110,22 @@ class WorkspaceBareRepoError(WorkspaceError):
         super().__init__(message, code=code, **kwargs)
 
 
+class NoTestRunnerFoundError(SomaError, RuntimeError):
+    """Raised when tests are required but no pytest test runner can be discovered."""
+
+    def __init__(
+        self,
+        message: str = "No suitable pytest runner found in virtualenv or PATH",
+        code: str = "NO_TEST_RUNNER_FOUND",
+        **kwargs: Any,
+    ) -> None:
+        super().__init__(message, code=code, **kwargs)
+
+
 __all__ = [
     "CellCorruptError",
     "LockTimeoutError",
+    "NoTestRunnerFoundError",
     "PathTraversalError",
     "ReceiptExpiredError",
     "SomaError",

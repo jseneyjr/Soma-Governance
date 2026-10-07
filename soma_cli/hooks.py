@@ -536,7 +536,7 @@ def run_pre_commit(
 
 _SOMA_HOOK_START = "# >>> soma pre-commit >>>"
 _SOMA_HOOK_END = "# <<< soma pre-commit <<<"
-SOMA_HOOK_FORMAT = "# soma-hook-format: 3"
+SOMA_HOOK_FORMAT = "# soma-hook-format:"
 CURRENT_HOOK_FORMAT_VERSION = 3
 
 
@@ -548,8 +548,8 @@ def generate_hook_block(python: str | None = None) -> str:
     q = shlex.quote(py)
     return (
         f"{_SOMA_HOOK_START}\n"
-        "# Installed by soma hook install (v0.116.0)\n"
-        f"{SOMA_HOOK_FORMAT}\n"
+        "# Installed by soma hook install\n"
+        f"{SOMA_HOOK_FORMAT} {CURRENT_HOOK_FORMAT_VERSION}\n"
         "if command -v soma >/dev/null 2>&1; then\n"
         "  soma checkpoint --pre-commit || exit $?\n"
         'elif [ -n "$VIRTUAL_ENV" ] && [ -x "$VIRTUAL_ENV/bin/python" ] && "$VIRTUAL_ENV/bin/python" -c \'import soma_cli\' >/dev/null 2>&1; then\n'
