@@ -321,6 +321,17 @@ def check(
     # 1. Extract definitions and __all__ exports
     def_visitor = FunctionDefinitionVisitor()
     def_visitor.visit(tree)
+    # Re-evaluate is_exported post-traversal so trailing __all__ definitions are honored
+    for name, info in list(def_visitor.definitions.items()):
+        is_exp = name in def_visitor.dunder_all or (info.class_name is not None and info.class_name in def_visitor.dunder_all)
+        if is_exp and not info.is_exported:
+            def_visitor.definitions[name] = FunctionDefInfo(
+                name=info.name,
+                line_no=info.line_no,
+                is_exported=True,
+                is_method=info.is_method,
+                class_name=info.class_name,
+            )
     definitions = def_visitor.definitions
 
     if not definitions:

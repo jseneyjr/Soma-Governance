@@ -276,6 +276,8 @@ def _handle_request_impl(request: Dict[str, Any]) -> Dict[str, Any]:
             return _error(req_id, -32602, "Tool arguments must be an object.")
 
         client_token = params.get("_sessionToken") or (args.get("_sessionToken") if isinstance(args, dict) else None)
+        require_token = os.environ.get("SOMA_REQUIRE_SESSION_TOKEN") == "1"
+
         if client_token is not None:
             from soma_core.receipts import _safe_compare
             valid = False
@@ -287,8 +289,11 @@ def _handle_request_impl(request: Dict[str, Any]) -> Dict[str, Any]:
                 valid = True
             if not valid:
                 return _error(req_id, -32002, "Invalid session token")
-
-        active_session_id = client_token or _session_token or "default"
+            active_session_id = client_token
+        elif require_token:
+            return _error(req_id, -32002, "Session token required for tool execution")
+        else:
+            active_session_id = "default"
 
         if name == "soma_request_receipt":
             if not _check_rate_limit("soma_request_receipt", session_id=active_session_id):

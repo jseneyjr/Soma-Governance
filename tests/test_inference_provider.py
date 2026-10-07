@@ -65,6 +65,7 @@ class TestInferenceProviderModels(unittest.TestCase):
             mock_client.models.generate_content.assert_called_once_with(
                 model="gemini-3.8-flash",
                 contents="test prompt",
+                config={"automatic_function_calling": {"disable": True}},
             )
 
     def test_gemini_provider_count_tokens_default_model(self):

@@ -80,7 +80,7 @@ GIT_GLOBAL_FLAGS_WITH_ARG = frozenset({
 
 ENV_VAR_RE = re.compile(r"^[a-zA-Z_][a-zA-Z0-9_]*=")
 WIN_DRIVE_RE = re.compile(r'([a-zA-Z]:)\\([\s*?$"]|$)')
-RM_DANGEROUS_TARGETS = frozenset({"/", "~", "/home", "$home", ".", "..", "*"})
+RM_DANGEROUS_TARGETS = frozenset({"/", "~", "/home", "$home", "/root", "$root", ".", "..", "*"})
 GLOB_CHARS = frozenset({"*", "?", "[", "]"})
 
 
@@ -456,11 +456,21 @@ def unwrap_command_stage(tokens: list[str]) -> tuple[UnwrappedCommand | None, st
                 return None, inner_eval_cmd
             return None, None
 
-        # 9. Shell interpreter with script (-c / /c / -Command)
+        # 9. Shell interpreter with script (-c / /c / -Command / bundled flags like -lc, -ec, -xc)
         if base in SHELL_INTERPRETERS:
             c_idx = -1
             for j in range(idx + 1, len(tokens)):
-                if tokens[j] in ("-c", "/c", "-Command", "-command"):
+                tok = tokens[j]
+                if tok in ("-c", "/c", "-Command", "-command"):
+                    c_idx = j
+                    break
+                # POSIX short-flag bundling (e.g. bash -lc, sh -ec, zsh -xic)
+                if (
+                    base in ("bash", "sh", "zsh", "dash")
+                    and tok.startswith("-")
+                    and not tok.startswith("--")
+                    and "c" in tok[1:]
+                ):
                     c_idx = j
                     break
             if c_idx != -1 and c_idx + 1 < len(tokens):
@@ -588,7 +598,15 @@ def evaluate_rm(cmd: UnwrappedCommand) -> SafetyEvaluation:
     if has_r:
         for arg in cmd.positional_args:
             target = arg.strip("'\"").lower()
-            if target in RM_DANGEROUS_TARGETS or any(target.endswith("/" + t) for t in RM_DANGEROUS_TARGETS):
+            # Path normalization (BUG-075): strip trailing slashes, e.g. "./", "../", "~/", "/home/"
+            norm_target = target.rstrip("/\\")
+            if not norm_target and target.startswith(("/", "\\")):
+                norm_target = "/"
+            if (
+                target in RM_DANGEROUS_TARGETS
+                or norm_target in RM_DANGEROUS_TARGETS
+                or any(norm_target.endswith("/" + t) for t in RM_DANGEROUS_TARGETS if t != "/")
+            ):
                 return SafetyEvaluation(True, REASON_RM_RF)
 
     return SafetyEvaluation(False)

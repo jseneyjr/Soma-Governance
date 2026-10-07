@@ -42,9 +42,11 @@ def arbitrate(
     for c in claims:
         claim_by_cat.setdefault(c.category, []).append(c)
 
-    # Index Layer 1 failures by relevance
+    # Index Layer 1 failures by relevance (BUG-078: group by tool to prevent multi-target collisions)
     layer1_failures = [e for e in layer1_evidence if not e.verdict]
-    layer1_by_tool = {e.tool: e for e in layer1_evidence}
+    layer1_by_tool: dict[str, list[ToolEvidence]] = {}
+    for e in layer1_evidence:
+        layer1_by_tool.setdefault(e.tool, []).append(e)
 
     # Map Layer 1 tool names to risk categories they can adjudicate
     TOOL_TO_CATEGORY = {
@@ -62,10 +64,13 @@ def arbitrate(
         cls = claim_by_cat.get(cat, [])
 
         # Find relevant Layer 1 evidence for this category
+        # If any target file failed for this tool, prioritize that failure
         relevant_evidence = None
         for tool_name, tool_cat in TOOL_TO_CATEGORY.items():
             if tool_cat == cat and tool_name in layer1_by_tool:
-                relevant_evidence = layer1_by_tool[tool_name]
+                tool_evs = layer1_by_tool[tool_name]
+                failing = next((ev for ev in tool_evs if not ev.verdict), None)
+                relevant_evidence = failing if failing else tool_evs[0]
                 break
 
         if preds and not cls:

@@ -290,14 +290,16 @@ def run_layer2(
 
 
 def gate_verdict(results: list[ToolEvidence]) -> bool:
-    """Simple gate: PASS if all tools pass, FAIL if any fails or if results is empty."""
+    """Simple gate: PASS if all tools pass. Empty results (no changed files) is a clean pass."""
     if not results:
-        return False
+        return True
     return all(r.verdict for r in results)
 
 
 def format_summary(results: list[ToolEvidence]) -> str:
     """One-line summary of Layer 1 results."""
+    if not results:
+        return "Layer 1: No changed files to verify (0 checks run, PASSED)"
     passed = sum(1 for r in results if r.verdict)
     failed = sum(1 for r in results if not r.verdict)
     total = len(results)

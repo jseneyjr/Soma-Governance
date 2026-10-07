@@ -418,7 +418,7 @@ def check_cell_conventions(root: Path) -> list[dict]:
         ))
         return issues
 
-    from soma_mcp.jit_engine import parse_frontmatter
+    from soma_core.cell_inventory import parse_frontmatter
 
     for entry in inventory.entries:
         if os.path.basename(entry.relative_path) == "README.md":

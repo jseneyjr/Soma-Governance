@@ -1,7 +1,7 @@
 """Soma CLI — user-facing governance commands."""
 from __future__ import annotations
 
-__version__ = "0.108.0"
+__version__ = "0.109.0"
 
 import re
 from pathlib import Path
@@ -35,9 +35,10 @@ EMOJI_REPLACEMENTS = {
 
 
 def sanitize_display(text: str, max_len: int = 80) -> str:
-    """Strip ANSI escapes and control chars, clamp length for safe terminal display."""
-    text = re.sub(r'\x1b(?:\[[0-9;?]*[a-zA-Z]|\].*?(?:\x07|\x1b\\)|[=><NOM78c])', '', text)
+    """Strip ANSI escapes, C1 control chars, and DCS/OSC sequences for safe terminal display."""
+    text = re.sub(r'\x1b(?:\[[0-9;?]*[a-zA-Z]|\].*?(?:\x07|\x1b\\)|P.*?(?:\x1b\\|\x07)|[=><NOM78c])', '', text)
     text = re.sub(r'[\x00-\x08\x0b-\x1f\x7f]', '', text)
+    text = re.sub(r'[\x80-\x9f]', '', text)
     text = text.replace('\n', ' ').replace('\r', '')
     text = text.replace('\t', ' ')
     if len(text) > max_len:

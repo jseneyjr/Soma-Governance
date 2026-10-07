@@ -56,8 +56,14 @@ def extract_signatures(filepath: str) -> list[str]:
             default_idx = i - defaults_offset
             if default_idx >= 0:
                 default_node = node.args.defaults[default_idx]
-                default_val = ast.literal_eval(default_node)
-                args.append(f"{arg.arg}={default_val!r}")
+                try:
+                    default_val = ast.literal_eval(default_node)
+                    args.append(f"{arg.arg}={default_val!r}")
+                except (ValueError, SyntaxError):
+                    try:
+                        args.append(f"{arg.arg}={ast.unparse(default_node)}")
+                    except Exception:
+                        args.append(f"{arg.arg}=...")
             else:
                 args.append(arg.arg)
 
