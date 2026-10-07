@@ -167,12 +167,21 @@ def discover_test_evidence(target_files: list[str], repo_root: str) -> tuple[lis
     if not discovered_test_files:
         return ([], "")
 
-    # Run tests with python -m pytest
+    from soma_core.verification.test_runner import resolve_pytest_cmd, NoTestRunnerFoundError
+
+    pytest_cmd = resolve_pytest_cmd(workspace=repo_root)
+    if not pytest_cmd:
+        raise NoTestRunnerFoundError(
+            f"Found {len(discovered_test_files)} associated test file(s) for changed targets, "
+            "but no pytest runner was discovered on PATH or in virtual environment."
+        )
+
+    # Run tests with resolved pytest command
     run_outputs = []
     for test_file in discovered_test_files:
         try:
             res = subprocess.run(
-                [sys.executable, "-m", "pytest", test_file, "-q", "--tb=no"],
+                pytest_cmd + [test_file, "-q", "--tb=no"],
                 capture_output=True,
                 text=True,
                 timeout=15,
@@ -370,6 +379,31 @@ def run_verify(args: argparse.Namespace) -> int:
         _record_telemetry(layer1_pass, "PASS" if layer1_pass else "FAIL")
         return 0 if layer1_pass else 1
 
+    # ── In-Band Verification Mode ─────────────────────────────────────
+    if getattr(args, 'in_band', False):
+        from soma_core.verification import VerificationPipeline
+        pipeline = VerificationPipeline()
+        pipeline_res = pipeline.run(
+            changed_files=target_files,
+            workspace=ws_obj,
+            task_plan=resolve_task_plan(args, repo_root) or "Interactive in-band verification",
+            in_band=True,
+            rebuttal=None,
+        )
+        if pipeline_res.charge_sheet:
+            print("\n📋 SOMA IN-BAND CHARGE SHEET (SOMA-V01)")
+            print(f"Target files ({len(pipeline_res.charge_sheet.target_files)}): {', '.join(pipeline_res.charge_sheet.target_files)}")
+            print(f"Prosecution charges ({len(pipeline_res.charge_sheet.predictions)}):")
+            for idx, p in enumerate(pipeline_res.charge_sheet.predictions, 1):
+                sev = p.severity.value if hasattr(p.severity, "value") else str(p.severity)
+                cat = p.category.value if hasattr(p.category, "value") else str(p.category)
+                print(f"  {idx}. [{sev.upper()}] {cat} in '{p.affected_function}': {p.risk}")
+                print(f"     Mechanism: {p.mechanism}")
+            print("\nRebuttal instructions:")
+            print("  Submit defense claims citing evidence_file, evidence_line, and tests covering the fix.")
+            _record_telemetry(False, "REVISE")
+            return 1
+
     # ── Run Layer 2 (full verification) ───────────────────────────────
     provider = resolve_cli_provider(args, repo_root)
     if provider is None:
@@ -393,7 +427,12 @@ def run_verify(args: argparse.Namespace) -> int:
         return 0
 
     llm_backend = provider.generate if hasattr(provider, 'generate') else provider
-    test_names, test_results = discover_test_evidence(target_files, repo_root)
+    try:
+        test_names, test_results = discover_test_evidence(target_files, repo_root)
+    except Exception as e:
+        print(f"Error: Test discovery and execution failed: {e}", file=sys.stderr)
+        _record_telemetry(False, "BLOCK")
+        return 1
     try:
         l2_result = runner.run_layer2(
             changed_files=target_files,

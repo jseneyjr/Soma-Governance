@@ -12,9 +12,11 @@ from __future__ import annotations
 
 import os
 import re
+import subprocess
 import warnings
 from dataclasses import dataclass, field
 from pathlib import Path
+from typing import Any
 
 from soma_core.errors import (
     PathTraversalError,
@@ -40,7 +42,71 @@ def _is_workspace_dir(d: str) -> bool:
     if d not in ("/tmp", "/var/tmp", home_str):
         if os.path.isdir(os.path.join(d, ".soma")):
             return True
-    return False
+def _find_git_dirs(root: Path) -> tuple[Path | None, Path | None]:
+    """Find (git_dir, git_common_dir) for a workspace root, walking up if necessary."""
+    curr = root.resolve()
+    while True:
+        dot_git = curr / ".git"
+        if dot_git.is_dir():
+            return dot_git, dot_git
+        elif dot_git.is_file():
+            try:
+                content = dot_git.read_text(encoding="utf-8", errors="replace").strip()
+                if content.startswith("gitdir:"):
+                    gitdir_str = content[7:].strip()
+                    gitdir_path = Path(gitdir_str)
+                    if not gitdir_path.is_absolute():
+                        gitdir_path = (curr / gitdir_path).resolve()
+                    commondir_file = gitdir_path / "commondir"
+                    if commondir_file.is_file():
+                        common_rel = commondir_file.read_text(encoding="utf-8").strip()
+                        common_dir = (gitdir_path / common_rel).resolve()
+                        return gitdir_path, common_dir
+                    if gitdir_path.parent.name == "worktrees" and gitdir_path.parent.parent.is_dir():
+                        return gitdir_path, gitdir_path.parent.parent
+                    return gitdir_path, gitdir_path
+            except (OSError, UnicodeError, ValueError):
+                pass
+        parent = curr.parent
+        if parent == curr:
+            break
+        curr = parent
+    return None, None
+
+
+def _parse_worktree_porcelain(stdout: str) -> list[dict[str, Any]]:
+    """Parse output of git worktree list --porcelain."""
+    worktrees: list[dict[str, Any]] = []
+    current: dict[str, Any] = {}
+    for line in stdout.splitlines():
+        line = line.strip()
+        if not line:
+            if current and "path" in current:
+                worktrees.append(current)
+                current = {}
+            continue
+        if line.startswith("worktree "):
+            if current and "path" in current:
+                worktrees.append(current)
+                current = {}
+            current["path"] = Path(line[9:].strip())
+            current["bare"] = False
+            current["detached"] = False
+            current["branch"] = None
+            current["head"] = ""
+        elif line.startswith("HEAD "):
+            current["head"] = line[5:].strip()
+        elif line.startswith("branch "):
+            ref = line[7:].strip()
+            prefix = "refs/heads/"
+            current["branch"] = ref[len(prefix):] if ref.startswith(prefix) else ref
+        elif line == "bare":
+            current["bare"] = True
+        elif line == "detached":
+            current["detached"] = True
+    if current and "path" in current:
+        worktrees.append(current)
+    return worktrees
 
 
 @dataclass(frozen=True, eq=False)
@@ -105,6 +171,11 @@ class Workspace(os.PathLike[str]):
         """Path to .soma/evidence/signals.jsonl file."""
         return self.evidence_dir / "signals.jsonl"
 
+    @property
+    def is_git(self) -> bool:
+        """True if this workspace is backed by a Git repository or worktree."""
+        return (self.root / ".git").exists() or self.git_hooks_dir is not None
+
     def __fspath__(self) -> str:
         return str(self.root)
 
@@ -129,6 +200,10 @@ class Workspace(os.PathLike[str]):
         resolved = p.resolve()
         if resolved.is_file():
             raise WorkspaceError(f"Workspace path must be a directory, not a file: {resolved}")
+        if cls is Workspace:
+            dot_git = resolved / ".git"
+            if dot_git.exists():
+                return GitWorkspace(root=resolved)
         return cls(root=resolved)
 
     def scaffold(self, minimal: bool = False, dry_run: bool = False) -> list[Path]:
@@ -188,32 +263,42 @@ class Workspace(os.PathLike[str]):
         6. Walk up from caller_file, skipping vendor/ directories
         7. Fallback to CWD
         """
+        def _make_ws(cand_root: Path) -> Workspace:
+            resolved_root = cand_root.resolve()
+            if cls is Workspace:
+                dot_git = resolved_root / ".git"
+                if dot_git.exists() or _find_git_dirs(resolved_root)[0] is not None:
+                    return GitWorkspace(root=resolved_root)
+            return cls(root=resolved_root)
+
         if isinstance(start, Workspace):
+            if cls is GitWorkspace and not isinstance(start, GitWorkspace):
+                return GitWorkspace(root=start.root)
             return start
 
         # 1. SOMA_WORKSPACE env var
         soma_ws = os.environ.get("SOMA_WORKSPACE")
         if soma_ws:
             if os.path.isdir(os.path.join(soma_ws, ".soma", "cells")):
-                return cls(root=Path(soma_ws))
+                return _make_ws(Path(soma_ws))
             elif strict_env:
                 raise WorkspaceNotFoundError(
                     f"SOMA_WORKSPACE is set to {soma_ws} but no .soma/cells found there."
                 )
             elif os.path.isdir(soma_ws):
-                return cls(root=Path(soma_ws))
+                return _make_ws(Path(soma_ws))
 
         # 2. SOMA_ROOT env var
         soma_root = os.environ.get("SOMA_ROOT")
         if soma_root:
             if os.path.isdir(os.path.join(soma_root, ".soma", "cells")):
-                return cls(root=Path(soma_root))
+                return _make_ws(Path(soma_root))
             elif strict_env:
                 raise WorkspaceNotFoundError(
                     f"SOMA_ROOT is set to {soma_root} but no .soma/cells found there."
                 )
             elif os.path.isdir(soma_root):
-                return cls(root=Path(soma_root))
+                return _make_ws(Path(soma_root))
 
         # 3. Explicit start path walk-up
         if start is not None:
@@ -221,20 +306,20 @@ class Workspace(os.PathLike[str]):
             d = cand if os.path.isdir(cand) else os.path.dirname(cand)
             while d != os.path.dirname(d):
                 if _is_workspace_dir(d):
-                    return cls(root=Path(d))
+                    return _make_ws(Path(d))
                 d = os.path.dirname(d)
-            return cls(root=Path(cand if os.path.isdir(cand) else os.path.dirname(cand)))
+            return _make_ws(Path(cand if os.path.isdir(cand) else os.path.dirname(cand)))
 
         # 4. Check CWD directly
         cwd = os.getcwd()
         if _is_workspace_dir(cwd):
-            return cls(root=Path(cwd))
+            return _make_ws(Path(cwd))
 
         # 5. Walk up from CWD
         d = cwd
         while d != os.path.dirname(d):
             if _is_workspace_dir(d):
-                return cls(root=Path(d))
+                return _make_ws(Path(d))
             d = os.path.dirname(d)
 
         # 6. Walk up from caller_file (skipping vendor/ directories)
@@ -246,11 +331,11 @@ class Workspace(os.PathLike[str]):
                     and "/vendor/" not in d
                     and os.path.basename(os.path.dirname(d)) != "vendor"
                 ):
-                    return cls(root=Path(d))
+                    return _make_ws(Path(d))
                 d = os.path.dirname(d)
 
         # 7. Fallback to CWD
-        return cls(root=Path(cwd))
+        return _make_ws(Path(cwd))
 
     @classmethod
     def confine(
@@ -280,7 +365,12 @@ class Workspace(os.PathLike[str]):
         if not os.path.isdir(cells_dir):
             raise WorkspaceError(f"not a valid Soma workspace (missing .soma/cells/): {resolved}")
 
-        return cls(root=Path(resolved))
+        resolved_path = Path(resolved)
+        if cls is Workspace:
+            dot_git = resolved_path / ".git"
+            if dot_git.exists() or _find_git_dirs(resolved_path)[0] is not None:
+                return GitWorkspace(root=resolved_path)
+        return cls(root=resolved_path)
 
     def confine_path(self, untrusted_path: str | Path | os.PathLike[str]) -> tuple[str, str]:
         """Resolve and confine a file path within this workspace.
@@ -348,6 +438,170 @@ class Workspace(os.PathLike[str]):
                     known.add(os.path.splitext(fn)[0])
 
         return [name for name in cell_names if name not in known]
+
+
+@dataclass(frozen=True, eq=False)
+class GitWorkspace(Workspace):
+    """A Soma workspace backed by a Git repository or linked worktree."""
+
+    git_dir: Path | None = field(default=None)
+    git_common_dir: Path | None = field(default=None)
+
+    def __post_init__(self) -> None:
+        super().__post_init__()
+        resolved_root = self.root
+        git_dir, common_dir = _find_git_dirs(resolved_root)
+        if git_dir is not None:
+            object.__setattr__(self, "git_dir", git_dir)
+            object.__setattr__(self, "git_common_dir", common_dir or git_dir)
+            if self.git_hooks_dir is None:
+                hooks = resolve_git_hooks_dir(resolved_root)
+                object.__setattr__(self, "git_hooks_dir", hooks)
+
+    @property
+    def is_git(self) -> bool:
+        """True if this workspace is backed by a Git repository or worktree."""
+        return bool(self.git_dir is not None and self.git_dir.exists())
+
+    def __repr__(self) -> str:
+        return f"GitWorkspace(root={self.root!r}, branch={self.branch_name!r}, is_worktree={self.is_worktree})"
+
+    @property
+    def head_commit(self) -> str | None:
+        """Commit hash of HEAD, resolved using zero-subprocess fast paths when possible."""
+        if not self.git_dir or not self.git_dir.exists():
+            return None
+        head_file = self.git_dir / "HEAD"
+        if not head_file.is_file():
+            return None
+        try:
+            head_content = head_file.read_text(encoding="utf-8", errors="replace").strip()
+            if not head_content:
+                return None
+            if not head_content.startswith("ref:"):
+                # Detached HEAD: direct commit SHA
+                if len(head_content) in (40, 64) and all(c in "0123456789abcdefABCDEF" for c in head_content):
+                    return head_content
+                return None
+
+            ref_path_rel = head_content[4:].strip()
+            # Try loose ref in git_dir, then git_common_dir
+            for base_dir in (self.git_dir, self.git_common_dir):
+                candidate_ref = base_dir / ref_path_rel
+                if candidate_ref.is_file():
+                    sha = candidate_ref.read_text(encoding="utf-8", errors="replace").strip()
+                    if sha:
+                        return sha
+
+            # Try packed-refs in git_common_dir
+            packed_refs_file = self.git_common_dir / "packed-refs"
+            if packed_refs_file.is_file():
+                for line in packed_refs_file.read_text(encoding="utf-8", errors="replace").splitlines():
+                    line = line.strip()
+                    if not line or line.startswith(("#", "^")):
+                        continue
+                    parts = line.split(maxsplit=1)
+                    if len(parts) == 2 and parts[1] == ref_path_rel:
+                        return parts[0]
+        except (OSError, UnicodeError, ValueError):
+            pass
+
+        # Fallback to subprocess
+        res = self._run_git(["git", "rev-parse", "HEAD"])
+        if res.returncode == 0:
+            out = res.stdout.strip()
+            if out:
+                return out
+        return None
+
+    @property
+    def branch_name(self) -> str | None:
+        """Active branch name, or None if in detached HEAD state."""
+        if not self.git_dir or not self.git_dir.exists():
+            return None
+        head_file = self.git_dir / "HEAD"
+        if not head_file.is_file():
+            return None
+        try:
+            head_content = head_file.read_text(encoding="utf-8", errors="replace").strip()
+            prefix = "ref: refs/heads/"
+            if head_content.startswith(prefix):
+                return head_content[len(prefix):].strip()
+            if head_content.startswith("ref:"):
+                return None
+            return None
+        except (OSError, UnicodeError):
+            pass
+
+        # Fallback to subprocess
+        res = self._run_git(["git", "rev-parse", "--abbrev-ref", "HEAD"])
+        if res.returncode == 0:
+            b = res.stdout.strip()
+            if b and b != "HEAD":
+                return b
+        return None
+
+    def get_diff(self, staged: bool = False, base: str | None = None) -> str:
+        """Extract unified diff from working tree, staged index, or base commit."""
+        cmd = ["git", "diff", "--no-color", "--no-ext-diff"]
+        if staged:
+            cmd.append("--cached")
+        if base:
+            cmd.append(base)
+        res = self._run_git(cmd)
+        return res.stdout if res.returncode == 0 else ""
+
+    def get_changed_files(self, staged: bool = False, base: str | None = None) -> list[str]:
+        """List repo-relative paths of modified or added files."""
+        cmd = ["git", "diff", "--name-only"]
+        if staged:
+            cmd.append("--cached")
+        if base:
+            cmd.append(base)
+        res = self._run_git(cmd)
+        if res.returncode != 0:
+            return []
+        return [line.strip() for line in res.stdout.splitlines() if line.strip()]
+
+    def get_untracked_files(self) -> list[str]:
+        """List untracked files respecting .gitignore."""
+        res = self._run_git(["git", "ls-files", "--others", "--exclude-standard"])
+        if res.returncode != 0:
+            return []
+        return [line.strip() for line in res.stdout.splitlines() if line.strip()]
+
+    def list_worktrees(self) -> list[dict[str, Any]]:
+        """Discover linked worktrees associated with this repository."""
+        res = self._run_git(["git", "worktree", "list", "--porcelain"])
+        if res.returncode != 0:
+            return [{
+                "path": self.root,
+                "bare": False,
+                "head": self.head_commit or "",
+                "branch": self.branch_name,
+                "detached": self.branch_name is None,
+            }]
+        return _parse_worktree_porcelain(res.stdout)
+
+    def _run_git(self, cmd: list[str], timeout: float = 5.0) -> subprocess.CompletedProcess[str]:
+        """Execute a git command confined to this repository root."""
+        try:
+            return subprocess.run(
+                cmd,
+                cwd=str(self.root),
+                capture_output=True,
+                text=True,
+                encoding="utf-8",
+                errors="replace",
+                timeout=timeout,
+            )
+        except (subprocess.SubprocessError, OSError) as exc:
+            return subprocess.CompletedProcess(
+                args=cmd,
+                returncode=1,
+                stdout="",
+                stderr=str(exc),
+            )
 
 
 def resolve_workspace(
@@ -422,7 +676,7 @@ def as_workspace(workspace: str | Path | os.PathLike[str] | Workspace | None = N
     if isinstance(workspace, Workspace):
         return workspace
     if workspace:
-        return Workspace(root=Path(workspace).resolve())
+        return Workspace.resolve(start=workspace)
     return Workspace.resolve()
 
 
@@ -441,7 +695,7 @@ def confine_path(
     p_str = str(untrusted_path) if untrusted_path is not None else ""
     if not p_str or not p_str.strip():
         raise PathTraversalError("file path must not be empty")
-    return Workspace(root=Path(workspace).resolve()).confine_path(untrusted_path)
+    return Workspace.resolve(start=workspace).confine_path(untrusted_path)
 
 
 def validate_cell_names(
@@ -449,7 +703,7 @@ def validate_cell_names(
     workspace: str | Path | os.PathLike[str] | Workspace,
 ) -> list[str]:
     """Validate that cell names reference cells that actually exist."""
-    ws = workspace if isinstance(workspace, Workspace) else Workspace(root=Path(workspace).resolve())
+    ws = workspace if isinstance(workspace, Workspace) else Workspace.resolve(start=workspace)
     return ws.validate_cell_names(cell_names)
 
 
@@ -496,37 +750,15 @@ def resolve_git_hooks_dir(project_root: str | Path | os.PathLike[str] | None = N
         pass
 
     # 2. Pure Python fallback (zero external CLI dependencies)
-    dot_git = root / ".git"
-    if dot_git.is_dir():
-        return dot_git / "hooks"
-    elif dot_git.is_file():
-        try:
-            content = dot_git.read_text(encoding="utf-8", errors="replace").strip()
-            if content.startswith("gitdir:"):
-                gitdir_str = content[7:].strip()
-                gitdir_path = Path(gitdir_str)
-                if not gitdir_path.is_absolute():
-                    gitdir_path = (root / gitdir_path).resolve()
-
-                # In worktrees, commondir points back to the main .git dir
-                commondir_file = gitdir_path / "commondir"
-                if commondir_file.is_file():
-                    common_rel = commondir_file.read_text(encoding="utf-8").strip()
-                    common_dir = (gitdir_path / common_rel).resolve()
-                    return common_dir / "hooks"
-
-                # If inside .git/worktrees/<name>, traverse up to .git/hooks
-                if gitdir_path.parent.name == "worktrees" and gitdir_path.parent.parent.is_dir():
-                    return gitdir_path.parent.parent / "hooks"
-
-                return gitdir_path / "hooks"
-        except (OSError, UnicodeError, ValueError):
-            return None
+    _git_dir, common_dir = _find_git_dirs(root)
+    if common_dir is not None:
+        return common_dir / "hooks"
 
     return None
 
 
 __all__ = [
+    "GitWorkspace",
     "Workspace",
     "as_workspace",
     "confine_path",

@@ -196,7 +196,7 @@ def _check_mcp_launcher(path_env: str | None = None) -> bool:
 
 def _check_precommit_hook(project_root: Path | None = None) -> bool | None:
     """False for a pre-BUG-047 soma hook block, True if current, None if absent."""
-    from soma_cli.init import SOMA_HOOK_FORMAT, _SOMA_HOOK_START
+    from soma_cli.hooks import SOMA_HOOK_FORMAT, _SOMA_HOOK_START
     from soma_core.workspace import resolve_git_hooks_dir
 
     hooks_dir = resolve_git_hooks_dir(project_root)
@@ -209,7 +209,7 @@ def _check_precommit_hook(project_root: Path | None = None) -> bool | None:
         return None
     if _SOMA_HOOK_START not in text:
         return None
-    if "soma-hook-format: 3" in text or "soma-hook-format: 2" in text or SOMA_HOOK_FORMAT in text:
+    if SOMA_HOOK_FORMAT in text:
         print(f"  ✅ Pre-commit hook is current ({hook})")
         return True
     print(f"  ❌ Pre-commit hook uses an old soma block ({hook}).\n"

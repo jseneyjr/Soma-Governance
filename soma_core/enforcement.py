@@ -152,31 +152,36 @@ def verify_regression_tests(registry: Dict[str, Any], workspace: str | Path | Wo
     if test_ids:
         all_refs = [ref for _, ref in test_ids]
         budget = 60 + 5 * len(all_refs)
-        try:
-            result = subprocess.run(
-                [sys.executable, "-m", "pytest", "-q", "-rfE"] + all_refs,
-                capture_output=True,
-                text=True,
-                cwd=str(ws_root),
-                timeout=budget,
-            )
-            if result.returncode != 0:
-                errors.append(f"Regression tests failed (exit code {result.returncode})")
-                failed = _failed_node_ids((result.stdout or "") + "\n" + (result.stderr or ""))
-                matched_failure = False
-                for bug_id, test_ref in test_ids:
-                    if any(_node_matches(node, test_ref) for node in failed):
-                        errors.append(f"{bug_id}: regression test failed: {test_ref}")
-                        matched_failure = True
-                if not matched_failure:
-                    out = (result.stderr or "").strip() or (result.stdout or "").strip()
-                    if out:
-                        for line in out.splitlines()[-10:]:
-                            errors.append(f"  pytest: {line}")
-        except subprocess.TimeoutExpired:
-            errors.append(f"Timeout running {len(all_refs)} regression tests (limit {budget} s)")
-        except Exception as e:
-            errors.append(f"Error running tests: {e}")
+        from soma_core.verification.test_runner import resolve_pytest_cmd
+        pytest_cmd = resolve_pytest_cmd(workspace=ws_root)
+        if not pytest_cmd:
+            errors.append("Regression tests failed: no pytest runner discovered in environment")
+        else:
+            try:
+                result = subprocess.run(
+                    pytest_cmd + ["-q", "-rfE"] + all_refs,
+                    capture_output=True,
+                    text=True,
+                    cwd=str(ws_root),
+                    timeout=budget,
+                )
+                if result.returncode != 0:
+                    errors.append(f"Regression tests failed (exit code {result.returncode})")
+                    failed = _failed_node_ids((result.stdout or "") + "\n" + (result.stderr or ""))
+                    matched_failure = False
+                    for bug_id, test_ref in test_ids:
+                        if any(_node_matches(node, test_ref) for node in failed):
+                            errors.append(f"{bug_id}: regression test failed: {test_ref}")
+                            matched_failure = True
+                    if not matched_failure:
+                        out = (result.stderr or "").strip() or (result.stdout or "").strip()
+                        if out:
+                            for line in out.splitlines()[-10:]:
+                                errors.append(f"  pytest: {line}")
+            except subprocess.TimeoutExpired:
+                errors.append(f"Timeout running {len(all_refs)} regression tests (limit {budget} s)")
+            except Exception as e:
+                errors.append(f"Error running tests: {e}")
 
     return errors
 
@@ -249,15 +254,20 @@ def verify_readme_claims(workspace: str | Path | Workspace = ".") -> Tuple[bool,
     for claim_id, claim in registry.get("claims", {}).items():
         status = claim.get("status")
         if status == "unlocked":
-            for test in claim.get("required_tests", []):
-                res = subprocess.run(
-                    [sys.executable, "-m", "pytest", test, "-x", "-q", "--tb=short"],
-                    capture_output=True,
-                    text=True,
-                    cwd=str(ws.root),
-                )
-                if res.returncode != 0:
-                    failures.append(f"REGRESSION: {claim_id} — test {test} FAILED")
+            from soma_core.verification.test_runner import resolve_pytest_cmd
+            pytest_cmd = resolve_pytest_cmd(workspace=ws.root)
+            if not pytest_cmd:
+                failures.append(f"REGRESSION: {claim_id} — no pytest runner available to verify claim tests")
+            else:
+                for test in claim.get("required_tests", []):
+                    res = subprocess.run(
+                        pytest_cmd + [test, "-x", "-q", "--tb=short"],
+                        capture_output=True,
+                        text=True,
+                        cwd=str(ws.root),
+                    )
+                    if res.returncode != 0:
+                        failures.append(f"REGRESSION: {claim_id} — test {test} FAILED")
         elif status == "removed":
             if claim.get("readme_text") and claim["readme_text"] in readme:
                 failures.append(f"OVERCLAIM: {claim_id} is marked 'removed' but text is in README")

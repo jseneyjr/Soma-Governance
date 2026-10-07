@@ -622,6 +622,11 @@ TOOL_DEFINITIONS = [
                 "layer1_only": {"type": "boolean", "description": "Only run Layer-1 checks (default true)."},
                 "async_mode": {"type": "boolean", "description": "Run verification asynchronously in background and return job_id for polling (default false)."},
                 "task_plan": {"type": "string", "description": "Task plan or specification used for Layer-2 adversarial verification."},
+                "rebuttal": {
+                    "type": "array",
+                    "items": {"type": "object"},
+                    "description": "List of defense rebuttal claims with evidence citations to rebut an in-band charge sheet."
+                },
                 "receipt": {"type": "string", "description": "Execution receipt ID obtained from soma_request_receipt"}
             },
             "required": ["receipt"]
@@ -885,9 +890,66 @@ def _handle_verify_changes(args: dict, gov) -> dict:
         }
 
     try:
-        from soma_core.verification import runner
+        from soma_core.verification import VerificationPipeline, runner
     except ImportError:
         return {"error": "soma_core.verification is not importable. Install soma package."}
+
+    rebuttal = args.get('rebuttal')
+    task_plan = args.get('task_plan', '')
+
+    if not layer1_only:
+        pipeline = VerificationPipeline()
+        pipeline_res = pipeline.run(
+            changed_files=files,
+            workspace=workspace,
+            task_plan=task_plan,
+            in_band=True,
+            rebuttal=rebuttal,
+        )
+
+        evidence = [
+            {"tool": r.tool, "target": r.target, "verdict": r.verdict, "detail": r.detail}
+            for r in pipeline_res.layer1_evidence
+        ]
+        try:
+            from soma_core.outcomes import record_verification_telemetry
+            record_verification_telemetry(
+                workspace=workspace,
+                target_files=files,
+                passed=pipeline_res.passed,
+                verdict=pipeline_res.verdict.name,
+                layer1_evidence=evidence,
+                source="mcp",
+            )
+        except Exception:
+            pass
+
+        if pipeline_res.charge_sheet:
+            res_dict = pipeline_res.charge_sheet.to_dict()
+            res_dict["layer1_passed"] = pipeline_res.layer1_passed
+            res_dict["summary"] = pipeline_res.summary
+            return res_dict
+
+        resp = {
+            "status": pipeline_res.verdict.name,
+            "verdict": pipeline_res.verdict.name,
+            "passed": pipeline_res.passed,
+            "summary": pipeline_res.summary,
+            "layer1_only": False,
+            "evidence": evidence,
+        }
+        if pipeline_res.arbitration_result:
+            resp["divergences"] = [
+                {
+                    "category": d.category.value,
+                    "type": d.divergence_type,
+                    "resolution": d.resolution,
+                }
+                for d in pipeline_res.arbitration_result.divergences
+            ]
+            resp["convergences"] = [c.value for c in pipeline_res.arbitration_result.convergences]
+        return resp
+
     results = runner.run_layer1(changed_files=files, repo_root=workspace)
     verdict = runner.gate_verdict(results)
     summary = runner.format_summary(results)
@@ -907,16 +969,12 @@ def _handle_verify_changes(args: dict, gov) -> dict:
         )
     except Exception:
         pass
-    actual_layer1_only = True
-    response_payload = {
+    return {
         "status": "PASS" if verdict else "FAIL",
         "summary": summary,
-        "layer1_only": actual_layer1_only,
+        "layer1_only": True,
         "evidence": evidence,
     }
-    if not layer1_only:
-        response_payload["note"] = "Synchronous Layer 2 verification is not supported over MCP transport; use async_mode=true or fell back to Layer 1."
-    return response_payload
 
 
 def _handle_poll_verification(args: dict, gov) -> dict:

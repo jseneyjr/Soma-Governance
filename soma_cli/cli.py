@@ -140,6 +140,8 @@ def _build_parser() -> argparse.ArgumentParser:
                           help="Path to file containing task plan or prompt context")
     p_verify.add_argument("--provider", default=None,
                           help="Inference provider to use (gemini, anthropic, openai, keyring, prompt)")
+    p_verify.add_argument("--in-band", action="store_true",
+                          help="Generate an in-band charge sheet for conversational rebuttal (zero external API keys)")
 
     # soma sync
     p_sync = sub.add_parser("sync", parents=[common_parser], help="Reconcile evidence JSONL with cell frontmatter")

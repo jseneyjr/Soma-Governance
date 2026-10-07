@@ -72,10 +72,15 @@ def check(target_file: str, test_file: str) -> ToolEvidence:
 
 def _try_pytest_cov(test_file, target_dir, json_report):
     """Attempt pytest-cov. Returns True if JSON report was generated."""
+    from soma_core.verification.test_runner import resolve_pytest_cmd
+
+    pytest_cmd = resolve_pytest_cmd()
+    if not pytest_cmd:
+        return False
     try:
         subprocess.run(
-            [
-                sys.executable, "-m", "pytest", test_file,
+            pytest_cmd + [
+                test_file,
                 f"--cov={target_dir}",
                 "--cov-branch",
                 f"--cov-report=json:{json_report}",
