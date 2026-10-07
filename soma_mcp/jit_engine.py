@@ -54,7 +54,8 @@ from soma_core.frontmatter import (
     _parse_frontmatter,
     _get_body,
 )
-from soma_core.scoring import compute_cell_fitness
+from soma_core.scoring import compute_cell_fitness, compute_salience
+from soma_core.ast_match import match_ast_triggers, prefilter_ast_tokens
 
 def estimate_tokens(text: object | None) -> int:
     """Estimate token count using fast stdlib heuristic (~1.35 tokens per word).
@@ -162,31 +163,79 @@ def load_all_cells(workspace: str) -> list[dict[str, object]]:
     return cells
 
 
-def match_cells_to_files(cells: list[dict[str, object]], changed_files: list[str]) -> list[dict[str, object]]:
-    """Match cells to changed files by target_paths (fnmatch)."""
+def match_cells_for_diff(
+    cells: list[dict[str, Any]],
+    changed_files: list[str],
+    diff_text: str = "",
+    repo_root: str = "",
+) -> list[dict[str, Any]]:
+    """Match cells against changed files using AST syntactic triggers and target_paths globs.
+
+    Returns a list of match records, each containing the matched cell, match_type,
+    and matched_files.
+    """
     matched = []
     for cell in cells:
-        target_paths = cell.get('target_paths', [])
-        if not target_paths:
-            continue
+        ast_trigs = cell.get("ast_triggers")
+        target_paths = cell.get("target_paths", [])
         if isinstance(target_paths, str):
             target_paths = [target_paths]
 
         is_match = False
+        match_type = "glob_match"
         matched_files = []
-        for changed in changed_files:
-            for pattern in target_paths:
-                if fnmatch.fnmatch(changed, pattern) or fnmatch.fnmatch(os.path.basename(changed), pattern):
+
+        # 1. Syntactic AST triggers (highest precision)
+        if ast_trigs and isinstance(ast_trigs, dict):
+            for f in changed_files:
+                f_path = os.path.join(repo_root, f) if repo_root else f
+                ast_matched, details = match_ast_triggers(
+                    ast_trigs,
+                    file_path=f_path,
+                    diff_text=diff_text,
+                )
+                if ast_matched:
                     is_match = True
-                    matched_files.append(changed)
-                    break
+                    match_type = "ast_match"
+                    matched_files.append(f)
+
+        # 2. Path matching (if not already matched by AST or if cell has target_paths)
+        if not is_match and target_paths:
+            for changed in changed_files:
+                base = os.path.basename(changed)
+                for pattern in target_paths:
+                    if changed == pattern:
+                        is_match = True
+                        match_type = "exact_path"
+                        matched_files.append(changed)
+                        break
+                    elif fnmatch.fnmatch(changed, pattern) or fnmatch.fnmatch(base, pattern):
+                        is_match = True
+                        if match_type != "exact_path":
+                            match_type = "glob_match"
+                        matched_files.append(changed)
+                        break
 
         if is_match:
             cell_copy = cell.copy()
-            cell_copy['_matched_files'] = list(set(matched_files))
-            matched.append(cell_copy)
+            unique_files = list(set(matched_files))
+            cell_copy["_matched_files"] = unique_files
+            cell_copy["match_type"] = match_type
+            match_entry = {
+                "cell": cell_copy,
+                "match_type": match_type,
+                "matched_files": unique_files,
+                **cell_copy,
+            }
+            matched.append(match_entry)
 
     return matched
+
+
+def match_cells_to_files(cells: list[dict[str, object]], changed_files: list[str]) -> list[dict[str, object]]:
+    """Match cells to changed files by target_paths (fnmatch) and AST triggers."""
+    matches = match_cells_for_diff(cells, changed_files)
+    return [m["cell"] for m in matches]
 
 
 def get_fitness_score(cell: dict[str, object]) -> float:
@@ -195,14 +244,15 @@ def get_fitness_score(cell: dict[str, object]) -> float:
 
 
 def rank_cells(matched_cells: list[dict[str, object]]) -> list[dict[str, object]]:
-    """Rank matched cells by fitness score (highest first), with diversity bonus."""
+    """Rank matched cells by Salience score (highest first), with diversity bonus."""
     for cell in matched_cells:
         cell['_fitness_score'] = get_fitness_score(cell)
+        cell['_salience'] = compute_salience(cell, match_type=cell.get('match_type', 'glob_match'))
 
-    # Sort by fitness (descending), then by match count (descending)
+    # Sort by salience (descending), then fitness, then match count
     return sorted(
         matched_cells,
-        key=lambda c: (c['_fitness_score'], len(c.get('_matched_files', []))),
+        key=lambda c: (c['_salience'], c['_fitness_score'], len(c.get('_matched_files', []))),
         reverse=True
     )
 
@@ -276,6 +326,161 @@ def format_cell_guidance(cell: dict[str, object]) -> dict[str, object]:
         'fitness': fitness,
         'guidance': guidance,
         'body': body[:500] if body else ''
+    }
+
+
+def compress_to_atomic_directive(cell: dict[str, Any]) -> str:
+    """Compress a security gate cell into an Atomic Invariant Directive.
+
+    Strips historical prose, examples, and detailed explanations while preserving
+    the core invariant statement, enforcement consequence, and trigger patterns.
+    Typically consumes ~35-55 tokens.
+    """
+    cid = cell.get("id") or cell.get("_name") or cell.get("name") or "gate-contract"
+    hypothesis = cell.get("hypothesis") or cell.get("name") or "Security contract"
+    prediction = cell.get("prediction") or "Contract violation causes security failure"
+
+    patterns = []
+    ast_trigs = cell.get("ast_triggers") or {}
+    if isinstance(ast_trigs, dict):
+        for k, v in ast_trigs.items():
+            if v:
+                patterns.append(f"AST {k}: {v}")
+    target_paths = cell.get("target_paths") or []
+    if target_paths:
+        if isinstance(target_paths, str):
+            patterns.append(f"Paths: {target_paths}")
+        else:
+            patterns.append(f"Paths: {', '.join(str(p) for p in target_paths[:3])}")
+    pattern_str = " | ".join(patterns) if patterns else "All matching files"
+
+    return (
+        f"### 🛡️ [GATE: ATOMIC] {cid}\n"
+        f"- **Invariant**: {hypothesis}\n"
+        f"- **Consequence**: {prediction}\n"
+        f"- **Pattern**: {pattern_str}\n"
+    )
+
+
+def pack_two_tier_context(
+    gates: list[dict[str, Any]],
+    advisory: list[dict[str, Any]],
+    total_budget: int = 2000,
+    tier1_ratio: float = 0.60,
+) -> dict[str, Any]:
+    """Partitioned 2-Tier Token Budget packing with Incompressible Gate Guarantee.
+
+    Allocation:
+    - Tier 1: Security Gates (guaranteed 60% = 1200 tokens default)
+    - Tier 2: Advisory Rules (dynamic headroom, up to remaining budget)
+
+    Degradation ladder:
+    1. If gates fit in Tier 1 budget: gates full-fidelity, unused headroom flows to Tier 2.
+    2. If gates exceed Tier 1 budget (<= 1800 tokens): Tier 2 dropped to 0, gates pack full-fidelity up to budget.
+    3. Extreme Gate Pressure: Gates are NEVER dropped. Overflow gates compress into Atomic Invariant Directives.
+    4. Advisory cells sorted by descending Salience.
+    """
+    tier1_budget = int(total_budget * tier1_ratio)
+
+    def _get_salience(c: dict[str, Any]) -> float:
+        if "_salience" in c:
+            try:
+                return float(c["_salience"])
+            except (ValueError, TypeError):
+                pass
+        match_type = c.get("match_type", "glob_match")
+        return compute_salience(c, match_type=match_type)
+
+    sorted_gates = sorted(gates, key=_get_salience, reverse=True)
+    sorted_advisory = sorted(advisory, key=_get_salience, reverse=True)
+
+    def _full_content(c: dict[str, Any]) -> str:
+        if "_full" in c and c["_full"]:
+            return str(c["_full"])
+        body = c.get("body") or c.get("_body") or ""
+        fg = format_cell_guidance(c)
+        if body and len(body) > 300:
+            return f"{fg['guidance']}\n   Full Detail: {body}"
+        return fg["guidance"]
+
+    gate_sizes = []
+    for g in sorted_gates:
+        full_text = _full_content(g)
+        full_tok = estimate_tokens(full_text)
+        atomic_text = compress_to_atomic_directive(g)
+        atomic_tok = estimate_tokens(atomic_text)
+        gate_sizes.append({
+            "cell": g,
+            "full_text": full_text,
+            "full_tokens": full_tok,
+            "atomic_text": atomic_text,
+            "atomic_tokens": atomic_tok,
+        })
+
+    total_full_gate_tokens = sum(item["full_tokens"] for item in gate_sizes)
+
+    expressed_gates: list[dict[str, Any]] = []
+    used_gate_tokens = 0
+
+    if total_full_gate_tokens <= total_budget:
+        for item in gate_sizes:
+            cell_data = item["cell"].copy()
+            cell_data["compressed"] = False
+            cell_data["content"] = item["full_text"]
+            cell_data["tokens"] = item["full_tokens"]
+            expressed_gates.append(cell_data)
+            used_gate_tokens += item["full_tokens"]
+    else:
+        # Extreme gate pressure: pack full fidelity as many as fit within tier1_budget,
+        # and compress the rest into Atomic Invariant Directives
+        for i, item in enumerate(gate_sizes):
+            remaining_atomic_tokens = sum(g["atomic_tokens"] for g in gate_sizes[i+1:])
+            if (used_gate_tokens + item["full_tokens"] + remaining_atomic_tokens <= total_budget
+                    and used_gate_tokens + item["full_tokens"] <= tier1_budget):
+                cell_data = item["cell"].copy()
+                cell_data["compressed"] = False
+                cell_data["content"] = item["full_text"]
+                cell_data["tokens"] = item["full_tokens"]
+                expressed_gates.append(cell_data)
+                used_gate_tokens += item["full_tokens"]
+            else:
+                cell_data = item["cell"].copy()
+                cell_data["compressed"] = True
+                cell_data["content"] = item["atomic_text"]
+                cell_data["tokens"] = item["atomic_tokens"]
+                expressed_gates.append(cell_data)
+                used_gate_tokens += item["atomic_tokens"]
+
+    # Calculate available budget for Tier 2 Advisory Rules
+    if total_full_gate_tokens > tier1_budget:
+        advisory_budget = 0
+    else:
+        advisory_budget = max(0, total_budget - used_gate_tokens)
+
+    expressed_advisory: list[dict[str, Any]] = []
+    used_advisory_tokens = 0
+
+    for a in sorted_advisory:
+        a_text = _full_content(a)
+        a_tok = estimate_tokens(a_text)
+        if used_advisory_tokens + a_tok <= advisory_budget:
+            cell_data = a.copy()
+            cell_data["compressed"] = False
+            cell_data["content"] = a_text
+            cell_data["tokens"] = a_tok
+            expressed_advisory.append(cell_data)
+            used_advisory_tokens += a_tok
+
+    total_tokens = used_gate_tokens + used_advisory_tokens
+    clamped = (len(expressed_advisory) < len(advisory)) or any(g.get("compressed") for g in expressed_gates)
+
+    return {
+        "expressed_gates": expressed_gates,
+        "expressed_advisory": expressed_advisory,
+        "total_tokens": total_tokens,
+        "gate_tokens": used_gate_tokens,
+        "advisory_tokens": used_advisory_tokens,
+        "clamped": clamped,
     }
 
 
