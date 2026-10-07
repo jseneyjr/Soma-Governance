@@ -470,6 +470,7 @@ class VerificationPipeline:
         rebuttal: list[Claim | dict[str, Any]] | None = None,
         test_names: list[str] | None = None,
         test_results: str | None = None,
+        attribute: bool = False,
     ) -> VerificationPipelineResult:
         ws = as_workspace(workspace)
         files = changed_files
@@ -489,7 +490,7 @@ class VerificationPipeline:
 
         if layer1_only or not files:
             verdict = Verdict.SHIP if l1_passed else Verdict.BLOCK
-            return VerificationPipelineResult(
+            res = VerificationPipelineResult(
                 target_files=list(files),
                 layer1_evidence=l1_evidence,
                 layer1_passed=l1_passed,
@@ -497,6 +498,15 @@ class VerificationPipeline:
                 passed=bool(l1_passed),
                 summary=l1_summary,
             )
+            if attribute and ws:
+                from soma_core.attribution import attribute_verification_outcome
+                attribute_verification_outcome(
+                    workspace=ws,
+                    layer1_evidence=l1_evidence,
+                    arbitration_result=None,
+                    target_files=list(files) if files else None,
+                )
+            return res
 
         # 2. In-band charge sheet generation (if requested and no rebuttal provided yet)
         if in_band and rebuttal is None:
@@ -521,7 +531,7 @@ class VerificationPipeline:
         # 3. Layer 2 Adversarial Verification
         if not task_plan and rebuttal is None:
             verdict = Verdict.SHIP if l1_passed else Verdict.BLOCK
-            return VerificationPipelineResult(
+            res = VerificationPipelineResult(
                 target_files=list(files),
                 layer1_evidence=l1_evidence,
                 layer1_passed=l1_passed,
@@ -529,6 +539,15 @@ class VerificationPipeline:
                 passed=bool(l1_passed),
                 summary=f"{l1_summary} (Layer 2 skipped: no task plan)",
             )
+            if attribute and ws:
+                from soma_core.attribution import attribute_verification_outcome
+                attribute_verification_outcome(
+                    workspace=ws,
+                    layer1_evidence=l1_evidence,
+                    arbitration_result=None,
+                    target_files=list(files) if files else None,
+                )
+            return res
 
         predictions, claims, spec_failed = self.adversarial_verifier.verify(
             changed_files=files,
@@ -554,7 +573,7 @@ class VerificationPipeline:
             f"({len(arb_result.divergences)} divergences, {len(arb_result.convergences)} convergences)"
         )
 
-        return VerificationPipelineResult(
+        res = VerificationPipelineResult(
             target_files=list(files),
             layer1_evidence=l1_evidence,
             layer1_passed=l1_passed,
@@ -563,6 +582,18 @@ class VerificationPipeline:
             summary=summary,
             arbitration_result=arb_result,
         )
+        if attribute and ws:
+            from soma_core.attribution import attribute_verification_outcome
+            attribute_verification_outcome(
+                workspace=ws,
+                layer1_evidence=l1_evidence,
+                arbitration_result=arb_result,
+                target_files=list(files) if files else None,
+            )
+        return res
+
+    verify = run
+
 
 
 __all__ = [

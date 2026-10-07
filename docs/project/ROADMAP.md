@@ -310,16 +310,16 @@ Resolves multi-repo onboarding friction by introducing porcelain `soma hook` sub
 **Status**: ✅ Shipped (v0.117.0)  
 Refactors the verification subsystem into a composable class hierarchy (`DeterministicVerifier`, `AdversarialVerifier`, `Arbiter`, `VerificationPipeline`). Introduces Dual-Mode Layer 2 Verification: zero-API-key in-session adversarial verification for interactive agent/MCP sessions (via in-band charge sheets and MCP Sampling `sampling/createMessage`), alongside headless SDK fallback for CI runners. Integrates `GitWorkspace(Workspace)` with zero-subprocess fast paths, resolves interpreter discovery for mutation testing across virtualenvs, and enforces the Isolated CI Environment Invariant (`HOME=$(mktemp -d) pytest`) guaranteeing zero test runner divergence.
 
-## Phase 21 — v0.118.0 (In Progress)
+## Phase 21 — v0.118.0 ✅ Shipped
 
 ### Modular Workspace Package, Non-Bypassable Layer 1 & Localized Cell Evolution
-**Status**: 🔨 In Progress (v0.118.0)  
+**Status**: ✅ Shipped (v0.118.0)  
 Decomposes `soma_core/workspace.py` into a modular package directory (`soma_core/workspace/` with `base`, `git`, `discovery`, `confinement`, `scaffold`, and `hooks`). Restricts cell evolution strictly to the local workspace (`vacuole` $\rightarrow$ `wall` $\rightarrow$ `gate`), disconnecting automatic promotion to global `genome/`. Adds compound fingerprinting to `Workspace.is_soma_repo` to prevent false positives on external genomics repositories. Implements whitelist-only global rules cleanse with mandatory quarantine backups (`~/.soma/quarantine/`). Implements explicit tagged Horizontal Gene Transfer (`soma transfer export`).
 
-## Phase 22 — v0.119.0 (Planned)
+## Phase 22 — v0.119.0 ✅ Shipped
 
 ### Intelligent JIT Targeting, Salience Engine & Closed-Loop Attribution
-**Status**: 📋 Planned (v0.119.0)  
+**Status**: ✅ Shipped (v0.119.0)  
 Extends JIT matching from path globs to syntactic AST triggers (imports, decorators, call sites). Implements closed-form Salience scoring with an exploration prior ($S_{\text{base}} = 0.20$), 95% Wilson lower bound, and temporal decay within an invariant-preserving 2-tier token budget. Automatically attributes commit and verification outcomes from the Phase 20 Verifier to active cells in real time via `.soma/evidence/signals.jsonl`.
 
 ## Phase 23 — v0.120.0 (Planned)
