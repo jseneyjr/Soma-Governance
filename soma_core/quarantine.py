@@ -23,15 +23,11 @@ QUARANTINE_LOG = "quarantine_log.jsonl"
 def _resolve_workspace(file_path: Path, workspace: Optional[Path | str] = None) -> Path:
     if workspace:
         return Path(workspace).resolve()
-    # Search upward for .soma or genome/
-    curr = file_path.resolve().parent
-    for _ in range(5):
-        if (curr / ".soma").exists() or (curr / "genome").exists():
-            return curr
-        if curr.parent == curr:
-            break
-        curr = curr.parent
-    return file_path.resolve().parent
+    from soma_core.workspace import Workspace
+    try:
+        return Workspace.resolve(file_path.parent).root
+    except Exception:
+        return file_path.resolve().parent
 
 
 def quarantine_file(

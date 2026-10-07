@@ -45,6 +45,9 @@ def test_force_promote_handles_genome_cells(tmp_path, capsys):
     """Promoting a cell already in genome must report terminal status, not 'not found'."""
     genome_dir = tmp_path / "genome"
     genome_dir.mkdir()
+    (tmp_path / "soma_core").mkdir(parents=True)
+    (tmp_path / "soma_cli").mkdir(parents=True)
+    (tmp_path / "pyproject.toml").write_text('name = "soma-governance"\n', encoding="utf-8")
     cell_file = genome_dir / "rule-law.md"
     cell_file.write_text("---\nname: rule-law\ntype: genome\n---\nLaw body\n", encoding="utf-8")
 

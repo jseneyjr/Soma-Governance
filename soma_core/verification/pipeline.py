@@ -62,8 +62,9 @@ class DeterministicVerifier(BaseVerifier):
     and branch coverage against modified files.
     """
 
-    def __init__(self, max_mutations: int = 5):
+    def __init__(self, max_mutations: int = 5, fast_mode: bool = False):
         self.max_mutations = max_mutations
+        self.fast_mode = fast_mode
 
     def verify(
         self,
@@ -72,6 +73,7 @@ class DeterministicVerifier(BaseVerifier):
         persistence_targets: list[tuple[str, str]] | None = None,
         mutation_targets: list[tuple[str, str, str]] | None = None,
         coverage_targets: list[tuple[str, str]] | None = None,
+        fast_mode: bool | None = None,
     ) -> list[ToolEvidence]:
         """Run Layer 1 checks.
 
@@ -88,6 +90,7 @@ class DeterministicVerifier(BaseVerifier):
             else:
                 files = []
 
+        is_fast = self.fast_mode if fast_mode is None else fast_mode
         return runner.run_layer1(
             changed_files=files,
             repo_root=repo_root,
@@ -95,6 +98,7 @@ class DeterministicVerifier(BaseVerifier):
             mutation_targets=mutation_targets,
             coverage_targets=coverage_targets,
             max_mutations=self.max_mutations,
+            fast_mode=is_fast,
         )
 
 

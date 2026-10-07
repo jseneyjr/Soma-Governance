@@ -20,7 +20,7 @@ import subprocess
 import sys
 from typing import List, Optional, Union
 
-from soma_core.workspace import resolve_workspace
+from soma_core.workspace import Workspace, resolve_workspace
 from soma_core.frontmatter import parse_frontmatter
 
 
@@ -58,11 +58,13 @@ def resolve_metrics_dir(workspace: Path | str) -> Path:
     return default
 
 
-def compute_token_census(workspace: Path | str | None = None, model: str = "gemini-3.8-flash") -> dict:
+def compute_token_census(workspace: Workspace | Path | str | None = None, model: str = "gemini-3.8-flash") -> dict:
     """Compute token census across genome rules and organ skills without subprocess."""
-    ws = Path(workspace).resolve() if workspace else Path(resolve_workspace()).resolve()
-    rules_dir = ws / "genome"
-    skills_dir = ws / "organs"
+    ws = workspace if isinstance(workspace, Workspace) else (
+        Workspace.resolve(workspace) if workspace is not None else Workspace.resolve()
+    )
+    rules_dir = ws.root / "genome"
+    skills_dir = ws.root / "organs"
 
     results = []
     total_words = 0
@@ -80,7 +82,7 @@ def compute_token_census(workspace: Path | str | None = None, model: str = "gemi
         m = re.search(r"^trigger:\s*(.*)$", fm, re.MULTILINE)
         return m.group(1).strip() if m else "unknown"
 
-    if rules_dir.is_dir():
+    if ws.is_soma_repo and rules_dir.is_dir():
         for fpath in sorted(rules_dir.glob("*.md")):
             try:
                 content = fpath.read_text(encoding="utf-8")

@@ -16,6 +16,17 @@ from .constants import (
     VALID_TYPES,
 )
 
+__all__ = [
+    "find_cell",
+    "find_cell_file",
+    "generate_slug",
+    "get_type_plural",
+    "parse_cell",
+    "resolve_metrics_dir",
+    "sanitize_cell_id",
+    "validate_cell_id",
+]
+
 
 def sanitize_cell_id(cell_id: str) -> Optional[str]:
     """Validate cell identifier to prevent path traversal."""
@@ -63,9 +74,10 @@ def find_cell_file(workspace: Workspace | Path | str, cell_id: str) -> Tuple[Opt
         if candidate.is_file():
             return candidate, type_name
 
-    candidate = genome_dir / f"{clean_id}.md"
-    if candidate.is_file():
-        return candidate, "genome"
+    if ws.is_soma_repo:
+        candidate = genome_dir / f"{clean_id}.md"
+        if candidate.is_file():
+            return candidate, "genome"
 
     return None, None
 
@@ -140,10 +152,9 @@ def _load_cells(workspace: Workspace | Path | str) -> list[dict[str, Any]]:
         Workspace(root=Path(workspace).resolve()) if workspace else Workspace.resolve()
     )
     cells = []
-    scan_roots = [
-        str(ws.cells_dir),
-        str(ws.root / "genome"),
-    ]
+    scan_roots = [str(ws.cells_dir)]
+    if ws.is_soma_repo:
+        scan_roots.append(str(ws.root / "genome"))
 
     for cells_root in scan_roots:
         if not os.path.isdir(cells_root):
@@ -213,7 +224,7 @@ def _transform_frontmatter_type(content: str, new_type: str) -> str:
             new_lines.append(f"{indent}type: {new_type}")
             type_updated = True
         elif stripped.startswith("enforcement:"):
-            if new_type == "wall":
+            if new_type in ("wall", "gate"):
                 indent = line[:len(line) - len(line.lstrip())]
                 new_lines.append(f"{indent}enforcement: gate")
                 enforcement_updated = True
@@ -232,16 +243,10 @@ def _transform_frontmatter_type(content: str, new_type: str) -> str:
     if not type_updated:
         new_lines.append(f"type: {new_type}")
 
-    if new_type == "wall" and not enforcement_updated:
+    if new_type in ("wall", "gate") and not enforcement_updated:
         new_lines.append("enforcement: gate")
 
     return "---\n" + "\n".join(new_lines).strip() + "\n" + body
-
-
-def _update_frontmatter_type(file_path: Path, new_type: str) -> None:
-    content = file_path.read_text(encoding="utf-8")
-    new_content = _transform_frontmatter_type(content, new_type)
-    file_path.write_text(new_content, encoding="utf-8")
 
 
 def _atomic_write_and_unlink(

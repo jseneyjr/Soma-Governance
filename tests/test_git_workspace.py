@@ -30,7 +30,7 @@ class TestGitWorkspaceHierarchy:
         ws = GitWorkspace(root=tmp_path)
         r = repr(ws)
         assert "GitWorkspace(" in r
-        assert str(tmp_path) in r
+        assert repr(ws.root) in r or str(tmp_path).replace("\\", "/") in r.replace("\\", "/")
 
 
 class TestPolymorphicResolution:
