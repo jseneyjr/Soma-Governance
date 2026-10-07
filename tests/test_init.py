@@ -2,11 +2,9 @@
 
 All tests use tmp_path to avoid touching the real filesystem.
 """
-import os
 import argparse
 
 import pytest
-
 from conftest import symlink_or_skip
 
 
@@ -69,6 +67,11 @@ class TestDetectProjectType:
         from soma_cli.init import detect_project_type
         assert detect_project_type(tmp_path) == "python"
 
+    def test_python_setup_cfg(self, tmp_path):
+        (tmp_path / "setup.cfg").write_text("")
+        from soma_cli.init import detect_project_type
+        assert detect_project_type(tmp_path) == "python"
+
     def test_javascript(self, tmp_path):
         (tmp_path / "package.json").write_text("{}")
         from soma_cli.init import detect_project_type
@@ -87,6 +90,11 @@ class TestDetectProjectType:
     def test_unknown_when_empty(self, tmp_path):
         from soma_cli.init import detect_project_type
         assert detect_project_type(tmp_path) == "unknown"
+
+    def test_accepts_str_path(self, tmp_path):
+        (tmp_path / "pyproject.toml").write_text("")
+        from soma_cli.init import detect_project_type
+        assert detect_project_type(str(tmp_path)) == "python"
 
 
 class TestGetRulesDir:
@@ -142,7 +150,7 @@ class TestInstallStarterRules:
             assert len(content) > 100, f"Rule {name} seems too short"
 
     def test_starter_rules_are_the_right_five(self, tmp_path):
-        from soma_cli.init import install_starter_rules, STARTER_RULES
+        from soma_cli.init import STARTER_RULES
         assert len(STARTER_RULES) == 5
         expected = {"providence", "destructive-ops", "testing",
                     "cost-optimization", "git-workflow"}
@@ -258,7 +266,7 @@ class TestClaudeMd:
 
     def test_claude_md_created(self, tmp_path):
         """CLAUDE.md is created when installing for Claude platform."""
-        from soma_cli.init import install_starter_rules, _install_claude_md
+        from soma_cli.init import _install_claude_md, install_starter_rules
         rules_dir = tmp_path / "claude_rules"
         install_starter_rules(rules_dir, dry_run=False)
         _install_claude_md(rules_dir)
@@ -272,7 +280,7 @@ class TestClaudeMd:
 
     def test_claude_md_appends_to_existing(self, tmp_path):
         """CLAUDE.md appends Soma section to existing content."""
-        from soma_cli.init import install_starter_rules, _install_claude_md
+        from soma_cli.init import _install_claude_md, install_starter_rules
         rules_dir = tmp_path / "claude_rules"
         install_starter_rules(rules_dir, dry_run=False)
 
@@ -286,7 +294,7 @@ class TestClaudeMd:
 
     def test_claude_md_skips_without_force(self, tmp_path):
         """CLAUDE.md soma section not replaced without --force."""
-        from soma_cli.init import install_starter_rules, _install_claude_md
+        from soma_cli.init import _install_claude_md, install_starter_rules
         rules_dir = tmp_path / "claude_rules"
         install_starter_rules(rules_dir, dry_run=False)
 
@@ -298,7 +306,7 @@ class TestClaudeMd:
 
     def test_claude_md_replaces_with_force(self, tmp_path):
         """CLAUDE.md soma section replaced with --force."""
-        from soma_cli.init import install_starter_rules, _install_claude_md
+        from soma_cli.init import _install_claude_md, install_starter_rules
         rules_dir = tmp_path / "claude_rules"
         install_starter_rules(rules_dir, dry_run=False)
 

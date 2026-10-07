@@ -274,6 +274,12 @@ Resolved the external critique regarding static rule decay and unobserved cell f
 **Status**: ✅ Shipped (v0.111.0)  
 Resolved pre-commit hook installation and health detection failures in Git worktrees (BUG-082) by introducing `resolve_git_hooks_dir()` in `soma_core.workspace` with zero-dependency fallback resolution. Updated `soma init`, `soma doctor`, and `soma sync` to handle `.git` pointer files in worktrees seamlessly. Resolved missing `enforcement` frontmatter in cell generation (BUG-083) across `create_cell()`, `cli_cell_create()`, and MCP prompt templates, defaulting wall cells to `gate` and vacuole cells to `advisory` to guarantee full compliance with pre-commit checkpoint conventions. Developed following strict TDD with 11 new behavioral tests across `tests/test_worktree_hooks.py` and `tests/test_cell_creation_enforcement.py` and full regression test suite passing (2,717 passing).
 
+## Phase 15 — v0.112.0 ✅ Shipped
+
+### Workspace Value Object & Hardened Error Handling
+**Status**: ✅ Shipped (v0.112.0)  
+Introduced the immutable, strongly-typed `Workspace` value object in `soma_core.workspace` implementing `os.PathLike[str]` for zero-overhead path manipulation, worktree-aware hook resolution, and path containment. Added standardized domain exception hierarchy (`WorkspaceError`, `WorkspaceNotFoundError`, `PathTraversalError`) subclassing `SomaValidationError` / `ValueError` for complete backward compatibility. Retained standalone functions as backward-compatible wrappers following the Strangler Fig migration pattern. Hardened error handling in git hook resolution by replacing bare exception blocks with explicit types (`(subprocess.SubprocessError, FileNotFoundError, PermissionError, UnicodeDecodeError, OSError)`). Integrated proactive `$PATH` guidance into `soma init` via `soma_cli.pathcheck.build_hint()`. Developed following strict TDD with 13 new behavioral tests and full regression verification (2,730 passing).
+
 ## Research
 
 ### Antifragile Scaling

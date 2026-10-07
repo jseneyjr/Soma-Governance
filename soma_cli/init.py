@@ -13,7 +13,6 @@ import shutil
 import sys
 from pathlib import Path
 
-
 # ── Starter Pack ────────────────────────────────────────────────────────────
 # The 5 rules that deliver immediate value on any project, any language.
 # Keys are the rule stems — files are bundled in soma_cli/starter_rules/.
@@ -563,6 +562,18 @@ def run_init(args: argparse.Namespace) -> int:
     print()
     print("  After a session, run: soma report")
     print()
+
+    # Proactive PATH guidance (Phase 15 / BUG-041)
+    if not dry_run:
+        try:
+            from soma_cli.pathcheck import build_hint
+
+            hint = build_hint()
+            if hint:
+                print(hint)
+                print()
+        except (OSError, RuntimeError):
+            pass
 
     return 0
 

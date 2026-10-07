@@ -1,7 +1,7 @@
 """Soma CLI — user-facing governance commands."""
 from __future__ import annotations
 
-__version__ = "0.111.0"
+__version__ = "0.112.0"
 
 import re
 from pathlib import Path
@@ -58,7 +58,7 @@ def format_plain(text: str) -> str:
 
 
 __all__ = [
+    "format_plain",
     "resolve_root",
     "sanitize_display",
-    "format_plain",
 ]

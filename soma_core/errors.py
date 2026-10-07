@@ -1,7 +1,7 @@
 """Standardized typed exception hierarchy for Soma-Governance."""
 from __future__ import annotations
 
-from typing import Any, Optional
+from typing import Any
 
 
 class SomaError(Exception):
@@ -31,7 +31,7 @@ class CellCorruptError(SomaError):
     def __init__(
         self,
         message: str = "",
-        cell_id: Optional[str] = None,
+        cell_id: str | None = None,
         code: str = "CELL_CORRUPT",
         **kwargs: Any,
     ) -> None:
@@ -45,7 +45,7 @@ class ReceiptExpiredError(SomaError, KeyError):
     def __init__(
         self,
         message: str = "",
-        receipt_id: Optional[str] = None,
+        receipt_id: str | None = None,
         code: str = "RECEIPT_EXPIRED",
         **kwargs: Any,
     ) -> None:
@@ -59,7 +59,7 @@ class LockTimeoutError(SomaError, TimeoutError):
     def __init__(
         self,
         message: str = "",
-        resource: Optional[str] = None,
+        resource: str | None = None,
         code: str = "LOCK_TIMEOUT",
         **kwargs: Any,
     ) -> None:
@@ -67,11 +67,45 @@ class LockTimeoutError(SomaError, TimeoutError):
         self.resource = resource
 
 
+class WorkspaceError(SomaValidationError):
+    """Raised when workspace resolution, confinement, or structure fails."""
+
+    def __init__(self, message: str = "", code: str = "ERR_WORKSPACE", **kwargs: Any) -> None:
+        super().__init__(message, code=code, **kwargs)
+
+
+class WorkspaceNotFoundError(WorkspaceError):
+    """Raised when no valid soma workspace root can be located."""
+
+    def __init__(
+        self,
+        message: str = "",
+        code: str = "ERR_WORKSPACE_NOT_FOUND",
+        **kwargs: Any,
+    ) -> None:
+        super().__init__(message, code=code, **kwargs)
+
+
+class PathTraversalError(WorkspaceError):
+    """Raised when an untrusted path attempts to escape the confined workspace root."""
+
+    def __init__(
+        self,
+        message: str = "",
+        code: str = "ERR_PATH_TRAVERSAL",
+        **kwargs: Any,
+    ) -> None:
+        super().__init__(message, code=code, **kwargs)
+
+
 __all__ = [
     "CellCorruptError",
     "LockTimeoutError",
+    "PathTraversalError",
     "ReceiptExpiredError",
     "SomaError",
     "SomaValidationError",
+    "WorkspaceError",
+    "WorkspaceNotFoundError",
 ]
 
