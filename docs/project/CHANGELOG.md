@@ -3,6 +3,33 @@
 All notable changes to Soma are documented here.
 This project uses [Semantic Versioning](https://semver.org/).
 
+## [0.114.0] — 2026-10-07 — "Core Engines Workspace Migration"
+
+### Core Engines Architecture & Object Model Adoption
+- **Lifecycle Subsystem (`soma_core/lifecycle/`)**:
+  - `creation.py`: `create_cell`, `create_cell_from_description`, `transfer_cell` accept `Workspace` instances and use `ws.cells_dir`, `ws.metrics_dir`, `ws.root`.
+  - `parsers.py`: `find_cell_file`, `find_cell`, `_load_evidence`, `_load_cells` accept `Workspace` instances and consume `ws.cells_dir`, `ws.evidence_dir`.
+  - `promotion.py`: `evaluate_promotions`, `evaluate_demotions`, `promote_cell`, `demote_cell`, `evaluate_cell_tiers`, `metamorphose_cell`, `adapt_cell` accept `Workspace` instances and consume `ws.cells_dir`, `ws.soma_dir`, `ws.metrics_dir`.
+  - `decay.py`: `compute_cells_fitness` accepts `Workspace` instances and consumes `ws.cells_dir`.
+  - `selection.py`: `run_cell_selection`, `prune_cells`, `crossover_cells` accept `Workspace` instances and consume `ws.cells_dir`, `ws.evidence_dir`, `ws.metrics_dir`.
+- **Arbitration Subsystem (`soma_core/arbitration.py`)**:
+  - `_classify_protocol_python`, `get_escalation_protocol`, `load_oracles`, `evaluate_change`, `_consult_oracle`, `soma_propose_change`, `_load_fitness_evidence`, `_load_cells`, `generate_checkpoint` accept `Workspace` instances and consume `ws.cells_dir`, `ws.evidence_dir`, `ws.root`.
+  - Checkpoint generation outputs stringified workspace root to ensure clean JSON serializability across tools.
+- **Outcomes Subsystem (`soma_core/outcomes.py`)**:
+  - `capture_mcp_outcomes`, `_insight_cursor_path`, `_read_insight_cursor`, `commit_insight_cursor`, `capture_human_insight_signals`, `read_human_insight_signals`, `match_cells_to_changes`, `record_verification_telemetry`, `harvest_git_history`, `run_outcome_engine` accept `Workspace` instances and consume `ws.soma_dir`, `ws.cells_dir`, `ws.signals_file`, `ws.root`.
+  - Preserved module introspection hook (`getattr(m, 'resolve_workspace', resolve_workspace)`) for test monkeypatching compatibility.
+- **Defects & Enforcement Subsystem (`soma_core/defects.py`, `soma_core/enforcement.py`)**:
+  - `soma_core/defects.py`: `load_registry`, `load_report_from_workspace`, `record_escaped_defect`, `update_cell_escaped_rate`, `audit_expiry`, `prune_expired` accept `Workspace` instances.
+  - `soma_core/enforcement.py`: `load_registry`, `verify_regression_tests`, `verify_readme_claims`, `load_cells_for_enforcement`, `generate_precommit_check`, `generate_gate_assertion`, `update_cell_enforcement_artifact`, `_match_cells`, `generate_ci_report` accept `Workspace` instances.
+- **Synchronization Subsystem (`soma_core/sync.py`)**:
+  - `load_soma_config`, `run_push`, `run_pull`, `run_post_session_hook` accept `Workspace` instances and consume `ws.cells_dir`, `ws.evidence_dir`, `ws.root`.
+- **Workspace Coercion Primitive (`soma_core/workspace.py`)**:
+  - Introduced `as_workspace(workspace)` helper function to cleanly coerce any representation (str, Path, os.PathLike, Workspace, or None) into a validated `Workspace` value object.
+- **Deprecation Warnings on Standalone Getters (`soma_core/workspace.py`)**:
+  - Standalone getters `get_cells_dir()`, `get_metrics_dir()`, `get_signals_file()`, and `get_outcomes_file()` now emit `DeprecationWarning` with `stacklevel=2` targeting removal in `v1.0.0`.
+- **Comprehensive Behavioral Test Coverage (`tests/test_core_engines_workspace.py`)**:
+  - Added 19 behavioral tests covering lifecycle, arbitration, outcomes, defects, enforcement, and sync interoperability with `Workspace` instances, plus deprecation warnings validation.
+
 ## [0.113.0] — 2026-10-07 — "Perimeter & Edge Workspace Migration"
 
 ### Perimeter Architecture & Object Model Adoption

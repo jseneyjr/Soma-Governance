@@ -25,7 +25,7 @@ import sys
 import tempfile
 from typing import Any, Optional
 
-from soma_core.workspace import resolve_workspace
+from soma_core.workspace import Workspace, as_workspace, resolve_workspace
 from soma_core.frontmatter import parse_frontmatter, parse_yaml_subset, _get_body, dump_frontmatter
 from soma_core.cell_inventory import find_matching_cells
 
@@ -156,9 +156,12 @@ def capture_git_signals(workspace: str) -> dict:
     return signals
 
 
-def capture_mcp_outcomes(workspace: str) -> list[dict]:
+def capture_mcp_outcomes(workspace: Workspace | Path | str) -> list[dict]:
     """Read any soma_report_outcome calls from this session from .soma/evidence/signals.jsonl."""
-    signals_file = os.path.join(workspace, '.soma', 'evidence', 'signals.jsonl')
+    ws = workspace if isinstance(workspace, Workspace) else (
+        Workspace(root=Path(workspace).resolve()) if workspace else Workspace.resolve()
+    )
+    signals_file = str(ws.signals_file)
     outcomes = []
     if not os.path.isfile(signals_file):
         return outcomes
@@ -201,11 +204,12 @@ def capture_mcp_outcomes(workspace: str) -> list[dict]:
     return outcomes
 
 
-def _insight_cursor_path(workspace: str) -> str:
-    return os.path.join(workspace, '.soma', 'insight_cursor')
+def _insight_cursor_path(workspace: Workspace | Path | str) -> str:
+    ws = as_workspace(workspace)
+    return str(ws.soma_dir / 'insight_cursor')
 
 
-def _read_insight_cursor(workspace: str) -> int:
+def _read_insight_cursor(workspace: Workspace | Path | str) -> int:
     """Return the committed byte offset into human_insights.jsonl (0 if none/invalid)."""
     try:
         with open(_insight_cursor_path(workspace), 'r', encoding='utf-8') as cf:
@@ -215,7 +219,7 @@ def _read_insight_cursor(workspace: str) -> int:
     return value if value >= 0 else 0
 
 
-def commit_insight_cursor(workspace: str, offset: Optional[int]) -> bool:
+def commit_insight_cursor(workspace: Workspace | Path | str, offset: Optional[int]) -> bool:
     """Atomically persist the insight cursor (temp file + os.replace)."""
     if offset is None:
         return True
@@ -243,17 +247,18 @@ def commit_insight_cursor(workspace: str, offset: Optional[int]) -> bool:
         return False
 
 
-def capture_human_insight_signals(workspace: str) -> list[dict]:
+def capture_human_insight_signals(workspace: Workspace | Path | str) -> list[dict]:
     """Backward-compatible wrapper: read NEW insights and commit the cursor."""
     signals, new_offset = read_human_insight_signals(workspace)
     commit_insight_cursor(workspace, new_offset)
     return signals
 
 
-def read_human_insight_signals(workspace: str) -> tuple[list[dict], int]:
+def read_human_insight_signals(workspace: Workspace | Path | str) -> tuple[list[dict], int]:
     """Read NEW human insight annotations and produce fitness signals."""
-    insights_file = os.path.join(workspace, '.soma', 'human_insights.jsonl')
-    cursor_offset = _read_insight_cursor(workspace)
+    ws = as_workspace(workspace)
+    insights_file = str(ws.soma_dir / 'human_insights.jsonl')
+    cursor_offset = _read_insight_cursor(ws)
     if not os.path.isfile(insights_file):
         return [], cursor_offset
 
@@ -262,7 +267,7 @@ def read_human_insight_signals(workspace: str) -> tuple[list[dict], int]:
         cursor_offset = 0
 
     weight = 0.5
-    config_path = os.path.join(workspace, '.soma', 'config.yaml')
+    config_path = str(ws.soma_dir / 'config.yaml')
     if os.path.isfile(config_path):
         try:
             with open(config_path, 'r', encoding='utf-8') as f:
@@ -274,9 +279,9 @@ def read_human_insight_signals(workspace: str) -> tuple[list[dict], int]:
             pass
 
     cell_paths = {}
-    cells_dir = os.path.join(workspace, '.soma', 'cells')
-    if os.path.isdir(cells_dir):
-        for cell_file in glob.glob(os.path.join(cells_dir, '**', '*.md'), recursive=True):
+    cells_dir = ws.cells_dir
+    if cells_dir.is_dir():
+        for cell_file in glob.glob(os.path.join(str(cells_dir), '**', '*.md'), recursive=True):
             name = os.path.splitext(os.path.basename(cell_file))[0]
             cell_paths[name] = cell_file
 
@@ -389,9 +394,10 @@ def _parse_frontmatter(content: str, filepath: Optional[str] = None) -> dict:
     return res if isinstance(res, dict) else {}
 
 
-def match_cells_to_changes(workspace: str, changed_files: list[str]) -> list[dict]:
-    cells_dir = os.path.join(workspace, '.soma', 'cells')
-    matches = find_matching_cells(cells_dir, changed_files, allow_basename_match=True)
+def match_cells_to_changes(workspace: Workspace | Path | str, changed_files: list[str]) -> list[dict]:
+    ws = as_workspace(workspace)
+    cells_dir = ws.cells_dir
+    matches = find_matching_cells(str(cells_dir), changed_files, allow_basename_match=True)
     triggered = []
     for m in matches:
         cell_dict = dict(m.frontmatter)
@@ -703,11 +709,14 @@ def record_verification_telemetry(
     if not workspace or not target_files:
         return False
 
-    cells_dir = os.path.join(workspace, '.soma', 'cells')
-    if not os.path.isdir(cells_dir):
+    ws = workspace if isinstance(workspace, Workspace) else (
+        Workspace(root=Path(workspace).resolve()) if workspace else Workspace.resolve()
+    )
+    cells_dir = ws.cells_dir
+    if not cells_dir.is_dir():
         return False
 
-    matched = match_cells_to_changes(workspace, target_files)
+    matched = match_cells_to_changes(ws, target_files)
     if not matched:
         return False
 
@@ -777,15 +786,18 @@ def record_verification_telemetry(
         return False
 
 
-def harvest_git_history(workspace: str, limit: int = 30, dry_run: bool = False) -> dict:
+def harvest_git_history(workspace: Workspace | Path | str, limit: int = 30, dry_run: bool = False) -> dict:
     """Inspect recent git commit diffs, match touched files to cells, and seed baseline fitness evidence."""
-    cells_dir = os.path.join(workspace, '.soma', 'cells')
-    if not os.path.isdir(cells_dir):
+    ws = workspace if isinstance(workspace, Workspace) else (
+        Workspace(root=Path(workspace).resolve()) if workspace else Workspace.resolve()
+    )
+    cells_dir = ws.cells_dir
+    if not cells_dir.is_dir():
         return {"commits_inspected": 0, "cells_matched": 0, "signals_minted": 0}
 
     try:
         cmd = ["git", "log", f"-n{max(1, limit)}", "--name-only", "--format=commit:%H:%cI"]
-        res = subprocess.run(cmd, cwd=workspace, capture_output=True, text=True, timeout=15)
+        res = subprocess.run(cmd, cwd=str(ws.root), capture_output=True, text=True, timeout=15)
         if res.returncode != 0:
             return {"commits_inspected": 0, "cells_matched": 0, "signals_minted": 0, "error": res.stderr}
     except Exception as exc:
@@ -820,7 +832,7 @@ def harvest_git_history(workspace: str, limit: int = 30, dry_run: bool = False) 
     for commit_hash, commit_date, files in commits:
         if not files:
             continue
-        matched = match_cells_to_changes(workspace, files)
+        matched = match_cells_to_changes(ws, files)
         if not matched:
             continue
 
@@ -870,9 +882,9 @@ def harvest_git_history(workspace: str, limit: int = 30, dry_run: bool = False) 
 
     if not dry_run and all_events:
         from soma_core.telemetry import append_signals
-        append_signals(workspace, all_events)
+        append_signals(ws, all_events)
         if fitness_updates_by_cell:
-            update_cell_fitness(workspace, list(fitness_updates_by_cell.values()))
+            update_cell_fitness(ws, list(fitness_updates_by_cell.values()))
 
     return {
         "commits_inspected": len(commits),
@@ -881,13 +893,14 @@ def harvest_git_history(workspace: str, limit: int = 30, dry_run: bool = False) 
     }
 
 
-def run_outcome_engine(workspace: Optional[str] = None, mod: Any = None) -> int:
+def run_outcome_engine(workspace: Optional[Workspace | Path | str] = None, mod: Any = None) -> int:
     """Canonical ACE reflector loop."""
     m = mod if mod is not None else sys.modules.get('soma_core.telemetry') or sys.modules[__name__]
     resolve_ws = getattr(m, 'resolve_workspace', resolve_workspace)
-    ws = workspace or resolve_ws()
-    cells_dir = os.path.join(ws, '.soma', 'cells')
-    if not os.path.isdir(cells_dir):
+    raw_ws = workspace if workspace is not None else resolve_ws()
+    ws = as_workspace(raw_ws)
+    cells_dir = ws.cells_dir
+    if not cells_dir.is_dir():
         return 0
 
     print("  Running outcome engine (ACE reflector)...")

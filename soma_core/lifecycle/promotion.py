@@ -12,7 +12,7 @@ from typing import Any, Dict, Optional
 
 from soma_core.frontmatter import dump_frontmatter, parse_frontmatter
 from soma_core.locking import workspace_lock
-from soma_core.workspace import resolve_workspace
+from soma_core.workspace import Workspace, resolve_workspace
 from .constants import (
     DEMOTION_PATH,
     DORMANT_DAYS_THRESHOLD,
@@ -41,7 +41,7 @@ from .parsers import (
 from .quorum import is_promotable
 
 
-def evaluate_promotions(workspace: str) -> list[dict]:
+def evaluate_promotions(workspace: Workspace | Path | str) -> list[dict]:
     """Evaluate cells for promotion based on canonical signal evidence.
 
     Returns:
@@ -87,7 +87,7 @@ def evaluate_promotions(workspace: str) -> list[dict]:
     return candidates
 
 
-def evaluate_demotions(workspace: str) -> list[dict]:
+def evaluate_demotions(workspace: Workspace | Path | str) -> list[dict]:
     """Evaluate cells for demotion based on canonical signal evidence.
 
     Returns:
@@ -159,13 +159,16 @@ def evaluate_demotions(workspace: str) -> list[dict]:
 
 
 def promote_cell(
-    workspace: Path,
+    workspace: Workspace | Path | str,
     cell_id: str,
     force: bool = False,
     dry_run: bool = False,
 ) -> Dict[str, Any]:
     """Execute structural promotion for a cell (vacuole -> wall -> genome)."""
-    cell_path, current_type = find_cell_file(workspace, cell_id)
+    ws = workspace if isinstance(workspace, Workspace) else (
+        Workspace(root=Path(workspace).resolve()) if workspace else Workspace.resolve()
+    )
+    cell_path, current_type = find_cell_file(ws, cell_id)
     if cell_path is None or current_type is None:
         return {
             "status": "not_found",
@@ -209,9 +212,9 @@ def promote_cell(
         }
 
     if next_type == "genome":
-        target_dir = workspace / "genome"
+        target_dir = ws.root / "genome"
     else:
-        target_dir = workspace / ".soma" / "cells" / TYPE_TO_DIR[next_type]
+        target_dir = ws.cells_dir / TYPE_TO_DIR[next_type]
 
     target_path = target_dir / f"{clean_id}.md"
     if target_path.exists():
@@ -229,7 +232,7 @@ def promote_cell(
             "target_path": str(target_path),
         }
 
-    with workspace_lock(workspace, "cells"):
+    with workspace_lock(ws.root, "cells"):
         content = cell_path.read_text(encoding="utf-8")
         new_content = _transform_frontmatter_type(content, next_type)
         _atomic_write_and_unlink(cell_path, target_path, new_content)
@@ -244,7 +247,7 @@ def promote_cell(
 
 
 def demote_cell(
-    workspace: Path,
+    workspace: Workspace | Path | str,
     cell_id: str,
     dry_run: bool = False,
 ) -> Dict[str, Any]:
@@ -260,7 +263,10 @@ def demote_cell(
     if clean_id in PROTECTED_RULES or rule_base in PROTECTED_RULES:
         raise ValueError(f"Cannot demote protected core rule: '{cell_id}'")
 
-    cell_path, current_type = find_cell_file(workspace, clean_id)
+    ws = workspace if isinstance(workspace, Workspace) else (
+        Workspace(root=Path(workspace).resolve()) if workspace else Workspace.resolve()
+    )
+    cell_path, current_type = find_cell_file(ws, clean_id)
     if cell_path is None or current_type is None:
         return {
             "status": "not_found",
@@ -275,7 +281,7 @@ def demote_cell(
             "message": f"Cell '{clean_id}' is at base level ('{current_type}') and cannot be demoted further",
         }
 
-    target_dir = workspace / ".soma" / "cells" / TYPE_TO_DIR[next_type]
+    target_dir = ws.cells_dir / TYPE_TO_DIR[next_type]
     target_path = target_dir / f"{clean_id}.md"
     if target_path.exists():
         return {
@@ -292,7 +298,7 @@ def demote_cell(
             "target_path": str(target_path),
         }
 
-    with workspace_lock(workspace, "cells"):
+    with workspace_lock(ws.root, "cells"):
         content = cell_path.read_text(encoding="utf-8")
         new_content = _transform_frontmatter_type(content, next_type)
         _atomic_write_and_unlink(cell_path, target_path, new_content)
@@ -300,7 +306,7 @@ def demote_cell(
         if current_type == "wall" and next_type == "vacuole":
             for pfx in ("check-", "gate-"):
                 for sfx in (".sh", ".py"):
-                    art = workspace / ".soma" / "enforcement" / f"{pfx}{clean_id}{sfx}"
+                    art = ws.soma_dir / "enforcement" / f"{pfx}{clean_id}{sfx}"
                     if art.exists():
                         try:
                             art.unlink()
@@ -316,12 +322,14 @@ def demote_cell(
     }
 
 
-def evaluate_cell_tiers(workspace: Path | str | None = None, execute: bool = False) -> Dict[str, Any]:
+def evaluate_cell_tiers(workspace: Workspace | Path | str | None = None, execute: bool = False) -> Dict[str, Any]:
     """Evaluate and update cell enforcement tiers (advisory/mechanical/gate) with exponential decay."""
-    ws = str(workspace or resolve_workspace())
-    cells_dir = os.path.join(ws, ".soma", "cells")
-    cell_files = glob.glob(os.path.join(cells_dir, "**", "*.md"), recursive=True)
-    escaped_defects_log = os.path.join(ws, ".soma", "metrics", "escaped_defects.jsonl")
+    ws = workspace if isinstance(workspace, Workspace) else (
+        Workspace(root=Path(workspace).resolve()) if workspace else Workspace.resolve()
+    )
+    cells_dir = ws.cells_dir
+    cell_files = glob.glob(os.path.join(str(cells_dir), "**", "*.md"), recursive=True)
+    escaped_defects_log = str(ws.metrics_dir / "escaped_defects.jsonl")
 
     escaped_counts: Dict[str, int] = {}
     if os.path.exists(escaped_defects_log):
@@ -443,19 +451,19 @@ def evaluate_cell_tiers(workspace: Path | str | None = None, execute: bool = Fal
                         generate_precommit_check,
                         update_cell_enforcement_artifact,
                     )
-                    artifacts_dir = os.path.join(ws, ".soma", "enforcement")
+                    artifacts_dir = str(ws.soma_dir / "enforcement")
                     os.makedirs(artifacts_dir, exist_ok=True)
                     if new_tier == "mechanical":
-                        artifact_content = generate_precommit_check(metadata, ws)
+                        artifact_content = generate_precommit_check(metadata, str(ws.root))
                         artifact_name = f"check-{cell_base}.sh"
                     else:
-                        artifact_content = generate_gate_assertion(metadata, ws)
+                        artifact_content = generate_gate_assertion(metadata, str(ws.root))
                         artifact_name = f"gate-{cell_base}.py"
                     artifact_path = os.path.join(artifacts_dir, artifact_name)
                     with open(artifact_path, "w", encoding="utf-8") as af:
                         af.write(artifact_content)
                     os.chmod(artifact_path, 0o755)
-                    update_cell_enforcement_artifact(metadata, artifact_path, ws)
+                    update_cell_enforcement_artifact(metadata, artifact_path, str(ws.root))
                 except Exception:
                     pass
 
@@ -480,10 +488,12 @@ def cli_cell_promote(argv: list[str] | None = None, workspace: Optional[str] = N
     return 0
 
 
-def metamorphose_cell(workspace: Path | str, cell_id: str) -> dict:
+def metamorphose_cell(workspace: Workspace | Path | str, cell_id: str) -> dict:
     """Transforms cell between types based on maturity criteria."""
-    ws = Path(workspace).resolve()
-    cells_dir = ws / ".soma" / "cells"
+    ws = workspace if isinstance(workspace, Workspace) else (
+        Workspace(root=Path(workspace).resolve()) if workspace else Workspace.resolve()
+    )
+    cells_dir = ws.cells_dir
     matches = list(cells_dir.rglob(f"*{cell_id}*.md"))
     if not matches:
         return {"status": "not_found", "message": f"Cell '{cell_id}' not found"}
@@ -515,7 +525,7 @@ def metamorphose_cell(workspace: Path | str, cell_id: str) -> dict:
     meta["metamorphosis_date"] = datetime.now(timezone.utc).isoformat() + "Z"
 
     if new_type == "rule":
-        target_dir = ws / "genome"
+        target_dir = ws.root / "genome"
         target_path = target_dir / f"rule-{cell_path.name}"
     else:
         target_dir = cells_dir / f"{new_type}s"
@@ -538,10 +548,12 @@ def metamorphose_cell(workspace: Path | str, cell_id: str) -> dict:
     }
 
 
-def adapt_cell(workspace: Path | str, generate: bool = False) -> list[dict]:
+def adapt_cell(workspace: Workspace | Path | str, generate: bool = False) -> list[dict]:
     """Scan and adapt cells with middling fitness scores."""
-    ws = Path(workspace).resolve()
-    cells_dir = ws / ".soma" / "cells"
+    ws = workspace if isinstance(workspace, Workspace) else (
+        Workspace(root=Path(workspace).resolve()) if workspace else Workspace.resolve()
+    )
+    cells_dir = ws.cells_dir
     results = []
 
     for fpath in cells_dir.rglob("*.md"):

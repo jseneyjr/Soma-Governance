@@ -12,6 +12,7 @@ from __future__ import annotations
 
 import os
 import re
+import warnings
 from dataclasses import dataclass, field
 from pathlib import Path
 
@@ -303,7 +304,12 @@ def resolve_workspace_path(
 
 
 def get_cells_dir(workspace: str | Path | os.PathLike[str] | Workspace | None = None) -> str:
-    """Get the path to the .soma/cells directory."""
+    """Get the path to the .soma/cells directory (deprecated)."""
+    warnings.warn(
+        "get_cells_dir is deprecated and will be removed in v1.0.0; use Workspace.cells_dir or ws.cells_dir instead.",
+        DeprecationWarning,
+        stacklevel=2,
+    )
     ws = workspace if isinstance(workspace, Workspace) else (
         Workspace(root=Path(workspace).resolve()) if workspace is not None else Workspace.resolve()
     )
@@ -311,7 +317,12 @@ def get_cells_dir(workspace: str | Path | os.PathLike[str] | Workspace | None = 
 
 
 def get_metrics_dir(workspace: str | Path | os.PathLike[str] | Workspace | None = None) -> str:
-    """Get the path to the .soma/metrics directory."""
+    """Get the path to the .soma/metrics directory (deprecated)."""
+    warnings.warn(
+        "get_metrics_dir is deprecated and will be removed in v1.0.0; use Workspace.metrics_dir or ws.metrics_dir instead.",
+        DeprecationWarning,
+        stacklevel=2,
+    )
     ws = workspace if isinstance(workspace, Workspace) else (
         Workspace(root=Path(workspace).resolve()) if workspace is not None else Workspace.resolve()
     )
@@ -319,7 +330,12 @@ def get_metrics_dir(workspace: str | Path | os.PathLike[str] | Workspace | None 
 
 
 def get_signals_file(workspace: str | Path | os.PathLike[str] | Workspace | None = None) -> str:
-    """Get the path to the canonical signals file."""
+    """Get the path to the canonical signals file (deprecated)."""
+    warnings.warn(
+        "get_signals_file is deprecated and will be removed in v1.0.0; use Workspace.signals_file or ws.signals_file instead.",
+        DeprecationWarning,
+        stacklevel=2,
+    )
     ws = workspace if isinstance(workspace, Workspace) else (
         Workspace(root=Path(workspace).resolve()) if workspace is not None else Workspace.resolve()
     )
@@ -328,7 +344,21 @@ def get_signals_file(workspace: str | Path | os.PathLike[str] | Workspace | None
 
 def get_outcomes_file(workspace: str | Path | os.PathLike[str] | Workspace | None = None) -> str:
     """Deprecated alias for get_signals_file."""
+    warnings.warn(
+        "get_outcomes_file is deprecated and will be removed in v1.0.0; use Workspace.signals_file or ws.signals_file instead.",
+        DeprecationWarning,
+        stacklevel=2,
+    )
     return get_signals_file(workspace)
+
+
+def as_workspace(workspace: str | Path | os.PathLike[str] | Workspace | None = None) -> Workspace:
+    """Coerce any workspace representation into a strongly-typed Workspace value object."""
+    if isinstance(workspace, Workspace):
+        return workspace
+    if workspace:
+        return Workspace(root=Path(workspace).resolve())
+    return Workspace.resolve()
 
 
 def confine_workspace(untrusted_workspace: str | Path | os.PathLike[str] | Workspace) -> str:
@@ -429,6 +459,7 @@ def resolve_git_hooks_dir(project_root: str | Path | os.PathLike[str] | None = N
 
 __all__ = [
     "Workspace",
+    "as_workspace",
     "confine_path",
     "confine_workspace",
     "find_workspace_root",

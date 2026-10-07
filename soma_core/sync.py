@@ -22,7 +22,7 @@ import subprocess
 import sys
 from typing import Any, Dict, List, Optional, Set, Tuple
 
-from soma_core.workspace import resolve_workspace
+from soma_core.workspace import Workspace, as_workspace, resolve_workspace
 from soma_core.frontmatter import parse_frontmatter, _get_body, dump_frontmatter
 
 
@@ -50,8 +50,9 @@ from soma_core.sentinels import (
 # ── Team Sync ──────────────────────────────────────────────────────────────
 
 
-def load_soma_config(repo_dir: Path) -> dict[str, str]:
-    conf_path = repo_dir / "soma.conf"
+def load_soma_config(repo_dir: Path | str | Workspace) -> dict[str, str]:
+    ws = as_workspace(repo_dir)
+    conf_path = ws.root / "soma.conf"
     cfg = {}
     if conf_path.is_file():
         with open(conf_path, encoding="utf-8") as f:
@@ -64,10 +65,15 @@ def load_soma_config(repo_dir: Path) -> dict[str, str]:
     return cfg
 
 
-def run_push(repo_dir: Path, team_repo: Path, org_repo: Path | None, member_id: str) -> int:
+def run_push(repo_dir: Path | str | Workspace, team_repo: Path | str, org_repo: Path | str | None, member_id: str) -> int:
     clean_id = re.sub(r"[^a-zA-Z0-9._-]", "_", str(member_id)).lstrip("-")
     if not clean_id or ".." in str(member_id):
         raise ValueError(f"Invalid member_id: {member_id}")
+
+    ws = as_workspace(repo_dir)
+    root_path = ws.root
+    team_repo = Path(team_repo)
+    org_repo = Path(org_repo) if org_repo else None
 
     print(f"Syncing local promoted cells to team repo ({team_repo})...")
     promoted_dir = team_repo / "cells" / "promoted"
@@ -75,11 +81,11 @@ def run_push(repo_dir: Path, team_repo: Path, org_repo: Path | None, member_id: 
     snap_dir = team_repo / "snapshots" / clean_id
     snap_dir.mkdir(parents=True, exist_ok=True)
 
-    cells_dir = repo_dir / ".soma" / "cells"
+    cells_dir = ws.cells_dir
 
     try:
         from soma_core.lifecycle import compute_cells_fitness
-        data = compute_cells_fitness(workspace=str(repo_dir))
+        data = compute_cells_fitness(workspace=ws)
         for item in data:
             if item.get("score") is not None and item.get("score") > 0.85:
                 cell_name = item["cell"]
@@ -102,11 +108,11 @@ def run_push(repo_dir: Path, team_repo: Path, org_repo: Path | None, member_id: 
     print("Syncing metrics snapshot...")
     try:
         from soma_core.telemetry import take_snapshot
-        take_snapshot(save=True, workspace=repo_dir)
+        take_snapshot(save=True, workspace=ws)
     except Exception as e:
         print(f"Error syncing metrics snapshot: {e}", file=sys.stderr)
 
-    metrics_repo = repo_dir / "docs" / "snapshots"
+    metrics_repo = root_path / "docs" / "snapshots"
     snapshots = sorted(metrics_repo.glob("*.json"), key=os.path.getmtime, reverse=True)
     if snapshots:
         shutil.copy2(str(snapshots[0]), str(snap_dir / snapshots[0].name))
@@ -133,7 +139,11 @@ def run_push(repo_dir: Path, team_repo: Path, org_repo: Path | None, member_id: 
     return 0
 
 
-def run_pull(repo_dir: Path, team_repo: Path, org_repo: Path | None) -> int:
+def run_pull(repo_dir: Path | str | Workspace, team_repo: Path | str, org_repo: Path | str | None) -> int:
+    ws = as_workspace(repo_dir)
+    team_repo = Path(team_repo)
+    org_repo = Path(org_repo) if org_repo else None
+
     print(f"Pulling promoted cells from team repo ({team_repo})...")
     if (team_repo / ".git").exists():
         subprocess.run(["git", "pull", "--rebase"], cwd=str(team_repo), capture_output=True)
@@ -142,7 +152,7 @@ def run_pull(repo_dir: Path, team_repo: Path, org_repo: Path | None) -> int:
         print(f"Pulling from org repo ({org_repo})...")
         subprocess.run(["git", "pull", "--rebase"], cwd=str(org_repo), capture_output=True)
 
-    local_cells = repo_dir / ".soma" / "cells"
+    local_cells = ws.cells_dir
     ribosomes_dir = local_cells / "ribosomes"
     ribosomes_dir.mkdir(parents=True, exist_ok=True)
 
@@ -657,7 +667,7 @@ def run_post_session_hook(
     platform: str | None = None,
     cells_dir: Path | None = None,
     evidence_dir: Path | None = None,
-    repo_root: Path | None = None,
+    repo_root: Path | str | Workspace | None = None,
     use_json: bool = False,
 ) -> int:
     """Run post-session transcript fitness and evidence collection."""
@@ -665,9 +675,10 @@ def run_post_session_hook(
         print(f"Error: transcript not found: {transcript_path}", file=sys.stderr)
         return 1
 
-    root = repo_root or Path(resolve_workspace())
-    cells_dir = cells_dir or root / ".soma" / "cells"
-    evidence_dir = evidence_dir or root / ".soma" / "evidence"
+    ws = as_workspace(repo_root)
+    root = ws.root
+    cells_dir = cells_dir or ws.cells_dir
+    evidence_dir = evidence_dir or ws.evidence_dir
 
     from soma_core.telemetry import (
         detect_platform,

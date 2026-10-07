@@ -286,6 +286,12 @@ Introduced the immutable, strongly-typed `Workspace` value object in `soma_core.
 **Status**: ✅ Shipped (v0.113.0)  
 Wired the strongly-typed `Workspace` value object into perimeter and edge boundaries. Initialized `_canonical_workspace` as a `Workspace` instance at MCP server startup (`soma_mcp/server.py`) and re-exported `Workspace` via `soma_mcp/security.py`. Standardized all MCP tool handlers (`soma_mcp/tools.py`) to resolve and confine workspaces into `Workspace` instances, replacing manual path concatenations with direct `ws.confine_path()` and `ws.cells_dir` calls. Integrated `Workspace` instances across state-bound receipts (`soma_core/receipts.py`), including receipt issuance, verification, file content hashing, and cell inventory fingerprints. Wired `self.workspace: Workspace` into `soma_sdk.Governance` while preserving 100% backward compatibility for `.root`, `.cells_dir`, and `.metrics_dir` properties. Developed following strict TDD with 10 new behavioral tests in `tests/test_perimeter_workspace.py` and full regression verification (2,742 passing).
 
+## Phase 17 — v0.114.0 ✅ Shipped
+
+### Core Engines Workspace Migration
+**Status**: ✅ Shipped (v0.114.0)  
+Wired the strongly-typed `Workspace` value object into core engines: lifecycle (`creation.py`, `parsers.py`, `promotion.py`, `decay.py`, `selection.py`), arbitration (`arbitration.py`), outcome reflection (`outcomes.py`), defect tracking (`defects.py`), invariant enforcement (`enforcement.py`), and synchronization (`sync.py`). Added `as_workspace(workspace)` coercion helper to `soma_core.workspace` and added `DeprecationWarning` with `stacklevel=2` to legacy standalone directory getters (`get_cells_dir`, `get_metrics_dir`, `get_signals_file`, `get_outcomes_file`). Developed following strict TDD with 19 new behavioral tests in `tests/test_core_engines_workspace.py` and full regression verification (2,761 passing).
+
 ## Research
 
 ### Antifragile Scaling
