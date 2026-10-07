@@ -280,6 +280,12 @@ Resolved pre-commit hook installation and health detection failures in Git workt
 **Status**: ✅ Shipped (v0.112.0)  
 Introduced the immutable, strongly-typed `Workspace` value object in `soma_core.workspace` implementing `os.PathLike[str]` for zero-overhead path manipulation, worktree-aware hook resolution, and path containment. Added standardized domain exception hierarchy (`WorkspaceError`, `WorkspaceNotFoundError`, `PathTraversalError`) subclassing `SomaValidationError` / `ValueError` for complete backward compatibility. Retained standalone functions as backward-compatible wrappers following the Strangler Fig migration pattern. Hardened error handling in git hook resolution by replacing bare exception blocks with explicit types (`(subprocess.SubprocessError, FileNotFoundError, PermissionError, UnicodeDecodeError, OSError)`). Integrated proactive `$PATH` guidance into `soma init` via `soma_cli.pathcheck.build_hint()`. Developed following strict TDD with 13 new behavioral tests and full regression verification (2,730 passing).
 
+## Phase 16 — v0.113.0 ✅ Shipped
+
+### Perimeter & Edge Workspace Migration
+**Status**: ✅ Shipped (v0.113.0)  
+Wired the strongly-typed `Workspace` value object into perimeter and edge boundaries. Initialized `_canonical_workspace` as a `Workspace` instance at MCP server startup (`soma_mcp/server.py`) and re-exported `Workspace` via `soma_mcp/security.py`. Standardized all MCP tool handlers (`soma_mcp/tools.py`) to resolve and confine workspaces into `Workspace` instances, replacing manual path concatenations with direct `ws.confine_path()` and `ws.cells_dir` calls. Integrated `Workspace` instances across state-bound receipts (`soma_core/receipts.py`), including receipt issuance, verification, file content hashing, and cell inventory fingerprints. Wired `self.workspace: Workspace` into `soma_sdk.Governance` while preserving 100% backward compatibility for `.root`, `.cells_dir`, and `.metrics_dir` properties. Developed following strict TDD with 10 new behavioral tests in `tests/test_perimeter_workspace.py` and full regression verification (2,742 passing).
+
 ## Research
 
 ### Antifragile Scaling

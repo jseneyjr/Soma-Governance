@@ -65,6 +65,7 @@ develop ──→ release/v0.XX ──→ PR to main ──→ tag v0.XX.0 ─�
 | Phase 13 | v0.110.0 ✅ | Ambient Telemetry & Zero-Touch Evolution |
 | Phase 14 | v0.111.0 ✅ | Git Worktrees & Cell Schema Integrity |
 | Phase 15 | v0.112.0 ✅ | Workspace Value Object & Error Hardening |
+| Phase 16 | v0.113.0 ✅ | Perimeter & Edge Workspace Migration |
 
 ## Pre-Release Checklist
 

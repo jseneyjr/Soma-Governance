@@ -24,7 +24,7 @@ _WINDOWS_DEVICE_NAMES = frozenset(
 )
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, eq=False)
 class Workspace(os.PathLike[str]):
     """Immutable, strongly-typed representation of a Soma project workspace.
 
@@ -47,6 +47,19 @@ class Workspace(os.PathLike[str]):
         if self.git_hooks_dir is None:
             hooks = resolve_git_hooks_dir(resolved_root)
             object.__setattr__(self, "git_hooks_dir", hooks)
+
+    def __eq__(self, other: object) -> bool:
+        if isinstance(other, Workspace):
+            return self.root == other.root
+        if isinstance(other, (str, Path, os.PathLike)):
+            try:
+                return self.root == Path(os.fspath(other)).resolve()
+            except (TypeError, ValueError, OSError):
+                return False
+        return False
+
+    def __hash__(self) -> int:
+        return hash(self.root)
 
     @property
     def soma_dir(self) -> Path:

@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import secrets
 import json
 import os
@@ -9,7 +11,16 @@ from pathlib import Path
 from typing import Dict, Any, Iterable, List, Optional
 
 from soma_core.cell_inventory import inventory_cells
-from soma_core.workspace import confine_path
+from soma_core.workspace import Workspace, confine_path
+
+
+def _normalize_workspace_str(workspace: Any) -> str:
+    """Canonicalize a workspace argument to an absolute string path."""
+    if isinstance(workspace, Workspace):
+        return str(workspace.root)
+    if isinstance(workspace, (str, Path, os.PathLike)):
+        return str(Path(os.fspath(workspace)).resolve())
+    return str(workspace)
 
 # Argument keys that name workspace files a tool will read or act on. A receipt
 # binds the content of each of these, so editing a target between issuance and
@@ -61,7 +72,7 @@ class ReceiptStore:
     def issue(
         self,
         session_id: str,
-        workspace: str,
+        workspace: str | Path | os.PathLike[str] | Workspace,
         operation: str,
         args: Dict[str, Any],
         file_digest: str,
@@ -71,9 +82,10 @@ class ReceiptStore:
         """Issue an opaque, stateful, session-bound receipt."""
         receipt_id = secrets.token_hex(32)
         now = time.time()
+        canonical_workspace = _normalize_workspace_str(workspace)
         data = {
             "session_id": session_id,
-            "workspace": workspace,
+            "workspace": canonical_workspace,
             "operation": operation,
             "args_hash": _hash_args(args),
             "file_digest": file_digest,
@@ -90,7 +102,7 @@ class ReceiptStore:
         self,
         receipt_id: str,
         session_id: str,
-        workspace: str,
+        workspace: str | Path | os.PathLike[str] | Workspace,
         operation: str,
         args: Dict[str, Any],
         file_digest: str,
@@ -112,7 +124,7 @@ class ReceiptStore:
 
             if (
                 not isinstance(session_id, str)
-                or not isinstance(workspace, str)
+                or not isinstance(workspace, (str, Path, os.PathLike, Workspace))
                 or not isinstance(operation, str)
                 or not isinstance(file_digest, str)
                 or not isinstance(cell_digest, str)
@@ -120,10 +132,12 @@ class ReceiptStore:
             ):
                 return False
 
+            canonical_workspace = _normalize_workspace_str(workspace)
+
             try:
                 return (
                     _safe_compare(stored["session_id"], session_id) and
-                    _safe_compare(stored["workspace"], workspace) and
+                    _safe_compare(stored["workspace"], canonical_workspace) and
                     _safe_compare(stored["operation"], operation) and
                     _safe_compare(stored["args_hash"], _hash_args(args)) and
                     _safe_compare(stored["file_digest"], file_digest) and
@@ -194,19 +208,25 @@ def _safe_compare(a: Any, b: Any) -> bool:
 
 
 
-def _confined(workspace: str, rel_or_abs: str) -> str:
+def _confined(workspace: str | Path | os.PathLike[str] | Workspace, rel_or_abs: str) -> str:
     """Resolve a path and require it to stay inside the workspace using single-authority confinement."""
+    if isinstance(workspace, Workspace):
+        resolved, _ = workspace.confine_path(rel_or_abs)
+        return resolved
     resolved, _ = confine_path(rel_or_abs, workspace)
     return resolved
 
 
-def compute_file_digest(workspace: str, paths: Iterable[str]) -> str:
+def compute_file_digest(
+    workspace: str | Path | os.PathLike[str] | Workspace,
+    paths: Iterable[str],
+) -> str:
     """sha256 over (path, content) for every target path.
 
     Missing files are bound as missing, so creating one later also makes the
     receipt stale. Raises ValueError for paths outside the workspace.
     """
-    ws_root = Path(workspace).resolve()
+    ws_root = workspace.root if isinstance(workspace, Workspace) else Path(os.fspath(workspace)).resolve()
     seen = set()
     canonical_items = []
     for p in paths:
@@ -235,19 +255,20 @@ def compute_file_digest(workspace: str, paths: Iterable[str]) -> str:
     return h.hexdigest()
 
 
-def compute_cell_digest(workspace: str) -> str:
+def compute_cell_digest(workspace: str | Path | os.PathLike[str] | Workspace) -> str:
     """Return the canonical aggregate fingerprint of governance cell bytes."""
-    return inventory_cells(workspace).fingerprint
+    ws_root = workspace.root if isinstance(workspace, Workspace) else Path(os.fspath(workspace)).resolve()
+    return inventory_cells(str(ws_root)).fingerprint
 
 
 def issue_receipt(
     session_id: str,
-    workspace: str,
+    workspace: str | Path | os.PathLike[str] | Workspace,
     operation: str,
     args: Dict[str, Any],
     file_digest: str,
     cell_digest: str,
-    ttl_seconds: Optional[float] = None
+    ttl_seconds: Optional[float] = None,
 ) -> str:
     """Issue an opaque, stateful, session-bound receipt."""
     return _default_store.issue(
@@ -264,12 +285,12 @@ def issue_receipt(
 def verify_receipt(
     receipt_id: str,
     session_id: str,
-    workspace: str,
+    workspace: str | Path | os.PathLike[str] | Workspace,
     operation: str,
     args: Dict[str, Any],
     file_digest: str,
     cell_digest: str,
-    consume: bool = True
+    consume: bool = True,
 ) -> bool:
     """Verify and optionally consume a receipt."""
     return _default_store.verify(
@@ -292,9 +313,9 @@ def clear_receipts() -> None:
 __all__ = [
     "DEFAULT_TTL_SECONDS",
     "MAX_RECEIPTS",
-    "ReceiptStore",
     "SERVER_OWNED_KEYS",
     "TARGET_PATH_KEYS",
+    "ReceiptStore",
     "clear_receipts",
     "compute_cell_digest",
     "compute_file_digest",

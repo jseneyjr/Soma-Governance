@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import json
+import os
 import subprocess
 import sys
 import re
@@ -12,6 +13,7 @@ from typing import Any, Optional
 from soma_core.cell_inventory import CellInventoryError, inventory_cells
 from soma_core.frontmatter import parse_frontmatter
 from soma_core.telemetry import EventConflictError, StaleGenerationError
+from soma_core.workspace import Workspace
 
 TYPE_TRANSLATION_MAP: dict[str, str] = {
     "safety-guard": "wall",
@@ -41,10 +43,13 @@ class Governance:
         grade = gov.grade()
     """
     
-    def __init__(self, project_root: str | Path = '.') -> None:
-        self.root: Path = Path(project_root).resolve()
-        self.cells_dir: Path = self.root / '.soma' / 'cells'
-        self.metrics_dir: Path = self.root / '.soma' / 'metrics'
+    def __init__(self, project_root: str | Path | os.PathLike[str] | Workspace = '.') -> None:
+        self.workspace: Workspace = (
+            project_root if isinstance(project_root, Workspace) else Workspace.resolve(project_root)
+        )
+        self.root: Path = self.workspace.root
+        self.cells_dir: Path = self.workspace.cells_dir
+        self.metrics_dir: Path = self.workspace.metrics_dir
     
     # === Cell & Rule Management ===
     

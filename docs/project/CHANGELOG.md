@@ -3,6 +3,24 @@
 All notable changes to Soma are documented here.
 This project uses [Semantic Versioning](https://semver.org/).
 
+## [0.113.0] — 2026-10-07 — "Perimeter & Edge Workspace Migration"
+
+### Perimeter Architecture & Object Model Adoption
+- **MCP Server Confinement (`soma_mcp/server.py`)**:
+  - Initialized `_canonical_workspace` as a strongly-typed `Workspace` value object at server startup.
+  - Standardized shutdown session harvesting `_on_session_close()` to accept `Workspace` objects.
+  - Re-exported `Workspace` directly from `soma_mcp/security.py` alongside security primitives.
+- **MCP Tool Handlers (`soma_mcp/tools.py`)**:
+  - Standardized all tool handlers (`soma_list_cells`, `soma_propose_change`, `soma_audit_security`, `soma_audit_performance`, `soma_verify_changes`, `soma_checkpoint`, `soma_scan`, `soma_report_outcome`, `soma_capture_insight`, `soma_generate_manifest`, `soma_grade`, `soma_coverage`, `soma_fitness`) on `_get_workspace()` returning a `Workspace` value object.
+  - Replaced manual path concatenations and redundant `confine_workspace()` calls with direct `ws.confine_path()` and `ws.cells_dir` invocations.
+- **State-Bound Receipts Integration (`soma_core/receipts.py`)**:
+  - Supported `Workspace` instances across `ReceiptStore.issue()`, `ReceiptStore.verify()`, `compute_file_digest()`, and `compute_cell_digest()`.
+  - Normalized workspace storage to canonical string paths so receipts issued with a `Workspace` instance verify equivalently against string paths.
+- **Python SDK Porcelain (`soma_sdk/governance.py`)**:
+  - Wired `self.workspace: Workspace` into `Governance`, deriving `self.root`, `self.cells_dir`, and `self.metrics_dir` directly from the value object while maintaining 100% backward compatibility with `Path` accessors.
+- **Comprehensive Test Coverage (`tests/test_perimeter_workspace.py`)**:
+  - Added 10 comprehensive behavioral tests covering `Governance` workspace instantiation, receipts workspace interoperability, and MCP server/tool handler execution with `Workspace` value objects.
+
 ## [0.112.0] — 2026-10-07 — "Workspace Value Object & Error Hardening"
 
 ### Strongly-Typed Architecture & Object Model
