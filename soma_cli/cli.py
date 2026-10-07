@@ -122,6 +122,12 @@ def _build_parser() -> argparse.ArgumentParser:
                           help="Show what would be checked without running")
     p_verify.add_argument("--repo-root", default=None,
                           help="Override repository root path")
+    p_verify.add_argument("--plan", default=None,
+                          help="Task plan or prompt context for Layer 2 adversarial verification")
+    p_verify.add_argument("--plan-file", default=None,
+                          help="Path to file containing task plan or prompt context")
+    p_verify.add_argument("--provider", default=None,
+                          help="Inference provider to use (gemini, anthropic, openai, keyring, prompt)")
 
     # soma sync
     p_sync = sub.add_parser("sync", parents=[common_parser], help="Reconcile evidence JSONL with cell frontmatter")

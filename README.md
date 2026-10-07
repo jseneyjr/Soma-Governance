@@ -4,7 +4,7 @@
 [![Core Rules](https://img.shields.io/badge/Core_Rules-19-green?style=flat-square)](#-core-rules)
 [![Agent Skills](https://img.shields.io/badge/Agent_Skills-15-purple?style=flat-square)](#-agent-skills)
 [![Architecture](https://img.shields.io/badge/Architecture-Pure_Python-blue?style=flat-square)](#-architecture)
-[![Version](https://img.shields.io/badge/Version-0.103.0-informational?style=flat-square)](docs/project/CHANGELOG.md)
+[![Version](https://img.shields.io/badge/Version-0.104.0-informational?style=flat-square)](docs/project/CHANGELOG.md)
 [![Zero Runtime Dependencies](https://img.shields.io/badge/Dependencies-0-brightgreen?style=flat-square)](#)
 [![Blog Post](https://img.shields.io/badge/Blog-dev.to-black?style=flat-square&logo=devdotto)](https://dev.to/nseney1/your-ai-agents-rules-file-is-a-gentlemans-agreement-heres-what-happens-when-you-build-2dml)
 [![M8ven Score](https://m8ven.ai/badge/mcp/nseney1-soma-governance-yv4xbk)](https://m8ven.ai/mcp/nseney1/soma-governance?s=readme)
@@ -115,13 +115,6 @@ landscape = gov.fitness_landscape(bayesian=True)
 coverage = gov.coverage_report()
 grade = gov.grade()
 gov.signal('wall-gae-truncation', 'tp', metric={'survival_day': 12})
-```
-
-```javascript
-const { Governance } = require('soma-governance');
-const gov = new Governance('.');
-const grade = await gov.grade();
-const entropy = await gov.entropy();
 ```
 
 ---

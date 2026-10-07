@@ -560,3 +560,28 @@ def test_make_validate_covers_the_uninstaller():
     makefile = read(os.path.join(REPO_ROOT, "Makefile"))
     validate = makefile.split("validate:")[1].split("\nupdate:")[0]
     assert "uninstall.sh" in validate, "make validate does not check uninstall.sh"
+
+
+# ── Static Import & Documentation Integrity ─────────────────────────────
+
+def test_no_undefined_names_in_python_code():
+    """Verify zero F821 undefined names across soma_core, soma_cli, soma_sdk."""
+    import shutil
+    ruff_bin = shutil.which("ruff") or os.path.expanduser("~/.local/bin/ruff")
+    if not os.path.exists(ruff_bin):
+        pytest.skip("ruff binary not found")
+    proc = subprocess.run(
+        [ruff_bin, "check", "--select", "F821", "soma_core", "soma_cli", "soma_sdk"],
+        cwd=REPO_ROOT,
+        capture_output=True,
+        text=True,
+    )
+    assert proc.returncode == 0, f"Found undefined names (F821):\n{proc.stdout}"
+
+
+def test_no_javascript_sdk_in_readme():
+    """README.md must not reference nonexistent npm package or require('soma-governance')."""
+    readme = read(os.path.join(REPO_ROOT, "README.md"))
+    assert "require('soma-governance')" not in readme
+    assert 'require("soma-governance")' not in readme
+

@@ -226,6 +226,12 @@ Decomposed monolithic `execute_tool()` in `soma_mcp/tools.py` into modular per-t
 **Status**: ✅ Shipped (v0.103.0)  
 Sunsetted legacy `immune_system/` compatibility shims, pruning 18 forwarding files. Pruned unmaintained `soma_sdk_js/` zero-dependency Node.js client package. Sunsetted dead epoch migration CLI engine `soma_cli/migration.py` and `tests/test_migration.py` while ensuring continuous BUG-019 and BUG-025 test suite coverage via tombstone regressions in `tests/test_legacy_purged_regressions.py`. Purged dead `install/starter_pack.txt` stub. Modularized 1,884-line monolithic `soma_core/lifecycle.py` into a structured, highly maintainable `soma_core/lifecycle/` package (`constants`, `parsers`, `quorum`, `decay`, `creation`, `promotion`, `selection`) with backward-compatible symbol re-exporting.
 
+## Phase 7 — v0.104.0 ✅ Shipped
+
+### Layer 2 Adversarial Verification CLI Wiring
+**Status**: ✅ Shipped (v0.104.0)  
+Wired Layer 2 Adversarial Verification into `soma verify` CLI using existing inference provider infrastructure (`Gemini`, `Anthropic`, `OpenAI`, `Keyring`, `PromptOnlyProvider`). Added `--plan`, `--plan-file`, and `--provider` flags with automatic plan discovery. Implemented graceful fallback to Layer 1 deterministic verification when no provider or API keys are present. Added `format_layer2_summary` for readable Arbiter output and mapped Arbiter verdicts (`SHIP` -> 0, `BLOCK`/`REVISE` -> 1). Developed following strict TDD with 100% test coverage across 9 new behavioral tests.
+
 ## Research
 
 ### Antifragile Scaling

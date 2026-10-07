@@ -55,6 +55,7 @@ develop ──→ release/v0.XX ──→ PR to main ──→ tag v0.XX.0 ─�
 | Phase 5.12 | v0.101.0 ✅ | Immune System Unification & Lifecycle Consolidation |
 | Phase 5.13 | v0.102.0 ✅ | Facade Hardening & Final Prune (Bloat Initiative Completion) |
 | Phase 6 | v0.103.0 ✅ | Legacy Sunset, Packaging Decoupling & Lifecycle Modularization |
+| Phase 7 | v0.104.0 ✅ | Layer 2 Adversarial Verification CLI Wiring |
 
 ## Pre-Release Checklist
 

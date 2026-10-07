@@ -3,6 +3,30 @@
 All notable changes to Soma are documented here.
 This project uses [Semantic Versioning](https://semver.org/).
 
+## [0.104.0] — 2026-10-06 — "Layer 2 Adversarial Verification CLI Wiring"
+
+### CLI & Verification (Phase 7 Scorecard Remediation)
+- **Layer 2 Adversarial Verification CLI Integration**:
+  - Connected `soma verify` to the Layer 2 adversarial verification engine (`soma_core.verification.runner.run_layer2`).
+  - Added `--plan` argument for passing natural language task plans or prompt context.
+  - Added `--plan-file` argument for loading task specifications directly from disk.
+  - Added `--provider` argument for explicitly selecting inference backends (`gemini`, `anthropic`, `openai`, `keyring`, `prompt`).
+  - Implemented automatic plan discovery checking standard locations (`docs/plan.md`, `.soma/plan.md`, `PLAN.md`).
+- **Graceful Deterministic Fallback**:
+  - Automatically falls back to Layer 1 deterministic checks when no inference provider or API keys are available, logging a clean notice without crashing.
+  - Returns exit code 0 when Layer 1 passes under graceful fallback.
+- **Arbiter Output & Exit Code Mapping**:
+  - Added `format_layer2_summary` to present human-readable Arbiter verdicts, divergences, and convergences.
+  - Enforced strict exit code contract: `SHIP` maps to 0; `BLOCK` and `REVISE` map to 1.
+- **Clean Repository Zero-Exit**:
+  - Fixed false-alarm exit code 1 when running `soma verify` on clean repositories with 0 changed files. Reports `Layer 1: 0 files changed (clean repository)` and exits 0 immediately.
+- **Documentation & Import Integrity**:
+  - Purged phantom JavaScript SDK snippet (`const { Governance } = require('soma-governance')`) from `README.md`.
+  - Fixed 5 latent `NameError` missing imports in error branches across `soma_core.lifecycle.creation` (`os`), `soma_core.lifecycle.promotion` (`sys`), `soma_core.evidence` (`Path`), `soma_core.sweep_session` (`Path`), and `soma_core.verification.runner` (`ArbitrationResult`).
+  - Added automated `ruff check --select F821` invariant test in `tests/test_static_invariants.py` and updated `tdd-protocol.md` Gate 4 to mandate static import integrity checks before green phase sign-off.
+- **Strict TDD Compliance**:
+  - Full Red/Green TDD lifecycle adhering to `tdd-protocol.md` and `feature-specs.md §6` with 13 new behavioral and invariant tests in `tests/test_cli_verify.py` and `tests/test_static_invariants.py`.
+
 ## [0.103.0] — 2026-10-06 — "Legacy Sunset & Lifecycle Modularization"
 
 ### Architecture & Modularization (Phase 6 Bloat Elimination)

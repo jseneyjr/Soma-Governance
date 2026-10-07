@@ -87,9 +87,12 @@ All tests, claims, and verification barriers must pass with clean regression bef
    - Run `make validate` (verify syntax and config JSON across hooks and packages).
    - Run dry-run install across supported platforms (`python -m soma_cli.cli install --platform gemini --dry-run`).
    - Check for hardcoded paths outside documentation templates.
-5. **No Test Modifications** — If a pre-existing test broke, the implementation caused a regression. Fix the implementation, not the test (unless the test was genuinely wrong, which must be documented).
-6. **Environment Grounding** — All verification steps must run against the project's dedicated virtual environment (`.venv/bin/python`, `.venv/bin/pytest`) to eliminate interpreter drift and hidden missing dependencies.
-7. **Gate Check** — Agent must state: *"Green phase verified: N/N tests passing, deterministic checkpoint clean, claims & bug registries verified. Full regression clean."*
+5. **Static Analysis & Import Integrity (`ruff check`)** —
+   - Run `ruff check --select F821` (or complete syntax/name checks `E999,F821,F822,F823`) across modified and package directories.
+   - Guard against fatal latent `NameError` bugs lurking in untested exception/error branches (e.g., missing `import os`, `import sys`, `from pathlib import Path`). Must return 0 violations.
+6. **No Test Modifications** — If a pre-existing test broke, the implementation caused a regression. Fix the implementation, not the test (unless the test was genuinely wrong, which must be documented).
+7. **Environment Grounding** — All verification steps must run against the project's dedicated virtual environment (`.venv/bin/python`, `.venv/bin/pytest`) to eliminate interpreter drift and hidden missing dependencies.
+8. **Gate Check** — Agent must state: *"Green phase verified: N/N tests passing, static analysis (ruff F821) clean, deterministic checkpoint clean, claims & bug registries verified. Full regression clean."*
 
 **Output**: Clean test run output, verification outputs, and pass count.
 

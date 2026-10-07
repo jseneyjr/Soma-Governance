@@ -7,6 +7,7 @@ import glob
 import json
 import os
 from pathlib import Path
+import sys
 from typing import Any, Dict, Optional
 
 from soma_core.frontmatter import dump_frontmatter, parse_frontmatter

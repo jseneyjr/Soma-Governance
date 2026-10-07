@@ -104,6 +104,106 @@ def resolve_target_files(args: argparse.Namespace) -> list[str]:
     return files
 
 
+# ── Plan & Provider Resolution ────────────────────────────────────────
+
+def resolve_task_plan(args: argparse.Namespace, repo_root: str) -> str | None:
+    """Resolve task plan from --plan, --plan-file, or standard plan conventions."""
+    if getattr(args, 'plan', None):
+        return args.plan.strip()
+
+    plan_file = getattr(args, 'plan_file', None)
+    if plan_file:
+        plan_path = plan_file if os.path.isabs(plan_file) else os.path.join(repo_root, plan_file)
+        if not os.path.isfile(plan_path):
+            print(f"Error: plan file not found: {plan_file}", file=sys.stderr)
+            return None
+        try:
+            with open(plan_path, encoding='utf-8') as f:
+                return f.read().strip()
+        except OSError as e:
+            print(f"Error: could not read plan file {plan_file}: {e}", file=sys.stderr)
+            return None
+
+    # Check conventional plan files
+    for default_name in ("docs/plan.md", ".soma/plan.md", "PLAN.md"):
+        cand = os.path.join(repo_root, default_name)
+        if os.path.isfile(cand):
+            try:
+                with open(cand, encoding='utf-8') as f:
+                    content = f.read().strip()
+                    if content:
+                        return content
+            except OSError:
+                pass
+
+    return None
+
+
+def is_usable_provider(provider) -> bool:
+    """Return True if provider can perform programmatic generation."""
+    if provider is None:
+        return False
+    try:
+        from soma_core.inference_provider import PromptOnlyProvider
+        if isinstance(provider, PromptOnlyProvider):
+            return False
+    except ImportError:
+        pass
+    return hasattr(provider, 'generate') or callable(provider)
+
+
+def resolve_cli_provider(args: argparse.Namespace, repo_root: str):
+    """Resolve configured inference provider or return None if none available."""
+    try:
+        from soma_core.inference_provider import resolve_key, resolve_provider, PromptOnlyProvider
+    except ImportError:
+        return None
+
+    explicit_provider = getattr(args, 'provider', None)
+    if not explicit_provider:
+        explicit_provider = resolve_key(repo_root, ["SOMA_INFERENCE_PROVIDER"])
+
+    # If no provider is explicitly requested, check if any API key exists
+    if not explicit_provider:
+        has_key = any(
+            resolve_key(repo_root, [k])
+            for k in ["GEMINI_API_KEY", "GOOGLE_API_KEY", "ANTHROPIC_API_KEY", "OPENAI_API_KEY"]
+        )
+        if not has_key:
+            return None
+
+    try:
+        provider = resolve_provider(workspace=repo_root, provider_name=explicit_provider)
+        if isinstance(provider, PromptOnlyProvider) and explicit_provider not in ("prompt-only", "prompt"):
+            return None
+        return provider
+    except Exception as e:
+        print(f"Warning: could not initialize inference provider: {e}", file=sys.stderr)
+        return None
+
+
+def format_layer2_summary(result) -> str:
+    """Format Layer 2 arbitration results for CLI output."""
+    from soma_core.verification import Verdict
+    lines = []
+    verdict_str = result.verdict.name if hasattr(result.verdict, 'name') else str(result.verdict)
+    icon = "✅" if result.verdict == Verdict.SHIP else "🔴"
+    lines.append(f"Layer 2: {icon} {verdict_str}")
+
+    if result.divergences:
+        lines.append(f"  Divergences ({len(result.divergences)}):")
+        for d in result.divergences:
+            pred_desc = f" [{d.prediction.severity.value}] {d.prediction.risk}" if d.prediction else ""
+            lines.append(f"    - {d.category.value} ({d.divergence_type}):{pred_desc}")
+            if d.resolution:
+                lines.append(f"      Resolution: {d.resolution}")
+
+    if result.convergences:
+        lines.append(f"  Convergences ({len(result.convergences)}): {', '.join(c.value for c in result.convergences)}")
+
+    return "\n".join(lines)
+
+
 # ── Main Handler ──────────────────────────────────────────────────────
 
 def run_verify(args: argparse.Namespace) -> int:
@@ -148,6 +248,11 @@ def run_verify(args: argparse.Namespace) -> int:
             print(f"  {f}")
         return 0
 
+    # ── Clean Repository ──────────────────────────────────────────────
+    if not target_files:
+        print("Layer 1: 0 files changed (clean repository)")
+        return 0
+
     # ── Run Layer 1 ───────────────────────────────────────────────────
     results = runner.run_layer1(
         changed_files=target_files,
@@ -162,10 +267,41 @@ def run_verify(args: argparse.Namespace) -> int:
         return 0 if layer1_pass else 1
 
     # ── Run Layer 2 (full verification) ───────────────────────────────
-    # Layer 2 requires an LLM backend which is not wired to the CLI yet.
-    print("Note: Layer 2 (adversarial LLM verification) not yet configured. "
-          "Use --layer1-only for deterministic checks.", file=sys.stderr)
-    if not layer1_pass:
+    provider = resolve_cli_provider(args, repo_root)
+    if provider is None:
+        if not layer1_pass:
+            return 1
+        print("Notice: No inference provider configured. Layer 2 skipped (Layer 1 deterministic checks passed).",
+              file=sys.stderr)
+        return 0
+
+    task_plan = resolve_task_plan(args, repo_root)
+    if getattr(args, 'plan_file', None) and task_plan is None:
+        return 1
+
+    if not task_plan:
+        if not layer1_pass:
+            return 1
+        print("Notice: No task plan provided (--plan or --plan-file). Layer 2 skipped (Layer 1 deterministic checks passed).",
+              file=sys.stderr)
+        return 0
+
+    llm_backend = provider.generate if hasattr(provider, 'generate') else provider
+    try:
+        l2_result = runner.run_layer2(
+            changed_files=target_files,
+            repo_root=repo_root,
+            task_plan=task_plan,
+            layer1_evidence=results,
+            llm_backend=llm_backend,
+        )
+    except Exception as e:
+        print(f"Error: Layer 2 verification failed: {e}", file=sys.stderr)
+        return 1
+
+    print(format_layer2_summary(l2_result))
+    l2_exit = verdict_to_exit_code(l2_result.verdict)
+    if not layer1_pass or l2_exit != 0:
         return 1
 
     return 0
