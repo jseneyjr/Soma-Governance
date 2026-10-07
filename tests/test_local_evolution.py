@@ -51,7 +51,7 @@ def test_is_soma_repo_detection(tmp_path: Path):
     soma_repo.mkdir()
     (soma_repo / "soma_core").mkdir()
     (soma_repo / "soma_cli").mkdir()
-    (soma_repo / "pyproject.toml").write_text('name = "soma-governance"\nversion = "0.118.0"\n', encoding="utf-8")
+    (soma_repo / "pyproject.toml").write_text('name = "soma-governance"\nversion = "0.119.0"\n', encoding="utf-8")
     ws_soma = Workspace(root=soma_repo)
     assert ws_soma.is_soma_repo
     assert get_promotion_path(ws_soma) == GLOBAL_PROMOTION_PATH

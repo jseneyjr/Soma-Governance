@@ -214,6 +214,106 @@ def calculate_snr(tp: int | float, fp: int | float) -> float | None:
 
 calculate_composite_fitness = compute_cell_fitness
 
+# ── Salience Scoring Engine (Phase 22 / v0.119.0) ──────────────────────────
+
+SALIENT_EXPLORATION_PRIOR = 0.20  # S_base
+SALIENT_DECAY_FLOOR = 0.20        # R_min
+SALIENT_GATE_WEIGHT = 5.0         # W_gate
+SALIENT_WALL_WEIGHT = 2.0         # W_wall
+SALIENT_VACUOLE_WEIGHT = 1.0      # W_vacuole
+SALIENT_GATE_UNTESTED = 1.0       # S_gate_untested
+
+SPECIFICITY_MULTIPLIERS = {
+    "ast_match": 1.5,
+    "exact_path": 1.2,
+    "glob_match": 1.0,
+    "base": 0.8,
+}
+
+
+def compute_salience(
+    cell: Dict[str, Any],
+    match_type: str = "glob_match",
+    now: Optional[Any] = None,
+    decay_lambda: float = 0.05,
+    r_min: float = SALIENT_DECAY_FLOOR,
+    s_base: float = SALIENT_EXPLORATION_PRIOR,
+) -> float:
+    """Compute cold-start safe Salience score for a cell.
+
+    Formula:
+        Salience(C) = W_tier(C) * (S_base + (1 - S_base) * WLB_95(tp, triggers)) * R(t) * sigma(C, diff)
+
+    Guarantees:
+    - Untested security gates receive priority weight W_gate=5.0 and S_gate_untested=1.0.
+    - S_base=0.20 exploration prior guarantees newly created cells are never starved (Salience > 0).
+    - Clamped temporal decay floor R(t) >= R_min=0.20 prevents stable invariants from dying.
+    - Monotonic clock-skew guard prevents future dates from producing R(t) > 1.0.
+    """
+    from datetime import datetime, timezone
+
+    if now is None:
+        now = datetime.now(timezone.utc)
+    elif hasattr(now, "tzinfo") and now.tzinfo is None:
+        now = now.replace(tzinfo=timezone.utc)
+
+    # 1. Tier Weight W_tier(C)
+    meta = cell.get("frontmatter", cell) if isinstance(cell, dict) else {}
+    cell_type = str(meta.get("type", cell.get("type", "vacuole"))).lower()
+    enforcement = str(meta.get("enforcement", cell.get("enforcement", ""))).lower()
+
+    is_gate = cell_type == "gate" or enforcement == "gate"
+    if is_gate:
+        w_tier = SALIENT_GATE_WEIGHT
+    elif cell_type == "wall" or enforcement == "wall":
+        w_tier = SALIENT_WALL_WEIGHT
+    elif cell_type == "vacuole":
+        w_tier = SALIENT_VACUOLE_WEIGHT
+    else:
+        w_tier = 1.0
+
+    # 2. Fitness & Prior
+    fitness = meta.get("fitness") or cell.get("fitness") or {}
+    if not isinstance(fitness, dict):
+        fitness = {}
+
+    tp = _to_num(fitness.get("true_positives", cell.get("true_positives", 0)))
+    triggers = _to_num(fitness.get("triggers", cell.get("triggers", 0)))
+
+    if is_gate and triggers == 0:
+        empirical_prior = SALIENT_GATE_UNTESTED
+    else:
+        wlb_95 = wilson_lower_bound(tp, triggers, z=1.96) if triggers > 0 else 0.0
+        empirical_prior = s_base + (1.0 - s_base) * wlb_95
+
+    # 3. Clamped Temporal Decay Floor R(t)
+    last_trigger_str = (
+        fitness.get("last_trigger_date")
+        or cell.get("last_trigger_date")
+        or fitness.get("last_verified_date")
+        or cell.get("last_verified_date")
+    )
+    if last_trigger_str:
+        try:
+            cleaned_str = str(last_trigger_str).replace("Z", "+00:00")
+            last_dt = datetime.fromisoformat(cleaned_str)
+            if last_dt.tzinfo is None:
+                last_dt = last_dt.replace(tzinfo=timezone.utc)
+            delta_days = max(0.0, (now - last_dt).total_seconds() / 86400.0)
+            decay_factor = math.exp(-decay_lambda * delta_days)
+            r_t = r_min + (1.0 - r_min) * decay_factor
+        except Exception:
+            r_t = 1.0
+    else:
+        r_t = 1.0
+
+    # 4. Specificity Multiplier sigma
+    sigma = SPECIFICITY_MULTIPLIERS.get(match_type, 1.0)
+
+    score = w_tier * empirical_prior * r_t * sigma
+    return round(score, 6)
+
+
 __all__ = [
     "_wilson_interval",
     "_to_num",
@@ -224,4 +324,12 @@ __all__ = [
     "compute_cell_fitness",
     "calculate_composite_fitness",
     "calculate_snr",
+    "SALIENT_EXPLORATION_PRIOR",
+    "SALIENT_DECAY_FLOOR",
+    "SALIENT_GATE_WEIGHT",
+    "SALIENT_WALL_WEIGHT",
+    "SALIENT_VACUOLE_WEIGHT",
+    "SALIENT_GATE_UNTESTED",
+    "SPECIFICITY_MULTIPLIERS",
+    "compute_salience",
 ]

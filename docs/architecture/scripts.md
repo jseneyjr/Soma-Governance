@@ -1,10 +1,10 @@
 # Scripts Reference
 
-This document catalogs 74 executable scripts, command modules, SDK modules, and MCP/core modules in the Soma governance framework.
+This document catalogs 77 executable scripts, command modules, SDK modules, and MCP/core modules in the Soma governance framework.
 
 ## Counting Method
 
-Counts are generated from the source tree with mutually exclusive categories: package initializers (`__init__.py`, `__main__.py`) and subpackages (`soma_core/workspace/`, `soma_core/lifecycle/`, `soma_core/schemas/`) are excluded; `install/hooks/pre-commit` is counted as the lifecycle script; and all non-initializer `soma_core/*.py` modules are grouped with the MCP modules. This produces 74 unique paths with no double counting.
+Counts are generated from the source tree with mutually exclusive categories: package initializers (`__init__.py`, `__main__.py`) and subpackages (`soma_core/workspace/`, `soma_core/lifecycle/`, `soma_core/schemas/`) are excluded; `install/hooks/pre-commit` is counted as the lifecycle script; and all non-initializer `soma_core/*.py` modules are grouped with the MCP modules. This produces 77 unique paths with no double counting.
 
 ## Summary by Category
 
@@ -14,8 +14,8 @@ Counts are generated from the source tree with mutually exclusive categories: pa
 | [Verification Scripts](#verification-scripts--python) | Python (`soma_core/verification/`) | 14 | Deterministic AST checkers, coverage tools, and adversarial verification |
 | [CLI Commands](#cli-commands--python-soma_cli) | Python and bash (`soma_cli/`, root) | 22 | CLI launcher and command implementation modules |
 | [SDK Modules](#sdk-modules--python-soma_sdk) | Python (`soma_sdk/`) | 8 | Canonical scoring, parsing, telemetry, hot-zone, and governance APIs |
-| [MCP and Core Modules](#mcp-and-core-modules) | Python (`soma_mcp/`, `soma_core/`) | 30 | MCP transport, dispatch, confinement, content inventory, canonical evidence, cache, errors, receipts, and atomic storage |
-| **Total** | | **75** | Unique paths under the method above |
+| [MCP and Core Modules](#mcp-and-core-modules) | Python (`soma_mcp/`, `soma_core/`) | 32 | MCP transport, dispatch, confinement, content inventory, canonical evidence, cache, errors, receipts, and atomic storage |
+| **Total** | | **77** | Unique paths under the method above |
 
 ---
 
@@ -140,6 +140,8 @@ These 31 modules implement the MCP server, state-bound authorization, safe cell 
 | **`outcomes.py`** | `soma_core/outcomes.py` | Verifiable outcome reflection, credit assignment, fitness signals, transcript updater, and ACE reflector loop. |
 | **`metrics.py`** | `soma_core/metrics.py` | Metrics snapshots, token census aggregation, cell quorum sensing, coverage mapping, and immune report cards. |
 | **`sentinels.py`** | `soma_core/sentinels.py` | Subagent liveness & deadlock detection, protocol escalation recommender, and last-gasp apoptosis sentinels. |
+| **`ast_match.py`** | `soma_core/ast_match.py` | Syntactic AST trigger matching engine (imports, call sites, decorators) with fast diff token pre-filtering. |
+| **`attribution.py`** | `soma_core/attribution.py` | Closed-loop attribution correlation mapping linking verification outcomes to cell fitness and signals telemetry. |
 
 ---
 

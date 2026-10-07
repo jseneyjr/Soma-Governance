@@ -3,6 +3,56 @@
 All notable changes to Soma are documented here.
 This project uses [Semantic Versioning](https://semver.org/).
 
+## [0.119.0] — 2026-10-07 — "Intelligent JIT Targeting, Salience Engine & Closed-Loop Attribution"
+
+### Intelligent JIT Targeting, Salience Engine & Closed-Loop Attribution
+- **Syntactic AST Triggers (`soma_core/ast_match.py`, `soma_mcp/jit_engine.py`)**:
+  - Introduces `match_ast_triggers()` and `ASTTriggerVisitor` for precision targeting of imports, function/method call sites, and decorator applications.
+  - Fast diff hunk token pre-filtering (`prefilter_ast_tokens()`) skips AST traversal on irrelevant diffs.
+  - Seamlessly falls back to target path globs for non-Python files and unparseable snippets.
+- **Cold-Start Safe Salience Scoring Engine (`soma_core/scoring.py`)**:
+  - Implements `compute_salience()` with $S_{\text{base}} = 0.20$ exploration prior, guaranteeing newly created cells are never starved.
+  - Clamped temporal decay floor $R_{\text{min}} = 0.20$ protects foundational invariants against obsolescence decay.
+  - Tier weighting prioritizes security gates ($W_{\text{gate}} = 5.0$, $S_{\text{gate\_untested}} = 1.0$), walls ($W_{\text{wall}} = 2.0$), and vacuoles ($W_{\text{vacuole}} = 1.0$).
+  - Specificity multipliers reward precise triggers (`ast_match`: 1.5x, `exact_path`: 1.2x, `glob_match`: 1.0x).
+- **Partitioned 2-Tier Token Budget & Atomic Directive Compression (`soma_mcp/jit_engine.py`)**:
+  - Implements `pack_two_tier_context()` dividing context budget: 1,200 tokens (60%) for Tier 1 Security Gates, 800 tokens (40%) for Tier 2 Advisory Rules. Unused Tier 1 headroom dynamically overflows to Tier 2.
+  - Incompressible Gate Guarantee: Gates are NEVER dropped under extreme context pressure; overflow gates compress into Atomic Invariant Directives (`compress_to_atomic_directive()`).
+- **Closed-Loop Attribution Correlation Mapping (`soma_core/attribution.py`, `soma_core/verification/pipeline.py`)**:
+  - Implements `attribute_verification_outcome()` and `infer_cell_risk_categories()`.
+  - Layer 1 deterministic verifier failures and Layer 2 confirmed divergences attribute True Positives (TP) to relevant active governance cells.
+  - Spurious or dismissed predictions attribute False Positives (FP).
+  - Updates cell frontmatter (`triggers`, `true_positives`, `false_positives`, `last_trigger_date`) and appends audit signals to `.soma/evidence/signals.jsonl`.
+  - Wired directly into `VerificationPipeline.run(..., attribute=True)`.
+
+## [0.118.0] — 2026-10-07 — "Modular Workspace Package, Non-Bypassable Layer 1 & Localized Cell Evolution"
+
+### Modular Workspace Architecture, Staged Pre-Commit & Localized Evolution
+- **Modular Workspace Package (`soma_core/workspace/`)**:
+  - Decomposes monolithic `workspace.py` into a cohesive, modular package: `base.py`, `git.py`, `discovery.py`, `confinement.py`, `scaffold.py`, and `hooks.py`.
+  - Maintains strict backward compatibility via `soma_core.workspace` barrel exports.
+- **Non-Bypassable Staged Layer 1 Pre-Commit Verification**:
+  - Enhanced pre-commit lifecycle hook to deterministically execute Layer 1 verification (`DeterministicVerifier`) on git staged files during commit.
+  - Blocks commits violating active invariants and prevents test regressions before changes leave the workspace.
+- **Localized Cell Evolution & Compound Soma Fingerprinting**:
+  - Restricts cell evolution in foreign repositories strictly to the local workspace boundary (`vacuole` $\rightarrow$ `wall` $\rightarrow$ `gate`).
+  - Added compound fingerprinting in `Workspace.is_soma_repo` (requiring `soma-governance` package name in `pyproject.toml` plus `soma_core` and `soma_cli` packages) to prevent accidental mutation of external genomics repositories named `genome`.
+- **Global Rules Cleanse & Quarantine Protocol**:
+  - Whitelist-only quarantine system (`~/.soma/quarantine/`) protecting user platform rules.
+  - Horizontal Gene Transfer porcelain command (`soma transfer export`) for explicit, audited rule sharing.
+
+## [0.117.0] — 2026-10-07 — "Dual-Mode Verifier OOP & Frictionless In-Session Verification"
+
+### Dual-Mode Verifier & Composable Architecture
+- **Composable Verification Pipeline Hierarchy (`soma_core/verification/`)**:
+  - Refactored verifier into `DeterministicVerifier`, `AdversarialVerifier`, `Arbiter`, and `VerificationPipeline`.
+- **Dual-Mode Verification Support**:
+  - In-session zero-API-key verification using in-band charge sheets and MCP Sampling (`sampling/createMessage`).
+  - Headless SDK provider fallback for CI pipelines and automated testing.
+- **Fast Git Integration & Isolated CI Gate**:
+  - Subprocess-free fast paths in `GitWorkspace(Workspace)`.
+  - Codified Isolated CI Environment Invariant (`HOME=$(mktemp -d) pytest`) guaranteeing zero test runner divergence.
+
 ## [0.116.0] — 2026-10-07 — "Multi-Repo Hook Ergonomics & Dedicated Hook Management"
 
 ### Porcelain Hook Management & Multi-Repo Worktree Ergonomics
