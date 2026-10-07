@@ -262,6 +262,12 @@ Resolved the uncoordinated "Battleship" guessing flaw in Layer 2 verification by
 **Status**: ✅ Shipped (v0.109.0)  
 Resolved 9 security, architectural, and reliability defects identified during the multi-perspective Tempest review (BUG-073 through BUG-081). Prevented host API key exfiltration and SSRF by strictly rejecting network endpoint configuration from untrusted workspace configuration files (`.soma/soma.conf`). Closed command safety evasion vectors by parsing POSIX bundled short flags (`-*c`) and normalizing trailing slashes in destructive `rm` commands. Enforced fail-closed session token authentication in the MCP server. Decoupled Layer 0 Core from Layer 2 MCP by canonicalizing frontmatter parsing inside `cell_inventory.py`. Fixed Layer 1 multi-target evidence collisions in the Arbiter, non-literal default argument AST crashes, and C1 terminal control escape code sanitization. Silenced upstream `google-genai` Automatic Function Calling (AFC) advisory warnings on single-turn inference. Developed following strict TDD with 29 new behavioral tests and full regression test suite passing.
 
+## Phase 13 — v0.110.0 ✅ Shipped
+
+### Ambient Telemetry & Zero-Touch Evolution
+**Status**: ✅ Shipped (v0.110.0)  
+Resolved the external critique regarding static rule decay and unobserved cell fitness. Closed the evolutionary telemetry feedback loop without background daemons or recurring cron jobs, maintaining strict scale-to-zero governance. Integrated ambient verification telemetry into `soma verify` and MCP verification tools to mint trigger and outcome signals (`signals.jsonl`). Implemented MCP stdio shutdown hooks to trigger outcome reflection on process termination. Added `soma harvest` (`--git`, `--limit`, `--dry-run`, `--json`) with cross-platform `evidence_lock()` and deterministic commit-hash idempotency to bootstrap initial cell fitness from historical git commits. Implemented read-time dynamic decay in `soma oracle` and `generate_checkpoint()` to lazily evaluate dormant and decaying cells without polling threads. Enhanced `branch_coverage.py` with bytecode disassembly (`dis.findlinestarts`) and multiline docstring state tracking to eliminate false-positive uncovered docstring lines. Developed following strict TDD with 29 new behavioral tests and full regression test suite passing (2,706 passing).
+
 ## Research
 
 ### Antifragile Scaling

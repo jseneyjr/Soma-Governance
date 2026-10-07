@@ -12,10 +12,10 @@ Counts are generated from the source tree with mutually exclusive categories: pa
 |:---------|:----------------------------|:------|:------------|
 | [Lifecycle Scripts (Hooks)](#lifecycle-scripts-hooks--bash) | bash (`install/hooks/`) | 1 | Git pre-commit lifecycle hook |
 | [Verification Scripts](#verification-scripts--python) | Python (`soma_core/verification/`) | 12 | Deterministic AST checkers, coverage tools, and adversarial verification |
-| [CLI Commands](#cli-commands--python-soma_cli) | Python and bash (`soma_cli/`, root) | 20 | CLI launcher and command implementation modules |
+| [CLI Commands](#cli-commands--python-soma_cli) | Python and bash (`soma_cli/`, root) | 21 | CLI launcher and command implementation modules |
 | [SDK Modules](#sdk-modules--python-soma_sdk) | Python (`soma_sdk/`) | 8 | Canonical scoring, parsing, telemetry, hot-zone, and governance APIs |
 | [MCP and Core Modules](#mcp-and-core-modules) | Python (`soma_mcp/`, `soma_core/`) | 31 | MCP transport, dispatch, confinement, content inventory, canonical evidence, cache, errors, receipts, and atomic storage |
-| **Total** | | **72** | Unique paths under the method above |
+| **Total** | | **73** | Unique paths under the method above |
 
 ---
 
@@ -52,7 +52,7 @@ These 12 Python scripts form the deterministic and adversarial verification engi
 
 ## CLI Commands — Python (`soma_cli/`)
 
-These 20 paths provide the root `soma` launcher and 19 non-initializer Python modules in `soma_cli/`. Fifteen modules implement registered subcommands; scanner/generator modules support Genesis, and `pathcheck.py` supports `soma doctor` and the installers.
+These 21 paths provide the root `soma` launcher and 20 non-initializer Python modules in `soma_cli/`. Sixteen modules implement registered subcommands; scanner/generator modules support Genesis, and `pathcheck.py` supports `soma doctor` and the installers.
 
 | Command / Script | Location | Purpose |
 |:-----------------|:---------|:--------|
@@ -65,6 +65,7 @@ These 20 paths provide the root `soma` launcher and 19 non-initializer Python mo
 | **`genesis.py`** | `soma_cli/genesis.py` | `soma genesis`: Analyzes codebase architecture with 8 language-agnostic detectors and generates governance cell candidates. |
 | **`genesis_generator.py`** | `soma_cli/genesis_generator.py` | Generates candidate cell files in `vacuoles/` and architecture map `docs/organelles.md` from scan results. |
 | **`genesis_scanner.py`** | `soma_cli/genesis_scanner.py` | Language-agnostic codebase scanner detecting 8 architectural patterns for governance cell candidate generation. |
+| **`harvest.py`** | `soma_cli/harvest.py` | `soma harvest`: Retroactively harvests telemetry from git commit history to bootstrap baseline cell fitness and eliminate cold-start unobserved gaps. |
 | **`hooks.py`** | `soma_cli/hooks.py` | `soma hook <phase>`: Pure Python cross-platform lifecycle hook runner for `pre-commit`, `safety-gate`, `pre-invocation`, and `session-close`. |
 | **`init.py`** | `soma_cli/init.py` | `soma init`: Initializes rules for Gemini, Claude Code, Cursor, or Copilot; it does not auto-detect Kiro. |
 | **`oracle.py`** | `soma_cli/oracle.py` | `soma oracle`: Cell health classification, diagnostics, and pruning recommendations (wraps `oracle_checkpoint.py`). |

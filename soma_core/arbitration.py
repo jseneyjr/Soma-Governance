@@ -483,6 +483,21 @@ def _load_cells(workspace: str) -> List[Dict[str, Any]]:
     return cells
 
 
+def _parse_iso_date(ts_str: Any) -> Optional[datetime]:
+    if not ts_str or not isinstance(ts_str, str):
+        return None
+    cleaned = ts_str.strip()
+    if cleaned.endswith("Z"):
+        cleaned = cleaned[:-1] + "+00:00"
+    try:
+        dt = datetime.fromisoformat(cleaned)
+        if dt.tzinfo is None:
+            dt = dt.replace(tzinfo=timezone.utc)
+        return dt
+    except Exception:
+        return None
+
+
 def _classify_cell(cell: Dict[str, Any], evidence: Dict[str, Any], expired_ids: set) -> Tuple[str, str]:
     """Classify a single cell's health status."""
     cell_id = cell.get("id", "")
@@ -500,6 +515,36 @@ def _classify_cell(cell: Dict[str, Any], evidence: Dict[str, Any], expired_ids: 
     tp = float(ev.get("tp", 0))
     fp = float(ev.get("fp", 0))
     has_outcomes = ev.get("has_outcomes", False)
+
+    # Dynamic read-time decay: check days since last trigger
+    last_trigger_str = ev.get("last_trigger")
+    if not last_trigger_str and isinstance(cell.get("fitness"), dict):
+        last_trigger_str = cell["fitness"].get("last_trigger_date")
+
+    last_trigger_dt = _parse_iso_date(last_trigger_str)
+    days_inactive = 0
+    if last_trigger_dt:
+        now_utc = datetime.now(timezone.utc)
+        days_inactive = max(0, (now_utc - last_trigger_dt).days)
+
+    expiry_days = cell.get("expiry_days")
+    if expiry_days:
+        try:
+            expiry_days = int(expiry_days)
+        except (ValueError, TypeError):
+            expiry_days = None
+
+    if expiry_days and expiry_days > 60:
+        dormant_limit = expiry_days
+        decay_limit = expiry_days
+    else:
+        decay_limit = 30
+        dormant_limit = 60
+
+    if days_inactive > dormant_limit:
+        return "dormant", f"Inactive for {days_inactive} days (dormant)"
+    elif days_inactive > decay_limit:
+        return "decaying", f"{int(tp)}/{triggers} true positives ({days_inactive}d inactive, score decaying)"
 
     if has_outcomes:
         if triggers >= 3 and fp > tp:
@@ -565,9 +610,9 @@ def generate_checkpoint(workspace: Optional[str] = None, session_count: Optional
             })
 
     healthy_count = len(classifications.get("healthy", [])) + len(classifications.get("active", []))
-    warning_count = len(classifications.get("noisy", []))
+    warning_count = len(classifications.get("noisy", [])) + len(classifications.get("decaying", []))
     expired_count = len(classifications.get("expired", []))
-    dormant_count = len(classifications.get("unobserved", []))
+    dormant_count = len(classifications.get("unobserved", [])) + len(classifications.get("dormant", []))
 
     return {
         "workspace": ws,

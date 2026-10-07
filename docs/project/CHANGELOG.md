@@ -3,6 +3,26 @@
 All notable changes to Soma are documented here.
 This project uses [Semantic Versioning](https://semver.org/).
 
+## [0.110.0] — 2026-10-06 — "Ambient Telemetry & Zero-Touch Evolution"
+
+### Ambient Telemetry & Evolutionary Automation
+- **Ambient Verification Telemetry (`soma verify` & MCP Tools)**:
+  - Instrumented `soma verify`, MCP `verify_changes`, and async verification jobs to record ambient execution evidence automatically.
+  - Generates `trigger` and outcome (`tp`/`fp`) signals in `.soma/evidence/signals.jsonl` on verification exit without requiring manual model self-reports (`soma_report_outcome`).
+- **MCP Session Shutdown Outcome Reflection**:
+  - Wired in-process outcome reflection (`run_outcome_engine()`) into the `finally:` block of `run_stdio_server()` in `soma_mcp/server.py`.
+  - Captures human insight cursors and evaluates evolutionary promotions/decay automatically when the host agent terminates or disconnects, redirecting telemetry logs safely to stderr.
+- **Historical Git Retro-Harvesting (`soma harvest`)**:
+  - Implemented `soma harvest` (`--git`, `--limit`, `--dry-run`, `--json`) backed by `harvest_git_history()` in `soma_core/outcomes.py`.
+  - Inspects historical git commit diffs, matches touched paths against cell target patterns, and mints baseline fitness evidence.
+  - Enforced strict deterministic commit-hash idempotency keys (`{commit}:trig:{cell}` / `{commit}:tp:{cell}`) and guarded execution with `evidence_lock()` to prevent race conditions and payload conflicts.
+- **Lazy Read-Time Aging & Checkpoint Decay**:
+  - Implemented dynamic decay evaluation in `soma_core/arbitration.py` (`_classify_cell`), evaluating rule age lazily against `expiry_days` or 90/180-day decay/dormant thresholds upon reading.
+  - Updated `soma oracle` and `generate_checkpoint()` to reflect `decaying` (🍂) and `dormant` (💤) rule states in real-time with zero background daemons or cron jobs.
+- **Accurate Branch Coverage Disassembly & Docstring State Tracking**:
+  - Upgraded `_TRACE_SCRIPT_TEMPLATE` in `soma_core/verification/branch_coverage.py` with bytecode disassembly (`dis.findlinestarts`) and multiline docstring state tracking (`"""` / `'''`).
+  - Eliminates false-positive uncovered code warnings on multiline docstrings, single-line docstrings, comments, and closing structural brackets.
+
 ## [0.109.0] — 2026-10-06 — "Security & Core Hardening"
 
 ### Security & Inference Hardening

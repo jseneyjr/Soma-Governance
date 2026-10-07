@@ -885,6 +885,18 @@ def _handle_verify_changes(args: dict, gov) -> dict:
         {"tool": r.tool, "target": r.target, "verdict": r.verdict, "detail": r.detail}
         for r in results
     ]
+    try:
+        from soma_core.outcomes import record_verification_telemetry
+        record_verification_telemetry(
+            workspace=workspace,
+            target_files=files,
+            passed=bool(verdict),
+            verdict="PASS" if verdict else "FAIL",
+            layer1_evidence=evidence,
+            source="mcp",
+        )
+    except Exception:
+        pass
     actual_layer1_only = True
     response_payload = {
         "status": "PASS" if verdict else "FAIL",
