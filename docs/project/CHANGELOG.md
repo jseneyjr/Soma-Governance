@@ -13,6 +13,10 @@ This project uses [Semantic Versioning](https://semver.org/).
   - Added export recognition: functions and classes exposed via module-level `__all__` (such as public SDK and package exports) are recognized as public interfaces and exempted from orphan flags.
   - Added cross-module direct invocation tracking resolving imports across files in the target root.
   - Maintained sub-millisecond execution performance through AST candidate pre-filtering.
+- **Inference Provider Modernization & Default Models**:
+  - Added explicit `DEFAULT_MODEL` class attribute and `default_model` property across all inference providers: Gemini (`gemini-3.8-flash`), Anthropic (`claude-3-5-sonnet-latest`), OpenAI (`gpt-4o`), and Prompt-Only (`human`).
+  - Migrated `GeminiProvider`, `compute_token_census`, and Layer 2 arbitration from retired `gemini-2.0-flash` / `gemini-2.5-flash` to active `gemini-3.8-flash`.
+  - Authored unit test suite in `tests/test_inference_provider.py` verifying default model resolution and token counting contracts.
 - **Strict TDD Compliance**:
   - Authored comprehensive behavioral test suite in `tests/test_verification/test_call_graph_ast.py` adhering to `tdd-protocol.md` and `feature-specs.md §6` with 10 test cases proving Red/Green correctness across comments, string literals, collisions, class methods, exports, and syntax handling.
 

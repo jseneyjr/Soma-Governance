@@ -248,7 +248,7 @@ APPROVED
 Respond ONLY with REJECTED or APPROVED as specified above. Do not include any other text.
 """
     try:
-        result = provider.generate(prompt, model="gemini-2.5-flash").strip()
+        result = provider.generate(prompt).strip()
         if not result.startswith("REJECTED") and not result.startswith("APPROVED"):
             if "REJECTED" in result:
                 return result
