@@ -59,6 +59,7 @@ develop ──→ release/v0.XX ──→ PR to main ──→ tag v0.XX.0 ─�
 | Phase 8 | v0.105.0 ✅ | True AST Call Graph Traversal & Static Analysis |
 | Phase 9 | v0.106.0 ✅ | JIT Context Budget Clamping & Two-Layer Verification Gate |
 | Phase 10 | v0.107.0 ✅ | Porcelain Aliases, Output Ergonomics & Pre-Seed Target Constraints |
+| Phase 11 | v0.108.0 ✅ | Two-Layer Adversarial Rebuttal & Verification Test Harness |
 
 ## Pre-Release Checklist
 

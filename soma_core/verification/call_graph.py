@@ -109,6 +109,49 @@ class InternalCallCollector(ast.NodeVisitor):
             self.attribute_calls.add(attr)
             if self.current_func != attr:
                 self.non_recursive_attrs.add(attr)
+        # Check arguments passed to calls (e.g. callbacks or dispatch handlers)
+        for arg in node.args:
+            if isinstance(arg, ast.Name):
+                self.direct_calls.add(arg.id)
+                self.non_recursive_calls.add(arg.id)
+        for kw in node.keywords:
+            if isinstance(kw.value, ast.Name):
+                self.direct_calls.add(kw.value.id)
+                self.non_recursive_calls.add(kw.value.id)
+        self.generic_visit(node)
+
+    def visit_Dict(self, node: ast.Dict):
+        for val in node.values:
+            if isinstance(val, ast.Name):
+                self.direct_calls.add(val.id)
+                self.non_recursive_calls.add(val.id)
+        self.generic_visit(node)
+
+    def visit_List(self, node: ast.List):
+        for elt in node.elts:
+            if isinstance(elt, ast.Name):
+                self.direct_calls.add(elt.id)
+                self.non_recursive_calls.add(elt.id)
+        self.generic_visit(node)
+
+    def visit_Tuple(self, node: ast.Tuple):
+        for elt in node.elts:
+            if isinstance(elt, ast.Name):
+                self.direct_calls.add(elt.id)
+                self.non_recursive_calls.add(elt.id)
+        self.generic_visit(node)
+
+    def visit_Set(self, node: ast.Set):
+        for elt in node.elts:
+            if isinstance(elt, ast.Name):
+                self.direct_calls.add(elt.id)
+                self.non_recursive_calls.add(elt.id)
+        self.generic_visit(node)
+
+    def visit_Assign(self, node: ast.Assign):
+        if isinstance(node.value, ast.Name):
+            self.direct_calls.add(node.value.id)
+            self.non_recursive_calls.add(node.value.id)
         self.generic_visit(node)
 
 

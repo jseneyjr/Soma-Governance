@@ -104,6 +104,77 @@ def resolve_target_files(args: argparse.Namespace) -> list[str]:
     return files
 
 
+def discover_test_evidence(target_files: list[str], repo_root: str) -> tuple[list[str], str]:
+    """Discover matching test files, parse test names via AST, and execute tests.
+
+    Returns (test_names, test_results).
+    """
+    import ast
+    all_test_names: list[str] = []
+    discovered_test_files: list[str] = []
+
+    for tf in target_files:
+        full_path = os.path.join(repo_root, tf) if not os.path.isabs(tf) else tf
+        basename = os.path.basename(full_path)
+        if basename.startswith("test_") and basename.endswith(".py"):
+            if os.path.isfile(full_path) and full_path not in discovered_test_files:
+                discovered_test_files.append(full_path)
+            continue
+
+        stem = os.path.splitext(basename)[0]
+        # Candidate test file locations
+        candidates = [
+            os.path.join(repo_root, os.path.dirname(tf), f"test_{stem}.py"),
+            os.path.join(repo_root, "tests", f"test_{stem}.py"),
+            os.path.join(repo_root, f"test_{stem}.py"),
+        ]
+        # Also check tests/ directory matching prefix
+        tests_dir = os.path.join(repo_root, "tests")
+        if os.path.isdir(tests_dir):
+            try:
+                for fname in os.listdir(tests_dir):
+                    if fname.startswith(f"test_{stem}") and fname.endswith(".py"):
+                        candidates.append(os.path.join(tests_dir, fname))
+            except OSError:
+                pass
+
+        for cand in candidates:
+            if os.path.isfile(cand) and cand not in discovered_test_files:
+                discovered_test_files.append(cand)
+
+    for test_file in discovered_test_files:
+        try:
+            with open(test_file, "r", encoding="utf-8", errors="ignore") as f:
+                tree = ast.parse(f.read())
+            for node in ast.walk(tree):
+                if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
+                    if node.name.startswith("test_") and node.name not in all_test_names:
+                        all_test_names.append(node.name)
+        except Exception:
+            continue
+
+    if not discovered_test_files:
+        return ([], "")
+
+    # Run tests with python -m pytest
+    run_outputs = []
+    for test_file in discovered_test_files:
+        try:
+            res = subprocess.run(
+                [sys.executable, "-m", "pytest", test_file, "-q", "--tb=no"],
+                capture_output=True,
+                text=True,
+                timeout=15,
+                cwd=repo_root,
+            )
+            out = (res.stdout or "") + (res.stderr or "")
+            run_outputs.append(f"[{os.path.basename(test_file)}]\n{out.strip()}")
+        except Exception as e:
+            run_outputs.append(f"[{os.path.basename(test_file)}] error: {e}")
+
+    return (all_test_names, "\n\n".join(run_outputs))
+
+
 # ── Plan & Provider Resolution ────────────────────────────────────────
 
 def resolve_task_plan(args: argparse.Namespace, repo_root: str) -> str | None:
@@ -287,6 +358,7 @@ def run_verify(args: argparse.Namespace) -> int:
         return 0
 
     llm_backend = provider.generate if hasattr(provider, 'generate') else provider
+    test_names, test_results = discover_test_evidence(target_files, repo_root)
     try:
         l2_result = runner.run_layer2(
             changed_files=target_files,
@@ -294,6 +366,8 @@ def run_verify(args: argparse.Namespace) -> int:
             task_plan=task_plan,
             layer1_evidence=results,
             llm_backend=llm_backend,
+            test_names=test_names,
+            test_results=test_results,
         )
     except Exception as e:
         print(f"Error: Layer 2 verification failed: {e}", file=sys.stderr)

@@ -250,6 +250,12 @@ Resolved GitHub Issue #75 by introducing configurable JIT context budget clampin
 **Status**: ✅ Shipped (v0.107.0)  
 Resolved GitHub Issue #77 and enhanced developer ergonomics across CLI commands and JIT engine. Added intuitive porcelain aliases (`soma check` -> `verify`, `soma rules` -> `status`, `soma audit` -> `doctor`). Added `--plain` and `--no-emoji` global output controls and plain text formatters for non-UTF-8 terminals (Windows cp1252) and CI log pipelines. Decoupled default status outputs from internal biological metaphors unless `--plumbing` is explicitly passed. Pre-seeded target file invariants and traps during `soma_scan` and JIT engine expression, rendering early-warning constraint summaries at the top of context to eliminate post-generation rejection token waste. Developed following strict TDD with 13 new behavioral tests across `tests/test_cli_porcelain.py` and `tests/test_jit_preseed_constraints.py`.
 
+## Phase 11 — v0.108.0 ✅ Shipped
+
+### Two-Layer Adversarial Rebuttal & Verification Test Harness
+**Status**: ✅ Shipped (v0.108.0)  
+Resolved the uncoordinated "Battleship" guessing flaw in Layer 2 verification by implementing the Two-Phase Adversarial Exchange (Prosecution $\rightarrow$ Defense Rebuttal). Serialized Layer 2 execution to pass Spec Agent predicted risk charges directly into the Code Agent defense prompt, prompting targeted defenses with code and test evidence while preserving strict information partitioning. Implemented `discover_test_evidence()` in `soma_cli/verify.py` to auto-discover matching test files, extract test names via AST, execute tests, and feed real test evidence to Layer 2. Enhanced `call_graph.py` AST traversal to inspect dictionary dispatch tables, container elements, and callback arguments, eliminating false-positive orphan function warnings on CLI command handlers. Developed following strict TDD with 11 new behavioral tests across `tests/test_verification/test_adversarial_rebuttal.py`, `tests/test_cli_verify_test_harness.py`, and `tests/test_verification/test_call_graph_dispatch.py`.
+
 ## Research
 
 ### Antifragile Scaling

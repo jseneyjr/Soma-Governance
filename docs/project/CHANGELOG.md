@@ -3,6 +3,20 @@
 All notable changes to Soma are documented here.
 This project uses [Semantic Versioning](https://semver.org/).
 
+## [0.108.0] — 2026-10-06 — "Two-Layer Adversarial Rebuttal & Verification Test Harness"
+
+### Verification Engine & Adversarial Rebuttal Protocol
+- **Two-Phase Adversarial Exchange (Prosecution $\rightarrow$ Defense Rebuttal)**:
+  - Eliminated the uncoordinated "Battleship" guessing flaw in Layer 2 verification where independent Spec and Code Agents had to blindly guess the same risk categories.
+  - Serialized Layer 2 execution: Spec Agent predictions are now passed directly into the Code Agent defense prompt as specific charges (`category`, `severity`, `risk`, `affected_function`) to defend or concede.
+  - Maintained strict information partitioning: Code Agent prompt never contains task plan text, only structured predicted failure modes.
+- **CLI Test Discovery & Execution Harness**:
+  - Implemented `discover_test_evidence()` in `soma_cli/verify.py` to auto-discover matching test files for target source files via AST traversal.
+  - Automatically runs targeted pytest suites and feeds real `test_names` and `test_results` into `runner.run_layer2()`, providing concrete test evidence for Code Agent defense claims.
+- **Dispatch Table Call Graph Inspection**:
+  - Enhanced `InternalCallCollector` in `soma_core/verification/call_graph.py` to inspect AST `Dict`, `List`, `Tuple`, `Set`, `Assign`, and `Call` keyword arguments.
+  - Eliminates false-positive `ORPHAN FUNCTIONS` warnings on command dispatch handlers (`COMMANDS = {"check": cmd_verify}`).
+
 ## [0.107.0] — 2026-10-06 — "Porcelain Aliases, Output Ergonomics & Pre-Seed Target Constraints"
 
 ### CLI Porcelain Aliases & Output Ergonomics
