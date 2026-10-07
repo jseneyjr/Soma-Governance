@@ -493,3 +493,178 @@ class TestVerifyRepoRoot:
             "--files", "app.py",
         ])
         assert exit_code == 1
+
+
+class TestVerifyPlanParsing:
+    """Test CLI parsing for --plan, --plan-file, and --provider arguments."""
+
+    def test_verify_accepts_plan_flag(self):
+        """--plan flag accepts a natural language plan string."""
+        parser = _build_parser()
+        args = parser.parse_args(["verify", "--plan", "Refactor authentication layer"])
+        assert args.plan == "Refactor authentication layer"
+
+    def test_verify_accepts_plan_file_flag(self):
+        """--plan-file flag accepts a path to a plan file."""
+        parser = _build_parser()
+        args = parser.parse_args(["verify", "--plan-file", "docs/plan.md"])
+        assert args.plan_file == "docs/plan.md"
+
+    def test_verify_accepts_provider_flag(self):
+        """--provider flag accepts an explicit inference provider name."""
+        parser = _build_parser()
+        args = parser.parse_args(["verify", "--provider", "gemini"])
+        assert args.provider == "gemini"
+
+
+class TestVerifyPlanResolution:
+    """Test plan resolution logic in soma_cli.verify."""
+
+    def test_resolve_task_plan_from_argument(self, tmp_path):
+        """Explicit --plan string takes highest precedence."""
+        from soma_cli.verify import resolve_task_plan
+        args = argparse.Namespace(plan="Implement caching", plan_file=None)
+        plan = resolve_task_plan(args, str(tmp_path))
+        assert plan == "Implement caching"
+
+    def test_resolve_task_plan_from_file(self, tmp_path):
+        """--plan-file reads the plan file from disk."""
+        from soma_cli.verify import resolve_task_plan
+        plan_doc = tmp_path / "task_spec.md"
+        plan_doc.write_text("Build persistent ledger")
+        args = argparse.Namespace(plan=None, plan_file="task_spec.md")
+        plan = resolve_task_plan(args, str(tmp_path))
+        assert plan == "Build persistent ledger"
+
+    def test_resolve_task_plan_missing_file_returns_none(self, tmp_path, capsys):
+        """Missing --plan-file prints error and returns None."""
+        from soma_cli.verify import resolve_task_plan
+        args = argparse.Namespace(plan=None, plan_file="nonexistent_spec.md")
+        plan = resolve_task_plan(args, str(tmp_path))
+        assert plan is None
+        captured = capsys.readouterr()
+        assert "plan file not found" in captured.err.lower()
+
+
+class TestVerifyLayer2Execution:
+    """Test Layer 2 adversarial verification execution and graceful fallback."""
+
+    def test_layer2_graceful_fallback_when_no_api_key(self, tmp_path, capsys, monkeypatch):
+        """When no API key is configured, verify runs Layer 1 with an informative notice and exits cleanly."""
+        for key in ["GEMINI_API_KEY", "GOOGLE_API_KEY", "ANTHROPIC_API_KEY", "OPENAI_API_KEY"]:
+            monkeypatch.delenv(key, raising=False)
+
+        clean_file = tmp_path / "service.py"
+        clean_file.write_text(textwrap.dedent("""\
+            def process():
+                return 42
+
+            def main():
+                return process()
+        """))
+
+        exit_code = main([
+            "verify",
+            "--repo-root", str(tmp_path),
+            "--files", "service.py",
+            "--plan", "Create process service",
+        ])
+        assert exit_code == 0
+        captured = capsys.readouterr()
+        # Should NOT output the old placeholder
+        assert "not yet configured" not in captured.err
+        # Should inform the user about missing key or Layer 1 fallback
+        assert "layer 1" in (captured.err + captured.out).lower()
+
+    def test_layer2_execution_with_mock_llm_ship(self, tmp_path, capsys, monkeypatch):
+        """When a mock LLM backend is available, Layer 2 executes and formats Arbiter verdict."""
+        import json
+
+        class MockProvider:
+            def generate(self, prompt: str, model: str = None) -> str:
+                if "Spec Agent" in prompt:
+                    return json.dumps([
+                        {
+                            "category": "missing_coverage",
+                            "severity": "low",
+                            "risk": "edge case unexercised",
+                            "mechanism": "untested branch",
+                            "affected_function": "compute",
+                        }
+                    ])
+                else:  # Code Agent
+                    return json.dumps([
+                        {
+                            "category": "missing_coverage",
+                            "claim": "compute is fully exercised",
+                            "evidence_file": "worker.py",
+                            "evidence_line": 1,
+                            "tests_covering": ["test_compute"],
+                        }
+                    ])
+
+        monkeypatch.setattr("soma_cli.verify.resolve_cli_provider", lambda args, root: MockProvider())
+
+        target = tmp_path / "worker.py"
+        target.write_text(textwrap.dedent("""\
+            def compute(x: int) -> int:
+                \"\"\"Compute square.\"\"\"
+                return x * x
+
+            def main():
+                return compute(5)
+        """))
+
+        exit_code = main([
+            "verify",
+            "--repo-root", str(tmp_path),
+            "--files", "worker.py",
+            "--plan", "Implement compute worker",
+        ])
+        assert exit_code == 0
+        captured = capsys.readouterr()
+        assert "Layer 2" in captured.out
+        assert "SHIP" in captured.out
+
+    def test_layer2_execution_with_mock_llm_block_returns_exit_one(self, tmp_path, capsys, monkeypatch):
+        """When Layer 2 Arbiter yields BLOCK, verify exits with status 1."""
+        import json
+
+        class MockBlockingProvider:
+            def generate(self, prompt: str, model: str = None) -> str:
+                if "Spec Agent" in prompt:
+                    # Critical unaddressed risk leads to BLOCK
+                    return json.dumps([
+                        {
+                            "category": "code_injection",
+                            "severity": "critical",
+                            "risk": "eval with untrusted input",
+                            "mechanism": "code execution",
+                            "affected_function": "run_eval",
+                        }
+                    ])
+                else:
+                    return json.dumps([])  # Code agent provides no contradictory claim
+
+        monkeypatch.setattr("soma_cli.verify.resolve_cli_provider", lambda args, root: MockBlockingProvider())
+
+        target = tmp_path / "insecure.py"
+        target.write_text(textwrap.dedent("""\
+            def run_eval(payload: str):
+                \"\"\"Dangerous eval function.\"\"\"
+                return payload
+
+            def main():
+                return run_eval("test")
+        """))
+
+        exit_code = main([
+            "verify",
+            "--repo-root", str(tmp_path),
+            "--files", "insecure.py",
+            "--plan", "Add eval runner",
+        ])
+        assert exit_code == 1
+        captured = capsys.readouterr()
+        assert "BLOCK" in captured.out or "BLOCK" in captured.err
+

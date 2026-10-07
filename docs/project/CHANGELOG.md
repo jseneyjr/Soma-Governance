@@ -3,6 +3,24 @@
 All notable changes to Soma are documented here.
 This project uses [Semantic Versioning](https://semver.org/).
 
+## [0.104.0] — 2026-10-06 — "Layer 2 Adversarial Verification CLI Wiring"
+
+### CLI & Verification (Phase 7 Scorecard Remediation)
+- **Layer 2 Adversarial Verification CLI Integration**:
+  - Connected `soma verify` to the Layer 2 adversarial verification engine (`soma_core.verification.runner.run_layer2`).
+  - Added `--plan` argument for passing natural language task plans or prompt context.
+  - Added `--plan-file` argument for loading task specifications directly from disk.
+  - Added `--provider` argument for explicitly selecting inference backends (`gemini`, `anthropic`, `openai`, `keyring`, `prompt`).
+  - Implemented automatic plan discovery checking standard locations (`docs/plan.md`, `.soma/plan.md`, `PLAN.md`).
+- **Graceful Deterministic Fallback**:
+  - Automatically falls back to Layer 1 deterministic checks when no inference provider or API keys are available, logging a clean notice without crashing.
+  - Returns exit code 0 when Layer 1 passes under graceful fallback.
+- **Arbiter Output & Exit Code Mapping**:
+  - Added `format_layer2_summary` to present human-readable Arbiter verdicts, divergences, and convergences.
+  - Enforced strict exit code contract: `SHIP` maps to 0; `BLOCK` and `REVISE` map to 1.
+- **Strict TDD Compliance**:
+  - Full Red/Green TDD lifecycle adhering to `tdd-protocol.md` and `feature-specs.md §6` with 9 new behavioral and integration tests in `tests/test_cli_verify.py`.
+
 ## [0.103.0] — 2026-10-06 — "Legacy Sunset & Lifecycle Modularization"
 
 ### Architecture & Modularization (Phase 6 Bloat Elimination)
