@@ -47,6 +47,13 @@ RULES_SUBSET=all
 # Set false if your platform doesn't support lifecycle hooks.
 ENABLE_HOOKS=true
 
+# ─── Context Budget & JIT Delivery ──────────────────────────────
+
+# MAX_JIT_TOKENS: maximum token ceiling for JIT context expression (default: 2000).
+# Strictly bounds prompt overhead injected into AI agent context windows.
+# Can also be set via SOMA_MAX_JIT_TOKENS environment variable.
+MAX_JIT_TOKENS=2000
+
 # ─── Data & Metrics ──────────────────────────────────────────────
 
 # METRICS_REPO: path to a separate (private) repo for metrics snapshots

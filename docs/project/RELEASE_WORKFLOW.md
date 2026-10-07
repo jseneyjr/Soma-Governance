@@ -57,13 +57,15 @@ develop ──→ release/v0.XX ──→ PR to main ──→ tag v0.XX.0 ─�
 | Phase 6 | v0.103.0 ✅ | Legacy Sunset, Packaging Decoupling & Lifecycle Modularization |
 | Phase 7 | v0.104.0 ✅ | Layer 2 Adversarial Verification CLI Wiring |
 | Phase 8 | v0.105.0 ✅ | True AST Call Graph Traversal & Static Analysis |
+| Phase 9 | v0.106.0 ✅ | JIT Context Budget Clamping & Two-Layer Verification Gate |
 
 ## Pre-Release Checklist
 
 Before creating a release PR, verify:
 - [ ] All phase verification-gate items pass
-- [ ] `python3 enzymes/verify_readme_claims.py` passes
+- [ ] Gate 4.5 passed: `soma verify --plan ...` executed with Arbiter verdict `SHIP` (exit 0)
 - [ ] `pytest tests/` passes with 0 failures
+- [ ] Static import integrity passes (`ruff check --select F821`)
 - [ ] Version is synchronized across `pyproject.toml`, `VERSION`, the README badge, and `soma_sdk/__init__.py`
 - [ ] Validation creates exactly one wheel and one sdist plus `SHA256SUMS`
 - [ ] Source-hidden smoke tests pass for both wheel and sdist
@@ -73,6 +75,15 @@ Before creating a release PR, verify:
 - [ ] Workflows keep top-level `permissions: contents: read`, and every action is SHA-pinned (`tests/test_ci_workflows.py`)
 - [ ] `dependency-audit` (`pip-audit`) passes
 - [ ] `test-windows` passes (the full pytest suite on Windows)
+
+### Gate 4.5: Two-Layer Verification Gate (Mandatory)
+
+Before opening a release PR or bumping the release version:
+1. Ensure `GEMINI_API_KEY` (or other supported inference provider key) is configured in the environment.
+2. Execute `soma verify --plan "<Phase plan or specification summary>"`.
+3. Confirm Layer 1 deterministic checks pass.
+4. Confirm Layer 2 adversarial verification completes with Arbiter verdict **`SHIP`** (`exit 0`).
+5. If the Arbiter outputs `REVISE` or `BLOCK`, remediate flagged divergences before proceeding to Gate 5.
 
 ### Documentation Hygiene (mandatory per release)
 

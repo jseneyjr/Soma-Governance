@@ -56,6 +56,59 @@ from soma_core.frontmatter import (
 )
 from soma_core.scoring import compute_cell_fitness
 
+def estimate_tokens(text: object | None) -> int:
+    """Estimate token count using fast stdlib heuristic (~1.35 tokens per word).
+
+    Handles strings, non-string objects, and None safely without raising AttributeError.
+    """
+    if text is None:
+        return 0
+    if not isinstance(text, str):
+        try:
+            text = str(text)
+        except Exception:
+            return 0
+    words = len(text.split())
+    return int(words * 1.35)
+
+
+def resolve_token_budget(workspace: str | None, max_tokens: int | None = None) -> int:
+    """Resolve JIT context token budget with precedence: arg > env > config > default(2000)."""
+    # 1. Explicit max_tokens argument
+    if max_tokens is not None:
+        try:
+            return int(max_tokens)
+        except (ValueError, TypeError):
+            pass
+
+    # 2. Environment variable SOMA_MAX_JIT_TOKENS
+    env_val = os.environ.get("SOMA_MAX_JIT_TOKENS")
+    if env_val:
+        try:
+            return int(env_val.strip())
+        except (ValueError, TypeError):
+            pass
+
+    # 3. Workspace soma.conf configuration
+    if workspace:
+        conf_path = os.path.join(workspace, "soma.conf")
+        if os.path.isfile(conf_path):
+            try:
+                with open(conf_path, encoding="utf-8") as f:
+                    for line in f:
+                        line = line.strip()
+                        if line.startswith("#"):
+                            continue
+                        lowered = line.lower()
+                        if lowered.startswith("max_jit_tokens=") or lowered.startswith("max_jit_tokens:"):
+                            sep = "=" if "=" in line else ":"
+                            val = line.split(sep, 1)[1].strip().strip('"').strip("'")
+                            return int(val)
+            except Exception:
+                pass
+
+    # 4. Default fallback: 2000 tokens
+    return 2000
 
 
 def get_git_diff_files(workspace: str) -> list[str]:
@@ -278,11 +331,19 @@ def load_genome_rules(workspace: str, changed_files: list[str]) -> list[dict[str
     return relevant
 
 
-def express(workspace: str, changed_files: list[str] | None = None, budget: int | None = None) -> dict[str, object]:
+def express(
+    workspace: str,
+    changed_files: list[str] | None = None,
+    budget: int | None = None,
+    max_tokens: int | None = None,
+) -> dict[str, object]:
     """Main JIT expression function.
 
-    Returns the minimum effective governance context for the current change.
+    Returns the minimum effective governance context for the current change,
+    clamped to rule count (budget) and token budget (max_tokens).
     """
+    token_budget = resolve_token_budget(workspace, max_tokens)
+
     if budget is None:
         budget = int(os.environ.get('SOMA_CONTEXT_BUDGET', '3'))
 
@@ -294,7 +355,16 @@ def express(workspace: str, changed_files: list[str] | None = None, budget: int 
             'relevant_cells': [],
             'genome_guidance': [],
             'context': 'No changed files detected. Governance guidance will be provided when files are modified.',
-            'stats': {'total_cells': 0, 'matched': 0, 'expressed': 0}
+            'stats': {
+                'total_cells': 0,
+                'matched': 0,
+                'expressed': 0,
+                'budget': budget,
+                'changed_files': 0,
+                'estimated_tokens': 0,
+                'max_tokens_budget': token_budget,
+                'clamped': False,
+            }
         }
 
     # Load and match cells
@@ -338,38 +408,72 @@ def express(workspace: str, changed_files: list[str] | None = None, budget: int 
     ranked = rank_cells(candidates)
     selected_candidates = ensure_type_diversity(ranked, remaining_budget)
 
-    # Combine: mandatory first, then ranked candidates
-    selected = mandatory + selected_candidates
+    # Stage 3: Token budget clamping (Issue #75)
+    accumulated_tokens = 0
+    expressed_cells = []
+    clamped = False
 
-    # Format guidance
-    cell_guidance = [format_cell_guidance(c) for c in selected]
+    # Mandatory cells are prioritized
+    for cell in mandatory:
+        fg = format_cell_guidance(cell)
+        cell_tokens = estimate_tokens(fg['guidance'])
+        if accumulated_tokens + cell_tokens <= token_budget:
+            expressed_cells.append(fg)
+            accumulated_tokens += cell_tokens
+        else:
+            expressed_cells.append(fg)
+            accumulated_tokens += cell_tokens
+            clamped = True
+
+    # Candidate cells fill remaining budget
+    for cell in selected_candidates:
+        fg = format_cell_guidance(cell)
+        cell_tokens = estimate_tokens(fg['guidance'])
+        if accumulated_tokens + cell_tokens <= token_budget:
+            expressed_cells.append(fg)
+            accumulated_tokens += cell_tokens
+        else:
+            clamped = True
 
     # Load matching non-standard genome rules
     genome_rules = load_genome_rules(workspace, changed_files)
+    expressed_genome = []
+    for rule in genome_rules:
+        rule_text = f"### {rule['name']}\n{rule['body']}\n"
+        rule_tokens = estimate_tokens(rule_text)
+        if accumulated_tokens + rule_tokens <= token_budget:
+            expressed_genome.append(rule)
+            accumulated_tokens += rule_tokens
+        else:
+            clamped = True
 
     # Build the combined guidance text
     guidance_parts = []
-    if cell_guidance:
+    if expressed_cells:
         guidance_parts.append("## Active Governance Cells\n")
-        for cg in cell_guidance:
+        for cg in expressed_cells:
             guidance_parts.append(cg['guidance'])
 
-    if genome_rules:
+    if expressed_genome:
         guidance_parts.append("\n## Project-Specific Rules\n")
-        for rule in genome_rules:
+        for rule in expressed_genome:
             guidance_parts.append(f"### {rule['name']}\n{rule['body']}\n")
 
     combined = '\n'.join(guidance_parts) if guidance_parts else 'No governance cells match your current changes.'
+    total_tokens = estimate_tokens(combined)
 
     return {
-        'relevant_cells': cell_guidance,
-        'genome_guidance': genome_rules,
+        'relevant_cells': expressed_cells,
+        'genome_guidance': expressed_genome,
         'context': combined,
         'stats': {
             'total_cells': len(all_cells),
             'matched': len(matched),
-            'expressed': len(selected),
+            'expressed': len(expressed_cells),
             'budget': budget,
-            'changed_files': len(changed_files)
+            'changed_files': len(changed_files),
+            'estimated_tokens': total_tokens,
+            'max_tokens_budget': token_budget,
+            'clamped': clamped,
         }
     }
