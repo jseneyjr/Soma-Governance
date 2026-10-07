@@ -195,14 +195,16 @@ def install_hook(project_root: Path, dry_run: bool = False,
         no .git directory exists.
     """
     project_root = Path(project_root)
-    git_hooks_dir = project_root / ".git" / "hooks"
+    from soma_core.workspace import resolve_git_hooks_dir
 
-    if not git_hooks_dir.is_dir():
+    git_hooks_dir = resolve_git_hooks_dir(project_root)
+    if not git_hooks_dir:
         return False
 
     if dry_run:
         return True
 
+    git_hooks_dir.mkdir(parents=True, exist_ok=True)
     hook_file = git_hooks_dir / "pre-commit"
     block = _hook_block(python)
 

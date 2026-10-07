@@ -24,6 +24,7 @@ from .constants import (
     STATUS_NEW,
     STATUS_SURVIVE,
     TYPE_TO_DIR,
+    VALID_ENFORCEMENT,
     VALID_TYPES,
 )
 from .creation import (
@@ -92,6 +93,7 @@ __all__ = [
     "DEFAULT_DECAY_FACTOR",
     "DECAY_FACTOR",
     "VALID_TYPES",
+    "VALID_ENFORCEMENT",
     "METAMORPHOSIS_PATHS",
     "calculate_fitness_status",
     "is_promotable",

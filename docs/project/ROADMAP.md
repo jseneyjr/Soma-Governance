@@ -268,6 +268,12 @@ Resolved 9 security, architectural, and reliability defects identified during th
 **Status**: ✅ Shipped (v0.110.0)  
 Resolved the external critique regarding static rule decay and unobserved cell fitness. Closed the evolutionary telemetry feedback loop without background daemons or recurring cron jobs, maintaining strict scale-to-zero governance. Integrated ambient verification telemetry into `soma verify` and MCP verification tools to mint trigger and outcome signals (`signals.jsonl`). Implemented MCP stdio shutdown hooks to trigger outcome reflection on process termination. Added `soma harvest` (`--git`, `--limit`, `--dry-run`, `--json`) with cross-platform `evidence_lock()` and deterministic commit-hash idempotency to bootstrap initial cell fitness from historical git commits. Implemented read-time dynamic decay in `soma oracle` and `generate_checkpoint()` to lazily evaluate dormant and decaying cells without polling threads. Enhanced `branch_coverage.py` with bytecode disassembly (`dis.findlinestarts`) and multiline docstring state tracking to eliminate false-positive uncovered docstring lines. Developed following strict TDD with 29 new behavioral tests and full regression test suite passing (2,706 passing).
 
+## Phase 14 — v0.111.0 ✅ Shipped
+
+### Git Worktrees & Cell Schema Integrity
+**Status**: ✅ Shipped (v0.111.0)  
+Resolved pre-commit hook installation and health detection failures in Git worktrees (BUG-082) by introducing `resolve_git_hooks_dir()` in `soma_core.workspace` with zero-dependency fallback resolution. Updated `soma init`, `soma doctor`, and `soma sync` to handle `.git` pointer files in worktrees seamlessly. Resolved missing `enforcement` frontmatter in cell generation (BUG-083) across `create_cell()`, `cli_cell_create()`, and MCP prompt templates, defaulting wall cells to `gate` and vacuole cells to `advisory` to guarantee full compliance with pre-commit checkpoint conventions. Developed following strict TDD with 11 new behavioral tests across `tests/test_worktree_hooks.py` and `tests/test_cell_creation_enforcement.py` and full regression test suite passing (2,717 passing).
+
 ## Research
 
 ### Antifragile Scaling

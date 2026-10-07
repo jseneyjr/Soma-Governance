@@ -47,6 +47,8 @@ VALID_TYPES = {
     "plasmodesmata": "plasmodesmata",
 }
 
+VALID_ENFORCEMENT = ("advisory", "mechanical", "gate")
+
 METAMORPHOSIS_PATHS = {
     "vacuole": [
         {"target": "wall", "min_fitness": 0.8, "min_sessions": 20},

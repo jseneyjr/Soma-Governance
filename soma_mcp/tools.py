@@ -286,6 +286,8 @@ Cell types:
 
 YAML fields required:
 - type: (one of above)
+- domain: (one of: efficiency, correctness, security, style, governance)
+- enforcement: (gate for walls, advisory for vacuoles)
 - hypothesis: (clear, testable statement)
 - prediction: (what will happen if the hypothesis is violated)
 - falsification: (how to prove this cell is no longer needed)
