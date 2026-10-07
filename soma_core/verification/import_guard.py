@@ -18,7 +18,6 @@ from dataclasses import dataclass
 
 from . import ToolEvidence
 
-
 # Build stdlib module set from the running interpreter
 _STDLIB_MODULES: set[str] | None = None
 
@@ -176,16 +175,15 @@ def extract_imports(filepath: str) -> list[ImportInfo]:
                     lineno=node.lineno,
                     guarded=_is_in_try(node.lineno),
                 ))
-        elif isinstance(node, ast.ImportFrom):
-            if node.module:
-                module = node.module.split('.')[0]
-                if any(r.module == module and r.guarded for r in results):
-                    continue
-                results.append(ImportInfo(
-                    module=module,
-                    lineno=node.lineno,
-                    guarded=_is_in_try(node.lineno),
-                ))
+        elif isinstance(node, ast.ImportFrom) and node.module:
+            module = node.module.split('.')[0]
+            if any(r.module == module and r.guarded for r in results):
+                continue
+            results.append(ImportInfo(
+                module=module,
+                lineno=node.lineno,
+                guarded=_is_in_try(node.lineno),
+            ))
 
     return results
 
@@ -212,13 +210,20 @@ def check(
     """
     if allowed_deps is None:
         allowed_deps = set()
+    else:
+        allowed_deps = set(allowed_deps)
+
+    # For test files, pytest is standard
+    norm_path = filepath.replace('\\', '/')
+    if '/tests/' in norm_path or os.path.basename(filepath).startswith(('test_', 'conftest')):
+        allowed_deps.add('pytest')
 
     # Auto-detect local packages from project root
     # Handles both traditional packages (__init__.py) and namespace packages
     local_packages: set[str] = set()
     if project_root:
         for entry in os.listdir(project_root):
-            if entry.startswith('.') or entry.startswith('_'):
+            if entry.startswith(('.', '_')):
                 continue
             entry_path = os.path.join(project_root, entry)
             if os.path.isdir(entry_path):
@@ -285,7 +290,7 @@ def check(
             tool="import_guard",
             target=os.path.basename(filepath),
             verdict=True,
-            detail=f"All imports are stdlib, allowed, or guarded",
+            detail="All imports are stdlib, allowed, or guarded",
         )
 
     modules = [v[0] for v in violations]

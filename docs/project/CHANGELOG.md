@@ -3,6 +3,30 @@
 All notable changes to Soma are documented here.
 This project uses [Semantic Versioning](https://semver.org/).
 
+## [0.112.0] — 2026-10-07 — "Workspace Value Object & Error Hardening"
+
+### Strongly-Typed Architecture & Object Model
+- **Immutable `Workspace` Value Object (`soma_core/workspace.py`)**:
+  - Implemented `@dataclass(frozen=True)` `Workspace` implementing `os.PathLike[str]` for zero-overhead path manipulation, worktree-aware hook resolution, and path containment.
+  - Added property accessors: `root`, `soma_dir`, `cells_dir`, `metrics_dir`, `evidence_dir`, `signals_file`, `git_hooks_dir`, `is_worktree`.
+  - Added factory methods: `Workspace.resolve()` (7-step walk-up order) and `Workspace.confine()` (validation of `.soma/cells/` existence).
+  - Implemented path division operator (`ws / "sub"`) and `__fspath__()` for seamless interoperability with standard library functions (`open()`, `pathlib.Path`, `os.path`).
+- **Domain Exception Hierarchy (`soma_core/errors.py`)**:
+  - Added `WorkspaceError` (subclassing `SomaValidationError` and `ValueError`).
+  - Added `WorkspaceNotFoundError` (`code="ERR_WORKSPACE_NOT_FOUND"`).
+  - Added `PathTraversalError` (`code="ERR_PATH_TRAVERSAL"`).
+  - Preserves 100% backward compatibility with existing `except ValueError:` blocks.
+- **Strangler Fig Dual-Mode Compatibility**:
+  - Retained standalone helper functions (`resolve_workspace`, `resolve_workspace_path`, `confine_workspace`, `confine_path`, `get_cells_dir`, `get_metrics_dir`, `get_signals_file`, `validate_cell_names`) as backward-compatible wrappers delegating to `Workspace`.
+
+### Hardened Error Handling & CLI Diagnostics
+- **Explicit Git Hooks Exception Narrowing**:
+  - Replaced bare `except Exception:` in `resolve_git_hooks_dir()` with explicit types: `(subprocess.SubprocessError, FileNotFoundError, PermissionError, UnicodeDecodeError, OSError)`.
+- **Proactive PATH Guidance in `soma init`**:
+  - Wired `soma_cli.pathcheck.build_hint()` into `soma init` completion output so developers receive immediate, shell-specific remedy guidance if `soma` is not in their active `$PATH`.
+- **Comprehensive Test Coverage**:
+  - Added `tests/test_workspace_model.py` and `tests/test_init_pathcheck.py` with 13 new behavioral tests verifying path confinement, domain exception inheritance, immutable value object contracts, and PATH diagnostics.
+
 ## [0.111.0] — 2026-10-07 — "Git Worktree Hooks & Cell Schema Integrity"
 
 ### Git Worktrees & Tooling Hardening

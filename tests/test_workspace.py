@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import os
 from pathlib import Path
+
 import pytest
 
 from soma_core.workspace import (
@@ -43,6 +44,10 @@ class TestWorkspaceCore:
 
         resolved = resolve_workspace(start=sub)
         assert resolved == str(ws.resolve())
+
+        resolved_p = resolve_workspace_path(start=sub)
+        assert resolved_p == ws.resolve()
+        assert isinstance(resolved_p, Path)
 
     def test_directory_helpers(self, tmp_path: Path):
         ws = tmp_path / "repo"
