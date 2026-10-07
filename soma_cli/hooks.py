@@ -666,7 +666,7 @@ def install_hook(
 
     tmp_file = target_file.parent / f".pre-commit.tmp.{os.getpid()}"
     try:
-        tmp_file.write_text(new_content, encoding="utf-8", newline="\n")
+        tmp_file.write_bytes(new_content.encode("utf-8"))
         if os.name != "nt":
             tmp_file.chmod(0o755)
         tmp_file.replace(target_file)
@@ -780,7 +780,7 @@ def uninstall_hook(
     remaining = remaining.replace("\r\n", "\n")
     tmp_file = target_file.parent / f".pre-commit.tmp.{os.getpid()}"
     try:
-        tmp_file.write_text(remaining, encoding="utf-8", newline="\n")
+        tmp_file.write_bytes(remaining.encode("utf-8"))
         if os.name != "nt":
             tmp_file.chmod(target_file.stat().st_mode)
         tmp_file.replace(target_file)
