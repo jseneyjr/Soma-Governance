@@ -10,7 +10,7 @@ import shutil
 from typing import Any, Optional, Tuple
 
 from soma_core.frontmatter import parse_frontmatter
-from soma_core.workspace import resolve_workspace
+from soma_core.workspace import Workspace, resolve_workspace
 from .constants import (
     TYPE_TO_DIR,
     VALID_TYPES,
@@ -46,14 +46,17 @@ def generate_slug(hypothesis: str, id_override: str | None = None) -> str:
     return slug or "unnamed-cell"
 
 
-def find_cell_file(workspace: Path, cell_id: str) -> Tuple[Optional[Path], Optional[str]]:
+def find_cell_file(workspace: Workspace | Path | str, cell_id: str) -> Tuple[Optional[Path], Optional[str]]:
     """Locate a cell across vacuoles/, walls/, and genome/ directories."""
     clean_id = sanitize_cell_id(cell_id)
     if not clean_id:
         return None, None
 
-    cells_dir = workspace / ".soma" / "cells"
-    genome_dir = workspace / "genome"
+    ws = workspace if isinstance(workspace, Workspace) else (
+        Workspace(root=Path(workspace).resolve()) if workspace else Workspace.resolve()
+    )
+    cells_dir = ws.cells_dir
+    genome_dir = ws.root / "genome"
 
     for type_name, dir_name in TYPE_TO_DIR.items():
         candidate = cells_dir / dir_name / f"{clean_id}.md"
@@ -67,8 +70,11 @@ def find_cell_file(workspace: Path, cell_id: str) -> Tuple[Optional[Path], Optio
     return None, None
 
 
-def find_cell(workspace: Path | str, cell_id: str) -> Optional[str]:
-    cells_dir = os.path.join(workspace, ".soma", "cells")
+def find_cell(workspace: Workspace | Path | str, cell_id: str) -> Optional[str]:
+    ws = workspace if isinstance(workspace, Workspace) else (
+        Workspace(root=Path(workspace).resolve()) if workspace else Workspace.resolve()
+    )
+    cells_dir = str(ws.cells_dir)
     matches = glob.glob(os.path.join(cells_dir, "**", f"*{cell_id}*"), recursive=True)
     matches = [m for m in matches if os.path.isfile(m) and m.endswith(".md")]
     return matches[0] if matches else None
@@ -104,10 +110,13 @@ def _naive_utc(timestamp: Any) -> Optional[datetime]:
     return parsed
 
 
-def _load_evidence(workspace: str) -> dict[str, dict[str, Any]]:
+def _load_evidence(workspace: Workspace | Path | str) -> dict[str, dict[str, Any]]:
     """Load lifecycle dimensions from the canonical signal ledger."""
     from soma_core.evidence import aggregate_signals
-    evidence_dir = os.path.join(workspace, ".soma", "evidence")
+    ws = workspace if isinstance(workspace, Workspace) else (
+        Workspace(root=Path(workspace).resolve()) if workspace else Workspace.resolve()
+    )
+    evidence_dir = str(ws.evidence_dir)
     aggregation = aggregate_signals(evidence_dir)
     return {
         cell_id: {
@@ -121,16 +130,19 @@ def _load_evidence(workspace: str) -> dict[str, dict[str, Any]]:
     }
 
 
-def _load_cells(workspace: str) -> list[dict[str, Any]]:
+def _load_cells(workspace: Workspace | Path | str) -> list[dict[str, Any]]:
     """Load cell metadata from .soma/cells/**/*.md and genome/**/*.md files.
 
     Returns:
         List of cell metadata dicts with at minimum: id, type, created, source_path.
     """
+    ws = workspace if isinstance(workspace, Workspace) else (
+        Workspace(root=Path(workspace).resolve()) if workspace else Workspace.resolve()
+    )
     cells = []
     scan_roots = [
-        os.path.join(workspace, ".soma", "cells"),
-        os.path.join(workspace, "genome"),
+        str(ws.cells_dir),
+        str(ws.root / "genome"),
     ]
 
     for cells_root in scan_roots:

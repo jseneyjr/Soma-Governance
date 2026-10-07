@@ -1,0 +1,276 @@
+"""Tests for Phase 17: Core Engines Workspace Migration (v0.114.0).
+
+Verifies that lifecycle, arbitration, outcomes, defects, and sync engines
+operate directly with strongly-typed Workspace value objects, and that
+legacy standalone getters emit DeprecationWarning while preserving backward compatibility.
+"""
+from __future__ import annotations
+
+import json
+import os
+from pathlib import Path
+import pytest
+import warnings
+
+from soma_core.arbitration import (
+    generate_checkpoint,
+    get_escalation_protocol,
+    soma_propose_change,
+)
+from soma_core.defects import audit_expiry, load_registry
+from soma_core.enforcement import (
+    _match_cells,
+    generate_ci_report,
+    verify_readme_claims,
+    verify_regression_tests,
+)
+from soma_core.lifecycle.creation import create_cell, transfer_cell
+from soma_core.lifecycle.decay import compute_cells_fitness
+from soma_core.lifecycle.parsers import find_cell_file, _load_cells, _load_evidence
+from soma_core.lifecycle.promotion import evaluate_demotions, evaluate_promotions
+from soma_core.lifecycle.selection import crossover_cells, run_cell_selection
+from soma_core.outcomes import harvest_git_history, run_outcome_engine
+from soma_core.sync import load_soma_config, run_post_session_hook
+from soma_core.workspace import (
+    Workspace,
+    get_cells_dir,
+    get_metrics_dir,
+    get_outcomes_file,
+    get_signals_file,
+)
+
+
+@pytest.fixture
+def mock_soma_workspace(tmp_path: Path) -> Workspace:
+    """Create a temporary initialized Soma workspace structure."""
+    cells_dir = tmp_path / ".soma" / "cells"
+    vacuoles_dir = cells_dir / "vacuoles"
+    walls_dir = cells_dir / "walls"
+    metrics_dir = tmp_path / ".soma" / "metrics"
+    evidence_dir = tmp_path / ".soma" / "evidence"
+    for d in (vacuoles_dir, walls_dir, metrics_dir, evidence_dir):
+        d.mkdir(parents=True, exist_ok=True)
+
+    # Add a sample cell
+    sample_cell = vacuoles_dir / "test-rule.md"
+    sample_cell.write_text(
+        "---\n"
+        "id: test-rule\n"
+        "type: vacuole\n"
+        "enforcement: advisory\n"
+        "hypothesis: \"Avoid raw SQL queries\"\n"
+        "prediction: \"SQL injection risk reduced\"\n"
+        "falsification: \"ORM eliminates vulnerability\"\n"
+        "created: \"2026-01-01\"\n"
+        "target_paths: [\"*.py\"]\n"
+        "fitness:\n"
+        "  triggers: 5\n"
+        "  true_positives: 4\n"
+        "  false_positives: 1\n"
+        "  score: 0.8\n"
+        "---\n"
+        "## Vacuole: Avoid raw SQL queries\n"
+        "Always use parameterized queries or an ORM.\n",
+        encoding="utf-8",
+    )
+
+    signals_file = evidence_dir / "signals.jsonl"
+    signals_file.write_text(
+        json.dumps({
+            "cell": "test-rule",
+            "signal_type": "trigger",
+            "timestamp": "2026-01-02T00:00:00Z",
+        }) + "\n" +
+        json.dumps({
+            "cell": "test-rule",
+            "signal_type": "tp",
+            "timestamp": "2026-01-02T00:00:00Z",
+        }) + "\n",
+        encoding="utf-8",
+    )
+
+    return Workspace(root=tmp_path)
+
+
+class TestDeprecationWarnings:
+    """Verify that standalone path getters emit DeprecationWarning."""
+
+    def test_get_cells_dir_emits_deprecation_warning(self, mock_soma_workspace: Workspace):
+        with pytest.deprecated_call(match="get_cells_dir is deprecated"):
+            res = get_cells_dir(mock_soma_workspace)
+        assert res == str(mock_soma_workspace.cells_dir)
+
+    def test_get_metrics_dir_emits_deprecation_warning(self, mock_soma_workspace: Workspace):
+        with pytest.deprecated_call(match="get_metrics_dir is deprecated"):
+            res = get_metrics_dir(mock_soma_workspace)
+        assert res == str(mock_soma_workspace.metrics_dir)
+
+    def test_get_signals_file_emits_deprecation_warning(self, mock_soma_workspace: Workspace):
+        with pytest.deprecated_call(match="get_signals_file is deprecated"):
+            res = get_signals_file(mock_soma_workspace)
+        assert res == str(mock_soma_workspace.signals_file)
+
+    def test_get_outcomes_file_emits_deprecation_warning(self, mock_soma_workspace: Workspace):
+        with pytest.deprecated_call():
+            res = get_outcomes_file(mock_soma_workspace)
+        assert res == str(mock_soma_workspace.signals_file)
+
+
+class TestLifecycleWorkspaceInteroperability:
+    """Verify lifecycle subsystem functions accept Workspace directly."""
+
+    def test_create_cell_with_workspace_instance(self, mock_soma_workspace: Workspace):
+        created = create_cell(
+            cell_type="vacuole",
+            hypothesis="Always validate user inputs",
+            workspace=mock_soma_workspace,
+        )
+        assert isinstance(created, Path)
+        assert created.is_file()
+        assert str(mock_soma_workspace.cells_dir) in str(created)
+
+    def test_transfer_cell_with_workspace_instance(self, mock_soma_workspace: Workspace, tmp_path: Path):
+        dest_dir = tmp_path / "dest_repo"
+        (dest_dir / ".soma" / "cells").mkdir(parents=True)
+
+        res = transfer_cell(
+            cell_id="test-rule",
+            target_dir_str=str(dest_dir),
+            source_workspace=mock_soma_workspace,
+        )
+        assert res == 0
+        dest_cell = dest_dir / ".soma" / "cells" / "vacuoles" / "test-rule.md"
+        assert dest_cell.is_file()
+
+    def test_compute_cells_fitness_with_workspace_instance(self, mock_soma_workspace: Workspace):
+        fitness_list = compute_cells_fitness(workspace=mock_soma_workspace)
+        assert len(fitness_list) >= 1
+        names = [f["cell"] for f in fitness_list]
+        assert "test-rule.md" in names
+
+    def test_run_cell_selection_with_workspace_instance(self, mock_soma_workspace: Workspace):
+        res = run_cell_selection(workspace=mock_soma_workspace, execute=False)
+        assert res == 0
+
+    def test_parsers_and_promotions_with_workspace_instance(self, mock_soma_workspace: Workspace):
+        cells = _load_cells(mock_soma_workspace)
+        assert len(cells) >= 1
+        assert any(c["id"] == "test-rule" for c in cells)
+
+        evidence = _load_evidence(mock_soma_workspace)
+        assert "test-rule" in evidence
+
+        cand_file, ctype = find_cell_file(mock_soma_workspace, "test-rule")
+        assert cand_file is not None
+        assert cand_file.is_file()
+        assert ctype == "vacuole"
+
+        promotions = evaluate_promotions(mock_soma_workspace)
+        assert isinstance(promotions, list)
+
+        demotions = evaluate_demotions(mock_soma_workspace)
+        assert isinstance(demotions, list)
+
+    def test_crossover_cells_with_workspace_instance(self, mock_soma_workspace: Workspace):
+        # Create second cell for crossover
+        create_cell(
+            cell_type="vacuole",
+            hypothesis="Ensure all database transactions commit or rollback",
+            id_override="db-transactions",
+            workspace=mock_soma_workspace,
+        )
+        p1, p2, out = crossover_cells(mock_soma_workspace, "test-rule", "db-transactions")
+        assert p1 == "test-rule.md"
+        assert p2 == "db-transactions.md"
+        assert (mock_soma_workspace.cells_dir / "vacuoles" / out).is_file()
+
+
+class TestArbitrationWorkspaceInteroperability:
+    """Verify arbitration functions accept Workspace directly."""
+
+    def test_generate_checkpoint_with_workspace_instance(self, mock_soma_workspace: Workspace):
+        report = generate_checkpoint(workspace=mock_soma_workspace)
+        assert report["workspace"] == str(mock_soma_workspace.root)
+        assert "total_cells" in report
+
+    def test_get_escalation_protocol_with_workspace_instance(self, mock_soma_workspace: Workspace):
+        proto = get_escalation_protocol("soma_core/test.py", workspace=mock_soma_workspace)
+        assert proto in ("breeze", "gale", "trident", "maelstrom", "tempest", "unknown")
+
+    def test_soma_propose_change_with_workspace_instance(self, mock_soma_workspace: Workspace):
+        target = mock_soma_workspace.root / "example.txt"
+        target.write_text("initial content\n", encoding="utf-8")
+        verdict = soma_propose_change(
+            file_path="example.txt",
+            proposed_content="updated content\n",
+            workspace=mock_soma_workspace,
+        )
+        assert "APPROVED" in verdict or "ESCALATION_REQUIRED" in verdict
+
+
+class TestOutcomesAndSyncWorkspaceInteroperability:
+    """Verify outcomes, defects, enforcement, and sync accept Workspace directly."""
+
+    def test_harvest_git_history_with_workspace_instance(self, mock_soma_workspace: Workspace):
+        result = harvest_git_history(workspace=mock_soma_workspace, dry_run=True)
+        assert "commits_inspected" in result
+        assert "cells_matched" in result
+
+    def test_run_outcome_engine_with_workspace_instance(self, mock_soma_workspace: Workspace):
+        code = run_outcome_engine(workspace=mock_soma_workspace)
+        assert code in (0, 1)
+
+    def test_defects_and_enforcement_with_workspace_instance(self, mock_soma_workspace: Workspace):
+        # Create dummy bug registry
+        reg_dir = mock_soma_workspace.root / "docs" / "project"
+        reg_dir.mkdir(parents=True, exist_ok=True)
+        reg_file = reg_dir / "BUG_REGISTRY.json"
+        reg_file.write_text(json.dumps({"bugs": []}), encoding="utf-8")
+
+        reg = load_registry(mock_soma_workspace)
+        assert reg == {"bugs": []}
+
+        audit = audit_expiry(mock_soma_workspace)
+        assert isinstance(audit, list)
+
+        matched = _match_cells(mock_soma_workspace, ["some_file.py"])
+        assert isinstance(matched, list)
+
+    def test_sync_with_workspace_instance(self, mock_soma_workspace: Workspace):
+        # Create a dummy soma.conf
+        conf_file = mock_soma_workspace.root / "soma.conf"
+        conf_file.write_text("TEAM_REPO=/tmp/team\n", encoding="utf-8")
+        cfg = load_soma_config(repo_dir=mock_soma_workspace)
+        assert cfg.get("TEAM_REPO") == "/tmp/team"
+
+        dummy_transcript = mock_soma_workspace.root / "transcript.jsonl"
+        dummy_transcript.write_text("{}\n", encoding="utf-8")
+        res = run_post_session_hook(
+            transcript_path=dummy_transcript,
+            repo_root=mock_soma_workspace,
+        )
+        assert res in (0, 1)
+
+    def test_generate_ci_report_with_workspace_instance(self, mock_soma_workspace: Workspace):
+        report = generate_ci_report(
+            workspace=mock_soma_workspace,
+            changed_files=["tests/test_core.py"],
+            test_passed=True,
+            commit_sha="abcdef123456",
+        )
+        assert "matched_cells" in report
+        assert "summary" in report
+        assert "Soma CI Outcome Report" in report["summary"]
+
+    def test_verify_registry_and_claims_with_workspace_instance(self, mock_soma_workspace: Workspace):
+        # Regression tests on empty registry
+        reg = {"bugs": []}
+        errors = verify_regression_tests(reg, workspace=mock_soma_workspace)
+        assert errors == []
+
+        # Claim registry verification when missing file
+        ok, fails = verify_readme_claims(workspace=mock_soma_workspace)
+        assert not ok
+        assert any("Claim registry not found" in f for f in fails)
+
+

@@ -10,7 +10,7 @@ from typing import Any, Dict, Optional
 
 from soma_core.frontmatter import parse_frontmatter
 from soma_core.scoring import bayesian_posterior, bayesian_score, calculate_snr, laplace_score
-from soma_core.workspace import resolve_workspace
+from soma_core.workspace import Workspace, resolve_workspace
 from .constants import (
     DECAY_FACTOR,
     DEFAULT_DECAY_FACTOR,
@@ -143,17 +143,19 @@ def decayed_fitness(raw_score: Optional[float], last_trigger_date: Any, telomere
 
 
 def compute_cells_fitness(
-    workspace: Optional[str] = None,
+    workspace: Optional[Workspace | str | Path] = None,
     bayesian: bool = False,
     prune: bool = False,
     promote: bool = False,
 ) -> list[dict]:
     """Compute fitness of immune cells in workspace."""
-    ws = workspace or resolve_workspace()
+    ws = workspace if isinstance(workspace, Workspace) else (
+        Workspace(root=Path(workspace).resolve()) if workspace else Workspace.resolve()
+    )
 
     total_sessions = 30
-    conf_path = os.path.join(ws, "soma.conf")
-    if os.path.exists(conf_path):
+    conf_path = ws.root / "soma.conf"
+    if conf_path.is_file():
         try:
             with open(conf_path, encoding="utf-8") as f:
                 for line in f:
@@ -162,8 +164,8 @@ def compute_cells_fitness(
         except Exception:
             pass
 
-    cells_dir = os.path.join(ws, ".soma", "cells")
-    cell_files = glob.glob(os.path.join(cells_dir, "**", "*.md"), recursive=True)
+    cells_dir = ws.cells_dir
+    cell_files = glob.glob(os.path.join(str(cells_dir), "**", "*.md"), recursive=True)
     results = []
 
     for file_path in cell_files:

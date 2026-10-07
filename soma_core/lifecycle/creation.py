@@ -10,7 +10,7 @@ import sys
 from typing import Optional
 
 from soma_core.frontmatter import dump_frontmatter, parse_frontmatter
-from soma_core.workspace import resolve_workspace
+from soma_core.workspace import Workspace, resolve_workspace
 from .constants import (
     VALID_ENFORCEMENT,
     VALID_TYPES,
@@ -36,7 +36,7 @@ def create_cell(
     memory: bool = False,
     target_paths: list[str] | None = None,
     domain: str = "correctness",
-    workspace: Path | str | None = None,
+    workspace: Workspace | Path | str | None = None,
     enforcement: str | None = None,
 ) -> Path:
     """Create a new Soma cell file with validated frontmatter and body."""
@@ -95,9 +95,11 @@ def create_cell(
     if not falsification:
         falsification = f"Behavior violates hypothesis: {hypothesis}"
 
-    ws = Path(workspace).resolve() if workspace else Path(resolve_workspace()).resolve()
+    ws = workspace if isinstance(workspace, Workspace) else (
+        Workspace(root=Path(workspace).resolve()) if workspace else Workspace.resolve()
+    )
     type_plural = VALID_TYPES[type_lower]
-    target_dir = ws / ".soma" / "cells" / type_plural
+    target_dir = ws.cells_dir / type_plural
     target_dir.mkdir(parents=True, exist_ok=True)
 
     slug = generate_slug(hypothesis, id_override)
@@ -182,17 +184,18 @@ def create_cell_from_description(
     domain_hint: Optional[str] = None,
     cell_type: Optional[str] = None,
     provider_name: Optional[str] = None,
-    workspace: Optional[str] = None,
+    workspace: Optional[Workspace | str | Path] = None,
 ) -> str:
     """Use AI inference provider to generate cell YAML from natural language."""
-    import glob
     from soma_core.inference_provider import resolve_provider
 
-    ws = workspace or resolve_workspace()
-    provider = resolve_provider(ws, provider_name)
+    ws = workspace if isinstance(workspace, Workspace) else (
+        Workspace(root=Path(workspace).resolve()) if workspace else Workspace.resolve()
+    )
+    provider = resolve_provider(str(ws.root), provider_name)
 
     examples = []
-    cells_dir = Path(ws) / ".soma" / "cells"
+    cells_dir = ws.cells_dir
     if cells_dir.is_dir():
         for cell_file in cells_dir.rglob("*.md"):
             if cell_file.name == "README.md":
@@ -329,12 +332,14 @@ def cli_cell_create(argv: list[str] | None = None) -> int:
 def transfer_cell(
     cell_id: str,
     target_dir_str: str,
-    source_workspace: Path | None = None,
+    source_workspace: Workspace | Path | str | None = None,
 ) -> int:
     """Transfer a cell from source workspace to target directory with fitness reset."""
-    repo_dir = source_workspace or Path(resolve_workspace()).resolve()
-    if not (repo_dir / ".soma" / "cells").is_dir():
-        print(f"Error: No Soma project found: no .soma/cells/ in {repo_dir or os.getcwd()} or any parent directory.", file=sys.stderr)
+    src_ws = source_workspace if isinstance(source_workspace, Workspace) else (
+        Workspace(root=Path(source_workspace).resolve()) if source_workspace else Workspace.resolve()
+    )
+    if not src_ws.cells_dir.is_dir():
+        print(f"Error: No Soma project found: no .soma/cells/ in {src_ws.root or os.getcwd()} or any parent directory.", file=sys.stderr)
         print("Run from inside the source project, or set SOMA_ROOT to its root.", file=sys.stderr)
         return 1
 
@@ -344,7 +349,7 @@ def transfer_cell(
         return 1
 
     source_path = None
-    cells_dir = repo_dir / ".soma" / "cells"
+    cells_dir = src_ws.cells_dir
     for cand in cells_dir.rglob("*.md"):
         if cand.name == "README.md":
             continue
@@ -386,7 +391,7 @@ def transfer_cell(
     new_content = f"---\n{new_fm.strip()}\n---\n\n{body}\n" if body else f"---\n{new_fm.strip()}\n---\n"
     dest_path.write_text(new_content, encoding="utf-8")
 
-    metrics_dir = repo_dir / ".soma" / "metrics"
+    metrics_dir = src_ws.metrics_dir
     metrics_dir.mkdir(parents=True, exist_ok=True)
     log_file = metrics_dir / "transfers.jsonl"
     with open(log_file, "a", encoding="utf-8") as f:

@@ -12,7 +12,7 @@ import sys
 from typing import Optional
 
 from soma_core.frontmatter import dump_frontmatter
-from soma_core.workspace import resolve_workspace
+from soma_core.workspace import Workspace, resolve_workspace
 from .constants import (
     EXTINCTION_THRESHOLD,
 )
@@ -23,12 +23,14 @@ from .parsers import (
 )
 
 
-def run_cell_selection(workspace: Path | str | None = None, execute: bool = False) -> int:
+def run_cell_selection(workspace: Workspace | Path | str | None = None, execute: bool = False) -> int:
     """Selection pressure engine for Soma immune cells."""
-    repo_root = Path(workspace).resolve() if workspace else Path(resolve_workspace()).resolve()
-    cells_dir = repo_root / ".soma" / "cells"
+    ws = workspace if isinstance(workspace, Workspace) else (
+        Workspace(root=Path(workspace).resolve()) if workspace else Workspace.resolve()
+    )
+    cells_dir = ws.cells_dir
     archive_dir = cells_dir / ".archive"
-    evidence_dir = repo_root / ".soma" / "evidence"
+    evidence_dir = ws.evidence_dir
     evidence_dir.mkdir(parents=True, exist_ok=True)
     fitness_log = evidence_dir / "lifecycle.jsonl"
 
@@ -118,16 +120,18 @@ def run_cell_selection(workspace: Path | str | None = None, execute: bool = Fals
     return 0
 
 
-def prune_cells(workspace: Path | str | None = None, execute: bool = False) -> int:
+def prune_cells(workspace: Workspace | Path | str | None = None, execute: bool = False) -> int:
     """Evaluate and prune extinct or apoptotic rules."""
-    ws = Path(workspace) if workspace else None
-    return run_cell_selection(workspace=ws, execute=execute)
+    return run_cell_selection(workspace=workspace, execute=execute)
 
 
-def crossover_cells(workspace: Path | str, cell_a_id: str, cell_b_id: str) -> tuple[str, str, str]:
+def crossover_cells(workspace: Workspace | Path | str, cell_a_id: str, cell_b_id: str) -> tuple[str, str, str]:
     """Merge complementary hypotheses from two high-fitness cells."""
-    cell_a_path = find_cell(workspace, cell_a_id)
-    cell_b_path = find_cell(workspace, cell_b_id)
+    ws = workspace if isinstance(workspace, Workspace) else (
+        Workspace(root=Path(workspace).resolve()) if workspace else Workspace.resolve()
+    )
+    cell_a_path = find_cell(ws, cell_a_id)
+    cell_b_path = find_cell(ws, cell_b_id)
 
     if not cell_a_path or not cell_b_path:
         raise ValueError(f"Could not locate one or both parent cells: {cell_a_id}, {cell_b_id}")
@@ -159,9 +163,9 @@ def crossover_cells(workspace: Path | str, cell_a_id: str, cell_b_id: str) -> tu
 
     date_str = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
     type_plural = get_type_plural(merged_type)
-    out_dir = os.path.join(workspace, ".soma", "cells", type_plural)
-    os.makedirs(out_dir, exist_ok=True)
-    out_path = os.path.join(out_dir, f"{slug}.md")
+    out_dir = ws.cells_dir / type_plural
+    out_dir.mkdir(parents=True, exist_ok=True)
+    out_path = out_dir / f"{slug}.md"
 
     tp_a = meta_a.get("target_paths", []) or []
     tp_b = meta_b.get("target_paths", []) or []
@@ -218,9 +222,9 @@ def crossover_cells(workspace: Path | str, cell_a_id: str, cell_b_id: str) -> tu
     parent_b_name = os.path.basename(cell_b_path)
     new_cell_name = os.path.basename(out_path)
 
-    metrics_dir = os.path.join(workspace, ".soma", "metrics")
-    os.makedirs(metrics_dir, exist_ok=True)
-    metrics_file = os.path.join(metrics_dir, "crossovers.jsonl")
+    metrics_dir = ws.metrics_dir
+    metrics_dir.mkdir(parents=True, exist_ok=True)
+    metrics_file = metrics_dir / "crossovers.jsonl"
     log_entry = {
         "timestamp": date_str,
         "parent_a": parent_a_name,

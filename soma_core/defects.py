@@ -20,7 +20,7 @@ import subprocess
 import sys
 from typing import Any, Dict, List, Optional, Set, Tuple, Union
 
-from soma_core.workspace import resolve_workspace
+from soma_core.workspace import Workspace, resolve_workspace
 from soma_core.frontmatter import parse_frontmatter, _get_body, dump_frontmatter
 
 # ── Hot Zone Analysis ──────────────────────────────────────────────────────
@@ -142,10 +142,13 @@ def compute_cell_boost(
     return file_boost + pattern_boost
 
 
-def load_registry(workspace: str) -> dict | None:
+def load_registry(workspace: Workspace | Path | str) -> dict | None:
     """Load BUG_REGISTRY.json, returning None if missing."""
-    path = os.path.join(workspace, "docs", "project", "BUG_REGISTRY.json")
-    if not os.path.exists(path):
+    ws = workspace if isinstance(workspace, Workspace) else (
+        Workspace(root=Path(workspace).resolve()) if workspace else Workspace.resolve()
+    )
+    path = ws.root / "docs" / "project" / "BUG_REGISTRY.json"
+    if not path.is_file():
         return None
     try:
         with open(path, "r", encoding="utf-8") as f:
@@ -154,7 +157,7 @@ def load_registry(workspace: str) -> dict | None:
         return None
 
 
-def load_report_from_workspace(workspace: str) -> HotZoneReport | None:
+def load_report_from_workspace(workspace: Workspace | Path | str) -> HotZoneReport | None:
     """Convenience: load registry from disk and compute report."""
     registry = load_registry(workspace)
     if registry is None:
@@ -324,13 +327,16 @@ def record_escaped_defect(
     event_type: str,
     files: list[str],
     severity: str,
-    workspace: str,
+    workspace: Workspace | Path | str,
 ) -> dict:
     """Record an escaped defect against a cell."""
-    metrics_dir = os.path.join(workspace, ".soma", "metrics")
-    os.makedirs(metrics_dir, exist_ok=True)
+    ws = workspace if isinstance(workspace, Workspace) else (
+        Workspace(root=Path(workspace).resolve()) if workspace else Workspace.resolve()
+    )
+    metrics_dir = ws.metrics_dir
+    metrics_dir.mkdir(parents=True, exist_ok=True)
 
-    log_path = os.path.join(metrics_dir, "escaped_defects.jsonl")
+    log_path = metrics_dir / "escaped_defects.jsonl"
     entry = {
         "timestamp": datetime.now(timezone.utc).isoformat() + "Z",
         "cell": cell.get("_name") or cell.get("name", ""),
@@ -346,11 +352,14 @@ def record_escaped_defect(
     return entry
 
 
-def update_cell_escaped_rate(cell: dict, workspace: str) -> float:
+def update_cell_escaped_rate(cell: dict, workspace: Workspace | Path | str) -> float:
     """Recalculate a cell's escaped_defect_rate from the log."""
-    metrics_dir = os.path.join(workspace, ".soma", "metrics")
-    log_path = os.path.join(metrics_dir, "escaped_defects.jsonl")
-    if not os.path.exists(log_path):
+    ws = workspace if isinstance(workspace, Workspace) else (
+        Workspace(root=Path(workspace).resolve()) if workspace else Workspace.resolve()
+    )
+    metrics_dir = ws.metrics_dir
+    log_path = metrics_dir / "escaped_defects.jsonl"
+    if not log_path.is_file():
         return 0.0
 
     escaped = 0
@@ -474,16 +483,19 @@ def generate_report(cells: list[dict], workspace: str) -> tuple[list[dict], int]
 # ── Cell Expiry Enforcement ────────────────────────────────────────────────
 
 
-def audit_expiry(workspace: str, session_count: Optional[int] = None) -> list[dict]:
+def audit_expiry(workspace: Workspace | Path | str, session_count: Optional[int] = None) -> list[dict]:
     """Audit all cells for expiry violations."""
-    cells_dir = os.path.join(workspace, ".soma", "cells")
-    if not os.path.isdir(cells_dir):
+    ws = workspace if isinstance(workspace, Workspace) else (
+        Workspace(root=Path(workspace).resolve()) if workspace else Workspace.resolve()
+    )
+    cells_dir = ws.cells_dir
+    if not cells_dir.is_dir():
         return []
 
     results = []
     now = datetime.now()
 
-    for md_file in sorted(glob.glob(os.path.join(cells_dir, "**", "*.md"), recursive=True)):
+    for md_file in sorted(glob.glob(os.path.join(str(cells_dir), "**", "*.md"), recursive=True)):
         if os.path.basename(md_file) == "README.md":
             continue
 
@@ -568,7 +580,7 @@ def audit_expiry(workspace: str, session_count: Optional[int] = None) -> list[di
     return results
 
 
-def prune_expired(workspace: str, audit_results: list[dict]) -> int:
+def prune_expired(workspace: Workspace | Path | str, audit_results: list[dict]) -> int:
     """Add expired_at marker to expired cells."""
     pruned = 0
     now_str = datetime.now().strftime("%Y-%m-%dT%H:%M:%SZ")

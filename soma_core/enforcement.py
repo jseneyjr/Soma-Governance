@@ -21,7 +21,7 @@ import subprocess
 import sys
 from typing import Any, Dict, List, Optional, Tuple, Union
 
-from soma_core.workspace import resolve_workspace
+from soma_core.workspace import Workspace, as_workspace, resolve_workspace
 
 # ── Bug Registry Verification ─────────────────────────────────────────────
 
@@ -37,10 +37,11 @@ CORE_FIELDS = (
 FIX_FIELDS = ("fixed_in", "regression_test", "changelog_ref")
 
 
-def load_registry(workspace: str) -> Dict[str, Any]:
+def load_registry(workspace: str | Path | Workspace = ".") -> Dict[str, Any]:
     """Load and parse BUG_REGISTRY.json."""
-    path = os.path.join(workspace, "docs", "project", "BUG_REGISTRY.json")
-    if not os.path.exists(path):
+    ws = as_workspace(workspace)
+    path = ws.root / "docs" / "project" / "BUG_REGISTRY.json"
+    if not path.exists():
         raise FileNotFoundError(f"Bug registry not found at {path}")
     with open(path, "r", encoding="utf-8") as f:
         return json.load(f)
@@ -124,8 +125,10 @@ def verify_unique_ids(registry: Dict[str, Any]) -> List[str]:
     return errors
 
 
-def verify_regression_tests(registry: Dict[str, Any], workspace: str) -> List[str]:
+def verify_regression_tests(registry: Dict[str, Any], workspace: str | Path | Workspace = ".") -> List[str]:
     """Verify each bug's regression test exists and can be run by pytest."""
+    ws = as_workspace(workspace)
+    ws_root = ws.root
     errors = []
     test_ids = []
 
@@ -139,8 +142,8 @@ def verify_regression_tests(registry: Dict[str, Any], workspace: str) -> List[st
             continue
 
         test_file = test_ref.split("::")[0]
-        full_path = os.path.join(workspace, test_file)
-        if not os.path.exists(full_path):
+        full_path = ws_root / test_file
+        if not full_path.exists():
             errors.append(f"{bug_id}: regression test file not found: {test_file}")
             continue
 
@@ -154,7 +157,7 @@ def verify_regression_tests(registry: Dict[str, Any], workspace: str) -> List[st
                 [sys.executable, "-m", "pytest", "-q", "-rfE"] + all_refs,
                 capture_output=True,
                 text=True,
-                cwd=workspace,
+                cwd=str(ws_root),
                 timeout=budget,
             )
             if result.returncode != 0:
@@ -227,12 +230,13 @@ def cli_verify_bug_registry(argv: Optional[List[str]] = None) -> int:
 # ── README Claim Verification ─────────────────────────────────────────────
 
 
-def verify_readme_claims(workspace: str) -> Tuple[bool, List[str]]:
+def verify_readme_claims(workspace: str | Path | Workspace = ".") -> Tuple[bool, List[str]]:
     """Verify all README claims against CLAIM_REGISTRY.json."""
-    registry_path = os.path.join(workspace, "docs", "project", "CLAIM_REGISTRY.json")
-    readme_path = os.path.join(workspace, "README.md")
+    ws = as_workspace(workspace)
+    registry_path = ws.root / "docs" / "project" / "CLAIM_REGISTRY.json"
+    readme_path = ws.root / "README.md"
 
-    if not os.path.exists(registry_path):
+    if not registry_path.exists():
         return False, [f"Claim registry not found: {registry_path}"]
 
     with open(registry_path, "r", encoding="utf-8") as f:
@@ -250,7 +254,7 @@ def verify_readme_claims(workspace: str) -> Tuple[bool, List[str]]:
                     [sys.executable, "-m", "pytest", test, "-x", "-q", "--tb=short"],
                     capture_output=True,
                     text=True,
-                    cwd=workspace,
+                    cwd=str(ws.root),
                 )
                 if res.returncode != 0:
                     failures.append(f"REGRESSION: {claim_id} — test {test} FAILED")
@@ -277,12 +281,17 @@ def cli_verify_readme_claims(argv: Optional[List[str]] = None) -> int:
     return 0
 
 
-def load_cells_for_enforcement(cells_dir: str) -> List[Dict[str, Any]]:
+def load_cells_for_enforcement(cells_dir: str | Path | Workspace) -> List[Dict[str, Any]]:
     """Load all cells for enforcement artifact generation."""
     cells = []
     from soma_core.frontmatter import _parse_frontmatter, _get_body
 
-    for cell_file in glob.glob(os.path.join(cells_dir, "**", "*.md"), recursive=True):
+    if isinstance(cells_dir, Workspace):
+        c_dir = str(cells_dir.cells_dir)
+    else:
+        c_dir = str(cells_dir)
+
+    for cell_file in glob.glob(os.path.join(c_dir, "**", "*.md"), recursive=True):
         if os.path.basename(cell_file) == "README.md":
             continue
         try:
@@ -302,7 +311,7 @@ def load_cells_for_enforcement(cells_dir: str) -> List[Dict[str, Any]]:
 load_cells = load_cells_for_enforcement
 
 
-def generate_precommit_check(cell: Dict[str, Any], workspace: str) -> str:
+def generate_precommit_check(cell: Dict[str, Any], workspace: str | Path | Workspace = ".") -> str:
     """Generate a pre-commit check script for a 'mechanical' cell."""
     name = cell.get("_name") or cell.get("id") or cell.get("name", "unnamed")
     cell_type = cell.get("type", "vacuole")
@@ -434,7 +443,7 @@ exit 0  # No match: allow commit
     return check
 
 
-def generate_gate_assertion(cell: Dict[str, Any], workspace: str) -> str:
+def generate_gate_assertion(cell: Dict[str, Any], workspace: str | Path | Workspace = ".") -> str:
     """Generate a runtime assertion for a 'gate' cell."""
     name = cell.get("_name") or cell.get("id") or cell.get("name", "unnamed")
     cell_type = cell.get("type", "vacuole")
@@ -491,7 +500,7 @@ class Gate_{class_suffix}:
     return assertion
 
 
-def update_cell_enforcement_artifact(cell: Dict[str, Any], artifact_path: str, workspace: str) -> None:
+def update_cell_enforcement_artifact(cell: Dict[str, Any], artifact_path: str, workspace: str | Path | Workspace = ".") -> None:
     """Add enforcement_artifact field to cell YAML."""
     cell_path = cell.get("_path")
     if not cell_path or not os.path.exists(cell_path):
@@ -503,7 +512,8 @@ def update_cell_enforcement_artifact(cell: Dict[str, Any], artifact_path: str, w
     if "enforcement_artifact:" in content:
         return
 
-    rel_path = os.path.relpath(artifact_path, workspace)
+    ws = as_workspace(workspace)
+    rel_path = os.path.relpath(artifact_path, str(ws.root))
     if not content.startswith("---"):
         return
     end_idx = content.find("---", 3)
@@ -549,14 +559,15 @@ def _parse_cell_frontmatter(filepath: str) -> Dict[str, Any]:
         return {}
 
 
-def _match_cells(workspace: str, changed_files: List[str]) -> List[Dict[str, Any]]:
+def _match_cells(workspace: str | Path | Workspace, changed_files: List[str]) -> List[Dict[str, Any]]:
     """Match cells to changed files using target_paths fnmatch globs.
 
     Returns list of dicts with keys: cell, type, target_match, path.
     """
     from soma_core.cell_inventory import find_matching_cells
 
-    cells_dir = os.path.join(workspace, ".soma", "cells")
+    ws = as_workspace(workspace)
+    cells_dir = str(ws.cells_dir)
     matches = find_matching_cells(cells_dir, changed_files, allow_basename_match=True)
     matched = []
     for m in matches:
@@ -654,9 +665,9 @@ def _format_markdown(
 
 
 def generate_ci_report(
-    workspace: str,
-    changed_files: List[str],
-    test_passed: bool,
+    workspace: str | Path | Workspace = ".",
+    changed_files: List[str] | None = None,
+    test_passed: bool = True,
     commit_sha: Optional[str] = None,
 ) -> Dict[str, Any]:
     """Generate a CI outcome report.
@@ -673,8 +684,9 @@ def generate_ci_report(
                            credit_weight, proposed_signal
           - summary: markdown string for step summary
     """
-    matched = _match_cells(workspace, changed_files)
-    weights = _compute_credit_weights(matched, changed_files)
+    changed = changed_files or []
+    matched = _match_cells(workspace, changed)
+    weights = _compute_credit_weights(matched, changed)
 
     # Assign signals
     signal = "trigger" if test_passed else "fp"

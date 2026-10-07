@@ -24,7 +24,7 @@ import tempfile
 from typing import Any, Dict, List, Optional, Tuple
 
 from soma_core.evidence import aggregate_signals
-from soma_core.workspace import confine_path, resolve_workspace
+from soma_core.workspace import Workspace, confine_path, resolve_workspace
 
 # ── TTC Constants ─────────────────────────────────────────────────────────
 
@@ -133,7 +133,7 @@ class TTCVerifier:
         }
 
 
-def _classify_protocol_python(file_path: str, workspace: str) -> str:
+def _classify_protocol_python(file_path: str, workspace: Workspace | Path | str) -> str:
     """Pure Python escalation sentinel fallback when bash is unavailable."""
     norm_path = file_path.replace("\\", "/").lstrip("./")
 
@@ -176,7 +176,7 @@ def _classify_protocol_python(file_path: str, workspace: str) -> str:
     return "gale"
 
 
-def get_escalation_protocol(file_path: str, workspace: str) -> str:
+def get_escalation_protocol(file_path: str, workspace: Workspace | Path | str) -> str:
     """Determine the review protocol for a file path (fails closed)."""
     protocol = _classify_protocol_python(file_path, workspace)
     if protocol in ESCALATION_PROTOCOLS:
@@ -189,22 +189,28 @@ def get_escalation_protocol(file_path: str, workspace: str) -> str:
 # ── Oracle Evaluation ─────────────────────────────────────────────────────
 
 
-def load_oracles(workspace: str) -> List[Tuple[str, str]]:
+def load_oracles(workspace: Workspace | Path | str) -> List[Tuple[str, str]]:
     """Load foundational markdown oracles from genome/.oracles/."""
-    oracles_dir = os.path.join(workspace, "genome", ".oracles")
+    ws = workspace if isinstance(workspace, Workspace) else (
+        Workspace(root=Path(workspace).resolve()) if workspace else Workspace.resolve()
+    )
+    oracles_dir = ws.root / "genome" / ".oracles"
     oracles: List[Tuple[str, str]] = []
-    if not os.path.exists(oracles_dir):
+    if not oracles_dir.is_dir():
         return oracles
 
-    for f in sorted(glob.glob(os.path.join(oracles_dir, "*.md"))):
+    for f in sorted(glob.glob(os.path.join(str(oracles_dir), "*.md"))):
         with open(f, "r", encoding="utf-8") as file:
             oracles.append((os.path.basename(f), file.read()))
     return oracles
 
 
-def evaluate_change(workspace: str, target_file: str, proposed_content: str, strict: bool = False) -> str:
+def evaluate_change(workspace: Workspace | Path | str, target_file: str, proposed_content: str, strict: bool = False) -> str:
     """Evaluate proposed content against hidden oracles using inference provider."""
-    oracles = load_oracles(workspace)
+    ws = workspace if isinstance(workspace, Workspace) else (
+        Workspace(root=Path(workspace).resolve()) if workspace else Workspace.resolve()
+    )
+    oracles = load_oracles(ws)
     if not oracles:
         return "APPROVED: No oracles defined."
 
@@ -214,7 +220,7 @@ def evaluate_change(workspace: str, target_file: str, proposed_content: str, str
         resolve_provider = None
         PromptOnlyProvider = None
 
-    provider = resolve_provider(workspace) if resolve_provider else None
+    provider = resolve_provider(str(ws.root)) if resolve_provider else None
     if not provider or (PromptOnlyProvider and isinstance(provider, PromptOnlyProvider)):
         if strict:
             return "BLOCKED: No inference provider available to run TTC Oracle."
@@ -258,7 +264,7 @@ Respond ONLY with REJECTED or APPROVED as specified above. Do not include any ot
         return f"REJECTED: Oracle evaluation failed ({str(e)})"
 
 
-def _consult_oracle(workspace: str, file_path: str, proposed_content: str) -> Tuple[str, str]:
+def _consult_oracle(workspace: Workspace | Path | str, file_path: str, proposed_content: str) -> Tuple[str, str]:
     """Run the TTC oracle. Returns (verdict, detail)."""
     try:
         raw = evaluate_change(workspace, file_path, proposed_content)
@@ -328,13 +334,15 @@ def soma_propose_change(
     file_path: str,
     proposed_content: str,
     active_playbooks: Optional[List[Dict[str, Any]]] = None,
-    workspace: Optional[str] = None,
+    workspace: Optional[Workspace | Path | str] = None,
 ) -> str:
     """Review a proposed change and return a verdict plus a diff (advisory only)."""
-    workspace = workspace or resolve_workspace()
+    ws = workspace if isinstance(workspace, Workspace) else (
+        Workspace(root=Path(workspace).resolve()) if workspace else Workspace.resolve()
+    )
 
     try:
-        resolved_path, relative_path = confine_path(file_path, workspace)
+        resolved_path, relative_path = confine_path(file_path, ws)
     except ValueError as exc:
         _log(f"[TTC] {exc}")
         return (
@@ -353,7 +361,7 @@ def soma_propose_change(
             ["Reason: no proposed_content was supplied."],
         )
 
-    protocol = get_escalation_protocol(relative_path, workspace)
+    protocol = get_escalation_protocol(relative_path, ws)
     if protocol in ESCALATING_PROTOCOLS or protocol == PROTOCOL_UNKNOWN:
         why = (
             "Sensitivity could not be determined, so this is treated as sensitive (the gate fails closed)."
@@ -392,7 +400,7 @@ def soma_propose_change(
         )
 
     if os.environ.get("SOMA_ENABLE_CLOUD_ORACLE", "0").lower() in ("1", "true"):
-        oracle_verdict, oracle_detail = _consult_oracle(workspace, relative_path, proposed_content)
+        oracle_verdict, oracle_detail = _consult_oracle(ws, relative_path, proposed_content)
     else:
         oracle_verdict, oracle_detail = VERDICT_APPROVED, "Oracle skipped (local-only mode)"
     diff = _build_diff(resolved_path, relative_path, proposed_content)
@@ -456,20 +464,25 @@ def _parse_cell(filepath: str) -> Tuple[Dict[str, Any], str]:
         return fm, body
 
 
-def _load_fitness_evidence(workspace: str) -> Dict[str, Any]:
+def _load_fitness_evidence(workspace: Workspace | Path | str) -> Dict[str, Any]:
     """Load canonical signal evidence aggregated per cell id."""
-    evidence_dir = os.path.join(workspace, ".soma", "evidence")
-    return aggregate_signals(evidence_dir).counts
+    ws = workspace if isinstance(workspace, Workspace) else (
+        Workspace(root=Path(workspace).resolve()) if workspace else Workspace.resolve()
+    )
+    return aggregate_signals(str(ws.evidence_dir)).counts
 
 
-def _load_cells(workspace: str) -> List[Dict[str, Any]]:
+def _load_cells(workspace: Workspace | Path | str) -> List[Dict[str, Any]]:
     """Load all cell metadata from .soma/cells/."""
-    cells_dir = os.path.join(workspace, ".soma", "cells")
+    ws = workspace if isinstance(workspace, Workspace) else (
+        Workspace(root=Path(workspace).resolve()) if workspace else Workspace.resolve()
+    )
+    cells_dir = ws.cells_dir
     cells = []
-    if not os.path.isdir(cells_dir):
+    if not cells_dir.is_dir():
         return cells
 
-    for md_file in sorted(glob.glob(os.path.join(cells_dir, "**", "*.md"), recursive=True)):
+    for md_file in sorted(glob.glob(os.path.join(str(cells_dir), "**", "*.md"), recursive=True)):
         if os.path.basename(md_file) == "README.md":
             continue
         try:
@@ -557,9 +570,11 @@ def _classify_cell(cell: Dict[str, Any], evidence: Dict[str, Any], expired_ids: 
     return "healthy", f"{triggers} trigger(s) recorded"
 
 
-def generate_checkpoint(workspace: Optional[str] = None, session_count: Optional[int] = None) -> Dict[str, Any]:
+def generate_checkpoint(workspace: Optional[Workspace | Path | str] = None, session_count: Optional[int] = None) -> Dict[str, Any]:
     """Generate a mid-session health checkpoint report."""
-    ws = workspace or resolve_workspace()
+    ws = workspace if isinstance(workspace, Workspace) else (
+        Workspace(root=Path(workspace).resolve()) if workspace else Workspace.resolve()
+    )
     cells = _load_cells(ws)
     evidence = _load_fitness_evidence(ws)
 
@@ -615,7 +630,7 @@ def generate_checkpoint(workspace: Optional[str] = None, session_count: Optional
     dormant_count = len(classifications.get("unobserved", [])) + len(classifications.get("dormant", []))
 
     return {
-        "workspace": ws,
+        "workspace": str(ws.root),
         "total_cells": len(cells),
         "healthy_count": healthy_count,
         "warning_count": warning_count,
