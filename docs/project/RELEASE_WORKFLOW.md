@@ -56,6 +56,7 @@ develop ──→ release/v0.XX ──→ PR to main ──→ tag v0.XX.0 ─�
 | Phase 5.13 | v0.102.0 ✅ | Facade Hardening & Final Prune (Bloat Initiative Completion) |
 | Phase 6 | v0.103.0 ✅ | Legacy Sunset, Packaging Decoupling & Lifecycle Modularization |
 | Phase 7 | v0.104.0 ✅ | Layer 2 Adversarial Verification CLI Wiring |
+| Phase 8 | v0.105.0 ✅ | True AST Call Graph Traversal & Static Analysis |
 
 ## Pre-Release Checklist
 

@@ -232,6 +232,12 @@ Sunsetted legacy `immune_system/` compatibility shims, pruning 18 forwarding fil
 **Status**: ✅ Shipped (v0.104.0)  
 Wired Layer 2 Adversarial Verification into `soma verify` CLI using existing inference provider infrastructure (`Gemini`, `Anthropic`, `OpenAI`, `Keyring`, `PromptOnlyProvider`). Added `--plan`, `--plan-file`, and `--provider` flags with automatic plan discovery. Implemented graceful fallback to Layer 1 deterministic verification when no provider or API keys are present. Added `format_layer2_summary` for readable Arbiter output and mapped Arbiter verdicts (`SHIP` -> 0, `BLOCK`/`REVISE` -> 1). Developed following strict TDD with 100% test coverage across 9 new behavioral tests.
 
+## Phase 8 — v0.105.0 ✅ Shipped
+
+### True AST Call Graph Traversal & Static Analysis
+**Status**: ✅ Shipped (v0.105.0)  
+Upgraded call graph completeness checker from naive regex string matching to a full Python Abstract Syntax Tree (AST) engine. Resolves true function definitions, ignores docstrings/comments/string literals, isolates external module calls (preventing collisions with `subprocess.run`, `sys.exit`, etc.), tracks cross-module call sites, and respects module `__all__` export declarations. Developed following strict TDD with 10 behavioral tests in `tests/test_verification/test_call_graph_ast.py`.
+
 ## Research
 
 ### Antifragile Scaling
