@@ -598,7 +598,7 @@ def evaluate_rm(cmd: UnwrappedCommand) -> SafetyEvaluation:
     if has_r:
         for arg in cmd.positional_args:
             target = arg.strip("'\"").lower()
-            # Path normalization (BUG-075): strip trailing slashes, e.g. "./", "../", "~/", "/home/"
+            # Path normalization (BUG-075): strip trailing slashes, e.g. ./, ../, ~/, /home
             norm_target = target.rstrip("/\\")
             if not norm_target and target.startswith(("/", "\\")):
                 norm_target = "/"

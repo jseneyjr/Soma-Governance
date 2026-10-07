@@ -1441,6 +1441,43 @@
       "regression_test": "tests/test_gemini_afc_config.py",
       "pattern": "Upstream SDK defaults trigger advisory warnings on stderr when default configuration options are omitted",
       "changelog_ref": "v0.109.0"
+    },
+    {
+      "id": "BUG-082",
+      "status": "fixed",
+      "title": "Git worktree pre-commit hook installation and detection failure",
+      "discovered_in": "v0.110.0",
+      "fixed_in": "v0.111.0",
+      "root_cause": "platform_compat",
+      "severity": "critical",
+      "description": "In git worktrees, .git is a file containing 'gitdir: <path>' rather than a directory. (project_root / '.git' / 'hooks').is_dir() returned False, causing soma init to silently skip pre-commit hook installation and soma doctor to falsely report that hooks were missing.",
+      "affected_files": [
+        "soma_core/workspace.py",
+        "soma_cli/init.py",
+        "soma_cli/doctor.py"
+      ],
+      "regression_test": "tests/test_worktree_hooks.py",
+      "pattern": "Git hook installation or detection assumes .git is always a directory rather than resolving worktree gitdir pointers",
+      "changelog_ref": "v0.111.0"
+    },
+    {
+      "id": "BUG-083",
+      "status": "fixed",
+      "title": "Cell creation omits required enforcement frontmatter field",
+      "discovered_in": "v0.110.0",
+      "fixed_in": "v0.111.0",
+      "root_cause": "schema_drift",
+      "severity": "critical",
+      "description": "create_cell() generated cells without the required 'enforcement' frontmatter field, causing newly generated cells (especially vacuoles and walls) to fail soma checkpoint cell_conventions checks during pre-commit.",
+      "affected_files": [
+        "soma_core/lifecycle/creation.py",
+        "soma_core/lifecycle/constants.py",
+        "soma_core/lifecycle/__init__.py",
+        "soma_mcp/tools.py"
+      ],
+      "regression_test": "tests/test_cell_creation_enforcement.py",
+      "pattern": "Cell generation utility omits schema fields required by checkpoint conventions validator",
+      "changelog_ref": "v0.111.0"
     }
   ]
 }

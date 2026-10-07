@@ -3,6 +3,23 @@
 All notable changes to Soma are documented here.
 This project uses [Semantic Versioning](https://semver.org/).
 
+## [0.111.0] — 2026-10-07 — "Git Worktree Hooks & Cell Schema Integrity"
+
+### Git Worktrees & Tooling Hardening
+- **Git Worktree Hook Installation & Health Detection (`BUG-082`)**:
+  - Implemented `resolve_git_hooks_dir()` in `soma_core/workspace.py` using `git rev-parse --git-path hooks` with a zero-dependency fallback reading `gitdir:` and `commondir` from worktree git files.
+  - Updated `soma init` (`soma_cli/init.py`) to install pre-commit hooks into the common git directory when run from worktrees, preventing silent bypass of hook installation.
+  - Updated `soma doctor` (`soma_cli/doctor.py`) to resolve and check the worktree's active hooks directory, eliminating false negative health reports.
+  - Added regression test suite `tests/test_worktree_hooks.py`.
+
+### Cell Lifecycle & Schema Integrity
+- **Cell Creation Frontmatter Enforcement Schema (`BUG-083`)**:
+  - Updated `create_cell()` in `soma_core/lifecycle/creation.py` to accept and validate the `enforcement` frontmatter attribute (`advisory`, `mechanical`, `gate`), defaulting walls to `gate` and other cell types to `advisory`.
+  - Added `-e` / `--enforcement` parameter to `soma_core/lifecycle/creation.py:cli_cell_create()`.
+  - Added `enforcement` to required frontmatter schema instructions in `create_cell_from_description()` and MCP `build_cell_create_prompt()`.
+  - Exported canonical `VALID_ENFORCEMENT` tuple in `soma_core.lifecycle`.
+  - Added regression test suite `tests/test_cell_creation_enforcement.py`.
+
 ## [0.110.0] — 2026-10-06 — "Ambient Telemetry & Zero-Touch Evolution"
 
 ### Ambient Telemetry & Evolutionary Automation

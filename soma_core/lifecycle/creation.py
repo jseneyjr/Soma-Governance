@@ -12,6 +12,7 @@ from typing import Optional
 from soma_core.frontmatter import dump_frontmatter, parse_frontmatter
 from soma_core.workspace import resolve_workspace
 from .constants import (
+    VALID_ENFORCEMENT,
     VALID_TYPES,
 )
 from .parsers import (
@@ -36,6 +37,7 @@ def create_cell(
     target_paths: list[str] | None = None,
     domain: str = "correctness",
     workspace: Path | str | None = None,
+    enforcement: str | None = None,
 ) -> Path:
     """Create a new Soma cell file with validated frontmatter and body."""
     validate_cell_id(id_override)
@@ -45,6 +47,20 @@ def create_cell(
         raise ValueError(
             f"Invalid type '{cell_type}'. Must be one of: vacuole, chloroplast, wall, membrane, plasmodesmata."
         )
+
+    if enforcement is None:
+        enforcement = "gate" if type_lower == "wall" else "advisory"
+    else:
+        enforcement_lower = enforcement.lower()
+        if enforcement_lower not in VALID_ENFORCEMENT:
+            raise ValueError(
+                f"Invalid enforcement '{enforcement}'. Must be one of: {', '.join(VALID_ENFORCEMENT)}."
+            )
+        if type_lower == "wall" and enforcement_lower != "gate":
+            raise ValueError(
+                f"Wall cells must use 'gate' enforcement, got '{enforcement}'."
+            )
+        enforcement = enforcement_lower
 
     if effector and memory:
         raise ValueError("--effector and --memory are mutually exclusive.")
@@ -120,6 +136,7 @@ def create_cell(
 id: {slug}
 domain: {domain}
 type: {type_lower}
+enforcement: {enforcement}
 hypothesis: "{escape_yaml_string(hypothesis)}"
 prediction: "{escape_yaml_string(prediction)}"
 falsification: "{escape_yaml_string(falsification)}"
@@ -206,6 +223,7 @@ YAML fields required:
 - id: (filename stem, e.g. 'trap-missing-tests' for trap-missing-tests.md)
 - type: (one of above)
 - domain: (one of: efficiency, correctness, security, style, governance)
+- enforcement: (gate for walls, advisory for vacuoles)
 - hypothesis: (clear, testable statement)
 - prediction: (what will happen if the hypothesis is violated)
 - falsification: (how to prove this cell is no longer needed)
@@ -242,6 +260,7 @@ def cli_cell_create(argv: list[str] | None = None) -> int:
     parser.add_argument("--target-paths", dest="target_paths", default="")
     parser.add_argument("--from-description", dest="description", default="")
     parser.add_argument("-d", "--domain", dest="domain", default="correctness")
+    parser.add_argument("-e", "--enforcement", dest="enforcement", default=None)
 
     args = parser.parse_args(argv if argv is not None else sys.argv[1:])
 
@@ -263,6 +282,7 @@ def cli_cell_create(argv: list[str] | None = None) -> int:
                 hypothesis=args.description,
                 id_override=args.cell_id or None,
                 domain=args.domain,
+                enforcement=args.enforcement,
             )
             print(f"Created: {created}")
             return 0
@@ -294,6 +314,7 @@ def cli_cell_create(argv: list[str] | None = None) -> int:
             memory=args.memory,
             target_paths=paths,
             domain=args.domain,
+            enforcement=args.enforcement,
         )
         print(f"Created cell: {created}")
         return 0

@@ -230,10 +230,75 @@ def validate_cell_names(cell_names: List[str], workspace: Union[str, Path]) -> L
 find_workspace_root = resolve_workspace
 
 
+def resolve_git_hooks_dir(project_root: Optional[Union[str, Path]] = None) -> Optional[Path]:
+    """Resolve the git hooks directory for a project root or worktree.
+
+    Handles:
+    1. Standard repository (.git is a directory -> .git/hooks)
+    2. Git worktree (.git is a file containing 'gitdir: <path>')
+       Resolves common_dir or parent .git/hooks.
+    3. Git rev-parse --git-path hooks fallback when git CLI is available.
+
+    Returns Path to hooks directory, or None if not inside a git repository.
+    """
+    root = Path(project_root or Path.cwd()).resolve()
+
+    # 1. Try git CLI if available (handles core.hooksPath and custom setups)
+    try:
+        import subprocess
+        res = subprocess.run(
+            ["git", "rev-parse", "--git-path", "hooks"],
+            cwd=str(root),
+            capture_output=True,
+            text=True,
+            timeout=2,
+        )
+        if res.returncode == 0:
+            p = res.stdout.strip()
+            if p:
+                hooks_path = Path(p)
+                if not hooks_path.is_absolute():
+                    hooks_path = (root / hooks_path).resolve()
+                return hooks_path
+    except Exception:
+        pass
+
+    # 2. Pure Python fallback (zero external CLI dependencies)
+    dot_git = root / ".git"
+    if dot_git.is_dir():
+        return dot_git / "hooks"
+    elif dot_git.is_file():
+        try:
+            content = dot_git.read_text(encoding="utf-8", errors="replace").strip()
+            if content.startswith("gitdir:"):
+                gitdir_str = content[7:].strip()
+                gitdir_path = Path(gitdir_str)
+                if not gitdir_path.is_absolute():
+                    gitdir_path = (root / gitdir_path).resolve()
+
+                # In worktrees, commondir points back to the main .git dir
+                commondir_file = gitdir_path / "commondir"
+                if commondir_file.is_file():
+                    common_rel = commondir_file.read_text(encoding="utf-8").strip()
+                    common_dir = (gitdir_path / common_rel).resolve()
+                    return common_dir / "hooks"
+
+                # If inside .git/worktrees/<name>, traverse up to .git/hooks
+                if gitdir_path.parent.name == "worktrees" and gitdir_path.parent.parent.is_dir():
+                    return gitdir_path.parent.parent / "hooks"
+
+                return gitdir_path / "hooks"
+        except Exception:
+            return None
+
+    return None
+
+
 __all__ = [
     "resolve_workspace",
     "find_workspace_root",
     "resolve_workspace_path",
+    "resolve_git_hooks_dir",
     "get_cells_dir",
     "get_metrics_dir",
     "get_signals_file",

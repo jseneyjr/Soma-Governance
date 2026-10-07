@@ -111,7 +111,7 @@ def run_push(repo_dir: Path, team_repo: Path, org_repo: Path | None, member_id: 
     if snapshots:
         shutil.copy2(str(snapshots[0]), str(snap_dir / snapshots[0].name))
 
-    if (team_repo / ".git").is_dir():
+    if (team_repo / ".git").exists():
         subprocess.run(["git", "add", "--", "cells/promoted", f"snapshots/{clean_id}"], cwd=str(team_repo))
         subprocess.run(
             ["git", "commit", "-m", f"chore(sync): update promoted cells and metrics for {clean_id}"],
@@ -120,7 +120,7 @@ def run_push(repo_dir: Path, team_repo: Path, org_repo: Path | None, member_id: 
         )
         subprocess.run(["git", "push"], cwd=str(team_repo), capture_output=True)
 
-    if org_repo and (org_repo / ".git").is_dir():
+    if org_repo and (org_repo / ".git").exists():
         subprocess.run(["git", "add", "--", "cells/promoted"], cwd=str(org_repo))
         subprocess.run(
             ["git", "commit", "-m", f"chore(sync): update org promoted cells from {member_id}"],
@@ -135,10 +135,10 @@ def run_push(repo_dir: Path, team_repo: Path, org_repo: Path | None, member_id: 
 
 def run_pull(repo_dir: Path, team_repo: Path, org_repo: Path | None) -> int:
     print(f"Pulling promoted cells from team repo ({team_repo})...")
-    if (team_repo / ".git").is_dir():
+    if (team_repo / ".git").exists():
         subprocess.run(["git", "pull", "--rebase"], cwd=str(team_repo), capture_output=True)
 
-    if org_repo and (org_repo / ".git").is_dir():
+    if org_repo and (org_repo / ".git").exists():
         print(f"Pulling from org repo ({org_repo})...")
         subprocess.run(["git", "pull", "--rebase"], cwd=str(org_repo), capture_output=True)
 
