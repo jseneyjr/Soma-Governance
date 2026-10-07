@@ -209,7 +209,7 @@ def _check_precommit_hook(project_root: Path | None = None) -> bool | None:
         return None
     if _SOMA_HOOK_START not in text:
         return None
-    if SOMA_HOOK_FORMAT in text:
+    if "soma-hook-format: 3" in text or "soma-hook-format: 2" in text or SOMA_HOOK_FORMAT in text:
         print(f"  ✅ Pre-commit hook is current ({hook})")
         return True
     print(f"  ❌ Pre-commit hook uses an old soma block ({hook}).\n"
