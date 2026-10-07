@@ -324,9 +324,9 @@ Extends JIT matching from path globs to syntactic AST triggers (imports, decorat
 
 ## Phase 23 — v0.120.0 (Planned)
 
-### Documentation Architecture, SEO Optimization & Legacy Purge
+### Comprehensive Sunset, Code Cleanse & Documentation Architecture
 **Status**: 📋 Planned (v0.120.0)  
-Redesigns project documentation for developer discoverability, SEO optimization, and immediate value delivery above the fold. Deconstructs monolithic README into modular deep-dive guides (`docs/architecture/salience_and_evolution.md`, `docs/guides/mcp_integration.md`, `docs/guides/multi_repo_worktrees.md`, `docs/guides/authoring_cells.md`). Purges deprecated shell installer instructions and obsolete historical bug warnings. Re-aligns and automates verification across `CLAIM_REGISTRY.json` and single-source versioning surfaces.
+Final hardening and polish milestone executing a complete codebase deadwood sweep and transitional deprecation purge (pruning deprecated shims, obsolete test fixtures, and lingering internal bridges). Re-architects project documentation for developer discoverability and SEO optimization above the fold (30-second Quickstart with Genesis auto-scan and direct hook install). Deconstructs monolithic README into modular deep-dive guides (`docs/architecture/salience_and_evolution.md`, `docs/architecture/dual_mode_verifier.md`, `docs/guides/mcp_integration.md`, `docs/guides/multi_repo_worktrees.md`, `docs/guides/authoring_cells.md`). Purges deprecated shell installer instructions and obsolete historical bug warnings. Re-aligns and automates verification across `CLAIM_REGISTRY.json` and single-source versioning surfaces.
 
 ## Research
 
