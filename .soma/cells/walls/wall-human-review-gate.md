@@ -21,11 +21,11 @@ tags:
   - human-in-the-loop
 created: 2026-10-07
 fitness:
-  triggers: 19
-  true_positives: 2.4168
+  triggers: 22
+  true_positives: 2.9724
   false_positives: 3.3892
   score: 1.0
-  last_trigger_date: "2026-10-08T04:08:50Z"
+  last_trigger_date: "2026-10-08T05:01:40Z"
 ---
 
 # Wall: Human Review Gate Enforcement

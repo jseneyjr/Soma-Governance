@@ -24,10 +24,10 @@ tags:
 fitness:
   score: 0.625
   impact_weight: 1.0
-  triggers: 27
-  true_positives: 10
+  triggers: 30
+  true_positives: 11.1641
   false_positives: 11.3882
-  last_trigger_date: "2026-10-08T04:08:50Z"
+  last_trigger_date: "2026-10-08T05:01:40Z"
 ---
 
 Supercell S2 incident: `soma_cli/verify.py` accepted `--files ../../etc/passwd`

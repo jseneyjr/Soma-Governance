@@ -66,6 +66,15 @@ develop ──→ release/v0.XX ──→ PR to main ──→ tag v0.XX.0 ─�
 | Phase 14 | v0.111.0 ✅ | Git Worktrees & Cell Schema Integrity |
 | Phase 15 | v0.112.0 ✅ | Workspace Value Object & Error Hardening |
 | Phase 16 | v0.113.0 ✅ | Perimeter & Edge Workspace Migration |
+| Phase 17 | v0.114.0 ✅ | Core Engines Decoupling & Pure-Python Foundations |
+| Phase 18 | v0.115.0 ✅ | Workspace CLI Ergonomics & Subcommand Parity |
+| Phase 19 | v0.116.0 ✅ | Staged Pre-Commit Hooks & Hook Ergonomics |
+| Phase 20 | v0.117.0 ✅ | Dual-Mode Verifier & Non-Bypassable Layer 1 Verification |
+| Phase 21 | v0.118.0 ✅ | Modular Workspace Package & Localized Evolution |
+| Phase 22 | v0.119.0 ✅ | Intelligent JIT Targeting, Salience Engine & Closed-Loop Attribution |
+| Phase 23 | v0.120.0 ✅ | The Great Cleanse & Project-Wide Compatibility Baseline |
+| Phase 23.1 | v0.120.1 ✅ | Human Review Gate Enforcement & CI Test Suite Repair |
+| Phase 24 | v0.121.0 ✅ | Canonical Verification Pipeline, Fail-Closed Arbitration & Closed-Loop I->W->C |
 
 ## Pre-Release Checklist
 

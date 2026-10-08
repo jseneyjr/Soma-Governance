@@ -3,40 +3,38 @@ id: trap-roadmap-status-drift
 domain: documentation
 type: wall
 enforcement: gate
-hypothesis: Shipping a feature without updating ROADMAP.md status markers causes
-  the roadmap to become a stale document that misleads contributors about what's
-  planned vs what's already shipped
-prediction: Will fire when a release (version bump, CHANGELOG entry) ships features
-  listed in ROADMAP.md but the roadmap status is not updated to reflect shipped state
+hypothesis: "Shipping a feature without updating ROADMAP.md status markers causes the roadmap to become a stale document that misleads contributors about what's planned vs what's already shipped"
+prediction: "Will fire when a release (version bump, CHANGELOG entry) ships features listed in ROADMAP.md but the roadmap status is not updated to reflect shipped state"
 falsification: 0 findings in 20 sessions → prune
 target_paths:
-- docs/project/ROADMAP.md
-- docs/project/CHANGELOG.md
-- VERSION
-- pyproject.toml
+  - docs/project/ROADMAP.md
+  - docs/project/CHANGELOG.md
+  - VERSION
+  - pyproject.toml
 triggers:
-- release
-- feature_addition
-- version_bump
-- commit_review
+  - release
+  - feature_addition
+  - version_bump
+  - commit_review
 minimum_mode: standard
 expiry_sessions: 30
 expiry_days: 90
-created: '2026-10-01'
+created: 2026-10-01
 impact_weight: 1.0
 tags:
-- documentation
-- drift
-- roadmap
-- process
+  - documentation
+  - drift
+  - roadmap
+  - process
 fitness:
-  score:
+  score: null
   impact_weight: 1.0
-  triggers: 0
-  true_positives: 0
+  triggers: 2
+  true_positives: 2
   false_positives: 0
-  last_trigger_date:
+  last_trigger_date: "2026-10-08T04:52:01Z"
 ---
+
 v0.81 origin: Phase 4 features (Quorum Sensing, Gate Enforcement) shipped in v0.80
 but ROADMAP.md still listed them as "Implementation planned (Phase 4)" with status
 "(NEXT)". The CI Outcome Reporter shipped in v0.81 but the roadmap had no entry for

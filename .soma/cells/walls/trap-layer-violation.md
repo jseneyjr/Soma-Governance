@@ -26,10 +26,10 @@ tags:
 fitness:
   score: 0.6
   impact_weight: 1.0
-  triggers: 23
-  true_positives: 5.5003
+  triggers: 26
+  true_positives: 6.2322
   false_positives: 6.7549
-  last_trigger_date: "2026-10-08T04:08:50Z"
+  last_trigger_date: "2026-10-08T05:01:40Z"
 ---
 
 Supercell C5 incident: `soma_mcp/tools.py` imported `_check_test_coverage`,

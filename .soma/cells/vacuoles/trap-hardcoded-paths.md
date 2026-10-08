@@ -23,10 +23,10 @@ tags:
 fitness:
   score: 0.6667
   impact_weight: 1.0
-  triggers: 25
-  true_positives: 6.566
+  triggers: 28
+  true_positives: 7.3568
   false_positives: 6.7747
-  last_trigger_date: "2026-10-08T04:08:50Z"
+  last_trigger_date: "2026-10-08T05:01:40Z"
 ---
 
 Scripts should use SOMA_PLATFORM and resolve_home() to determine paths dynamically,

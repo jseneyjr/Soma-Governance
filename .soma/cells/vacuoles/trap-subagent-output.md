@@ -28,10 +28,10 @@ tags:
 fitness:
   score: 0.5
   impact_weight: 0.9
-  triggers: 24
-  true_positives: 8
+  triggers: 26
+  true_positives: 9.75
   false_positives: 14
-  last_trigger_date: "2026-10-08T04:08:50Z"
+  last_trigger_date: "2026-10-08T04:52:01Z"
 ---
 
 Subagent-generated content (documentation, rules, configs) must be verified
