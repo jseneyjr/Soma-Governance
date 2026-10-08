@@ -1,6 +1,6 @@
 {
   "cycle": 24,
-  "timestamp": "2026-10-08T16:18:19.238832+00:00",
+  "timestamp": "2026-10-08T16:39:07.005645+00:00",
   "verdict": "ship",
   "divergence_count": 0,
   "convergence_count": 6,
@@ -16,12 +16,14 @@
   ],
   "divergences": [],
   "target_files": [
+    ".soma/evidence/arbitration_cycle_24.json",
     "README.md",
     "SECURITY.md",
     "VERSION",
     "docs/KNOWN_ISSUES_WINDOWS.md",
     "docs/architecture/scripts.md",
     "docs/project/CHANGELOG.md",
+    "install/drivers/ts_ast.js",
     "pyproject.toml",
     "soma_cli/__init__.py",
     "soma_cli/base.py",
@@ -51,6 +53,8 @@
     "soma_cli/transfer.py",
     "soma_cli/verify.py",
     "soma_core/__init__.py",
+    "soma_core/ast/drivers/templates/ts_ast.js",
+    "soma_core/ast/runner.py",
     "soma_sdk/__init__.py",
     "tests/unit/cli/test_cli.py",
     "tests/unit/cli/test_cli_capture_insight.py",
@@ -67,10 +71,11 @@
     "tests/unit/cli/test_status.py",
     "tests/unit/cli/test_transfer.py",
     "tests/unit/core/test_harvest.py",
+    "tests/unit/core/test_polyglot_recipes.py",
     "tests/unit/core/test_quarantine.py",
     "tests/unit/core/test_report.py",
     "tests/unit/core/test_sync.py"
   ],
-  "commit_sha": "a3f3dd9f481bcfcb64653f8273fb04021cb96b2d",
-  "tree_hash": "1cacb081cbc6adaa2473cddaf5fe147fd755b746"
+  "commit_sha": "18956d661eec6778afbe21d105ba17d8fd0d442f",
+  "tree_hash": "aadd5c6fd4bb093c853d9fdc427f408b01f35eb5"
 }
