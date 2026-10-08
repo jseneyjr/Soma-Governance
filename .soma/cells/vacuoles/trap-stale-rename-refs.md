@@ -3,36 +3,35 @@ id: trap-stale-rename-refs
 domain: correctness
 type: vacuole
 enforcement: advisory
-hypothesis: Bulk renames leave stale references to old names in files not covered
-  by the rename script
-prediction: Will catch orphaned references to 'prism', 'steering', 'rules/', 'skills/',
-  'scripts/' after rename operations
+hypothesis: Bulk renames leave stale references to old names in files not covered by the rename script
+prediction: "Will catch orphaned references to 'prism', 'steering', 'rules/', 'skills/', 'scripts/' after rename operations"
 falsification: 0 stale references found in 5 sessions → prune
 target_paths:
-- soma_core/*.py
-- soma_cli/*.py
-- soma_mcp/*.py
-- soma_sdk/*.py
-- Makefile
-- README.md
+  - "soma_core/*.py"
+  - "soma_cli/*.py"
+  - "soma_mcp/*.py"
+  - "soma_sdk/*.py"
+  - Makefile
+  - README.md
 expiry_sessions: 10
 expiry_days: 30
-created: '2026-09-28'
+created: 2026-09-28
 impact_weight: 1.3
 minimum_mode: gale
 tags:
-- rename
-- migration
-- anti-pattern
-- high-value
+  - rename
+  - migration
+  - anti-pattern
+  - high-value
 fitness:
   score: 0.5
   impact_weight: 1.0
-  triggers: 4
-  true_positives: 2
-  false_positives: 1
-  last_trigger_date: '2026-10-01T04:26:19Z'
+  triggers: 23
+  true_positives: 5.677
+  false_positives: 9.4972
+  last_trigger_date: "2026-10-08T04:08:50Z"
 ---
+
 After the Phase 22 Soma Rebirth rename, multiple stale references survived:
 - `scripts_dir = "$repo_dir/scripts"` in common.sh (CRITICAL — broke all hooks)
 - `prism_root` variable names in soma_resolve.py and soma_mcp/tools.py  

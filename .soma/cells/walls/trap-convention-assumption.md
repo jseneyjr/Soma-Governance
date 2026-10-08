@@ -3,36 +3,34 @@ id: trap-convention-assumption
 domain: correctness
 type: wall
 enforcement: gate
-hypothesis: Assuming a schema field value or naming convention without verifying against
-  existing instances causes silent contract violations that pass new tests but fail
-  regression
-prediction: Will fire when new files are created with field values that don't match
-  existing files of the same type
+hypothesis: Assuming a schema field value or naming convention without verifying against existing instances causes silent contract violations that pass new tests but fail regression
+prediction: "Will fire when new files are created with field values that don't match existing files of the same type"
 falsification: 0 findings in 10 sessions → prune
 target_paths:
-- .soma/cells/**/*.md
-- '**/*.py'
+  - ".soma/cells/**/*.md"
+  - "**/*.py"
 triggers:
-- cell_creation
-- schema_definition
-- convention_review
+  - cell_creation
+  - schema_definition
+  - convention_review
 minimum_mode: standard
 expiry_sessions: 30
 expiry_days: 90
-created: '2026-09-30'
+created: 2026-09-30
 impact_weight: 1.0
 tags:
-- correctness
-- convention
-- dogfooding
+  - correctness
+  - convention
+  - dogfooding
 fitness:
   score: 0.5714
   impact_weight: 1.0
-  triggers: 7
-  true_positives: 4
-  false_positives: 1
-  last_trigger_date: '2026-10-01T04:26:19Z'
+  triggers: 26
+  true_positives: 9
+  false_positives: 14.0556
+  last_trigger_date: "2026-10-08T04:08:50Z"
 ---
+
 Before creating new instances of a typed artifact (cells, config files, schema
 records), ALWAYS read at least one existing instance of the same type to ground
 the field values and naming conventions.

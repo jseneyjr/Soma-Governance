@@ -385,7 +385,10 @@ class AdversarialVerifier(BaseVerifier):
             spec_predictions=raw_predictions,
         )
         code_response = active_backend.generate(code_prompt)
-        raw_claims = self._parse_json(code_response)
+        try:
+            raw_claims = self._parse_json(code_response)
+        except Exception:
+            raw_claims = []
         claims = immune_verify.parse_claims(raw_claims)
 
         return predictions, claims, spec_agent_failed
@@ -400,13 +403,10 @@ class AdversarialVerifier(BaseVerifier):
     @staticmethod
     def _parse_json(text: str) -> list[dict[str, Any]]:
         raw = runner._strip_code_fence(text)
-        try:
-            data = json.loads(raw)
-            if isinstance(data, list):
-                return data
-            return []
-        except Exception:
-            return []
+        data = json.loads(raw)
+        if not isinstance(data, list):
+            raise ValueError(f"Expected JSON list from LLM response, got {type(data).__name__}")
+        return data
 
 
 # ── Arbiter OOP Wrapper ───────────────────────────────────────────────────
@@ -444,6 +444,8 @@ class VerificationPipelineResult:
     summary: str
     arbitration_result: ArbitrationResult | None = None
     charge_sheet: ChargeSheet | None = None
+    evidence_path: str | None = None
+    persistence_error: str | None = None
 
 
 class VerificationPipeline:
@@ -471,6 +473,7 @@ class VerificationPipeline:
         test_names: list[str] | None = None,
         test_results: str | None = None,
         attribute: bool = False,
+        layer1_evidence: list[ToolEvidence] | None = None,
     ) -> VerificationPipelineResult:
         ws = as_workspace(workspace)
         files = changed_files
@@ -481,10 +484,13 @@ class VerificationPipeline:
                 files = []
 
         # 1. Deterministic Layer 1
-        l1_evidence = self.deterministic_verifier.verify(
-            changed_files=files,
-            workspace=ws,
-        )
+        if layer1_evidence is not None:
+            l1_evidence = layer1_evidence
+        else:
+            l1_evidence = self.deterministic_verifier.verify(
+                changed_files=files,
+                workspace=ws,
+            )
         l1_passed = runner.gate_verdict(l1_evidence)
         l1_summary = runner.format_summary(l1_evidence)
 
@@ -549,6 +555,19 @@ class VerificationPipeline:
                 )
             return res
 
+        if (test_names is None or test_results is None) and files:
+            try:
+                from soma_core.verification.test_runner import discover_test_evidence
+                disc_names, disc_results = discover_test_evidence(
+                    files, str(ws.root if hasattr(ws, "root") else ws)
+                )
+                if test_names is None:
+                    test_names = disc_names
+                if test_results is None:
+                    test_results = disc_results
+            except Exception:
+                pass
+
         predictions, claims, spec_failed = self.adversarial_verifier.verify(
             changed_files=files,
             workspace=ws,
@@ -582,6 +601,28 @@ class VerificationPipeline:
             summary=summary,
             arbitration_result=arb_result,
         )
+        evidence_path = None
+        persistence_error = None
+        if arb_result is not None:
+            try:
+                from soma_core.verification.review_adapter import (
+                    get_next_cycle_number,
+                    save_arbitration_evidence,
+                )
+                cycle_num = get_next_cycle_number(ws)
+                evidence_path = save_arbitration_evidence(
+                    result=arb_result,
+                    workspace=ws,
+                    cycle=cycle_num,
+                    target_files=list(files) if files else None,
+                )
+            except Exception as exc:
+                persistence_error = str(exc)
+                logging.getLogger(__name__).warning("Failed to persist arbitration evidence: %s", exc)
+
+        res.evidence_path = evidence_path
+        res.persistence_error = persistence_error
+
         if attribute and ws:
             from soma_core.attribution import attribute_verification_outcome
             attribute_verification_outcome(

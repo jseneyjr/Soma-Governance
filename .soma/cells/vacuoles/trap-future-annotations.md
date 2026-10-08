@@ -5,32 +5,31 @@ type: vacuole
 enforcement: advisory
 promotion_threshold: 0.85
 demotion_threshold: 0.3
-hypothesis: Python files using PEP 604 union syntax (X | None) without from __future__
-  import annotations crash on Python 3.9
-prediction: Will flag new or modified .py files using pipe unions without the future
-  import
+hypothesis: "Python files using PEP 604 union syntax (X | None) without from __future__ import annotations crash on Python 3.9"
+prediction: Will flag new or modified .py files using pipe unions without the future import
 falsification: 0 findings in 10 sessions → prune
 target_paths:
-- '**/*.py'
+  - "**/*.py"
 triggers:
-- python_file_creation
-- python_file_modification
+  - python_file_creation
+  - python_file_modification
 expiry_sessions: 10
 expiry_days: 30
-created: '2026-09-30'
+created: 2026-09-30
 impact_weight: 0.8
 tags:
-- compatibility
-- python39
-- runtime-crash
+  - compatibility
+  - python39
+  - runtime-crash
 fitness:
   score: 0.6
   impact_weight: 0.8
-  triggers: 5
-  true_positives: 3
-  false_positives: 0
-  last_trigger_date: '2026-10-01T04:26:19Z'
+  triggers: 24
+  true_positives: 8
+  false_positives: 10.3882
+  last_trigger_date: "2026-10-08T04:08:50Z"
 ---
+
 Any Python file using `X | None`, `list[str] | None`, or similar PEP 604
 union type syntax MUST include `from __future__ import annotations` at the
 top of the file. Without it, the code crashes on Python 3.9 with a TypeError.

@@ -120,6 +120,23 @@ def resolve_target_files(args: argparse.Namespace) -> list[str]:
     except (subprocess.SubprocessError, FileNotFoundError):
         pass
 
+    # In CI pull requests, files may already be committed: check against GITHUB_BASE_REF
+    if not files and os.environ.get("GITHUB_BASE_REF"):
+        base_ref = os.environ["GITHUB_BASE_REF"]
+        for ref in (f"origin/{base_ref}...HEAD", f"{base_ref}...HEAD"):
+            try:
+                res = subprocess.run(
+                    ["git", "diff", "--name-only", "--diff-filter=ACMR", ref],
+                    capture_output=True, text=True, timeout=10, cwd=git_cwd,
+                )
+                if res.returncode == 0:
+                    ci_files = [f.strip() for f in res.stdout.splitlines() if f.strip()]
+                    if ci_files:
+                        files = ci_files
+                        break
+            except (subprocess.SubprocessError, FileNotFoundError):
+                pass
+
     return files
 
 
@@ -303,6 +320,58 @@ def format_layer2_summary(result) -> str:
     return "\n".join(lines)
 
 
+def verify_release_gate(repo_root: str) -> tuple[bool, str]:
+    """Check Release Gate 4.5: assert latest arbitration evidence is a valid SHIP receipt.
+
+    Returns:
+        (passed, message) tuple.
+    """
+    from soma_core.verification.review_adapter import get_latest_arbitration_evidence
+
+    cycle_num, data = get_latest_arbitration_evidence(repo_root)
+    if not data or cycle_num == 0:
+        return False, "Release Gate 4.5 FAIL: No arbitration evidence found in .soma/evidence/. Run 'soma verify' first."
+
+    verdict = str(data.get("verdict", "")).lower()
+    if verdict != "ship":
+        divergences = data.get("divergence_count", 0)
+        return False, (
+            f"Release Gate 4.5 FAIL: Latest arbitration cycle {cycle_num} verdict is '{verdict.upper()}' "
+            f"with {divergences} divergence(s). Must achieve SHIP verdict before release."
+        )
+
+    # Verify scope covers changed files between release and base branch
+    try:
+        git_target = None
+        for cand in ("origin/main...HEAD", "main...HEAD", "origin/develop...HEAD", "HEAD~1"):
+            res = subprocess.run(
+                ["git", "diff", "--name-only", "--diff-filter=ACMR", cand],
+                capture_output=True, text=True, cwd=repo_root, timeout=5,
+            )
+            if res.returncode == 0:
+                git_target = res.stdout.splitlines()
+                break
+        if git_target is not None:
+            py_changed = [f.strip() for f in git_target if f.strip().endswith(".py")]
+            recorded_targets = set(data.get("target_files", []))
+            if recorded_targets and py_changed:
+                uncovered = [
+                    f for f in py_changed
+                    if f not in recorded_targets
+                    and not f.startswith("tests/")
+                    and not f.endswith("__init__.py")
+                ]
+                if uncovered:
+                    return False, (
+                        f"Release Gate 4.5 FAIL: Arbitration cycle {cycle_num} does not cover changed files: "
+                        f"{', '.join(uncovered)}"
+                    )
+    except Exception:
+        pass
+
+    return True, f"Release Gate 4.5 PASS: Arbitration cycle {cycle_num} verified with SHIP verdict."
+
+
 # ── Main Handler ──────────────────────────────────────────────────────
 
 def run_verify(args: argparse.Namespace) -> int:
@@ -329,6 +398,16 @@ def run_verify(args: argparse.Namespace) -> int:
     if not os.path.isdir(repo_root):
         print(f"Error: repo root does not exist: {repo_root}", file=sys.stderr)
         return 1
+
+    # ── Release Gate 4.5 Check ────────────────────────────────────────
+    if getattr(args, 'release_gate', False):
+        passed, msg = verify_release_gate(repo_root)
+        if passed:
+            print(f"✅ {msg}")
+            return 0
+        else:
+            print(f"🔴 {msg}", file=sys.stderr)
+            return 1
 
     # Resolve target files
     target_files = resolve_target_files(args)
@@ -367,6 +446,10 @@ def run_verify(args: argparse.Namespace) -> int:
     )
 
     layer1_pass = runner.gate_verdict(results)
+    if not layer1_pass:
+        for r in results:
+            if not r.verdict:
+                print(f"🔴 {r.tool}: {r.target} — {r.detail}")
     summary = runner.format_summary(results)
     print(summary)
 
@@ -442,26 +525,42 @@ def run_verify(args: argparse.Namespace) -> int:
         print(f"Error: Test discovery and execution failed: {e}", file=sys.stderr)
         _record_telemetry(False, "BLOCK")
         return 1
+    from soma_core.verification import VerificationPipeline
+
+    pipeline = VerificationPipeline()
     try:
-        l2_result = runner.run_layer2(
+        pipeline_res = pipeline.run(
             changed_files=target_files,
-            repo_root=repo_root,
+            workspace=ws_obj,
             task_plan=task_plan,
-            layer1_evidence=results,
-            llm_backend=llm_backend,
+            backend=llm_backend,
             test_names=test_names,
             test_results=test_results,
+            layer1_evidence=results,
         )
     except Exception as e:
         print(f"Error: Layer 2 verification failed: {e}", file=sys.stderr)
         _record_telemetry(False, "BLOCK")
         return 1
 
-    print(format_layer2_summary(l2_result))
-    l2_exit = verdict_to_exit_code(l2_result.verdict)
+    if pipeline_res.arbitration_result:
+        print(format_layer2_summary(pipeline_res.arbitration_result))
+
+    if pipeline_res.evidence_path:
+        print(f"Arbitration evidence saved: {pipeline_res.evidence_path}")
+    elif getattr(pipeline_res, "persistence_error", None):
+        print(f"Warning: could not save arbitration evidence: {pipeline_res.persistence_error}", file=sys.stderr)
+
+    l2_exit = verdict_to_exit_code(pipeline_res.verdict)
     overall_passed = bool(layer1_pass and l2_exit == 0)
-    _record_telemetry(overall_passed, l2_result.verdict)
+    _record_telemetry(overall_passed, pipeline_res.verdict)
     if not layer1_pass or l2_exit != 0:
         return 1
 
     return 0
+
+
+if __name__ == "__main__":  # pragma: no cover
+    from soma_cli.cli import main
+    sys.exit(main(["verify"] + sys.argv[1:]))
+

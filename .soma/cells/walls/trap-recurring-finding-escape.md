@@ -3,37 +3,35 @@ id: trap-recurring-finding-escape
 domain: governance
 type: wall
 enforcement: gate
-hypothesis: Findings flagged in multiple consecutive review cycles without resolution
-  indicate deferred architectural debt that is actively degrading the codebase — each
-  cycle the copies diverge further and the fix gets harder
-prediction: Will fire when the same finding (by category or file) appears in N and
-  N+1 cycle arbitration results without a corresponding fix commit
+hypothesis: Findings flagged in multiple consecutive review cycles without resolution indicate deferred architectural debt that is actively degrading the codebase — each cycle the copies diverge further and the fix gets harder
+prediction: Will fire when the same finding (by category or file) appears in N and N+1 cycle arbitration results without a corresponding fix commit
 falsification: 0 findings in 10 sessions → prune
 target_paths:
-- .soma/evidence/arbitration_cycle_*.json
-- soma_core/verification/review_adapter.py
+  - ".soma/evidence/arbitration_cycle_*.json"
+  - soma_core/verification/review_adapter.py
 triggers:
-- arbitration_complete
-- cycle_increment
-- review_finding_repeat
+  - arbitration_complete
+  - cycle_increment
+  - review_finding_repeat
 minimum_mode: standard
 expiry_sessions: 50
 expiry_days: 180
-created: '2026-09-30'
+created: 2026-09-30
 impact_weight: 1.0
 tags:
-- governance
-- architectural-debt
-- review-escape
-- meta-antipattern
+  - governance
+  - architectural-debt
+  - review-escape
+  - meta-antipattern
 fitness:
   score: 0.75
   impact_weight: 1.0
-  triggers: 8
-  true_positives: 6
-  false_positives: 1
-  last_trigger_date: '2026-10-01T04:26:19Z'
+  triggers: 26
+  true_positives: 6.2275
+  false_positives: 1.5915
+  last_trigger_date: "2026-10-08T04:08:50Z"
 ---
+
 Findings that appear in consecutive review cycles MUST be resolved, not deferred.
 
 When the same finding survives 2+ cycles, it indicates one of:

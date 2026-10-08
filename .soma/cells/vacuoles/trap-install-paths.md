@@ -7,23 +7,24 @@ hypothesis: Install scripts have divergent paths.
 prediction: Unifying install targets will prevent deployment errors.
 falsification: The paths are intentionally distinct for separate deploy targets.
 target_paths:
-- soma_cli/platforms/*.py
-- Makefile
+  - "soma_cli/platforms/*.py"
+  - Makefile
 expiry_sessions: 40
 impact_weight: 0.9
 minimum_mode: breeze
 tags:
-- install
-- paths
-- correctness
-created: '2026-09-28'
+  - install
+  - paths
+  - correctness
+created: 2026-09-28
 fitness:
-  triggers: 2
-  true_positives: 1
-  false_positives: 1
+  triggers: 19
+  true_positives: 1.8335
+  false_positives: 3.0004
   score: 0.5
-  last_trigger_date: '2026-10-01T04:26:19Z'
+  last_trigger_date: "2026-10-08T04:08:50Z"
 ---
+
 # Trap: Install Paths Divergence
 
 Target: `install/install.sh` vs `Makefile`

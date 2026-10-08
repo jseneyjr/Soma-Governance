@@ -7,23 +7,24 @@ hypothesis: Core enzymes and workflows dictate agent behavior.
 prediction: Maelstrom mode enforcement here guarantees safe behavior modification.
 falsification: Enzymes are purely descriptive and have no operational power.
 target_paths:
-- soma_core/**
-- .github/workflows/**
+  - "soma_core/**"
+  - ".github/workflows/**"
 expiry_sessions: 80
 impact_weight: 1.0
 minimum_mode: maelstrom
 tags:
-- enzymes
-- workflows
-- review-escalation
-created: '2026-09-28'
+  - enzymes
+  - workflows
+  - review-escalation
+created: 2026-09-28
 fitness:
-  triggers: 6
-  true_positives: 3
-  false_positives: 1
+  triggers: 25
+  true_positives: 7.4035
+  false_positives: 11.1419
   score: 0.5
-  last_trigger_date: '2026-10-01T04:26:19Z'
+  last_trigger_date: "2026-10-08T04:08:50Z"
 ---
+
 # Membrane: Enzymes Escalation
 
 Target: `enzymes/`, `.github/workflows/`

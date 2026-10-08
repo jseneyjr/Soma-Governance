@@ -20,47 +20,97 @@ from . import branch_coverage
 def _find_test_file(filepath: str, repo_root: str) -> Optional[str]:
     """Find the test file for a source file by convention.
 
-    Searches for test_<stem>.py in:
-      1. Same directory
-      2. tests/ directory at repo root
-      3. tests/ subdirectory mirroring source path
+    Searches in tests/ directory using canonical prefix and subdirectory conventions:
+      1. tests/test_<stem>.py
+      2. tests/test_<clean_parent>_<stem>.py (e.g. tests/test_cli_checkpoint.py)
+      3. tests/test_<parent>_<stem>.py
+      4. tests/<clean_parent>/test_<stem>.py
+      5. tests/test_<clean_parent>/test_<stem>.py
+      6. Domain mappings (e.g. runner.py -> test_verification/test_layer1.py)
     """
     stem = os.path.splitext(os.path.basename(filepath))[0]
     test_name = f"test_{stem}.py"
+    parent = os.path.basename(os.path.dirname(filepath))
+    clean_parent = parent[5:] if parent.startswith("soma_") else parent
 
-    # 1. Same directory
-    same_dir = os.path.join(repo_root, os.path.dirname(filepath), test_name)
-    if os.path.exists(same_dir):
-        return same_dir
+    candidates = [
+        os.path.join(repo_root, "tests", test_name),
+        os.path.join(repo_root, "tests", f"test_{clean_parent}_{stem}.py"),
+        os.path.join(repo_root, "tests", f"test_{parent}_{stem}.py"),
+        os.path.join(repo_root, "tests", clean_parent, test_name),
+        os.path.join(repo_root, "tests", parent, test_name),
+        os.path.join(repo_root, "tests", f"test_{clean_parent}", test_name),
+    ]
 
-    # 2. tests/ at repo root
-    tests_root = os.path.join(repo_root, "tests", test_name)
-    if os.path.exists(tests_root):
-        return tests_root
+    # Domain specific mapping
+    if stem == "runner" and clean_parent == "verification":
+        candidates.append(os.path.join(repo_root, "tests", "test_verification", "test_layer1.py"))
 
-    # 3. tests/ mirroring subdirectory
-    parent = os.path.dirname(filepath)
-    tests_sub = os.path.join(repo_root, "tests", parent, test_name)
-    if os.path.exists(tests_sub):
-        return tests_sub
+    for cand in candidates:
+        if os.path.isfile(cand):
+            return cand
 
     return None
 
 
-def _discover_functions(filepath: str) -> list[str]:
-    """Extract top-level function names from a Python file via AST."""
+def _discover_functions(filepath: str, target_lines: Optional[set[int]] = None) -> list[str]:
+    """Extract top-level function names from a Python file via AST.
+
+    If target_lines is provided, only functions intersecting target_lines are returned.
+    """
     import ast
     try:
         with open(filepath) as f:
             tree = ast.parse(f.read())
     except (SyntaxError, OSError):
         return []
-    return [
-        node.name for node in ast.walk(tree)
-        if isinstance(node, ast.FunctionDef)
-        and not node.name.startswith('_')
-        and not node.name.startswith('test_')
-    ]
+    funcs: list[str] = []
+    for node in ast.walk(tree):
+        if (
+            isinstance(node, ast.FunctionDef)
+            and not node.name.startswith('_')
+            and not node.name.startswith('test_')
+        ):
+            if target_lines is not None:
+                start = node.lineno
+                end = getattr(node, "end_lineno", start)
+                fn_lines = set(range(start, end + 1))
+                if not (fn_lines & target_lines):
+                    continue
+            funcs.append(node.name)
+    return funcs
+
+
+def _get_modified_lines(filepath: str, repo_root: str) -> Optional[set[int]]:
+    """Extract line numbers of additions/modifications in filepath via git diff."""
+    import re
+    import subprocess
+    lines: set[int] = set()
+    found_hunks = False
+    for cmd in (
+        ["git", "diff", "-U0", "HEAD", "--", filepath],
+        ["git", "diff", "-U0", "--cached", "--", filepath],
+        ["git", "diff", "-U0", "origin/main...HEAD", "--", filepath],
+        ["git", "diff", "-U0", "main...HEAD", "--", filepath],
+        ["git", "diff", "-U0", "origin/develop...HEAD", "--", filepath],
+    ):
+        try:
+            res = subprocess.run(cmd, capture_output=True, text=True, cwd=repo_root, timeout=5)
+            if res.returncode == 0 and res.stdout.strip():
+                for line in res.stdout.splitlines():
+                    if line.startswith("@@"):
+                        found_hunks = True
+                        m = re.search(r"\+(\d+)(?:,(\d+))?", line)
+                        if m:
+                            start = int(m.group(1))
+                            count = int(m.group(2)) if m.group(2) is not None else 1
+                            lines.update(range(start, start + max(count, 1)))
+                if found_hunks:
+                    break
+        except Exception:
+            pass
+    return lines if found_hunks else None
+
 
 
 def run_layer1(
@@ -140,11 +190,13 @@ def run_layer1(
                 test_file = _find_test_file(filepath, repo_root)
                 if test_file is None:
                     continue
-                funcs = _discover_functions(full_path)
+                mod_lines = _get_modified_lines(filepath, repo_root)
+                funcs = _discover_functions(full_path, target_lines=mod_lines)
                 for func_name in funcs[:3]:  # Limit auto-discovery to 3 functions
                     results.append(mutation_tester.check(
                         full_path, func_name, test_file,
                         max_mutations=max_mutations,
+                        target_lines=mod_lines,
                     ))
 
     # ── Branch Coverage ───────────────────────────────────────────────
@@ -169,7 +221,8 @@ def run_layer1(
                 test_file = _find_test_file(filepath, repo_root)
                 if test_file is None:
                     continue
-                results.append(branch_coverage.check(full_path, test_file))
+                mod_lines = _get_modified_lines(filepath, repo_root)
+                results.append(branch_coverage.check(full_path, test_file, target_lines=mod_lines))
 
     return results
 
@@ -195,100 +248,40 @@ def run_layer2(
     test_names: Optional[list[str]] = None,
     test_results: Optional[str] = None,
 ) -> 'ArbitrationResult':
-    """Run the two-layer adversarial verification protocol.
+    """Run Layer 2 adversarial verification protocol.
 
-    Orchestrates the information-partitioned Spec Agent and Code Agent
-    through a pluggable LLM backend, then feeds everything into the
-    deterministic Arbiter.
-
-    Args:
-        changed_files: List of file paths that were modified.
-        repo_root: Root of the repository.
-        task_plan: Natural language description of what was planned.
-        layer1_evidence: Layer 1 tool results from run_layer1().
-        llm_backend: Callable(prompt: str) -> str. Required, no default.
-        test_names: Optional list of test function names.
-        test_results: Optional test output string.
-
-    Returns:
-        ArbitrationResult with verdict, divergences, and convergences.
+    Thin backward-compatibility adapter delegating to AdversarialVerifier and Arbiter.
     """
-    import json as _json
-    from . import immune_verify, arbiter, ArbitrationResult, Prediction, Claim
-
     if llm_backend is None:
         raise TypeError("llm_backend must be a callable, got None")
 
-    # ── 1. Extract signatures and implementation from changed files ────
-    all_signatures: list[str] = []
-    all_implementation: list[str] = []
-
-    for filepath in changed_files:
-        full_path = os.path.join(repo_root, filepath)
-        if not os.path.exists(full_path) or not filepath.endswith('.py'):
-            continue
-        # Filter out test files and __init__.py from Layer 2 analysis
-        basename = os.path.basename(filepath)
-        if basename.startswith('test_') or basename in ('__init__.py', 'conftest.py'):
-            continue
-        try:
-            sigs = immune_verify.extract_signatures(full_path)
-            all_signatures.extend(sigs)
-            with open(full_path) as f:
-                all_implementation.append(f.read())
-        except (SyntaxError, OSError, ValueError, UnicodeDecodeError):
-            continue
-
-    implementation_text = "\n\n".join(all_implementation)
-
-    # ── 2. Phase 1: Prosecution (Spec Agent) ──────────────────────────
-    # Spec Agent sees: plan + signatures + test names (NEVER implementation)
-    spec_prompt = immune_verify.build_spec_prompt(
-        plan=task_plan,
-        signatures=all_signatures,
-        test_names=test_names or [],
+    import warnings
+    warnings.warn(
+        "soma_core.verification.runner.run_layer2 is deprecated; use VerificationPipeline",
+        DeprecationWarning,
+        stacklevel=2,
     )
-    spec_response = llm_backend(spec_prompt)
 
-    spec_agent_failed = False
-    try:
-        raw_predictions = _json.loads(_strip_code_fence(spec_response))
-    except (_json.JSONDecodeError, TypeError):
-        import logging as _logging
-        _logging.getLogger(__name__).warning(
-            "Spec Agent returned unparseable JSON; defaulting to empty predictions"
-        )
-        raw_predictions = []
-        spec_agent_failed = True
+    from .pipeline import VerificationPipeline
 
-    # ── 3. Phase 2: Defense / Rebuttal (Code Agent) ───────────────────
-    # Code Agent sees: implementation + test results + Layer 1 + Spec charges (NEVER plan)
-    layer1_output: dict[str, list] = {}
-    for e in layer1_evidence:
-        layer1_output.setdefault(e.tool, []).append(
-            {"target": e.target, "verdict": e.verdict, "detail": e.detail}
-        )
-    code_prompt = immune_verify.build_code_prompt(
-        implementation=implementation_text,
-        test_results=test_results or "",
-        layer1_output=layer1_output,
-        spec_predictions=raw_predictions,
+    pipeline = VerificationPipeline()
+    res = pipeline.run(
+        changed_files=changed_files,
+        workspace=repo_root,
+        task_plan=task_plan,
+        backend=llm_backend,
+        in_band=False,
+        test_names=test_names,
+        test_results=test_results,
+        layer1_evidence=layer1_evidence,
     )
-    code_response = llm_backend(code_prompt)
-
-    try:
-        raw_claims = _json.loads(_strip_code_fence(code_response))
-    except (_json.JSONDecodeError, TypeError):
-        raw_claims = []
-
-    # ── 4. Parse structured models ────────────────────────────────────
-    predictions = immune_verify.parse_predictions(raw_predictions)
-    claims = immune_verify.parse_claims(raw_claims)
-
-    # ── 5. Arbitrate ──────────────────────────────────────────────────
-    return arbiter.arbitrate(
-        predictions, claims, layer1_evidence,
-        spec_agent_failed=spec_agent_failed,
+    return res.arbitration_result or ArbitrationResult(
+        divergences=[],
+        convergences=[],
+        verdict=res.verdict,
+        layer1_results=layer1_evidence or [],
+        predictions=[],
+        claims=[],
     )
 
 

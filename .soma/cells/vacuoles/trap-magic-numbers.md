@@ -3,28 +3,27 @@ id: trap-magic-numbers
 domain: style
 type: vacuole
 enforcement: advisory
-hypothesis: Hardcoded numeric literals represent brittle magic numbers that reduce
-  code adaptability.
-prediction: Extracting these numbers into configuration or constants will increase
-  the fitness of the codebase.
+hypothesis: Hardcoded numeric literals represent brittle magic numbers that reduce code adaptability.
+prediction: Extracting these numbers into configuration or constants will increase the fitness of the codebase.
 falsification: The numbers are mathematically fundamental constants that never change.
 target_paths:
-- '**/*.py'
+  - "**/*.py"
 expiry_sessions: 50
 impact_weight: 0.8
 minimum_mode: breeze
 tags:
-- magic-numbers
-- style
-- configuration
-created: '2026-09-28'
+  - magic-numbers
+  - style
+  - configuration
+created: 2026-09-28
 fitness:
-  triggers: 4
-  true_positives: 1
-  false_positives: 1
+  triggers: 23
+  true_positives: 6
+  false_positives: 11.3882
   score: 0.25
-  last_trigger_date: '2026-10-01T04:26:19Z'
+  last_trigger_date: "2026-10-08T04:08:50Z"
 ---
+
 # Trap: Magic Numbers
 
 Target: `enzymes/cell_fitness.py`, `enzymes/outcome_engine.py`, `enzymes/cell_promote.py`

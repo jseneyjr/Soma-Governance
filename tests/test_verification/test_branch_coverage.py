@@ -239,3 +239,27 @@ class TestSubprocessTimeout:
 
         result = _try_coverage_module("test.py", "/src", "/tmp/report.json", "/tmp")
         assert result is False
+
+
+class TestBranchCoverageTargetLines:
+    """Test target_lines parameter on branch_coverage.check()."""
+
+    def test_target_lines_filters_uncovered_lines(self, tmp_path):
+        from soma_core.verification import branch_coverage
+
+        src = tmp_path / "mod.py"
+        src.write_text("def a():\n    return 1\ndef b():\n    return 2\n")
+
+        test = tmp_path / "test_mod.py"
+        test.write_text("from mod import a\ndef test_a(): assert a() == 1\n")
+
+        # When target_lines only specifies lines 1-2 (def a), b is ignored
+        res = branch_coverage.check(str(src), str(test), target_lines={1, 2})
+        assert res.verdict is True
+        assert res.lines == []
+
+        # When target_lines specifies line 4 (return 2 in b), it fails
+        res_b = branch_coverage.check(str(src), str(test), target_lines={4})
+        assert res_b.verdict is False
+        assert 4 in res_b.lines
+

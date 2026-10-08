@@ -177,6 +177,11 @@ class TestCommandAnalyzerBehavioral:
             "git push origin feat/new-idea",
             "git merge --abort",
             "git merge --continue",
+            "gh",
+            "gh pr list",
+            "gh pr view 124",
+            "gh -R owner/repo pr list",
+            "gh --repo owner/repo status",
         ],
     )
     def test_allows_safe_commands(self, cmd: str):
@@ -203,6 +208,10 @@ class TestCommandAnalyzerBehavioral:
 
     def test_latency_budget(self):
         """Verify evaluation latency remains comfortably sub-millisecond (< 0.20ms under noisy CI)."""
+        import sys
+        if sys.gettrace() is not None:
+            pytest.skip("Skipping latency measurement under tracing/profiling")
+
         commands = [
             "git status",
             "git commit -m 'fix: typo in documentation'",
@@ -228,3 +237,63 @@ class TestCommandAnalyzerBehavioral:
         avg_latency_ms = (elapsed / total_evals) * 1000
         # Target: sub-millisecond (budget threshold < 0.20ms accommodates virtualized CI jitter)
         assert avg_latency_ms < 0.20, f"Average latency {avg_latency_ms:.4f}ms exceeded 0.20ms budget"
+
+    def test_execution_wrappers_unwrapped_for_safety(self):
+        """Verify timeout, nohup, nice, and xargs cannot evade safety checks."""
+        # timeout
+        res = CommandAnalyzer.evaluate("timeout 10s git push origin main")
+        assert res.is_destructive is True
+        assert res.reason == REASON_PROTECTED_BRANCH
+
+        res = CommandAnalyzer.evaluate("timeout -- 10s git push origin main")
+        assert res.is_destructive is True
+        assert res.reason == REASON_PROTECTED_BRANCH
+
+        res = CommandAnalyzer.evaluate("timeout -s 9 10s git push origin main")
+        assert res.is_destructive is True
+        assert res.reason == REASON_PROTECTED_BRANCH
+
+        # nohup
+        res = CommandAnalyzer.evaluate("nohup gh pr merge 127")
+        assert res.is_destructive is True
+        assert res.reason == REASON_HUMAN_REVIEW_GATE
+
+        res = CommandAnalyzer.evaluate("nohup -- gh pr merge 127")
+        assert res.is_destructive is True
+        assert res.reason == REASON_HUMAN_REVIEW_GATE
+
+        # nice
+        res = CommandAnalyzer.evaluate("nice -n 5 git push origin main")
+        assert res.is_destructive is True
+        assert res.reason == REASON_PROTECTED_BRANCH
+
+        res = CommandAnalyzer.evaluate("nice -- git push origin main")
+        assert res.is_destructive is True
+        assert res.reason == REASON_PROTECTED_BRANCH
+
+        res = CommandAnalyzer.evaluate("nice -5 git push origin main")
+        assert res.is_destructive is True
+        assert res.reason == REASON_PROTECTED_BRANCH
+
+        # xargs
+        res = CommandAnalyzer.evaluate("xargs gh pr merge")
+        assert res.is_destructive is True
+        assert res.reason == REASON_HUMAN_REVIEW_GATE
+
+        res = CommandAnalyzer.evaluate("xargs -- gh pr merge")
+        assert res.is_destructive is True
+        assert res.reason == REASON_HUMAN_REVIEW_GATE
+
+        res = CommandAnalyzer.evaluate("xargs -n 1 gh pr merge")
+        assert res.is_destructive is True
+        assert res.reason == REASON_HUMAN_REVIEW_GATE
+
+    def test_git_merge_evaluation(self):
+        """Verify git merge requires human confirmation unless aborting."""
+        res = CommandAnalyzer.evaluate("git merge feature/branch")
+        assert res.is_destructive is True
+        assert res.reason == REASON_GIT_MERGE
+
+        res_abort = CommandAnalyzer.evaluate("git merge --abort")
+        assert res_abort.is_destructive is False
+

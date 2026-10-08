@@ -939,6 +939,23 @@ def _handle_verify_changes(args: dict, gov) -> dict:
             "evidence": evidence,
         }
         if pipeline_res.arbitration_result:
+            try:
+                from soma_core.verification.review_adapter import (
+                    get_next_cycle_number,
+                    save_arbitration_evidence,
+                )
+                ws_root = getattr(workspace, "root", workspace)
+                cycle_num = get_next_cycle_number(ws_root)
+                ev_path = save_arbitration_evidence(
+                    result=pipeline_res.arbitration_result,
+                    workspace=ws_root,
+                    cycle=cycle_num,
+                    target_files=files,
+                )
+                resp["evidence_file"] = ev_path
+                resp["cycle"] = cycle_num
+            except Exception:
+                pass
             resp["divergences"] = [
                 {
                     "category": d.category.value,
@@ -1146,6 +1163,8 @@ def _handle_capture_insight(args: dict, gov) -> dict:
             context_files=[str(workspace.confine_path(f)[1]) for f in context_files_arg],
             source_conversation=args.get('source_conversation'),
             category=args.get('category'),
+            scaffold_wall=bool(args.get('scaffold_wall', False)),
+            wall_id=args.get('wall_id'),
         )
     except ValueError as exc:
         return {"error": str(exc), "status": _STATUS_FAIL}

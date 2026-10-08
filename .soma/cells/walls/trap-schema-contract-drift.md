@@ -5,35 +5,34 @@ type: wall
 enforcement: gate
 promotion_threshold: 0.85
 demotion_threshold: 0.3
-hypothesis: JSONL producer/consumer pairs in separate enzyme files use mismatched
-  field names, causing silent data loss in the fitness pipeline
-prediction: Will catch field name mismatches between enzyme files that read/write
-  the same JSONL ledger files
+hypothesis: "JSONL producer/consumer pairs in separate enzyme files use mismatched field names, causing silent data loss in the fitness pipeline"
+prediction: Will catch field name mismatches between enzyme files that read/write the same JSONL ledger files
 falsification: 0 findings in 10 sessions → prune
 target_paths:
-- soma_core/*.py
-- soma_core/**/*.py
-- soma_mcp/*.py
-- soma_cli/*.py
+  - "soma_core/*.py"
+  - "soma_core/**/*.py"
+  - "soma_mcp/*.py"
+  - "soma_cli/*.py"
 triggers:
-- enzyme_modification
-- pipeline_change
+  - enzyme_modification
+  - pipeline_change
 expiry_sessions: 10
 expiry_days: 30
-created: '2026-09-30'
+created: 2026-09-30
 impact_weight: 1.0
 tags:
-- pipeline
-- schema
-- silent-failure
+  - pipeline
+  - schema
+  - silent-failure
 fitness:
   score: 0.7692
   impact_weight: 1.0
-  triggers: 13
-  true_positives: 10
-  false_positives: 2
-  last_trigger_date: '2026-10-01T04:26:19Z'
+  triggers: 32
+  true_positives: 12.8435
+  false_positives: 8.4969
+  last_trigger_date: "2026-10-08T04:08:50Z"
 ---
+
 When modifying an enzyme that writes to a JSONL file (fitness.jsonl,
 sessions_processed.jsonl, outcomes.jsonl), grep for ALL consumers of that
 file and verify field names match.

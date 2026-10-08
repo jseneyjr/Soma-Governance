@@ -81,7 +81,118 @@ def resolve_pytest_cmd(
     return []
 
 
+def resolve_pytest_python(workspace: Any = None) -> str:
+    """Resolve the Python executable associated with the discovered pytest runner."""
+    cmd = resolve_pytest_cmd(workspace=workspace)
+    if not cmd:
+        return sys.executable
+    if len(cmd) >= 3 and cmd[1] == "-m" and cmd[2] == "pytest":
+        return cmd[0]
+
+    pytest_bin = cmd[0]
+    # Check shebang line if it is a python script
+    try:
+        with open(pytest_bin, "r", encoding="utf-8", errors="ignore") as f:
+            first_line = f.readline().strip()
+            if first_line.startswith("#!"):
+                py = first_line[2:].strip()
+                if os.path.isfile(py) and (os.name == "nt" or os.access(py, os.X_OK)):
+                    return py
+    except Exception:
+        pass
+
+    # Check parent directory (e.g. venv/bin/python)
+    parent_dir = os.path.dirname(pytest_bin)
+    for cand in ("python3", "python", "python.exe"):
+        cand_path = os.path.join(parent_dir, cand)
+        if os.path.isfile(cand_path) and (os.name == "nt" or os.access(cand_path, os.X_OK)):
+            return cand_path
+
+    return sys.executable
+
+
+def discover_test_evidence(target_files: list[str], repo_root: str) -> tuple[list[str], str]:
+    """Discover matching test files, parse test names via AST, and execute tests.
+
+    Returns (test_names, test_results).
+    """
+    import ast
+    import subprocess
+    all_test_names: list[str] = []
+    discovered_test_files: list[str] = []
+
+    for tf in target_files:
+        full_path = os.path.join(repo_root, tf) if not os.path.isabs(tf) else tf
+        basename = os.path.basename(full_path)
+        if basename.startswith("test_") and basename.endswith(".py"):
+            if os.path.isfile(full_path) and full_path not in discovered_test_files:
+                discovered_test_files.append(full_path)
+            continue
+
+        stem = os.path.splitext(basename)[0]
+        # Candidate test file locations
+        candidates = [
+            os.path.join(repo_root, os.path.dirname(tf), f"test_{stem}.py"),
+            os.path.join(repo_root, "tests", f"test_{stem}.py"),
+            os.path.join(repo_root, f"test_{stem}.py"),
+        ]
+        # Also check tests/ directory matching prefix
+        tests_dir = os.path.join(repo_root, "tests")
+        if os.path.isdir(tests_dir):
+            try:
+                for fname in os.listdir(tests_dir):
+                    if fname.startswith(f"test_{stem}") and fname.endswith(".py"):
+                        candidates.append(os.path.join(tests_dir, fname))
+            except OSError:
+                pass
+
+        for cand in candidates:
+            if os.path.isfile(cand) and cand not in discovered_test_files:
+                discovered_test_files.append(cand)
+
+    for test_file in discovered_test_files:
+        try:
+            with open(test_file, "r", encoding="utf-8", errors="ignore") as f:
+                tree = ast.parse(f.read())
+            for node in ast.walk(tree):
+                if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
+                    if node.name.startswith("test_") and node.name not in all_test_names:
+                        all_test_names.append(node.name)
+        except Exception:
+            continue
+
+    if not discovered_test_files:
+        return ([], "")
+
+    pytest_cmd = resolve_pytest_cmd(workspace=repo_root)
+    if not pytest_cmd:
+        raise NoTestRunnerFoundError(
+            f"Found {len(discovered_test_files)} associated test file(s) for changed targets, "
+            "but no pytest runner was discovered on PATH or in virtual environment."
+        )
+
+    # Run tests with resolved pytest command
+    run_outputs = []
+    for test_file in discovered_test_files:
+        try:
+            res = subprocess.run(
+                pytest_cmd + [test_file, "-q", "--tb=no"],
+                capture_output=True,
+                text=True,
+                timeout=15,
+                cwd=repo_root,
+            )
+            out = (res.stdout or "") + (res.stderr or "")
+            run_outputs.append(f"[{os.path.basename(test_file)}]\n{out.strip()}")
+        except Exception as e:
+            run_outputs.append(f"[{os.path.basename(test_file)}] error: {e}")
+
+    return (all_test_names, "\n\n".join(run_outputs))
+
+
 __all__ = [
     "NoTestRunnerFoundError",
     "resolve_pytest_cmd",
+    "resolve_pytest_python",
+    "discover_test_evidence",
 ]
