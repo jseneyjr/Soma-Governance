@@ -15,9 +15,12 @@ import subprocess
 import sys
 import tempfile
 from pathlib import Path
-from typing import Optional
+from typing import Any, Optional
 
+from soma_core.ast.schema import MutationPoint, NormalizedAST
 from . import ToolEvidence
+
+__all__ = ["check", "apply_mutation_point", "collect_mutations_from_ast"]
 
 
 # ── AST Mutation Visitors ──────────────────────────────────────────────────
@@ -246,6 +249,74 @@ def _run_tests(test_file: str, timeout: int = 30) -> bool:
         return False
 
 
+def apply_mutation_point(source: str, point: MutationPoint) -> Optional[str]:
+    """Apply a MutationPoint to source code using byte offsets or line/column coordinates.
+
+    Returns the mutated source code, or None if the mutation cannot be applied safely.
+    """
+    orig = getattr(point, "original_op", None) or getattr(point, "original", "")
+    repl = getattr(point, "replacement_op", None) or getattr(point, "mutated", "")
+    if not orig:
+        return None
+
+    byte_offset = getattr(point, "byte_offset", None)
+    # 1. Byte-offset fast path if offset is specified and matches
+    if byte_offset is not None and 0 <= byte_offset <= len(source):
+        orig_len = len(orig)
+        if source[byte_offset : byte_offset + orig_len] == orig:
+            return (
+                source[: byte_offset]
+                + repl
+                + source[byte_offset + orig_len :]
+            )
+
+    # 2. Line and column coordinates
+    lines = source.splitlines(keepends=True)
+    if not (1 <= point.line <= len(lines)):
+        return None
+
+    target_line = lines[point.line - 1]
+    col = getattr(point, "col", None)
+    if col is None:
+        col = getattr(point, "column", None)
+
+    # Check at exact column
+    if col is not None and 0 <= col < len(target_line):
+        orig_len = len(orig)
+        if target_line[col : col + orig_len] == orig:
+            lines[point.line - 1] = (
+                target_line[:col] + repl + target_line[col + orig_len :]
+            )
+            return "".join(lines)
+
+    # Fallback: search for orig in the target line
+    if orig in target_line:
+        idx = target_line.find(orig)
+        lines[point.line - 1] = (
+            target_line[:idx] + repl + target_line[idx + len(orig) :]
+        )
+        return "".join(lines)
+
+    return None
+
+
+def collect_mutations_from_ast(
+    norm_ast: NormalizedAST,
+    target_function: Optional[str] = None,
+) -> list[MutationPoint]:
+    """Collect MutationPoints from a NormalizedAST filtered by function scope."""
+    points = norm_ast.mutation_points or getattr(norm_ast, "mutations", ())
+    if not points:
+        return []
+    if target_function is None:
+        return list(points)
+    return [
+        m
+        for m in points
+        if getattr(m, "function_scope", None) is None or getattr(m, "function_scope", None) == target_function
+    ]
+
+
 # ── Public API ─────────────────────────────────────────────────────────────
 
 def check(
@@ -254,6 +325,8 @@ def check(
     test_file: str,
     max_mutations: int | None = None,
     target_lines: Optional[set[int]] = None,
+    *,
+    ast_runner: Any = None,
 ) -> ToolEvidence:
     """Run mutation testing on *target_function* in *target_file*.
 
@@ -262,7 +335,86 @@ def check(
 
     Returns ToolEvidence with verdict=True if no mutations survive.
     """
-    source = Path(target_file).read_text()
+    target_path = Path(target_file)
+    source = target_path.read_text(encoding="utf-8")
+
+    if target_path.suffix != ".py":
+        from soma_core.ast.runner import ASTDriverRunner
+        runner = ast_runner or ASTDriverRunner()
+        try:
+            norm_ast = runner.parse_file(target_file)
+        except Exception as e:
+            return ToolEvidence(
+                tool="mutation_tester",
+                target=f"{target_file}::{target_function}",
+                verdict=False,
+                detail=f"Failed to parse NormalizedAST via driver: {e}",
+            )
+
+        mutation_points = collect_mutations_from_ast(norm_ast, target_function)
+        if target_lines is not None:
+            mutation_points = [m for m in mutation_points if m.line in target_lines]
+
+        if not mutation_points:
+            return ToolEvidence(
+                tool="mutation_tester",
+                target=f"{target_file}::{target_function}",
+                verdict=True,
+                detail="No mutations on modified lines",
+                lines=[],
+            )
+
+        if max_mutations is not None:
+            mutation_points = mutation_points[:max_mutations]
+
+        total = len(mutation_points)
+        survived: list[int] = []
+
+        if mutation_points and not _run_tests(test_file):
+            return ToolEvidence(
+                tool="mutation_tester",
+                target=f"{target_file}::{target_function}",
+                verdict=False,
+                detail="Baseline tests fail against the unmutated code; cannot assess mutations",
+                lines=[-1],
+            )
+
+        for m in mutation_points:
+            mutated_source = apply_mutation_point(source, m)
+            if mutated_source is None:
+                continue
+
+            with tempfile.NamedTemporaryFile(
+                mode="w",
+                suffix=target_path.suffix,
+                dir=str(target_path.parent),
+                delete=False,
+                prefix="_mutant_",
+                encoding="utf-8",
+            ) as tmp:
+                tmp.write(mutated_source)
+                tmp_path = tmp.name
+
+            clean_target = lambda p=tmp_path: Path(p).unlink(missing_ok=True)
+            atexit.register(clean_target)
+            try:
+                if _run_tests(test_file):
+                    survived.append(m.line)
+            finally:
+                atexit.unregister(clean_target)
+                clean_target()
+
+        survived_count = len(survived)
+        verdict = survived_count == 0
+
+        return ToolEvidence(
+            tool="mutation_tester",
+            target=f"{target_file}::{target_function}",
+            verdict=verdict,
+            detail=f"{survived_count}/{total} survived",
+            lines=sorted(set(survived)),
+        )
+
     all_mutations = _collect_mutations(source, target_function)
 
     # Filter mutations to target_lines if restricted scope was provided

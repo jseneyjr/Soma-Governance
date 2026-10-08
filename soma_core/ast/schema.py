@@ -88,9 +88,10 @@ class ImportNode:
 
     @classmethod
     def from_dict(cls, data: Mapping[str, Any]) -> ImportNode:
-        symbols = data.get("imported_symbols", ())
+        source_val = data.get("source") if "source" in data else data.get("module", "")
+        symbols = data.get("imported_symbols") if "imported_symbols" in data else data.get("imported_names", ())
         return cls(
-            source=str(data["source"]),
+            source=str(source_val),
             imported_symbols=tuple(str(s) for s in symbols),
             line=int(data.get("line", 1)),
             is_type_only=bool(data.get("is_type_only", False)),
@@ -118,12 +119,16 @@ class MutationPoint:
 
     @classmethod
     def from_dict(cls, data: Mapping[str, Any]) -> MutationPoint:
+        orig = data.get("original_op") if "original_op" in data else data.get("original", "")
+        rep = data.get("replacement_op") if "replacement_op" in data else data.get("mutated", "")
+        col = data.get("col", data.get("column", 0))
+        m_type = data.get("mutation_type") if "mutation_type" in data else data.get("kind", "operator")
         return cls(
             line=int(data["line"]),
-            col=int(data.get("col", 0)),
-            original_op=str(data["original_op"]),
-            replacement_op=str(data["replacement_op"]),
-            mutation_type=str(data.get("mutation_type", "operator")),
+            col=int(col),
+            original_op=str(orig),
+            replacement_op=str(rep),
+            mutation_type=str(m_type),
         )
 
 
@@ -169,7 +174,10 @@ class NormalizedAST:
             definitions=tuple(DefinitionNode.from_dict(d) for d in data.get("definitions", ())),
             call_sites=tuple(CallSiteNode.from_dict(c) for c in data.get("call_sites", ())),
             imports=tuple(ImportNode.from_dict(i) for i in data.get("imports", ())),
-            mutation_points=tuple(MutationPoint.from_dict(m) for m in data.get("mutation_points", ())),
+            mutation_points=tuple(
+                MutationPoint.from_dict(m)
+                for m in (data.get("mutation_points") if "mutation_points" in data else data.get("mutations", ()))
+            ),
             version=str(data.get("version", "1.0")),
             metadata=dict(data.get("metadata", {})),
         )
