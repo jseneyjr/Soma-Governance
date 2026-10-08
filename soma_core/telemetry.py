@@ -392,7 +392,6 @@ from soma_core.outcomes import (
     read_human_insight_signals,
     _as_int,
     _get_changed_files,
-    _parse_frontmatter,
     match_cells_to_changes,
     to_fraction,
     compute_credit_weights,
@@ -402,7 +401,6 @@ from soma_core.outcomes import (
     INSIGHT_SCOPE,
     append_fitness_log,
     run_outcome_engine,
-    main,
     PLATFORMS,
     DEFAULT_PLATFORM,
     detect_platform,
@@ -411,6 +409,11 @@ from soma_core.outcomes import (
     match_cells,
     update_fitness,
 )
+
+
+def main(*args, **kwargs) -> int:
+    return run_outcome_engine(*args, mod=sys.modules[__name__], **kwargs)
+
 
 # ── Metrics Snapshot, Quorum, Coverage & Immune Grade ─────────────────────
 from soma_core.metrics import (
@@ -466,7 +469,6 @@ __all__ = [
     "INSIGHT_SCOPE",
     "VERIFY_TIMEOUT",
     "_get_changed_files",
-    "_parse_frontmatter",
     "_read_insight_cursor",
     "_run_verify",
     "PLATFORMS",
