@@ -137,7 +137,7 @@ class TestPolyglotRecipes:
         sample_ts.write_text(ts_code, encoding="utf-8")
 
         recipe_path = Path(__file__).parents[3] / "install" / "drivers" / "ts_ast.js"
-        driver_cmd = f"{node_bin} {recipe_path}"
+        driver_cmd = f'"{node_bin}" "{recipe_path}"'
 
         registry = ASTDriverRegistry(drivers={".ts": driver_cmd})
         runner = ASTDriverRunner(registry=registry)

@@ -221,7 +221,11 @@ def _check_ast_drivers(project_root: Path | None = None) -> bool:
 
     all_resolvable = True
     for ext, cmd in sorted(ast_drivers.items()):
-        parts = shlex.split(cmd) if os.name != "nt" else cmd.split()
+        parts = (
+            shlex.split(cmd)
+            if os.name != "nt"
+            else [p.strip('"') for p in shlex.split(cmd, posix=False)]
+        )
         if not parts:
             continue
         bin_name = parts[0]

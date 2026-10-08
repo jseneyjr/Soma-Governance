@@ -5,6 +5,7 @@ import json
 import os
 from pathlib import Path
 import shlex
+import shutil
 import subprocess
 from typing import Any, Dict, List, Mapping, Optional, Union
 
@@ -77,6 +78,19 @@ class ASTDriverRegistry:
         return None
 
 
+def _split_command(cmd: str) -> list[str]:
+    """Split a driver command line string into argv arguments, preserving Windows paths."""
+    if os.name == "nt":
+        parts = [p.strip('"') for p in shlex.split(cmd, posix=False)]
+        if parts and not shutil.which(parts[0]):
+            for i in range(1, len(parts)):
+                cand = " ".join(parts[: i + 1])
+                if os.path.isfile(cand) or shutil.which(cand):
+                    return [cand] + parts[i + 1 :]
+        return parts
+    return shlex.split(cmd)
+
+
 class ASTDriverRunner:
     """Dispatches AST parsing to native Python or external driver subprocesses."""
 
@@ -123,7 +137,7 @@ class ASTDriverRunner:
                 f"No AST driver configured for extension '{ext}' on {target_path.name}"
             )
 
-        cmd_parts = shlex.split(driver_cmd)
+        cmd_parts = _split_command(driver_cmd)
         if not cmd_parts:
             raise ASTDriverError(f"Empty driver command for extension '{ext}'")
 

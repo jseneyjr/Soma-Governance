@@ -115,3 +115,16 @@ slots:
     assert slot_reg.get_ast_driver(".go") == "go run ./ast_parser.go"
     assert slot_reg.get_ast_driver(".rs") == "generic-driver"
     assert slot_reg.get_ast_driver(".py") is None  # Python is native
+
+
+def test_split_command_windows(monkeypatch):
+    from soma_core.ast.runner import _split_command
+    with monkeypatch.context() as m:
+        m.setattr("soma_core.ast.runner.os.name", "nt")
+        cmd = r'"C:\Program Files\nodejs\node.exe" "D:\my project\driver.js"'
+        parts = _split_command(cmd)
+        assert parts == [r"C:\Program Files\nodejs\node.exe", r"D:\my project\driver.js"]
+
+        cmd_unquoted = r"C:\Python312\python.exe D:\driver.py"
+        parts2 = _split_command(cmd_unquoted)
+        assert parts2 == [r"C:\Python312\python.exe", r"D:\driver.py"]
