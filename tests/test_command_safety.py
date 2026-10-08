@@ -284,6 +284,20 @@ class TestCommandAnalyzerBehavioral:
         assert res.is_destructive is True
         assert res.reason == REASON_HUMAN_REVIEW_GATE
 
+        # Bare and flag-only wrappers terminate cleanly
+        assert CommandAnalyzer.evaluate("nohup").is_destructive is False
+        assert CommandAnalyzer.evaluate("nohup --").is_destructive is False
+        assert CommandAnalyzer.evaluate("nice").is_destructive is False
+        assert CommandAnalyzer.evaluate("nice -n 5").is_destructive is False
+        assert CommandAnalyzer.evaluate("nice --").is_destructive is False
+        assert CommandAnalyzer.evaluate("timeout").is_destructive is False
+        assert CommandAnalyzer.evaluate("timeout 10").is_destructive is False
+        assert CommandAnalyzer.evaluate("timeout --").is_destructive is False
+        assert CommandAnalyzer.evaluate("timeout -s 9 10").is_destructive is False
+        assert CommandAnalyzer.evaluate("xargs").is_destructive is False
+        assert CommandAnalyzer.evaluate("xargs -n 1").is_destructive is False
+        assert CommandAnalyzer.evaluate("xargs --").is_destructive is False
+
         res = CommandAnalyzer.evaluate("xargs -n 1 gh pr merge")
         assert res.is_destructive is True
         assert res.reason == REASON_HUMAN_REVIEW_GATE
