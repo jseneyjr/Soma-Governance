@@ -35,11 +35,17 @@ def test_doctor_fix_provisions_missing_drivers(tmp_path: Path):
     assert (tmp_path / ".soma" / "drivers" / "rust_ast.py").is_file()
 
 
-def test_doctor_cli_fix_flag(tmp_path: Path):
+from unittest.mock import patch
+
+
+def test_doctor_cli_fix_flag(tmp_path: Path, monkeypatch):
     (tmp_path / "go.mod").write_text("module example.com/app\n", encoding="utf-8")
     (tmp_path / "main.go").write_text("package main\nfunc main() {}\n", encoding="utf-8")
     (tmp_path / ".soma" / "evidence").mkdir(parents=True, exist_ok=True)
     (tmp_path / ".gemini").mkdir(exist_ok=True)
+    rules_dir = tmp_path / "rules"
+    rules_dir.mkdir()
+    (rules_dir / "rule.md").write_text("# rule")
 
     args = argparse.Namespace(
         project_root=tmp_path,
@@ -49,7 +55,10 @@ def test_doctor_cli_fix_flag(tmp_path: Path):
         yes=True,
     )
 
-    exit_code = run_doctor(args)
+    monkeypatch.chdir(tmp_path)
+    with patch("soma_cli.doctor.shutil.which", side_effect=lambda cmd, **kw: "/usr/local/bin/soma" if cmd == "soma" else "/bin/go"), \
+         patch("soma_cli.init.get_rules_dir", return_value=rules_dir):
+        exit_code = run_doctor(args)
     # Doctor exits 0 when health checks pass or are repaired
     assert exit_code == 0
     registry = SlotRegistry.load(tmp_path)
