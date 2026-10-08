@@ -20,6 +20,7 @@ from soma_core.command_safety import (
     REASON_GIT_CLEAN_FORCE,
     REASON_GIT_CONFIG,
     REASON_GIT_DIFF,
+    REASON_GIT_MERGE,
     REASON_GIT_PUSH_FORCE,
     REASON_GIT_PUSH_REFSPEC,
     REASON_GIT_RESET_HARD,
@@ -58,6 +59,9 @@ class TestCommandAnalyzerBehavioral:
             ("git push origin main", REASON_PROTECTED_BRANCH),
             ("git push origin develop:main", REASON_PROTECTED_BRANCH),
             ("git push origin develop:refs/heads/main", REASON_PROTECTED_BRANCH),
+            ("git merge feature/branch", REASON_GIT_MERGE),
+            ("git merge --no-ff feature/branch", REASON_GIT_MERGE),
+            ("git merge origin/develop", REASON_GIT_MERGE),
             ("gh pr merge 124", REASON_HUMAN_REVIEW_GATE),
             ("gh pr merge 125 --merge", REASON_HUMAN_REVIEW_GATE),
             ("gh pr merge --auto", REASON_HUMAN_REVIEW_GATE),
@@ -171,6 +175,8 @@ class TestCommandAnalyzerBehavioral:
             "git branch feat/new-idea",
             "git checkout feat/new-idea",
             "git push origin feat/new-idea",
+            "git merge --abort",
+            "git merge --continue",
         ],
     )
     def test_allows_safe_commands(self, cmd: str):
