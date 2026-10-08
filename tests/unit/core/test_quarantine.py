@@ -115,3 +115,19 @@ def test_quarantine_cli_list_and_prune(workspace_with_quarantine: Path, monkeypa
     assert rc == 0
     captured = capsys.readouterr().out
     assert "Pruned 1" in captured
+
+
+def test_quarantine_command_contract():
+    import argparse
+    from unittest.mock import patch
+    from soma_cli.quarantine import QuarantineCommand
+    cmd = QuarantineCommand()
+    parser = argparse.ArgumentParser()
+    cmd.configure_parser(parser)
+    parsed = parser.parse_args(["prune", "--older-than-days", "7"])
+    assert parsed.quarantine_action == "prune"
+    assert parsed.older_than_days == 7
+
+    with patch("soma_cli.quarantine.run_quarantine", return_value=0) as mock_run:
+        assert cmd.execute(parsed) == 0
+        mock_run.assert_called_once_with(parsed)

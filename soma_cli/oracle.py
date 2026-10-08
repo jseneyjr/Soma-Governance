@@ -10,6 +10,10 @@ import json
 import sys
 from pathlib import Path
 
+from soma_cli.base import CommandCategory, SomaCommand
+
+__all__ = ["run_oracle", "OracleCommand"]
+
 
 def run_oracle(args: argparse.Namespace) -> int:
     """Run oracle cell health classification.
@@ -84,3 +88,22 @@ def _print_report(report: dict) -> None:
             marker = {"critical": "🔴", "warning": "🟡", "info": "ℹ️"}.get(severity, "•")
             print(f"     {marker} {message}")
         print()
+
+
+class OracleCommand(SomaCommand):
+    """Command for cell health classification and recommendations."""
+
+    name = "oracle"
+    category = CommandCategory.LIFECYCLE
+    help = "Cell health classification and recommendations"
+
+    def configure_parser(self, parser: argparse.ArgumentParser) -> None:
+        parser.add_argument(
+            "--session-count",
+            type=int,
+            default=None,
+            help="Override session count for expiry calculation",
+        )
+
+    def execute(self, args: argparse.Namespace) -> int:
+        return run_oracle(args)

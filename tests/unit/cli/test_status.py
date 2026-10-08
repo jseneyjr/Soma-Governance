@@ -205,3 +205,15 @@ class TestStatus:
         assert ret == 0
         captured = capsys.readouterr()
         assert "expired" in captured.out
+
+    def test_status_command_contract(self):
+        from unittest.mock import patch
+        from soma_cli.status import StatusCommand
+        cmd = StatusCommand()
+        parser = argparse.ArgumentParser()
+        cmd.configure_parser(parser)
+        parsed = parser.parse_args([])
+
+        with patch("soma_cli.status.run_status", return_value=0) as mock_run:
+            assert cmd.execute(parsed) == 0
+            mock_run.assert_called_once_with(parsed)

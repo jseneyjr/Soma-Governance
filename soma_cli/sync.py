@@ -15,8 +15,11 @@ import tempfile
 from typing import Optional
 
 from soma_cli import resolve_root
+from soma_cli.base import CommandCategory, SomaCommand
 from soma_core.evidence import aggregate_signals
 from soma_core.sync import aggregate_evidence, sync_frontmatter
+
+__all__ = ["run_sync", "SyncCommand"]
 
 
 def run_sync(args: argparse.Namespace) -> int:
@@ -97,3 +100,21 @@ def run_sync(args: argparse.Namespace) -> int:
         print(f"Sync failed for {len(errors)} cells.", file=sys.stderr)
         return 1
     return 0
+
+
+class SyncCommand(SomaCommand):
+    """Command to reconcile canonical JSONL evidence with cell frontmatter."""
+
+    name = "sync"
+    category = CommandCategory.WORKFLOW
+    help = "Reconcile evidence JSONL with cell frontmatter"
+
+    def configure_parser(self, parser: argparse.ArgumentParser) -> None:
+        parser.add_argument(
+            "--dry-run",
+            action="store_true",
+            help="Show what would change without writing",
+        )
+
+    def execute(self, args: argparse.Namespace) -> int:
+        return run_sync(args)

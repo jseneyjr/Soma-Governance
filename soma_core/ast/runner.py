@@ -168,6 +168,7 @@ class ASTDriverRunner:
                 text=True,
                 timeout=timeout,
                 cwd=str(ws_root),
+                stdin=subprocess.DEVNULL,
             )
         except subprocess.TimeoutExpired as exc:
             raise ASTDriverTimeoutError(

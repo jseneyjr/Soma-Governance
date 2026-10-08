@@ -20,6 +20,9 @@ from soma_core.quarantine import (
     inspect_quarantined_file,
     prune_quarantine,
 )
+from soma_cli.base import CommandCategory, SomaCommand
+
+__all__ = ["run_quarantine", "QuarantineCommand"]
 
 
 from soma_core.workspace import Workspace, resolve_workspace_path as resolve_workspace
@@ -95,3 +98,27 @@ def run_quarantine(args: argparse.Namespace) -> int:
     else:
         print(f"Error: Unknown quarantine action '{action}'.", file=sys.stderr)
         return 1
+
+
+class QuarantineCommand(SomaCommand):
+    """Command to inspect and manage quarantined corrupt files."""
+
+    name = "quarantine"
+    category = CommandCategory.PLUMBING
+    help = "Inspect and manage quarantined corrupt files"
+
+    def configure_parser(
+        self,
+        parser: argparse.ArgumentParser,
+        parents: Optional[list[argparse.ArgumentParser]] = None,
+    ) -> None:
+        sub = parser.add_subparsers(dest="quarantine_action")
+        p_parents = parents or []
+        sub.add_parser("list", parents=p_parents, help="List all quarantined files")
+        p_inspect = sub.add_parser("inspect", parents=p_parents, help="Inspect a quarantined file")
+        p_inspect.add_argument("target", nargs="?", default="", help="Filename or path of quarantined file")
+        p_prune = sub.add_parser("prune", parents=p_parents, help="Prune old quarantined files")
+        p_prune.add_argument("--older-than-days", type=int, default=30, help="Prune files older than N days (default 30)")
+
+    def execute(self, args: argparse.Namespace) -> int:
+        return run_quarantine(args)

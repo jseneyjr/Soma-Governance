@@ -409,4 +409,25 @@ class TestPolyglotInit:
         out = capsys.readouterr().out
         assert "Project type: unknown" in out
 
+    def test_init_command_contract(self):
+        from unittest.mock import patch
+        from soma_cli.init import InitCommand
+        cmd = InitCommand()
+        parser = argparse.ArgumentParser()
+        cmd.configure_parser(parser)
+        parsed = parser.parse_args([
+            "--dry-run", "--platform", "claude", "--rules", "full",
+            "--mcp", "--yes", "--force"
+        ])
+        assert parsed.dry_run is True
+        assert parsed.platform == "claude"
+        assert parsed.rules == "full"
+        assert parsed.mcp is True
+        assert parsed.yes is True
+        assert parsed.force is True
+
+        with patch("soma_cli.init.run_init", return_value=0) as mock_run:
+            assert cmd.execute(parsed) == 0
+            mock_run.assert_called_once_with(parsed)
+
 

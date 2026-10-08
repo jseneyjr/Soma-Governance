@@ -47,7 +47,12 @@ function main() {
     result = parseWithBuiltinLexer(filePath, source, language);
   }
 
-  process.stdout.write(JSON.stringify(result, null, 2) + "\n");
+  const output = JSON.stringify(result, null, 2) + "\n";
+  if (!process.stdout.write(output)) {
+    process.stdout.once("drain", () => process.exit(0));
+  } else {
+    process.exit(0);
+  }
 }
 
 /**

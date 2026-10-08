@@ -247,3 +247,16 @@ class TestReportEdgeCases:
         assert "Rules triggered:    2 of 2" in captured.out
         assert "custom-rule-a" in captured.out
         assert "custom-rule-b" in captured.out
+
+    def test_report_command_contract(self):
+        from unittest.mock import patch
+        from soma_cli.report import ReportCommand
+        cmd = ReportCommand()
+        parser = argparse.ArgumentParser()
+        cmd.configure_parser(parser)
+        parsed = parser.parse_args(["--session", "2"])
+        assert parsed.session == 2
+
+        with patch("soma_cli.report.run_report", return_value=0) as mock_run:
+            assert cmd.execute(parsed) == 0
+            mock_run.assert_called_once_with(parsed)

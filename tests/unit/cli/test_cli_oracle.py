@@ -150,3 +150,16 @@ class TestOracleCLI:
         )
         exit_code = run_oracle(args)
         assert exit_code == 1
+
+    def test_oracle_command_contract(self):
+        from unittest.mock import patch
+        from soma_cli.oracle import OracleCommand
+        cmd = OracleCommand()
+        parser = argparse.ArgumentParser()
+        cmd.configure_parser(parser)
+        parsed = parser.parse_args(["--session-count", "42"])
+        assert parsed.session_count == 42
+
+        with patch("soma_cli.oracle.run_oracle", return_value=0) as mock_run:
+            assert cmd.execute(parsed) == 0
+            mock_run.assert_called_once_with(parsed)

@@ -21,6 +21,7 @@ from soma_cli.hooks.redaction import (
     redact_secrets,
 )
 from soma_cli.hooks.runtime import (
+    HookCommand,
     run_hook,
     run_pre_commit,
     run_pre_invocation,
@@ -60,5 +61,6 @@ __all__ = [
     "run_hook_uninstall",
     "run_hook_status",
     "run_hook",
+    "HookCommand",
     "main",
 ]
