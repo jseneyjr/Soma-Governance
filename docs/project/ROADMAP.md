@@ -322,16 +322,16 @@ Decomposes `soma_core/workspace.py` into a modular package directory (`soma_core
 **Status**: ✅ Shipped (v0.119.0)  
 Extends JIT matching from path globs to syntactic AST triggers (imports, decorators, call sites). Implements closed-form Salience scoring with an exploration prior ($S_{\text{base}} = 0.20$), 95% Wilson lower bound, and temporal decay within an invariant-preserving 2-tier token budget. Automatically attributes commit and verification outcomes from the Phase 20 Verifier to active cells in real time via `.soma/evidence/signals.jsonl`.
 
-## Phase 23 — v0.120.0 (Planned)
+## Phase 23 — v0.120.0 ✅ Shipped
 
 ### The Great Project-Wide Legacy Cleanse & Sunset ("The Great Purge")
-**Status**: 📋 Planned (v0.120.0)  
-The designated clean-slate release. Purges all accumulated rapid-iteration backwards-compatibility shims across the entire project (CLI, Core, MCP, SDK, and Tests) to establish the pristine baseline for permanent backwards compatibility. Removes deprecated standalone getters (`get_cells_dir`, etc.), obsolete wrapper facades, legacy CLI flags (`--repo-root`, `--project-root`), legacy pre-commit hook migration shims, and deprecated MCP tool parameters. Official project-wide backwards compatibility contract begins here.
+**Status**: ✅ Shipped (v0.120.0)  
+The designated clean-slate release. Purged all accumulated rapid-iteration backwards-compatibility shims across the entire project (CLI, Core, MCP, SDK, and Tests) to establish the pristine baseline for permanent backwards compatibility. Removed deprecated standalone getters (`get_cells_dir`, `get_metrics_dir`, `get_signals_file`, `get_outcomes_file`), obsolete wrapper facades, legacy CLI flags (`--repo-root`, `--project-root`). Established the zero-warning test suite baseline (0 pytest warnings across 2,900+ tests). Official project-wide backwards compatibility contract begins here.
 
-## Phase 24 — v0.121.0 (Planned)
+## Phase 24 — v0.121.0 🔨 In Progress
 
 ### Documentation Architecture, Developer Experience & Compatibility Contract
-**Status**: 📋 Planned (v0.121.0)  
+**Status**: 🔨 In Progress (v0.121.0)  
 Re-architects project documentation for developer discoverability and SEO optimization above the fold (30-second Quickstart with Genesis auto-scan and direct hook install). Deconstructs monolithic README into modular deep-dive guides (`docs/architecture/salience_and_evolution.md`, `docs/architecture/dual_mode_verifier.md`, `docs/guides/mcp_integration.md`, `docs/guides/multi_repo_worktrees.md`, `docs/guides/authoring_cells.md`). Publishes official Backwards Compatibility Guarantee starting from `v0.120.0`. Re-aligns and automates verification across `CLAIM_REGISTRY.json` and single-source versioning surfaces.
 
 ## Phase 25 — v1.0.0 (Planned)

@@ -17,9 +17,6 @@ from soma_core.workspace import (
     Workspace,
     confine_path,
     confine_workspace,
-    get_cells_dir,
-    get_metrics_dir,
-    get_signals_file,
     resolve_workspace,
     resolve_workspace_path,
     validate_cell_names,
@@ -182,15 +179,6 @@ class TestWorkspaceBackwardCompatibilityFacades:
 
         confined = confine_workspace(str(soma_ws))
         assert confined == str(soma_ws.resolve())
-
-        cells = get_cells_dir(soma_ws)
-        assert cells == str(soma_ws.resolve() / ".soma" / "cells")
-
-        metrics = get_metrics_dir(soma_ws)
-        assert metrics == str(soma_ws.resolve() / ".soma" / "metrics")
-
-        signals = get_signals_file(soma_ws)
-        assert signals == str(soma_ws.resolve() / ".soma" / "evidence" / "signals.jsonl")
 
         missing = validate_cell_names(["wall-test", "ghost"], soma_ws)
         assert missing == ["ghost"]

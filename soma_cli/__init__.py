@@ -1,14 +1,14 @@
 """Soma CLI — user-facing governance commands."""
 from __future__ import annotations
 
-__version__ = "0.119.0"
+__version__ = "0.120.0"
 
 import re
 from pathlib import Path
 
 
 def resolve_root(args, default=None):
-    """Resolve project/repo root from args, checking workspace then project/repo root attributes."""
+    """Resolve project/repo root from args, checking ws then workspace."""
     if hasattr(args, "ws") and getattr(args, "ws", None) is not None:
         return args.ws.root
     for attr in ('workspace', 'repo_root', 'project_root', '_root', '_project_root'):

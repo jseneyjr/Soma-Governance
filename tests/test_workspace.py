@@ -7,11 +7,9 @@ from pathlib import Path
 import pytest
 
 from soma_core.workspace import (
+    Workspace,
     confine_path,
     confine_workspace,
-    get_cells_dir,
-    get_metrics_dir,
-    get_signals_file,
     resolve_workspace,
     resolve_workspace_path,
     validate_cell_names,
@@ -50,10 +48,10 @@ class TestWorkspaceCore:
         assert isinstance(resolved_p, Path)
 
     def test_directory_helpers(self, tmp_path: Path):
-        ws = tmp_path / "repo"
-        assert get_cells_dir(ws) == os.path.join(str(ws), ".soma", "cells")
-        assert get_metrics_dir(ws) == os.path.join(str(ws), ".soma", "metrics")
-        assert get_signals_file(ws) == os.path.join(str(ws), ".soma", "evidence", "signals.jsonl")
+        ws = Workspace(root=tmp_path / "repo")
+        assert ws.cells_dir == tmp_path / "repo" / ".soma" / "cells"
+        assert ws.metrics_dir == tmp_path / "repo" / ".soma" / "metrics"
+        assert ws.signals_file == tmp_path / "repo" / ".soma" / "evidence" / "signals.jsonl"
 
     def test_confine_workspace(self, tmp_path: Path):
         ws = tmp_path / "valid"

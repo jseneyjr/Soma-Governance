@@ -87,7 +87,7 @@ class TestVerifyParsing:
         assert args.layer1_only is False, "Default --layer1-only must be False"
         assert args.dry_run is False, "Default --dry-run must be False"
         assert args.files is None or args.files == [], "Default --files must be None or empty"
-        assert args.repo_root is None, "Default --repo-root must be None"
+        assert getattr(args, "workspace", None) is None, "Default --workspace must be None"
 
     def test_verify_layer1_only_flag(self):
         """--layer1-only flag sets args.layer1_only to True."""
@@ -101,11 +101,11 @@ class TestVerifyParsing:
         args = parser.parse_args(["verify", "--dry-run"])
         assert args.dry_run is True
 
-    def test_verify_repo_root_flag(self):
-        """--repo-root flag sets args.repo_root to specified path string."""
+    def test_verify_workspace_flag(self):
+        """--workspace flag sets args.workspace to specified path string."""
         parser = _build_parser()
-        args = parser.parse_args(["verify", "--repo-root", "/custom/repo/path"])
-        assert args.repo_root == "/custom/repo/path"
+        args = parser.parse_args(["verify", "--workspace", "/custom/repo/path"])
+        assert args.workspace == "/custom/repo/path"
 
     def test_verify_files_flag_single_file(self):
         """--files flag accepts a single file path."""
@@ -126,13 +126,13 @@ class TestVerifyParsing:
             "verify",
             "--layer1-only",
             "--dry-run",
-            "--repo-root", "/workspace/project",
+            "--workspace", "/workspace/project",
             "--files", "pkg/mod1.py", "pkg/mod2.py",
         ])
         assert args.command == "verify"
         assert args.layer1_only is True
         assert args.dry_run is True
-        assert args.repo_root == "/workspace/project"
+        assert args.workspace == "/workspace/project"
         assert args.files == ["pkg/mod1.py", "pkg/mod2.py"]
 
     def test_verify_help_exits_zero(self):
@@ -165,7 +165,7 @@ class TestVerifyLayer1Only:
         exit_code = main([
             "verify",
             "--layer1-only",
-            "--repo-root", str(tmp_path),
+            "--workspace", str(tmp_path),
             "--files", "valid_module.py",
         ])
         assert exit_code == 0, f"Expected exit code 0 on clean code, got {exit_code}"
@@ -183,7 +183,7 @@ class TestVerifyLayer1Only:
         exit_code = main([
             "verify",
             "--layer1-only",
-            "--repo-root", str(tmp_path),
+            "--workspace", str(tmp_path),
             "--files", "broken_module.py",
         ])
         assert exit_code == 1, f"Expected exit code 1 on Layer 1 failure, got {exit_code}"
@@ -202,7 +202,7 @@ class TestVerifyLayer1Only:
         exit_code = main([
             "verify",
             "--layer1-only",
-            "--repo-root", str(tmp_path),
+            "--workspace", str(tmp_path),
             "--files", "fast_module.py",
         ])
         assert exit_code == 0
@@ -225,7 +225,7 @@ class TestVerifyLayer1Only:
         exit_code = main([
             "verify",
             "--layer1-only",
-            "--repo-root", str(tmp_path),
+            "--workspace", str(tmp_path),
             "--files", "inspected.py",
         ])
         assert exit_code == 0
@@ -269,7 +269,7 @@ class TestVerifyDryRun:
         exit_code = main([
             "verify",
             "--dry-run",
-            "--repo-root", str(tmp_path),
+            "--workspace", str(tmp_path),
             "--files", "failing_sample.py",
         ])
         assert exit_code == 0, f"--dry-run must exit 0 even if targets have defects, got {exit_code}"
@@ -332,7 +332,7 @@ class TestVerifyExitCodes:
         args = parser.parse_args([
             "verify",
             "--layer1-only",
-            "--repo-root", str(tmp_path),
+            "--workspace", str(tmp_path),
             "--files", "healthy.py",
         ])
         exit_code = run_verify(args)
@@ -351,7 +351,7 @@ class TestVerifyExitCodes:
         args = parser.parse_args([
             "verify",
             "--layer1-only",
-            "--repo-root", str(tmp_path),
+            "--workspace", str(tmp_path),
             "--files", "blocked.py",
         ])
         exit_code = run_verify(args)
@@ -379,7 +379,7 @@ class TestVerifyFilesFlag:
         exit_code = main([
             "verify",
             "--layer1-only",
-            "--repo-root", str(tmp_path),
+            "--workspace", str(tmp_path),
             "--files", "clean_target.py",
         ])
         assert exit_code == 0, f"clean_target.py should pass verification; got {exit_code}"
@@ -395,7 +395,7 @@ class TestVerifyFilesFlag:
         exit_code = main([
             "verify",
             "--layer1-only",
-            "--repo-root", str(tmp_path),
+            "--workspace", str(tmp_path),
             "--files", "good.py", "bad.py",
         ])
         assert exit_code == 1, f"Expected exit code 1 when one of multiple files fails; got {exit_code}"
@@ -423,7 +423,7 @@ class TestVerifyFilesFlag:
         exit_code = main([
             "verify",
             "--layer1-only",
-            "--repo-root", str(tmp_path),
+            "--workspace", str(tmp_path),
             "--files", "nonexistent_file_xyz.py",
         ])
         assert exit_code == 1
@@ -439,7 +439,7 @@ class TestVerifyFilesFlag:
         parser = _build_parser()
         args = parser.parse_args([
             "verify",
-            "--repo-root", str(repo),
+            "--workspace", str(repo),
             "--files", "../../etc/passwd", "good.py",
         ])
         resolved = resolve_target_files(args)
@@ -455,7 +455,7 @@ class TestVerifyFilesFlag:
 
         exit_code = main([
             "verify",
-            "--repo-root", str(repo),
+            "--workspace", str(repo),
             "--files", "../../etc/passwd", "../../../tmp/evil.py",
         ])
         assert exit_code == 1
@@ -480,7 +480,7 @@ class TestVerifyRepoRoot:
         exit_code = main([
             "verify",
             "--layer1-only",
-            "--repo-root", str(src_dir),
+            "--workspace", str(src_dir),
             "--files", "app.py",
         ])
         assert exit_code == 0
@@ -489,7 +489,7 @@ class TestVerifyRepoRoot:
         """Passing an invalid/nonexistent --repo-root returns exit code 1."""
         exit_code = main([
             "verify",
-            "--repo-root", "/nonexistent/directory/path/that/does/not/exist",
+            "--workspace", "/nonexistent/directory/path/that/does/not/exist",
             "--files", "app.py",
         ])
         assert exit_code == 1
@@ -565,7 +565,7 @@ class TestVerifyLayer2Execution:
 
         exit_code = main([
             "verify",
-            "--repo-root", str(tmp_path),
+            "--workspace", str(tmp_path),
             "--files", "service.py",
             "--plan", "Create process service",
         ])
@@ -617,7 +617,7 @@ class TestVerifyLayer2Execution:
 
         exit_code = main([
             "verify",
-            "--repo-root", str(tmp_path),
+            "--workspace", str(tmp_path),
             "--files", "worker.py",
             "--plan", "Implement compute worker",
         ])
@@ -660,7 +660,7 @@ class TestVerifyLayer2Execution:
 
         exit_code = main([
             "verify",
-            "--repo-root", str(tmp_path),
+            "--workspace", str(tmp_path),
             "--files", "insecure.py",
             "--plan", "Add eval runner",
         ])
@@ -674,14 +674,14 @@ class TestVerifyCleanRepository:
 
     def test_verify_clean_repo_layer1_only_exits_zero(self, tmp_path, capsys):
         """When no files are changed/staged, verify --layer1-only exits 0."""
-        exit_code = main(["verify", "--layer1-only", "--repo-root", str(tmp_path)])
+        exit_code = main(["verify", "--layer1-only", "--workspace", str(tmp_path)])
         assert exit_code == 0
         captured = capsys.readouterr()
         assert "clean" in captured.out.lower() or "0 files" in captured.out.lower()
 
     def test_verify_clean_repo_full_verify_exits_zero(self, tmp_path, capsys):
         """When no files are changed/staged, full verify exits 0."""
-        exit_code = main(["verify", "--repo-root", str(tmp_path)])
+        exit_code = main(["verify", "--workspace", str(tmp_path)])
         assert exit_code == 0
         captured = capsys.readouterr()
         assert "clean" in captured.out.lower() or "0 files" in captured.out.lower()

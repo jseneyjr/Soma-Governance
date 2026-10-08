@@ -13,10 +13,6 @@ from conftest import REPO_ROOT
 
 ROOT = Path(REPO_ROOT)
 
-pytestmark = pytest.mark.skip(
-    reason="Legacy shell installers and enzymes were permanently purged in v0.97.0"
-)
-
 
 def test_bug_010_home_isolation():
     """BUG-010: resolve_home isolation in legacy common.sh."""

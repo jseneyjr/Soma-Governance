@@ -59,21 +59,20 @@ class TestCliWorkspaceRootResolution:
             assert not (args.ws.root / ".soma" / "cells").exists()
 
     def test_root_resolution_argument_precedence(self, tmp_path: Path, initialized_ws: Workspace):
-        """Workspace precedence: --workspace > --repo-root / --project-root > --_project_root > CWD."""
-        other_dir = tmp_path / "other_project"
-        (other_dir / ".soma" / "cells").mkdir(parents=True)
-
+        """Workspace is resolved canonical via --workspace, and legacy --repo-root is rejected."""
         with patch("soma_cli.cli.cmd_verify", return_value=0) as mock_verify:
-            # When both --workspace and --repo-root are supplied, --workspace wins
             exit_code = main([
                 "verify",
                 "--workspace", str(initialized_ws.root),
-                "--repo-root", str(other_dir),
                 "--dry-run"
             ])
             assert exit_code == 0
             args = mock_verify.call_args[0][0]
             assert args.ws == initialized_ws
+
+        # Legacy --repo-root is purged and rejected
+        with pytest.raises(SystemExit):
+            main(["verify", "--repo-root", str(tmp_path)])
 
 
 class TestSubcommandDirectInvocationFallback:

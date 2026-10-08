@@ -51,7 +51,6 @@ from soma_core.frontmatter import (
     FrontmatterError,
     parse_yaml_subset,
     parse_frontmatter,
-    _parse_frontmatter,
     _get_body,
 )
 from soma_core.scoring import compute_cell_fitness, compute_salience

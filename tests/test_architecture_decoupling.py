@@ -100,3 +100,23 @@ def test_zero_internal_calls_to_deprecated_workspace_getters():
 
     assert not violations, "Found internal usage of deprecated workspace getters:\n" + "\n".join(violations)
 
+
+def test_purged_symbols_permanently_absent():
+    """Verify that all purged legacy symbols and aliases are permanently absent."""
+    import soma_core.workspace
+    import soma_core.frontmatter
+    import soma_cli.doctor
+
+    purged_workspace_symbols = [
+        "get_cells_dir",
+        "get_metrics_dir",
+        "get_signals_file",
+        "get_outcomes_file",
+        "find_workspace_root",
+    ]
+    for sym in purged_workspace_symbols:
+        assert not hasattr(soma_core.workspace, sym), f"soma_core.workspace should not have {sym}"
+
+    assert not hasattr(soma_cli.doctor, "_check_pyyaml"), "soma_cli.doctor should not have _check_pyyaml"
+    assert not hasattr(soma_core.frontmatter, "_parse_frontmatter"), "soma_core.frontmatter should not have _parse_frontmatter"
+

@@ -637,7 +637,7 @@ def install_hook(
     if isinstance(project_root, Workspace):
         ws = project_root
         root = ws.root
-        git_hooks_dir = ws.git_hooks_dir or resolve_git_hooks_dir(root)
+        git_hooks_dir = ws.git_hooks_dir
     else:
         root = Path(project_root or Path.cwd()).resolve()
         git_hooks_dir = resolve_git_hooks_dir(root)
@@ -733,7 +733,7 @@ def uninstall_hook(
     if isinstance(project_root, Workspace):
         ws = project_root
         root = ws.root
-        git_hooks_dir = ws.git_hooks_dir or resolve_git_hooks_dir(root)
+        git_hooks_dir = ws.git_hooks_dir
     else:
         root = Path(project_root or Path.cwd()).resolve()
         git_hooks_dir = resolve_git_hooks_dir(root)
@@ -836,7 +836,7 @@ def hook_status(project_root: str | Path | Any | None = None) -> dict[str, Any]:
     if isinstance(project_root, Workspace):
         ws = project_root
         root = ws.root
-        git_hooks_dir = ws.git_hooks_dir or resolve_git_hooks_dir(root)
+        git_hooks_dir = ws.git_hooks_dir
     else:
         root = Path(project_root or Path.cwd()).resolve()
         git_hooks_dir = resolve_git_hooks_dir(root)

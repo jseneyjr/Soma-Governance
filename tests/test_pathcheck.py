@@ -369,51 +369,6 @@ def test_soma_version_flag(capsys):
     assert (REPO / "VERSION").read_text().strip() in out
 
 
-# ── install.sh integration ───────────────────────────────────────────────────
-
-def _path_without_soma():
-    entries = os.environ.get("PATH", "").split(os.pathsep)
-    return os.pathsep.join(e for e in entries
-                           if e and not os.path.isfile(os.path.join(e, "soma")))
-
-
-@pytest.mark.skipif(os.name == "nt", reason="bash installer hint; pwsh covered by unit tests")
-@pytest.mark.parametrize("dry_run", [False, True])
-def test_install_sh_prints_zsh_hint(tmp_path, dry_run):
-    if not (REPO / "install" / "install.sh").exists():
-        pytest.skip("legacy shell installers purged in v0.97.0")
-    from conftest import run
-    from soma_cli.pathcheck import default_candidates
-    home = tmp_path / "home"
-    bindir = home / ".local" / "bin"
-    bindir.mkdir(parents=True)
-    (bindir / "soma").write_text("#!/bin/sh\n")
-    # Populate soma binary across all candidate user script locations
-    real_home = os.path.expanduser("~")
-    for cand in default_candidates():
-        if cand.startswith(real_home):
-            target = home / os.path.relpath(cand, real_home)
-            target.mkdir(parents=True, exist_ok=True)
-            (target / "soma").write_text("#!/bin/sh\n")
-    # Also ensure macOS Library/Python fallback is present
-    py_ver = f"{sys.version_info.major}.{sys.version_info.minor}"
-    mac_target = home / "Library" / "Python" / py_ver / "bin"
-    mac_target.mkdir(parents=True, exist_ok=True)
-    (mac_target / "soma").write_text("#!/bin/sh\n")
-
-    env = {"HOME": str(home), "USERPROFILE": str(home), "PYTHONUSERBASE": str(home / ".local"),
-           "SHELL": "/usr/bin/zsh", "ZDOTDIR": "", "PATH": _path_without_soma()}
-    cmd = ["bash", str(REPO / "install" / "install.sh"), "kiro"]
-    if dry_run:
-        cmd.append("--dry-run")
-    proc = run(cmd, env=env)
-    assert proc.returncode == 0, proc.stderr
-    if dry_run:
-        assert "~/.zshrc" not in proc.stdout
-    else:
-        assert "~/.zshrc" in proc.stdout
-        assert 'export PATH="$HOME/.local/bin:$PATH"' in proc.stdout
-
 def test_pathcheck_on_path_handles_windows_colons():
     """on_path with sep=';' should not corrupt Windows drive paths containing colons."""
     from soma_cli.pathcheck import on_path
