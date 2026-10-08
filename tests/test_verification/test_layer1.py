@@ -283,6 +283,25 @@ class TestGetModifiedLines:
 
         assert _get_modified_lines("app.py", "/repo") is None
 
+    def test_get_modified_lines_with_github_base_ref(self, monkeypatch):
+        from soma_core.verification.runner import _get_modified_lines
+        import subprocess
+
+        monkeypatch.setenv("GITHUB_BASE_REF", "develop")
+        observed_cmds = []
+
+        fake_diff = "@@ -20,0 +25,2 @@\n+line1\n+line2\n"
+        def mock_run(cmd, *args, **kwargs):
+            observed_cmds.append(cmd)
+            if "origin/develop...HEAD" in cmd:
+                return subprocess.CompletedProcess(cmd, 0, stdout=fake_diff, stderr="")
+            return subprocess.CompletedProcess(cmd, 0, stdout="", stderr="")
+
+        monkeypatch.setattr(subprocess, "run", mock_run)
+        lines = _get_modified_lines("app.py", "/repo")
+        assert lines == {25, 26}
+        assert any("origin/develop...HEAD" in c for c in observed_cmds)
+
     def test_get_modified_lines_exception_handled(self, monkeypatch):
         from soma_core.verification.runner import _get_modified_lines
         import subprocess

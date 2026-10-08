@@ -87,13 +87,24 @@ def _get_modified_lines(filepath: str, repo_root: str) -> Optional[set[int]]:
     import subprocess
     lines: set[int] = set()
     found_hunks = False
-    for cmd in (
+
+    diff_targets = [
         ["git", "diff", "-U0", "HEAD", "--", filepath],
         ["git", "diff", "-U0", "--cached", "--", filepath],
+    ]
+    base_ref = os.environ.get("GITHUB_BASE_REF")
+    if base_ref:
+        diff_targets.extend([
+            ["git", "diff", "-U0", f"origin/{base_ref}...HEAD", "--", filepath],
+            ["git", "diff", "-U0", f"{base_ref}...HEAD", "--", filepath],
+        ])
+    diff_targets.extend([
+        ["git", "diff", "-U0", "origin/develop...HEAD", "--", filepath],
+        ["git", "diff", "-U0", "develop...HEAD", "--", filepath],
         ["git", "diff", "-U0", "origin/main...HEAD", "--", filepath],
         ["git", "diff", "-U0", "main...HEAD", "--", filepath],
-        ["git", "diff", "-U0", "origin/develop...HEAD", "--", filepath],
-    ):
+    ])
+    for cmd in diff_targets:
         try:
             res = subprocess.run(cmd, capture_output=True, text=True, cwd=repo_root, timeout=5)
             if res.returncode == 0 and res.stdout.strip():

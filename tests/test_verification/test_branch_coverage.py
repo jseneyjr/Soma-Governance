@@ -263,3 +263,42 @@ class TestBranchCoverageTargetLines:
         assert res_b.verdict is False
         assert 4 in res_b.lines
 
+
+class TestBranchCoverageFilteringAndFallback:
+    """Test branch target filtering and stdlib trace fallback."""
+
+    def test_parse_coverage_filters_negative_and_backward_branches(self, tmp_path):
+        from soma_core.verification.branch_coverage import _parse_coverage
+
+        report = tmp_path / "coverage.json"
+        report.write_text(json.dumps({
+            "files": {
+                "/src/target.py": {
+                    "missing_lines": [],
+                    "executed_lines": [32],
+                    "missing_branches": [
+                        [10, -5],  # Negative exit line -> filtered
+                        [20, 15],  # Backward loop jump (15 <= 20) -> filtered
+                        [25, 25],  # Same line jump -> filtered
+                        [28, 32],  # Forward branch target that already executed -> filtered
+                        [30, 35],  # Valid forward jump to unexecuted statement -> kept
+                    ],
+                }
+            }
+        }))
+
+        missing = _parse_coverage(str(report), "/src/target.py", "target.py")
+        assert missing == [35]
+
+    def test_run_trace_fallback_execution(self, tmp_path):
+        from soma_core.verification.branch_coverage import _run_trace_fallback
+
+        src = tmp_path / "calc.py"
+        src.write_text("def add(a, b):\n    return a + b\n")
+
+        test = tmp_path / "test_calc.py"
+        test.write_text(f"import sys\nsys.path.insert(0, {str(tmp_path)!r})\nfrom calc import add\ndef test_add(): assert add(1, 2) == 3\n")
+
+        missing = _run_trace_fallback(str(test), str(src), str(tmp_path), str(tmp_path))
+        assert missing == []
+

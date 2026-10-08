@@ -245,6 +245,17 @@ class TestCycleHelpers:
             assert cycle == 1
             assert data is None
 
+    def test_cycle_helpers_ignore_subdirectories(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            ev_dir = os.path.join(tmpdir, ".soma", "evidence")
+            os.makedirs(os.path.join(ev_dir, "subdir_should_be_skipped"), exist_ok=True)
+            with open(os.path.join(ev_dir, "arbitration_cycle_1.json"), "w") as f:
+                json.dump({"cycle": 1, "verdict": "ship"}, f)
+            assert get_next_cycle_number(tmpdir) == 2
+            cycle, data = get_latest_arbitration_evidence(tmpdir)
+            assert cycle == 1
+            assert data is not None
+
     def test_save_arbitration_evidence_invalid_cycle(self):
         from soma_core.verification import ArbitrationResult, Verdict
         res = ArbitrationResult(

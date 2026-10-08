@@ -982,6 +982,52 @@ class TestReleaseGateCheck:
         captured = capsys.readouterr()
         assert "Warning: could not save arbitration evidence: disk full simulation" in captured.err
 
+    def test_resolve_target_files_github_base_ref_local_branch_fallback(self, tmp_path, monkeypatch):
+        """resolve_target_files falls back to local ref when origin/ref returns empty."""
+        from soma_cli.verify import resolve_target_files
+        import subprocess
+
+        monkeypatch.setenv("GITHUB_BASE_REF", "main")
+        def mock_run(cmd, *args, **kwargs):
+            if isinstance(cmd, list) and len(cmd) >= 2 and cmd[0] == "git" and cmd[1] == "diff":
+                if "main...HEAD" in cmd and "origin/main...HEAD" not in cmd:
+                    return subprocess.CompletedProcess(cmd, 0, stdout="soma_core/local.py\n", stderr="")
+                return subprocess.CompletedProcess(cmd, 0, stdout="", stderr="")
+            return subprocess.CompletedProcess(cmd, 0, stdout="", stderr="")
+        monkeypatch.setattr(subprocess, "run", mock_run)
+
+        args = argparse.Namespace(files=None, workspace=str(tmp_path))
+        files = resolve_target_files(args)
+        assert files == ["soma_core/local.py"]
+
+    def test_verify_release_gate_passes_and_run_verify_exit_code_zero(self, tmp_path, monkeypatch, capsys):
+        """verify_release_gate returns True on SHIP evidence and run_verify returns 0."""
+        from soma_cli.verify import verify_release_gate, run_verify
+        import subprocess
+
+        def mock_evidence(root):
+            return 1, {"verdict": "ship", "target_files": ["soma_core/runner.py"]}
+        monkeypatch.setattr("soma_core.verification.review_adapter.get_latest_arbitration_evidence", mock_evidence)
+
+        def mock_diff(cmd, *args, **kwargs):
+            return subprocess.CompletedProcess(cmd, 0, stdout="soma_core/runner.py\n", stderr="")
+        monkeypatch.setattr(subprocess, "run", mock_diff)
+
+        passed, msg = verify_release_gate(str(tmp_path))
+        assert passed is True
+        assert "Release Gate 4.5 PASS" in msg
+
+        args = argparse.Namespace(
+            release_gate=True,
+            repo_root=str(tmp_path),
+            workspace=str(tmp_path),
+        )
+        exit_code = run_verify(args)
+        assert exit_code == 0
+        captured = capsys.readouterr()
+        assert "Release Gate 4.5 PASS" in captured.out
+
+
 
 
 

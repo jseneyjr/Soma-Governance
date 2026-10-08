@@ -603,22 +603,21 @@ class VerificationPipeline:
         )
         evidence_path = None
         persistence_error = None
-        if arb_result is not None:
-            try:
-                from soma_core.verification.review_adapter import (
-                    get_next_cycle_number,
-                    save_arbitration_evidence,
-                )
-                cycle_num = get_next_cycle_number(ws)
-                evidence_path = save_arbitration_evidence(
-                    result=arb_result,
-                    workspace=ws,
-                    cycle=cycle_num,
-                    target_files=list(files) if files else None,
-                )
-            except Exception as exc:
-                persistence_error = str(exc)
-                logging.getLogger(__name__).warning("Failed to persist arbitration evidence: %s", exc)
+        try:
+            from soma_core.verification.review_adapter import (
+                get_next_cycle_number,
+                save_arbitration_evidence,
+            )
+            cycle_num = get_next_cycle_number(ws)
+            evidence_path = save_arbitration_evidence(
+                result=arb_result,
+                workspace=ws,
+                cycle=cycle_num,
+                target_files=list(files) if files else None,
+            )
+        except Exception as exc:
+            persistence_error = str(exc)
+            logging.getLogger(__name__).warning("Failed to persist arbitration evidence: %s", exc)
 
         res.evidence_path = evidence_path
         res.persistence_error = persistence_error

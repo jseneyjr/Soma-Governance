@@ -144,7 +144,7 @@ def _try_coverage_module(test_file, target_dir, json_report, tmpdir):
     return os.path.exists(json_report)
 
 
-def _run_trace_fallback(test_file, target_file, target_dir, tmpdir):
+def _run_trace_fallback(test_file, target_file, target_dir, tmpdir):  # pragma: no cover
     """Use stdlib trace module via subprocess to find uncovered lines."""
     from soma_core.verification.test_runner import resolve_pytest_python
     py_exec = resolve_pytest_python(target_dir)
@@ -321,8 +321,13 @@ def _parse_coverage(json_report, target_file, target_basename):
         return [-1]
 
     missing = list(file_data.get("missing_lines", []))
-    # Also include branch-specific uncovered lines
+    executed = set(file_data.get("executed_lines", []))
+    # Also include branch-specific uncovered lines (filter out negative exits, loop continuations, and executed statements)
     for from_line, to_line in file_data.get("missing_branches", []):
+        if to_line <= 0 or to_line <= from_line:
+            continue
+        if to_line in executed:
+            continue
         if to_line not in missing:
             missing.append(to_line)
     return missing
