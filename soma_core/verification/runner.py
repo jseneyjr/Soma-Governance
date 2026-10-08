@@ -152,7 +152,8 @@ def _get_modified_lines(filepath: str, repo_root: str) -> Optional[set[int]]:
                         if m:
                             start = int(m.group(1))
                             count = int(m.group(2)) if m.group(2) is not None else 1
-                            lines.update(range(start, start + max(count, 1)))
+                            if count > 0:
+                                lines.update(range(start, start + count))
                 if found_hunks:
                     break
         except Exception:

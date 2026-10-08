@@ -13,6 +13,14 @@ from soma_core.ast.schema import NormalizedAST
 from soma_core.errors import SomaError, SomaValidationError
 from soma_core.workspace import Workspace, as_workspace
 
+__all__ = [
+    "ASTDriverError",
+    "ASTDriverTimeoutError",
+    "NoDriverConfiguredError",
+    "ASTDriverRegistry",
+    "ASTDriverRunner",
+]
+
 
 class ASTDriverError(SomaError):
     """Raised when an external AST driver execution fails."""

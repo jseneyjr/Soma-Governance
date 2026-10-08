@@ -115,3 +115,55 @@ def test_cli_check_silent_remedy_when_resolvable(capsys):
         assert _check_cli_resolvable() is True
     out = capsys.readouterr().out
     assert "export PATH" not in out
+
+
+def test_check_ast_drivers_native_when_no_slots(tmp_path, capsys):
+    from soma_cli.doctor import _check_ast_drivers
+    assert _check_ast_drivers(tmp_path) is True
+    out = capsys.readouterr().out
+    assert "native Python stdlib" in out
+
+
+def test_check_ast_drivers_with_valid_and_invalid_slots(tmp_path, capsys):
+    from soma_cli.doctor import _check_ast_drivers
+    slots_file = tmp_path / ".soma" / "slots.yaml"
+    slots_file.parent.mkdir(parents=True)
+    slots_file.write_text("slots:\n  ast_driver_ts: node runner.js\n  ast_driver: default_bin\n")
+
+    # With both binaries resolvable
+    with patch("soma_cli.doctor.shutil.which", side_effect=lambda cmd: f"/bin/{cmd}"):
+        assert _check_ast_drivers(tmp_path) is True
+    out = capsys.readouterr().out
+    assert "AST driver (.ts): node resolvable" in out
+
+    # With missing binary
+    with patch("soma_cli.doctor.shutil.which", return_value=None):
+        assert _check_ast_drivers(tmp_path) is False
+    out = capsys.readouterr().out
+    assert "not found on PATH" in out
+
+    # Corrupt slots.yaml raising exception
+    with patch("soma_core.skills.slots.SlotRegistry.load", side_effect=Exception("corrupt")):
+        assert _check_ast_drivers(tmp_path) is False
+
+
+def test_doctor_warns_when_ast_drivers_unresolvable(tmp_path, monkeypatch, capsys):
+    (tmp_path / ".gemini").mkdir()
+    evidence = tmp_path / ".soma" / "evidence"
+    evidence.mkdir(parents=True)
+    rules_dir = tmp_path / "rules"
+    rules_dir.mkdir()
+    (rules_dir / "example.md").write_text("# rule")
+
+    slots_file = tmp_path / ".soma" / "slots.yaml"
+    slots_file.write_text("slots:\n  ast_driver_xyz: nonexistent_ast_binary_12345\n")
+
+    monkeypatch.chdir(tmp_path)
+    with patch("soma_cli.doctor.shutil.which", side_effect=lambda cmd, **kw: "/usr/local/bin/soma" if cmd == "soma" else None), \
+         patch("soma_cli.init.get_rules_dir", return_value=rules_dir):
+        args = argparse.Namespace()
+        result = run_doctor(args)
+    assert result == 0
+    captured = capsys.readouterr().out
+    assert "AST driver (.xyz): executable 'nonexistent_ast_binary_12345' not found on PATH" in captured
+

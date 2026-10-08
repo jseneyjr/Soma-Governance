@@ -195,19 +195,20 @@ def _check_ast_drivers(project_root: Path | None = None) -> bool:
     import shlex
     from soma_core.skills.slots import SlotRegistry
 
-    slots_path = (project_root or Path.cwd()) / ".soma" / "slots.yaml"
+    ws_root = Path(project_root or Path.cwd())
+    slots_path = ws_root / ".soma" / "slots.yaml"
     if not slots_path.is_file():
         print("  ✅ AST drivers: native Python stdlib (in-process)")
         return True
 
     try:
-        registry = SlotRegistry.load(slots_path)
+        registry = SlotRegistry.load(ws_root)
     except Exception as exc:
         print(f"  ❌ AST drivers: failed to load slots.yaml: {exc}")
         return False
 
     ast_drivers: dict[str, str] = {}
-    for slot_name, slot_val in registry.slots.items():
+    for slot_name, slot_val in registry.to_dict().items():
         if slot_name == "ast_driver":
             ast_drivers["default"] = str(slot_val)
         elif slot_name.startswith("ast_driver_"):
@@ -225,11 +226,6 @@ def _check_ast_drivers(project_root: Path | None = None) -> bool:
             continue
         bin_name = parts[0]
         found = shutil.which(bin_name)
-        if not found and project_root:
-            cand = (project_root / bin_name).resolve()
-            if cand.is_file():
-                found = str(cand)
-
         if found:
             print(f"  ✅ AST driver ({ext}): {bin_name} resolvable ({found})")
         else:
@@ -495,10 +491,11 @@ def run_doctor(args: argparse.Namespace) -> int:
     results.append(_check_rules(platform, ws))
     results.append(_check_evidence_dir(ws))
     results.append(_check_cli_resolvable())
-    results.append(_check_ast_drivers(ws))
     hook_ok = _check_precommit_hook(ws)
     if hook_ok is not None:
         results.append(hook_ok)
+    # Advisory: report configured AST drivers (polyglot drivers are optional)
+    _check_ast_drivers(ws)
     # Advisory: only MCP users need it, so it does not fail the run.
     _check_mcp_launcher()
 

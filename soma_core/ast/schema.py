@@ -10,6 +10,14 @@ from dataclasses import asdict, dataclass, field
 import json
 from typing import Any, Dict, List, Mapping, Optional, Sequence, Tuple
 
+__all__ = [
+    "DefinitionNode",
+    "CallSiteNode",
+    "ImportNode",
+    "MutationPoint",
+    "NormalizedAST",
+]
+
 
 @dataclass(frozen=True)
 class DefinitionNode:
