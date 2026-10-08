@@ -262,7 +262,7 @@
       "affected_files": [
         "install/install.ps1"
       ],
-      "regression_test": "tests/test_packaging_install_correctness.py::test_powershell_installer_has_exact_manifest_and_utf8_contract",
+      "regression_test": "tests/test_legacy_purged_regressions.py::test_bug_014_powershell_installer_purged",
       "pattern": "Relying on the platform default encoding instead of an explicit utf-8",
       "fixed_in": "v0.93.0",
       "changelog_ref": "v0.93.0"
@@ -527,7 +527,7 @@
         "soma_cli/init.py",
         ".mcp.json.example"
       ],
-      "regression_test": "tests/test_packaging_install_correctness.py::test_bash_mcp_generators_merge_and_target_project",
+      "regression_test": "tests/test_packaging_install_correctness.py::test_python_init_mcp_merge_targets_project",
       "pattern": "Installer configuration targeted its own source instead of the governed project",
       "changelog_ref": "v0.89.0"
     },
@@ -567,7 +567,7 @@
         "install/uninstall.sh",
         "install/uninstall.ps1"
       ],
-      "regression_test": "tests/test_packaging_install_correctness.py::test_manifestless_uninstall_removes_only_repo_names",
+      "regression_test": "tests/test_legacy_purged_regressions.py::test_bug_031_manifestless_uninstall_purged",
       "pattern": "Fallback discovery treated shared directories as exclusively owned",
       "changelog_ref": "v0.89.0"
     },
