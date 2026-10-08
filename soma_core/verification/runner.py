@@ -57,6 +57,10 @@ def _find_test_file(filepath: str, repo_root: str) -> Optional[str]:
         found = _find_in_tests("test_outcome_engine.py")
         if found:
             return found
+    if "soma_core/skills/slots.py" in norm:
+        found = _find_in_tests("test_slots.py")
+        if found:
+            return found
     if "soma_core/skills" in norm or "soma_core/schemas/artifacts.py" in norm:
         found = _find_in_tests("test_skills_and_handoff.py")
         if found:

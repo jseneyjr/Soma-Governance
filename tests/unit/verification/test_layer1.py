@@ -343,6 +343,9 @@ class TestRunnerCoverageEnhancements:
         skills_test = _find_test_file("soma_core/skills/graph.py", REPO_ROOT)
         assert skills_test is not None and skills_test.endswith("test_skills_and_handoff.py")
 
+        slots_test = _find_test_file("soma_core/skills/slots.py", REPO_ROOT)
+        assert slots_test is not None and slots_test.endswith("test_slots.py")
+
         artifacts_test = _find_test_file("soma_core/schemas/artifacts.py", REPO_ROOT)
         assert artifacts_test is not None and artifacts_test.endswith("test_skills_and_handoff.py")
 

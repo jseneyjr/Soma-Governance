@@ -3,6 +3,20 @@
 All notable changes to Soma are documented here.
 This project uses [Semantic Versioning](https://semver.org/).
 
+## [1.2.1] — 2026-10-08 — "Git-Aware Polyglot Call Graph & Doctor Display Hotfix"
+
+### Git-Aware Call Graph Boundary Discovery & Doctor Auto-Repair Fix (BUG-085)
+- **Git-Aware File Discovery & Dynamic Extension Discovery (`soma_core/verification/call_graph.py`)**:
+  - Replaced brittle directory blacklists with `GitWorkspace`-backed file discovery (`git ls-files --cached --others --exclude-standard`), automatically and universally respecting `.gitignore` across all project types without hardcoding compiler output names (`target/`, `.cargo/`, `bin/`, `obj/`, etc.).
+  - Eliminated static hardcoded source extension sets in favor of dynamic extension resolution (`_resolve_searchable_extensions`), discovering source extensions from configured workspace slots (`.soma/slots.yaml`), active AST runner drivers, and target file metadata.
+  - Implemented `_is_safe_source_file()` defense-in-depth guard rejecting files exceeding 1MB or containing binary null bytes.
+- **Standalone `soma detect` Command & `soma doctor --drivers` (`soma_cli/detect.py`, `soma_cli/doctor.py`)**:
+  - Added dedicated `soma detect` command (aliases: `soma languages`, `soma drivers`) allowing developers to inspect detected languages, toolchains, and AST driver bindings, and auto-provision `.soma/slots.yaml` with `--fix` independently of `soma init` or `soma genesis`.
+  - Added `--drivers` flag to `soma doctor` for fast, targeted AST driver health checks without running full platform/rules/MCP audits.
+- **Doctor Auto-Provision Display & Dry-Run Fixes (`soma_cli/doctor.py`, `soma_core/ast/detect.py`)**:
+  - Fixed display fallthrough bug in `soma doctor --fix`: reloads `SlotRegistry` immediately after auto-provisioning so the configured polyglot driver is accurately reported rather than falling through to the native Python message.
+  - Fixed `provision_ast_driver_slots` to strictly honor `dry_run=True`, preventing unauthorized directory creation or driver template copies during simulated runs.
+
 ## [1.2.0] — 2026-10-08 — "Zero-Touch Genesis Polyglot Provisioning & Rust AST Driver"
 
 ### Zero-Touch Polyglot Detection, Rust AST Driver & Release Verification Alignment

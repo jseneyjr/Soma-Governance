@@ -119,3 +119,89 @@ def test_call_graph_comment_and_string_in_external_file_does_not_satisfy_call(tm
     assert evidence.verdict is False
     assert "ORPHAN FUNCTIONS" in evidence.detail
     assert "uncalledCalc" in evidence.detail
+
+
+def test_call_graph_respects_gitignore_in_git_repository(tmp_path):
+    import subprocess
+    subprocess.run(["git", "init"], cwd=tmp_path, check=True, capture_output=True)
+    subprocess.run(["git", "config", "user.name", "Test"], cwd=tmp_path, check=True, capture_output=True)
+    subprocess.run(["git", "config", "user.email", "test@example.com"], cwd=tmp_path, check=True, capture_output=True)
+
+    (tmp_path / ".gitignore").write_text("target/\n*.bin\n", encoding="utf-8")
+    src_dir = tmp_path / "src"
+    src_dir.mkdir()
+    target_rs = src_dir / "lib.rs"
+    target_rs.write_text("// rust source", encoding="utf-8")
+
+    ignored_dir = tmp_path / "target" / "debug"
+    ignored_dir.mkdir(parents=True)
+    ignored_file = ignored_dir / "dummy.rs"
+    ignored_file.write_text("fn test() { orphanFunc(); }", encoding="utf-8")
+
+    subprocess.run(["git", "add", ".gitignore", "src"], cwd=tmp_path, check=True, capture_output=True)
+    subprocess.run(["git", "commit", "-m", "init"], cwd=tmp_path, check=True, capture_output=True)
+
+    norm_ast = NormalizedAST(
+        file_path=str(target_rs),
+        language="rust",
+        definitions=(
+            DefinitionNode(name="orphanFunc", kind="function", line=5, is_exported=False),
+        ),
+        call_sites=(),
+        imports=(),
+    )
+
+    evidence = call_graph.check_normalized(norm_ast, repo_root=str(tmp_path), fast_mode=False)
+    # The dummy call in target/ MUST be ignored because target/ is in .gitignore
+    assert evidence.verdict is False
+    assert "ORPHAN FUNCTIONS" in evidence.detail
+    assert "orphanFunc" in evidence.detail
+
+
+def test_call_graph_ignores_non_source_extensions(tmp_path):
+    target_py = tmp_path / "mod.py"
+    target_py.write_text("# py", encoding="utf-8")
+
+    (tmp_path / "asset.png").write_bytes(b"\x89PNG\r\n\x1a\nunusedHelper()")
+    (tmp_path / "data.bin").write_bytes(b"\x00\x01\x02unusedHelper()\x00")
+    (tmp_path / "notes.txt").write_text("unusedHelper()", encoding="utf-8")
+
+    norm_ast = NormalizedAST(
+        file_path=str(target_py),
+        language="python",
+        definitions=(
+            DefinitionNode(name="unusedHelper", kind="function", line=10, is_exported=False),
+        ),
+        call_sites=(),
+        imports=(),
+    )
+
+    evidence = call_graph.check_normalized(norm_ast, repo_root=str(tmp_path), fast_mode=False)
+    assert evidence.verdict is False
+    assert "unusedHelper" in evidence.detail
+
+
+def test_resolve_searchable_extensions_dynamic(tmp_path):
+    # 1. Default without slots or norm_ast is strictly .py
+    exts = call_graph._resolve_searchable_extensions(str(tmp_path))
+    assert exts == {".py"}
+
+    # 2. Configured slot in .soma/slots.yaml dynamically adds .rs
+    soma_dir = tmp_path / ".soma"
+    soma_dir.mkdir()
+    (soma_dir / "slots.yaml").write_text("slots:\n  ast_driver_rs: python3 .soma/drivers/rust_ast.py\n", encoding="utf-8")
+
+    exts_with_slot = call_graph._resolve_searchable_extensions(str(tmp_path))
+    assert exts_with_slot == {".py", ".rs"}
+
+    # 3. Providing norm_ast for typescript adds .ts and .tsx dynamically
+    target_ts = tmp_path / "index.ts"
+    norm_ast = NormalizedAST(
+        file_path=str(target_ts),
+        language="typescript",
+        definitions=(),
+        call_sites=(),
+        imports=(),
+    )
+    exts_with_norm = call_graph._resolve_searchable_extensions(str(tmp_path), norm_ast=norm_ast)
+    assert {".py", ".rs", ".ts", ".tsx"}.issubset(exts_with_norm)

@@ -257,5 +257,14 @@ def test_run_doctor_without_fix_flag_does_not_provision(tmp_path, monkeypatch, c
     assert "Run 'soma doctor --fix' to provision" in out
 
 
+def test_run_doctor_drivers_flag(tmp_path):
+    with patch("soma_cli.doctor._check_ast_drivers") as mock_check:
+        mock_check.return_value = True
+        args = argparse.Namespace(drivers=True, workspace=str(tmp_path), fix=False, fix_path=False, yes=False)
+        assert run_doctor(args) == 0
+        mock_check.assert_called_with(tmp_path, fix=False)
 
-
+        mock_check.return_value = False
+        args_fail = argparse.Namespace(drivers=True, workspace=str(tmp_path), fix=True, fix_path=False, yes=False)
+        assert run_doctor(args_fail) == 1
+        mock_check.assert_called_with(tmp_path, fix=True)

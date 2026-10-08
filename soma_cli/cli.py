@@ -120,11 +120,21 @@ def _build_parser() -> argparse.ArgumentParser:
     p_doctor = sub.add_parser("doctor", aliases=["audit"], parents=[common_parser], help="System health and governance audit")
     p_doctor.add_argument("--fix", action="store_true",
                           help="Automatically repair detected issues (pre-commit hooks, missing AST drivers)")
+    p_doctor.add_argument("--drivers", action="store_true",
+                          help="Run only AST driver and language detection health check")
     p_doctor.add_argument("--fix-path", action="store_true",
                           help="Add soma's scripts directory to your shell startup file "
                                "(dry run unless confirmed or --yes; zsh/bash/fish only)")
     p_doctor.add_argument("--yes", "-y", action="store_true",
                           help="With --fix-path: apply without asking")
+
+    # soma detect
+    p_detect = sub.add_parser("detect", aliases=["languages", "drivers"], parents=[common_parser],
+                              help="Inspect project languages and AST driver configuration")
+    p_detect.add_argument("--fix", "--provision", action="store_true", dest="fix",
+                          help="Automatically provision .soma/slots.yaml and stage driver recipes")
+    p_detect.add_argument("--dry-run", action="store_true",
+                          help="Preview provisioning without writing files to disk")
 
     # soma verify
     p_verify = sub.add_parser("verify", aliases=["check"], parents=[common_parser], help="Run verification on changed files")
@@ -523,6 +533,12 @@ def cmd_handoff(args: argparse.Namespace) -> int:
     return run_handoff(args)
 
 
+def cmd_detect(args: argparse.Namespace) -> int:
+    """Inspect project languages and AST driver configuration."""
+    from soma_cli.detect import run_detect
+    return run_detect(args)
+
+
 COMMANDS = {
     "init": cmd_init,
     "status": cmd_status,
@@ -530,6 +546,9 @@ COMMANDS = {
     "report": cmd_report,
     "doctor": cmd_doctor,
     "audit": cmd_audit,
+    "detect": cmd_detect,
+    "languages": cmd_detect,
+    "drivers": cmd_detect,
     "verify": cmd_verify,
     "check": cmd_check,
     "checkpoint": cmd_checkpoint,

@@ -77,6 +77,24 @@ class ASTDriverRegistry:
 
         return None
 
+    def get_configured_extensions(
+        self,
+        workspace_root: Optional[Union[Path, str, Workspace]] = None,
+    ) -> set[str]:
+        """Return all active source extensions from in-memory registry and workspace slots."""
+        exts = set(self._drivers.keys())
+        exts.add(".py")
+        if workspace_root:
+            try:
+                ws = as_workspace(workspace_root)
+                from soma_core.skills.slots import SlotRegistry
+
+                slot_reg = SlotRegistry.load(ws.root)
+                exts.update(slot_reg.get_configured_extensions())
+            except Exception:
+                pass
+        return exts
+
 
 def _split_command(cmd: str) -> list[str]:
     """Split a driver command line string into argv arguments, preserving Windows paths."""
