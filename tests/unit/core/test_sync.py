@@ -89,3 +89,18 @@ def test_sync_liveness_check_naive_datetime():
     assert rc == 0
 
 
+def test_sync_command_contract():
+    import argparse
+    from unittest.mock import patch
+    from soma_cli.sync import SyncCommand
+    cmd = SyncCommand()
+    parser = argparse.ArgumentParser()
+    cmd.configure_parser(parser)
+    parsed = parser.parse_args(["--dry-run"])
+    assert parsed.dry_run is True
+
+    with patch("soma_cli.sync.run_sync", return_value=0) as mock_run:
+        assert cmd.execute(parsed) == 0
+        mock_run.assert_called_once_with(parsed)
+
+

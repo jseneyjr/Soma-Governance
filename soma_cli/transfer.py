@@ -15,6 +15,9 @@ from typing import Optional
 
 from soma_core.somayaml import dump_frontmatter, parse_frontmatter
 from soma_core.workspace import Workspace, resolve_workspace_path as resolve_workspace
+from soma_cli.base import CommandCategory, SomaCommand
+
+__all__ = ["run_transfer", "TransferCommand", "transfer_cell"]
 
 CELL_TYPE_DIRS: dict[str, str] = {
     "vacuole": "vacuoles",
@@ -363,3 +366,21 @@ def run_transfer(args: argparse.Namespace) -> int:
         return 1
 
     return transfer_cell(cell_id=action_or_cell_id, target_dir_str=target_dir, source_workspace=ws)
+
+
+class TransferCommand(SomaCommand):
+    """Command to transfer a cell to another project or export/import for HGT."""
+
+    name = "transfer"
+    category = CommandCategory.PLUMBING
+    help = "Transfer a cell to another project or export/import for HGT"
+
+    def configure_parser(self, parser: argparse.ArgumentParser) -> None:
+        parser.add_argument("action_or_cell_id", nargs="?", default="", help="Subcommand ('export'/'import') or ID of cell to transfer")
+        parser.add_argument("extra_cell_id", nargs="?", default="", help="ID of cell or path to packet file")
+        parser.add_argument("--to", dest="target_dir", default="", help="Path to target project")
+        parser.add_argument("--tags", type=str, default="", help="Comma-separated compatibility tags (e.g. 'python,pytest')")
+        parser.add_argument("--output", "-o", type=str, default="", help="Output path for exported JSON rule (e.g. 'rule.soma.json')")
+
+    def execute(self, args: argparse.Namespace) -> int:
+        return run_transfer(args)

@@ -1510,6 +1510,32 @@ class TestReleaseGateCheck:
         assert "Unable to resolve git diff against base branch" in msg
 
 
+def test_verify_command_contract():
+    import argparse
+    from unittest.mock import patch
+    from soma_cli.verify import VerifyCommand
+    cmd = VerifyCommand()
+    parser = argparse.ArgumentParser()
+    cmd.configure_parser(parser)
+    parsed = parser.parse_args([
+        "--files", "foo.py", "--layer1-only", "--dry-run",
+        "--plan", "task", "--plan-file", "p.md", "--provider", "gemini",
+        "--in-band", "--release-gate"
+    ])
+    assert parsed.files == ["foo.py"]
+    assert parsed.layer1_only is True
+    assert parsed.dry_run is True
+    assert parsed.plan == "task"
+    assert parsed.plan_file == "p.md"
+    assert parsed.provider == "gemini"
+    assert parsed.in_band is True
+    assert parsed.release_gate is True
+
+    with patch("soma_cli.verify.run_verify", return_value=0) as mock_run:
+        assert cmd.execute(parsed) == 0
+        mock_run.assert_called_once_with(parsed)
+
+
 
 
 

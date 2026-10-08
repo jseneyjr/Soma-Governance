@@ -8,6 +8,8 @@ import re
 import sys
 from pathlib import Path
 
+from soma_cli.base import CommandCategory, SomaCommand
+
 
 from soma_core.lifecycle import (
     PROMOTION_PATH,
@@ -16,11 +18,7 @@ from soma_core.lifecycle import (
     promote_cell,
 )
 
-
-def _find_cell(cells_dir: Path, genome_dir: Path | None = None, cell_id: str = "") -> tuple[Path | None, str | None]:
-    """Find a cell file by ID across vacuoles/, walls/, and genome/."""
-    workspace = cells_dir.parent.parent
-    return find_cell_file(workspace, cell_id)
+__all__ = ["run_promote", "PromoteCommand"]
 
 
 def _force_promote(project_root: Path, cell_id: str, dry_run: bool, use_json: bool) -> int:
@@ -141,4 +139,38 @@ def run_promote(args: argparse.Namespace) -> int:
             print()
     
     return 0
+
+
+class PromoteCommand(SomaCommand):
+    """Command to evaluate and execute cell promotion candidates."""
+
+    name = "promote"
+    category = CommandCategory.LIFECYCLE
+    help = "Evaluate cell promotion candidates"
+
+    def configure_parser(self, parser: argparse.ArgumentParser) -> None:
+        parser.add_argument(
+            "--dry-run",
+            action="store_true",
+            help="Show candidates without performing promotions",
+        )
+        parser.add_argument(
+            "--force",
+            action="store_true",
+            help="Force promotion of --cell, bypassing evidence thresholds",
+        )
+        parser.add_argument(
+            "--cell",
+            type=str,
+            default=None,
+            help="Target cell ID for --force promotion",
+        )
+        parser.add_argument(
+            "--tier-check",
+            action="store_true",
+            help="Evaluate enforcement tier transitions and apply decay",
+        )
+
+    def execute(self, args: argparse.Namespace) -> int:
+        return run_promote(args)
 

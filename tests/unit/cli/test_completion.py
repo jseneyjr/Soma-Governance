@@ -218,3 +218,18 @@ def test_zsh_colons_in_descriptions_are_escaped():
     assert descs
     bad = [d for d in descs if re.search(r"(?<!\\):", d)]
     assert not bad, bad
+
+
+def test_completion_command_contract():
+    import argparse
+    from unittest.mock import patch
+    from soma_cli.completion import CompletionCommand
+    cmd = CompletionCommand()
+    parser = argparse.ArgumentParser()
+    cmd.configure_parser(parser)
+    parsed = parser.parse_args(["bash"])
+    assert parsed.shell == "bash"
+
+    with patch("soma_cli.completion.run_completion", return_value=0) as mock_run:
+        assert cmd.execute(parsed) == 0
+        mock_run.assert_called_once_with(parsed)

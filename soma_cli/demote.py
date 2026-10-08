@@ -8,6 +8,8 @@ import re
 import sys
 from pathlib import Path
 
+from soma_cli.base import CommandCategory, SomaCommand
+
 
 from soma_core.lifecycle import (
     DEMOTION_PATH,
@@ -18,20 +20,7 @@ from soma_core.lifecycle import (
 )
 
 
-def _find_cell(cells_dir: Path, genome_dir: Path, cell_id: str) -> tuple[Path | None, str | None]:
-    """Find a cell file by ID across walls/, vacuoles/, and genome/."""
-    # Sanitize cell_id to prevent path traversal
-    if not cell_id or "/" in cell_id or "\\" in cell_id or ".." in cell_id:
-        return None, None
-    clean_id = cell_id[:-3] if cell_id.endswith(".md") else cell_id
-    workspace = cells_dir.parent.parent
-    return find_cell_file(workspace, clean_id)
-
-
-def _current_type_from_dir(dir_name: str) -> str:
-    """Map directory name to cell type."""
-    mapping = {"vacuoles": "vacuole", "walls": "wall", "genome": "genome"}
-    return mapping.get(dir_name, dir_name)
+__all__ = ["run_demote", "DemoteCommand"]
 
 
 def _force_demote(project_root: Path, cell_id: str, dry_run: bool, use_json: bool) -> int:
@@ -155,3 +144,32 @@ def run_demote(args: argparse.Namespace) -> int:
             print()
     
     return 0
+
+
+class DemoteCommand(SomaCommand):
+    """Command to evaluate and execute cell demotion candidates."""
+
+    name = "demote"
+    category = CommandCategory.LIFECYCLE
+    help = "Evaluate cell demotion candidates"
+
+    def configure_parser(self, parser: argparse.ArgumentParser) -> None:
+        parser.add_argument(
+            "--dry-run",
+            action="store_true",
+            help="Show candidates without performing demotions",
+        )
+        parser.add_argument(
+            "--force",
+            action="store_true",
+            help="Force demotion of --cell, bypassing evidence thresholds",
+        )
+        parser.add_argument(
+            "--cell",
+            type=str,
+            default=None,
+            help="Target cell ID for --force demotion",
+        )
+
+    def execute(self, args: argparse.Namespace) -> int:
+        return run_demote(args)

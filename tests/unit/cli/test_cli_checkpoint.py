@@ -625,5 +625,20 @@ class TestRequireArbitrationFlag:
         exit_code = run_checkpoint(args)
         assert exit_code == 1
 
+    def test_checkpoint_command_contract(self):
+        from unittest.mock import patch
+        from soma_cli.checkpoint import CheckpointCommand
+        cmd = CheckpointCommand()
+        parser = argparse.ArgumentParser()
+        cmd.configure_parser(parser)
+        parsed = parser.parse_args(["--pre-commit", "--strict", "--require-arbitration"])
+        assert parsed.pre_commit is True
+        assert parsed.strict is True
+        assert parsed.require_arbitration is True
+
+        with patch("soma_cli.checkpoint.run_checkpoint", return_value=0) as mock_run:
+            assert cmd.execute(parsed) == 0
+            mock_run.assert_called_once_with(parsed)
+
 
 

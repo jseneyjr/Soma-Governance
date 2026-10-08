@@ -158,3 +158,19 @@ class TestPromoteCLI:
         assert (cells_dir / "dry-cell.md").exists()
         output = capsys.readouterr().out
         assert "dry-cell" in output
+
+    def test_promote_command_contract(self):
+        from unittest.mock import patch
+        from soma_cli.promote import PromoteCommand
+        cmd = PromoteCommand()
+        parser = argparse.ArgumentParser()
+        cmd.configure_parser(parser)
+        parsed = parser.parse_args(["--dry-run", "--force", "--cell", "my-cell", "--tier-check"])
+        assert parsed.dry_run is True
+        assert parsed.force is True
+        assert parsed.cell == "my-cell"
+        assert parsed.tier_check is True
+
+        with patch("soma_cli.promote.run_promote", return_value=0) as mock_run:
+            assert cmd.execute(parsed) == 0
+            mock_run.assert_called_once_with(parsed)

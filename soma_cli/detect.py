@@ -15,6 +15,9 @@ from soma_core.ast.detect import (
 )
 from soma_core.skills.slots import SlotRegistry
 from soma_core.workspace import Workspace
+from soma_cli.base import CommandCategory, SomaCommand
+
+__all__ = ["run_detect", "DetectCommand"]
 
 
 def run_detect(args: argparse.Namespace) -> int:
@@ -107,3 +110,29 @@ def run_detect(args: argparse.Namespace) -> int:
             print(f"\n  💡 Run 'soma detect --fix' to auto-provision AST driver slots for {', '.join(u.title() for u in unconfigured)}")
 
     return 0
+
+
+class DetectCommand(SomaCommand):
+    """Command to inspect project languages and AST driver configuration."""
+
+    name = "detect"
+    aliases = ("languages", "drivers")
+    category = CommandCategory.SETUP
+    help = "Inspect project languages and AST driver configuration"
+
+    def configure_parser(self, parser: argparse.ArgumentParser) -> None:
+        parser.add_argument(
+            "--fix",
+            "--provision",
+            action="store_true",
+            dest="fix",
+            help="Automatically provision .soma/slots.yaml and stage driver recipes",
+        )
+        parser.add_argument(
+            "--dry-run",
+            action="store_true",
+            help="Preview provisioning without writing files to disk",
+        )
+
+    def execute(self, args: argparse.Namespace) -> int:
+        return run_detect(args)

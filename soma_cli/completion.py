@@ -13,6 +13,10 @@ from __future__ import annotations
 import argparse
 import re
 
+from soma_cli.base import CommandCategory, SomaCommand
+
+__all__ = ["generate", "run_completion", "CompletionCommand", "SHELLS"]
+
 SHELLS = ("bash", "zsh", "fish")
 
 
@@ -289,3 +293,17 @@ def run_completion(args: argparse.Namespace) -> int:
     from soma_cli.cli import _build_parser
     print(generate(_build_parser(), args.shell), end="")
     return 0
+
+
+class CompletionCommand(SomaCommand):
+    """Command to print a shell completion script for bash, zsh, or fish."""
+
+    name = "completion"
+    category = CommandCategory.PLUMBING
+    help = "Print a shell completion script"
+
+    def configure_parser(self, parser: argparse.ArgumentParser) -> None:
+        parser.add_argument("shell", choices=list(SHELLS), help="Target shell")
+
+    def execute(self, args: argparse.Namespace) -> int:
+        return run_completion(args)

@@ -5,11 +5,14 @@ import argparse
 import json
 from pathlib import Path
 import sys
-from typing import Any, Dict
+from typing import Any, Dict, List, Optional
 
 from soma_core.skills.graph import SkillGraph
 from soma_core.skills.handoff import soma_handoff
 from soma_core.skills.slots import SlotRegistry
+from soma_cli.base import CommandCategory, SomaCommand
+
+__all__ = ["run_skill", "run_handoff", "SkillCommand", "HandoffCommand"]
 
 
 def run_skill(args: argparse.Namespace) -> int:
@@ -117,3 +120,43 @@ def run_handoff(args: argparse.Namespace) -> int:
     except Exception as exc:
         print(f"Handoff Error: {exc}", file=sys.stderr)
         return 1
+
+
+class SkillCommand(SomaCommand):
+    """Command to manage and inspect horizontal skills and slots."""
+
+    name = "skill"
+    category = CommandCategory.PLUMBING
+    help = "Manage and inspect horizontal skills and slots"
+
+    def configure_parser(
+        self,
+        parser: argparse.ArgumentParser,
+        parents: Optional[List[argparse.ArgumentParser]] = None,
+    ) -> None:
+        sub = parser.add_subparsers(dest="skill_action", help="Skill command")
+        sub.add_parser("list", parents=parents or [], help="List discovered skills")
+        p_inspect = sub.add_parser("inspect", parents=parents or [], help="Inspect skill details")
+        p_inspect.add_argument("target_skill", type=str, help="Target skill ID")
+        sub.add_parser("slots", parents=parents or [], help="View slot definitions")
+
+    def execute(self, args: argparse.Namespace) -> int:
+        return run_skill(args)
+
+
+class HandoffCommand(SomaCommand):
+    """Command to execute file-buffered swarm handoff between skills."""
+
+    name = "handoff"
+    category = CommandCategory.PLUMBING
+    help = "Execute file-buffered swarm handoff between skills"
+
+    def configure_parser(self, parser: argparse.ArgumentParser) -> None:
+        parser.add_argument("--from", "-f", dest="from_skill", required=True, type=str, help="Origin skill ID")
+        parser.add_argument("--to", "-t", dest="to_skill", required=True, type=str, help="Target skill ID")
+        parser.add_argument("--artifact", "-a", required=True, type=str, help="Artifact type (e.g. ChargeSheet, DiffProposal)")
+        parser.add_argument("--payload", "-p", type=str, default="{}", help="Artifact payload JSON or file path")
+        parser.add_argument("--cycle-id", type=str, default=None, help="Optional arbitration cycle ID")
+
+    def execute(self, args: argparse.Namespace) -> int:
+        return run_handoff(args)

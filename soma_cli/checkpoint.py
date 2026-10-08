@@ -25,6 +25,9 @@ from soma_core.verification.checkpoint_checks import (
     CHECK_NAMES,
     run_all_checks,
 )
+from soma_cli.base import CommandCategory, SomaCommand
+
+__all__ = ["run_checkpoint", "CheckpointCommand"]
 
 
 def run_checkpoint(args: argparse.Namespace) -> int:
@@ -109,3 +112,31 @@ def run_checkpoint(args: argparse.Namespace) -> int:
             print("checkpoint: all checks passed")
 
     return exit_code
+
+
+class CheckpointCommand(SomaCommand):
+    """Command to run deterministic quality checks."""
+
+    name = "checkpoint"
+    category = CommandCategory.WORKFLOW
+    help = "Run deterministic quality checks"
+
+    def configure_parser(self, parser: argparse.ArgumentParser) -> None:
+        parser.add_argument(
+            "--pre-commit",
+            action="store_true",
+            help="Warn mode: exit 0 even if issues found (unless --strict)",
+        )
+        parser.add_argument(
+            "--strict",
+            action="store_true",
+            help="In pre-commit mode, exit 1 on issues",
+        )
+        parser.add_argument(
+            "--require-arbitration",
+            action="store_true",
+            help="Require valid passing arbitration evidence without requiring full --strict",
+        )
+
+    def execute(self, args: argparse.Namespace) -> int:
+        return run_checkpoint(args)

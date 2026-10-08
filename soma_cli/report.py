@@ -9,8 +9,11 @@ import argparse
 from datetime import datetime, timedelta, timezone
 
 from soma_cli import resolve_root, sanitize_display
+from soma_cli.base import CommandCategory, SomaCommand
 from soma_cli.init import STARTER_RULES
 from soma_core.evidence import aggregate_signals
+
+__all__ = ["run_report", "ReportCommand"]
 
 BASE_RULES = list(STARTER_RULES)
 
@@ -158,3 +161,22 @@ def run_report(args: argparse.Namespace) -> int:
     lines.append(f"╰{'─' * inner_width}╯")
     print("\n".join(lines))
     return 0
+
+
+class ReportCommand(SomaCommand):
+    """Command to show session report card."""
+
+    name = "report"
+    category = CommandCategory.WORKFLOW
+    help = "Session report card"
+
+    def configure_parser(self, parser: argparse.ArgumentParser) -> None:
+        parser.add_argument(
+            "--session",
+            type=int,
+            default=-1,
+            help="Session index (default: latest)",
+        )
+
+    def execute(self, args: argparse.Namespace) -> int:
+        return run_report(args)

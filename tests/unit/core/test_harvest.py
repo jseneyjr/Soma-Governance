@@ -133,3 +133,19 @@ def test_harvest_default_git_fallback(git_workspace):
     rc = run_harvest(args)
     assert rc == 0
 
+
+def test_harvest_command_contract():
+    from unittest.mock import patch
+    from soma_cli.harvest import HarvestCommand
+    cmd = HarvestCommand()
+    parser = argparse.ArgumentParser()
+    cmd.configure_parser(parser)
+    parsed = parser.parse_args(["--git", "--limit", "15", "--dry-run"])
+    assert parsed.git is True
+    assert parsed.limit == 15
+    assert parsed.dry_run is True
+
+    with patch("soma_cli.harvest.run_harvest", return_value=0) as mock_run:
+        assert cmd.execute(parsed) == 0
+        mock_run.assert_called_once_with(parsed)
+

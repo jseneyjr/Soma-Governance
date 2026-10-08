@@ -268,3 +268,19 @@ def test_run_doctor_drivers_flag(tmp_path):
         args_fail = argparse.Namespace(drivers=True, workspace=str(tmp_path), fix=True, fix_path=False, yes=False)
         assert run_doctor(args_fail) == 1
         mock_check.assert_called_with(tmp_path, fix=True)
+
+
+def test_doctor_command_contract():
+    from soma_cli.doctor import DoctorCommand
+    cmd = DoctorCommand()
+    parser = argparse.ArgumentParser()
+    cmd.configure_parser(parser)
+    parsed = parser.parse_args(["--fix", "--drivers", "--fix-path", "--yes"])
+    assert parsed.fix is True
+    assert parsed.drivers is True
+    assert parsed.fix_path is True
+    assert parsed.yes is True
+
+    with patch("soma_cli.doctor.run_doctor", return_value=0) as mock_run:
+        assert cmd.execute(parsed) == 0
+        mock_run.assert_called_once_with(parsed)
