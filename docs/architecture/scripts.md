@@ -1,10 +1,10 @@
 # Scripts Reference
 
-This document catalogs 79 executable scripts, command modules, SDK modules, and MCP/core modules in the Soma governance framework.
+This document catalogs 84 executable scripts, command modules, SDK modules, and MCP/core modules in the Soma governance framework.
 
 ## Counting Method
 
-Counts are generated from the source tree with mutually exclusive categories: package initializers (`__init__.py`, `__main__.py`) and subpackages (`soma_core/workspace/`, `soma_core/lifecycle/`, `soma_core/schemas/`, `soma_core/outcomes/`, `soma_cli/hooks/`) are excluded; `install/hooks/pre-commit` is counted as the lifecycle script; and all non-initializer `soma_core/*.py` modules are grouped with the MCP modules. This produces 79 unique paths with no double counting.
+Counts are generated from the source tree with mutually exclusive categories: package initializers (`__init__.py`, `__main__.py`) and subpackages (`soma_core/workspace/`, `soma_core/lifecycle/`, `soma_core/schemas/`, `soma_core/outcomes/`, `soma_cli/hooks/`) are excluded; `install/hooks/pre-commit` is counted as the lifecycle script; and all non-initializer `soma_core/*.py` modules are grouped with the MCP modules. This produces 84 unique paths with no double counting.
 
 ## Summary by Category
 
@@ -12,10 +12,10 @@ Counts are generated from the source tree with mutually exclusive categories: pa
 |:---------|:----------------------------|:------|:------------|
 | [Lifecycle Scripts (Hooks)](#lifecycle-scripts-hooks--bash) | bash (`install/hooks/`) | 1 | Git pre-commit lifecycle hook |
 | [Verification Scripts](#verification-scripts--python) | Python (`soma_core/verification/`) | 14 | Deterministic AST checkers, coverage tools, and adversarial verification |
-| [CLI Commands](#cli-commands--python-soma_cli) | Python and bash (`soma_cli/`, root) | 23 | CLI launcher and command implementation modules |
+| [CLI Commands](#cli-commands--python-soma_cli) | Python and bash (`soma_cli/`, root) | 28 | CLI launcher and command implementation modules |
 | [SDK Modules](#sdk-modules--python-soma_sdk) | Python (`soma_sdk/`) | 8 | Canonical scoring, parsing, telemetry, hot-zone, and governance APIs |
 | [MCP and Core Modules](#mcp-and-core-modules) | Python (`soma_mcp/`, `soma_core/`) | 33 | MCP transport, dispatch, confinement, content inventory, canonical evidence, cache, errors, receipts, and atomic storage |
-| **Total** | | **79** | Unique paths under the method above |
+| **Total** | | **84** | Unique paths under the method above |
 
 ---
 
@@ -54,12 +54,14 @@ These 14 Python scripts form the deterministic and adversarial verification engi
 
 ## CLI Commands — Python (`soma_cli/`)
 
-These 23 paths provide the root `soma` launcher and 22 non-initializer Python modules in `soma_cli/`. Eighteen modules implement registered subcommands; scanner/generator modules support Genesis, and `pathcheck.py` supports `soma doctor` and the installers.
+These 28 paths provide the root `soma` launcher and 27 non-initializer Python modules in `soma_cli/`. Subcommands are implemented by modular `SomaCommand` classes categorized into 4 operational phases; scanner/generator modules support Genesis, and `pathcheck.py` supports `soma doctor` and the installers.
 
 | Command / Script | Location | Purpose |
 |:-----------------|:---------|:--------|
 | **`soma`** | `soma` | Root executable bash launcher with symlink resolution and environment configuration for the CLI. |
 | **`cli.py`** | `soma_cli/cli.py` | Main CLI entrypoint and argument dispatcher routing user commands to subcommand modules. |
+| **`base.py`** | `soma_cli/base.py` | Abstract base class `SomaCommand` and `CommandCategory` taxonomy for modular CLI commands. |
+| **`capture_insight.py`** | `soma_cli/capture_insight.py` | `soma capture-insight`: Records structured operational insights and lessons learned into evidence logs. |
 | **`checkpoint.py`** | `soma_cli/checkpoint.py` | `soma checkpoint`: Deterministic quality checks (test coverage, git status, docstring presence) without LLM calls. |
 | **`clean_rules.py`** | `soma_cli/clean_rules.py` | `soma clean-global-rules`: Quarantines and cleanses leaked internal rules and HGT playbooks from global platform directories. |
 | **`completion.py`** | `soma_cli/completion.py` | `soma completion {bash,zsh,fish}`: Prints a shell completion script generated at runtime from the argparse parser, so it never drifts from the CLI. Never edits dotfiles. |
@@ -70,13 +72,16 @@ These 23 paths provide the root `soma` launcher and 22 non-initializer Python mo
 | **`genesis_generator.py`** | `soma_cli/genesis_generator.py` | Generates candidate cell files in `vacuoles/` and architecture map `docs/organelles.md` from scan results. |
 | **`genesis_scanner.py`** | `soma_cli/genesis_scanner.py` | Language-agnostic codebase scanner detecting 8 architectural patterns for governance cell candidate generation. |
 | **`harvest.py`** | `soma_cli/harvest.py` | `soma harvest`: Retroactively harvests telemetry from git commit history to bootstrap baseline cell fitness and eliminate cold-start unobserved gaps. |
-| **`skills.py`** | `soma_cli/skills.py` | `soma skill`, `soma handoff`: Porcelain commands for inspecting skill graphs, slot resolution, and swarm handoffs. |
 | **`init.py`** | `soma_cli/init.py` | `soma init`: Initializes rules for Gemini, Claude Code, Cursor, or Copilot; it does not auto-detect Kiro. |
+| **`install.py`** | `soma_cli/install.py` | `soma install`, `soma uninstall`: Installs and uninstalls Soma rules and integrations into user environments. |
 | **`oracle.py`** | `soma_cli/oracle.py` | `soma oracle`: Cell health classification, diagnostics, and pruning recommendations (wraps `oracle_checkpoint.py`). |
 | **`pathcheck.py`** | `soma_cli/pathcheck.py` | Shell-aware PATH guidance: finds where pip installed `soma` and prints the line to add for zsh, bash, fish or PowerShell. Used by `soma doctor` and the installers; never edits dotfiles itself (`soma doctor --fix-path` does, on request). |
 | **`promote.py`** | `soma_cli/promote.py` | `soma promote`: Evaluates and displays high-performing local cells eligible for promotion to forest-floor rules. |
+| **`prune.py`** | `soma_cli/prune.py` | `soma prune`: Identifies and removes low-fitness, obsolete, or decaying governance cells. |
 | **`quarantine.py`** | `soma_cli/quarantine.py` | `soma quarantine`: Inspects, lists, and prunes damaged or corrupted files isolated in `.soma/quarantine/`. |
+| **`registry.py`** | `soma_cli/registry.py` | Command registry coordinating categorized discovery, subparser population, and grouped help formatting. |
 | **`report.py`** | `soma_cli/report.py` | `soma report`: Session report card showing triggered rules, event counts, and ASCII activity distributions. |
+| **`skills.py`** | `soma_cli/skills.py` | `soma skill`, `soma handoff`: Porcelain commands for inspecting skill graphs, slot resolution, and swarm handoffs. |
 | **`status.py`** | `soma_cli/status.py` | `soma status`: Displays active rules, cell inventory, operational metrics, and governance status. Counts rules merged into Claude's `CLAUDE.md` as well as loose rule files. |
 | **`sync.py`** | `soma_cli/sync.py` | `soma sync`: Rebuilds cell fitness frontmatter from canonical `.soma/evidence/signals.jsonl`. |
 | **`transfer.py`** | `soma_cli/transfer.py` | `soma transfer`: Transfers a governance cell to another project with fitness reset and generation incrementation. |

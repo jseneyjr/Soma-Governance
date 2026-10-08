@@ -15,6 +15,9 @@ import sys
 from typing import Any
 
 from soma_core.somayaml import parse_frontmatter
+from soma_cli.base import CommandCategory, SomaCommand
+
+__all__ = ["run_clean_rules", "CleanRulesCommand"]
 
 UNIVERSAL_TENETS = frozenset({
     "providence",
@@ -203,3 +206,32 @@ def run_clean_rules(args: argparse.Namespace) -> int:
         print("\n  ℹ️  Run with --force to quarantine and purge leaked rules.")
 
     return 0
+
+
+class CleanRulesCommand(SomaCommand):
+    """Command to cleanse leaked internal rules from global platform directories."""
+
+    name = "clean-global-rules"
+    category = CommandCategory.PLUMBING
+    help = "Cleanse leaked internal rules from global platform directories"
+
+    def configure_parser(self, parser: argparse.ArgumentParser) -> None:
+        parser.add_argument(
+            "--dry-run",
+            action="store_true",
+            help="Simulate cleanse without removing files (default)",
+        )
+        parser.add_argument(
+            "--force",
+            action="store_true",
+            help="Execute removal of leaked rules with quarantine backup",
+        )
+        parser.add_argument(
+            "--quarantine-dir",
+            type=str,
+            default="",
+            help="Custom quarantine directory (default: ~/.soma/quarantine)",
+        )
+
+    def execute(self, args: argparse.Namespace) -> int:
+        return run_clean_rules(args)

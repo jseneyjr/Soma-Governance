@@ -13,6 +13,10 @@ import shutil
 import sys
 from pathlib import Path
 
+from soma_cli.base import CommandCategory, SomaCommand
+
+__all__ = ["run_init", "InitCommand"]
+
 # ── Starter Pack ────────────────────────────────────────────────────────────
 # The 5 rules that deliver immediate value on any project, any language.
 # Keys are the rule stems — files are bundled in soma_cli/starter_rules/.
@@ -574,3 +578,48 @@ def _install_claude_md(rules_dir: Path, force: bool = False) -> None:
         claude_md.write_text(soma_block, encoding="utf-8")
 
     print(f"  📝 Updated {claude_md}")
+
+
+class InitCommand(SomaCommand):
+    """Command to initialize governance for a project."""
+
+    name = "init"
+    category = CommandCategory.SETUP
+    help = "Set up governance for this project"
+
+    def configure_parser(self, parser: argparse.ArgumentParser) -> None:
+        parser.add_argument(
+            "--dry-run",
+            action="store_true",
+            help="Show what would be installed without doing it",
+        )
+        parser.add_argument(
+            "--platform",
+            choices=["gemini", "claude", "cursor", "copilot", "kiro"],
+            help="Skip platform detection, force a platform",
+        )
+        parser.add_argument(
+            "--rules",
+            choices=["minimal", "standard", "full"],
+            default="standard",
+            help="Rule set to install (default: standard)",
+        )
+        parser.add_argument(
+            "--mcp",
+            action="store_true",
+            help="Generate .mcp.json for JIT cell matching",
+        )
+        parser.add_argument(
+            "--yes",
+            "-y",
+            action="store_true",
+            help="Skip confirmation prompts",
+        )
+        parser.add_argument(
+            "--force",
+            action="store_true",
+            help="Overwrite existing rules",
+        )
+
+    def execute(self, args: argparse.Namespace) -> int:
+        return run_init(args)

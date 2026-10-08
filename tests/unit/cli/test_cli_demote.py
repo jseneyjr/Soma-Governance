@@ -255,3 +255,22 @@ class TestDemoteCLI:
         assert exit_code == 0
         assert (vacuoles_dir / "ext-wall.md").exists()
 
+    def test_demote_command_contract(self, tmp_path):
+        from soma_cli.demote import DemoteCommand
+        cmd = DemoteCommand()
+        parser = argparse.ArgumentParser()
+        cmd.configure_parser(parser)
+        parsed = parser.parse_args(["--dry-run", "--force", "--cell", "ext-wall"])
+        assert parsed.dry_run is True
+        assert parsed.force is True
+        assert parsed.cell == "ext-wall"
+
+        walls_dir = tmp_path / ".soma" / "cells" / "walls"
+        walls_dir.mkdir(parents=True)
+        (tmp_path / ".soma" / "evidence").mkdir(parents=True)
+        make_cell(str(walls_dir), "ext-wall", cell_type="wall")
+        parsed._project_root = tmp_path
+        parsed.json = False
+        exit_code = cmd.execute(parsed)
+        assert exit_code == 0
+

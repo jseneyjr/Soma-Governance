@@ -14,6 +14,9 @@ from soma_cli.hooks.management import (
     run_hook_uninstall,
 )
 from soma_cli.hooks.safety import _find_gate_log_dir, run_safety_gate
+from soma_cli.base import CommandCategory, SomaCommand
+
+__all__ = ["run_hook", "HookCommand", "run_pre_commit", "run_pre_invocation", "run_session_close"]
 
 
 def run_pre_invocation(
@@ -417,3 +420,45 @@ def run_hook(args: Any) -> int:
     else:
         print(f"Unknown hook command or phase: {phase}", file=sys.stderr)
         return 1
+
+
+class HookCommand(SomaCommand):
+    """Command to manage and run cross-platform lifecycle hooks."""
+
+    name = "hook"
+    category = CommandCategory.PLUMBING
+    help = "Manage and run cross-platform lifecycle hooks"
+
+    def configure_parser(self, parser: Any, parents: Any = None) -> None:
+        p_hook_sub = parser.add_subparsers(dest="hook_action")
+        p_parents = parents or []
+
+        # Porcelain subcommands
+        p_hook_install = p_hook_sub.add_parser("install", parents=p_parents, help="Install pre-commit hook into git repository")
+        p_hook_install.add_argument("--force", action="store_true", help="Overwrite symlinks pointing outside repository")
+        p_hook_install.add_argument("--dry-run", action="store_true", help="Preview without creating or modifying hook")
+
+        p_hook_sub.add_parser("status", parents=p_parents, help="Inspect pre-commit hook and interpreter status")
+
+        p_hook_uninstall = p_hook_sub.add_parser("uninstall", parents=p_parents, help="Safely remove Soma pre-commit hook")
+        p_hook_uninstall.add_argument("--force", action="store_true", help="Force removal")
+        p_hook_uninstall.add_argument("--dry-run", action="store_true", help="Preview without modifying disk")
+
+        # Lifecycle phases
+        p_h_precommit = p_hook_sub.add_parser("pre-commit", parents=p_parents, help="Run pre-commit quality check")
+        p_h_precommit.add_argument("--strict", action="store_true", help="In pre-commit, exit 1 on issues")
+
+        p_h_safety = p_hook_sub.add_parser("safety-gate", parents=p_parents, help="PreToolUse safety check")
+        p_h_safety.add_argument("--cmd", type=str, default=None, help="Command line string for safety-gate check")
+
+        p_hook_sub.add_parser("pre-invocation", parents=p_parents, help="PreInvocation monitor")
+        p_hook_sub.add_parser("session-close", parents=p_parents, help="Post-session close")
+
+        p_h_post = p_hook_sub.add_parser("post-session", parents=p_parents, help="Post-session hook")
+        p_h_post.add_argument("--transcript", default=None, help="Path to transcript.jsonl for post-session hook")
+
+        for alias in ("governance-monitor", "immune-init", "stop"):
+            p_hook_sub.add_parser(alias, parents=p_parents, help=f"Hook phase {alias}")
+
+    def execute(self, args: Any) -> int:
+        return run_hook(args)

@@ -11,6 +11,10 @@ import subprocess
 import sys
 from typing import Any
 
+from soma_cli.base import CommandCategory, SomaCommand
+
+__all__ = ["run_verify", "VerifyCommand"]
+
 
 # Lazy imports to keep CLI responsive
 def _get_verification():
@@ -587,6 +591,61 @@ def run_verify(args: argparse.Namespace) -> int:
         return 1
 
     return 0
+
+
+class VerifyCommand(SomaCommand):
+    """Command to run verification on changed files."""
+
+    name = "verify"
+    aliases = ("check",)
+    category = CommandCategory.WORKFLOW
+    help = "Run verification on changed files"
+
+    def configure_parser(self, parser: argparse.ArgumentParser) -> None:
+        parser.add_argument(
+            "--files",
+            nargs="*",
+            default=None,
+            help="Explicit list of files to verify",
+        )
+        parser.add_argument(
+            "--layer1-only",
+            action="store_true",
+            help="Skip Layer 2 (fast deterministic checks only)",
+        )
+        parser.add_argument(
+            "--dry-run",
+            action="store_true",
+            help="Show what would be checked without running",
+        )
+        parser.add_argument(
+            "--plan",
+            default=None,
+            help="Task plan or prompt context for Layer 2 adversarial verification",
+        )
+        parser.add_argument(
+            "--plan-file",
+            default=None,
+            help="Path to file containing task plan or prompt context",
+        )
+        parser.add_argument(
+            "--provider",
+            default=None,
+            help="Inference provider to use (gemini, anthropic, openai, keyring, prompt)",
+        )
+        parser.add_argument(
+            "--in-band",
+            action="store_true",
+            help="Generate an in-band charge sheet for conversational rebuttal (zero external API keys)",
+        )
+        parser.add_argument(
+            "--release-gate",
+            action="store_true",
+            help="Check Release Gate 4.5: assert latest arbitration evidence is a valid SHIP receipt",
+        )
+
+    def execute(self, args: argparse.Namespace) -> int:
+        return run_verify(args)
 
 
 if __name__ == "__main__":  # pragma: no cover

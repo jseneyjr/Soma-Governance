@@ -10,6 +10,8 @@ import sys
 
 import pytest
 
+import soma_cli.cli as cli
+
 
 SUBCOMMANDS = ["init", "status", "report", "doctor"]
 
@@ -465,6 +467,53 @@ def test_cli_skill_and_handoff(tmp_path, capsys):
         "--payload", '{"issue": "test"}',
     ])
     assert rc_handoff == 0
+
+
+def test_cli_cmd_sync_dispatch(tmp_path):
+    from unittest.mock import patch
+    with patch("soma_cli.sync.run_sync", return_value=0) as mock_sync:
+        rc = cli.main(["sync", "--workspace", str(tmp_path)])
+        assert rc == 0
+        assert mock_sync.called
+
+
+def test_cli_registry_fallback_dispatch(tmp_path):
+    # If a command is in registry but not in COMMANDS dict
+    import argparse
+    from unittest.mock import MagicMock, patch
+    from soma_cli.base import CommandCategory, SomaCommand
+    from soma_cli.registry import CommandRegistry
+
+    class CustomTestCommand(SomaCommand):
+        name = "custom-test"
+        category = CommandCategory.WORKFLOW
+        help = "Custom test command"
+        def configure_parser(self, parser): pass
+        def execute(self, args): return 0
+
+    test_reg = CommandRegistry()
+    cmd = CustomTestCommand()
+    test_reg.register(cmd)
+
+    # Dispatch via registry fallback
+    ns = argparse.Namespace(command="custom-test", workspace=str(tmp_path), format=None, json=False, plumbing=False)
+    with patch.object(cli, "_build_parser") as mock_build, \
+         patch("soma_cli.cli.get_default_registry", return_value=test_reg):
+        parser_mock = MagicMock()
+        parser_mock.parse_args.return_value = ns
+        mock_build.return_value = parser_mock
+        rc = cli.main(["custom-test", "--workspace", str(tmp_path)])
+        assert rc == 0
+
+    # Test unknown command prints help and returns 1
+    ns_unknown = argparse.Namespace(command="definitely-unknown-xyz", workspace=str(tmp_path), format=None, json=False, plumbing=False)
+    with patch.object(cli, "_build_parser") as mock_build:
+        parser_mock = MagicMock()
+        parser_mock.parse_args.return_value = ns_unknown
+        mock_build.return_value = parser_mock
+        rc = cli.main(["definitely-unknown-xyz"])
+        assert rc == 1
+        parser_mock.print_help.assert_called()
 
 
 

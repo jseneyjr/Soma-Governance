@@ -6,6 +6,10 @@ import json
 import sys
 from pathlib import Path
 
+from soma_cli.base import CommandCategory, SomaCommand
+
+__all__ = ["run_genesis", "GenesisCommand"]
+
 
 def run_genesis(args: argparse.Namespace) -> int:
     """Scan a codebase and generate governance cell files."""
@@ -190,3 +194,43 @@ def _count_source_files(root: Path, project_type: str) -> int:
     """Count source files, skipping non-essential dirs."""
     from soma_cli.genesis_scanner import _iter_source_files
     return len(_iter_source_files(root, project_type, include_tests=True))
+
+
+class GenesisCommand(SomaCommand):
+    """Command to analyze codebase and generate governance cells."""
+
+    name = "genesis"
+    aliases = ("analyze",)
+    category = CommandCategory.LIFECYCLE
+    help = "Analyze codebase and generate governance cells"
+
+    def configure_parser(self, parser: argparse.ArgumentParser) -> None:
+        parser.add_argument(
+            "--dry-run",
+            action="store_true",
+            help="Preview candidates and report without writing files",
+        )
+        parser.add_argument(
+            "--min-confidence",
+            type=float,
+            default=0.5,
+            help="Minimum confidence threshold (0.0 to 1.0, default: 0.5)",
+        )
+        parser.add_argument(
+            "--force",
+            action="store_true",
+            help="Overwrite existing cell files if names collide",
+        )
+        parser.add_argument(
+            "--install-hooks",
+            action="store_true",
+            help="Automatically install git pre-commit hook without prompting",
+        )
+        parser.add_argument(
+            "--no-hooks",
+            action="store_true",
+            help="Skip git hook installation prompt",
+        )
+
+    def execute(self, args: argparse.Namespace) -> int:
+        return run_genesis(args)

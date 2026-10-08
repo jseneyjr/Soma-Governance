@@ -18,6 +18,10 @@ import tempfile
 from pathlib import Path
 from typing import Callable, Iterable, Mapping, TextIO
 
+from soma_cli.base import CommandCategory, SomaCommand
+
+__all__ = ["run_doctor", "DoctorCommand"]
+
 FIX_PATH_MARKER = "# added by soma doctor --fix-path"
 _EDITABLE_SHELLS = ("zsh", "bash", "fish")
 
@@ -551,3 +555,39 @@ def run_doctor(args: argparse.Namespace) -> int:
     total = len(results)
     print(f"\n{passed}/{total} checks passed.")
     return 0 if all(results) else 1
+
+
+class DoctorCommand(SomaCommand):
+    """Command for system health and governance audit."""
+
+    name = "doctor"
+    aliases = ("audit",)
+    category = CommandCategory.SETUP
+    help = "System health and governance audit"
+
+    def configure_parser(self, parser: argparse.ArgumentParser) -> None:
+        parser.add_argument(
+            "--fix",
+            action="store_true",
+            help="Automatically repair detected issues (pre-commit hooks, missing AST drivers)",
+        )
+        parser.add_argument(
+            "--drivers",
+            action="store_true",
+            help="Run only AST driver and language detection health check",
+        )
+        parser.add_argument(
+            "--fix-path",
+            action="store_true",
+            help="Add soma's scripts directory to your shell startup file "
+                 "(dry run unless confirmed or --yes; zsh/bash/fish only)",
+        )
+        parser.add_argument(
+            "--yes",
+            "-y",
+            action="store_true",
+            help="With --fix-path: apply without asking",
+        )
+
+    def execute(self, args: argparse.Namespace) -> int:
+        return run_doctor(args)

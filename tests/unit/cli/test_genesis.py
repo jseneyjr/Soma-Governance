@@ -843,4 +843,22 @@ class TestIntegration:
         captured = capsys.readouterr().out
         assert "Auto-provisioned AST drivers" not in captured
 
+    def test_genesis_command_contract(self) -> None:
+        import argparse
+        from unittest.mock import patch
+        from soma_cli.genesis import GenesisCommand
+        cmd = GenesisCommand()
+        parser = argparse.ArgumentParser()
+        cmd.configure_parser(parser)
+        parsed = parser.parse_args(["--dry-run", "--min-confidence", "0.8", "--force", "--install-hooks", "--no-hooks"])
+        assert parsed.dry_run is True
+        assert parsed.min_confidence == 0.8
+        assert parsed.force is True
+        assert parsed.install_hooks is True
+        assert parsed.no_hooks is True
+
+        with patch("soma_cli.genesis.run_genesis", return_value=0) as mock_run:
+            assert cmd.execute(parsed) == 0
+            mock_run.assert_called_once_with(parsed)
+
 

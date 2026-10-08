@@ -7,7 +7,10 @@ from datetime import date, datetime
 from pathlib import Path
 
 from soma_cli import resolve_root, sanitize_display
+from soma_cli.base import CommandCategory, SomaCommand
 from soma_core.evidence import aggregate_signals
+
+__all__ = ["run_status", "StatusCommand"]
 
 from soma_sdk.cells import parse_cell_file
 
@@ -451,3 +454,18 @@ def run_status(args: argparse.Namespace) -> int:
         print(f"  {r['name']:<{rule_width}}{str(r['triggers']):<10}{r['expiry']}")
 
     return 0
+
+
+class StatusCommand(SomaCommand):
+    """Command to show active rules, cell inventory, and health stats."""
+
+    name = "status"
+    aliases = ("rules",)
+    category = CommandCategory.WORKFLOW
+    help = "Show active rules and stats"
+
+    def configure_parser(self, parser: argparse.ArgumentParser) -> None:
+        pass
+
+    def execute(self, args: argparse.Namespace) -> int:
+        return run_status(args)

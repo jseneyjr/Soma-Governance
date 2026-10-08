@@ -173,3 +173,21 @@ def test_transfer_cell_without_yaml_module(tmp_path, monkeypatch):
     dest = target / ".soma" / "cells" / "walls" / "stdlib-wall.md"
     assert dest.exists()
 
+
+def test_transfer_command_contract():
+    import argparse
+    from unittest.mock import patch
+    from soma_cli.transfer import TransferCommand
+    cmd = TransferCommand()
+    parser = argparse.ArgumentParser()
+    cmd.configure_parser(parser)
+    parsed = parser.parse_args(["my-cell", "--to", "/target", "--tags", "python,pytest", "--output", "out.json"])
+    assert parsed.action_or_cell_id == "my-cell"
+    assert parsed.target_dir == "/target"
+    assert parsed.tags == "python,pytest"
+    assert parsed.output == "out.json"
+
+    with patch("soma_cli.transfer.run_transfer", return_value=0) as mock_run:
+        assert cmd.execute(parsed) == 0
+        mock_run.assert_called_once_with(parsed)
+

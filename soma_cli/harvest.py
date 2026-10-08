@@ -20,7 +20,10 @@ import json
 import sys
 from pathlib import Path
 
+from soma_cli.base import CommandCategory, SomaCommand
 from soma_core.outcomes import harvest_git_history
+
+__all__ = ["run_harvest", "HarvestCommand"]
 
 
 def run_harvest(args: argparse.Namespace) -> int:
@@ -86,3 +89,33 @@ def _print_harvest_summary(stats: dict, dry_run: bool = False) -> None:
     elif stats.get("signals_minted", 0) > 0 and not dry_run:
         print(f"  ✅ Seeded baseline fitness evidence into .soma/evidence/signals.jsonl")
     print()
+
+
+class HarvestCommand(SomaCommand):
+    """Command to retroactively harvest telemetry and fitness evidence."""
+
+    name = "harvest"
+    category = CommandCategory.LIFECYCLE
+    help = "Retroactively harvest telemetry and fitness evidence"
+
+    def configure_parser(self, parser: argparse.ArgumentParser) -> None:
+        parser.add_argument(
+            "--git",
+            action="store_true",
+            default=True,
+            help="Harvest signals from git log history (default: True)",
+        )
+        parser.add_argument(
+            "--limit",
+            type=int,
+            default=30,
+            help="Max commits to inspect (default: 30)",
+        )
+        parser.add_argument(
+            "--dry-run",
+            action="store_true",
+            help="Preview harvested signals without writing evidence",
+        )
+
+    def execute(self, args: argparse.Namespace) -> int:
+        return run_harvest(args)
