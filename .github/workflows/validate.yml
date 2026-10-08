@@ -122,6 +122,13 @@ jobs:
 
       - name: Run validation
         run: make validate
+
+      - name: Run Layer 1 Deterministic Verification
+        run: python3 -m soma_cli.verify --layer1-only
+
+      - name: Verify Release Gate 4.5 (PRs targeting main)
+        if: github.base_ref == 'main'
+        run: python3 -m soma_cli.verify --release-gate
       
       - name: Run test suite
         id: test
@@ -214,6 +221,9 @@ jobs:
         run: |
           cd "$RUNNER_TEMP"
           python -c "import soma_cli, soma_sdk; print('Soma wheel imports cleanly')"
+
+      - name: Run Layer 1 Deterministic Verification
+        run: python -m soma_cli.verify --layer1-only
 
       # HOME and USERPROFILE point at a throwaway directory so no test can write
       # to the runner's real profile (BUG-010). PYTHONUTF8=0 pins the Windows

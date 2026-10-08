@@ -3,34 +3,31 @@ id: trap-local-green-ci-red
 domain: governance
 type: vacuole
 enforcement: advisory
-hypothesis: Agents rationalize persistent CI failures as "pre-existing" or "environment
-  issues" without reading the actual CI log, causing stacked failures to accumulate
-prediction: When an agent declares a fix complete based only on local test results,
-  the CI build will reveal at least one additional failure layer that local testing
-  did not surface
-falsification: If 5 consecutive CI-touching changes pass CI on first push without
-  any post-push fixes, this vacuole is unnecessary
+hypothesis: "Agents rationalize persistent CI failures as \"pre-existing\" or \"environment issues\" without reading the actual CI log, causing stacked failures to accumulate"
+prediction: "When an agent declares a fix complete based only on local test results, the CI build will reveal at least one additional failure layer that local testing did not surface"
+falsification: "If 5 consecutive CI-touching changes pass CI on first push without any post-push fixes, this vacuole is unnecessary"
 target_paths:
-- .github/workflows/*.yml
-- tests/*.py
-- soma_core/*.py
-- soma_cli/*.py
-- Makefile
+  - ".github/workflows/*.yml"
+  - "tests/*.py"
+  - "soma_core/*.py"
+  - "soma_cli/*.py"
+  - Makefile
 triggers:
-- ci_fix
-- test_fix
-- build_fix
-created: '2026-09-30'
+  - ci_fix
+  - test_fix
+  - build_fix
+created: 2026-09-30
 expiry_days: 90
 expiry_sessions: 30
 fitness:
   score: 0.5
   impact_weight: 1.0
-  triggers: 4
-  true_positives: 2
-  false_positives: 0
-  last_trigger_date: '2026-10-01T04:26:19Z'
+  triggers: 23
+  true_positives: 7
+  false_positives: 12.2984
+  last_trigger_date: "2026-10-08T04:08:50Z"
 ---
+
 ## Trap: Local Green ≠ CI Green
 
 **Pattern**: Agent runs tests locally, sees green (or dismisses a known red), and declares the fix complete without verifying the actual CI build.

@@ -3,40 +3,37 @@ id: wall-dogfood-own-tools
 domain: governance
 type: wall
 enforcement: gate
-hypothesis: A governance framework that doesn't use its own tools to manage itself
-  loses credibility and misses dogfooding feedback loops that surface UX gaps
-prediction: Will fire when manual file operations (mv, cp, sed, manual frontmatter
-  edits) are used instead of soma CLI commands (promote, demote, init, checkpoint)
-  for operations that soma provides tooling for
-falsification: If soma CLI lacks a needed operation for 5 consecutive sessions, the
-  missing operation should be built rather than this cell pruned
+hypothesis: "A governance framework that doesn't use its own tools to manage itself loses credibility and misses dogfooding feedback loops that surface UX gaps"
+prediction: "Will fire when manual file operations (mv, cp, sed, manual frontmatter edits) are used instead of soma CLI commands (promote, demote, init, checkpoint) for operations that soma provides tooling for"
+falsification: "If soma CLI lacks a needed operation for 5 consecutive sessions, the missing operation should be built rather than this cell pruned"
 target_paths:
-- .soma/cells/**/*.md
-- soma_cli/*.py
-- soma_core/*.py
+  - ".soma/cells/**/*.md"
+  - "soma_cli/*.py"
+  - "soma_core/*.py"
 triggers:
-- cell_creation
-- cell_promotion
-- cell_demotion
-- lifecycle_change
+  - cell_creation
+  - cell_promotion
+  - cell_demotion
+  - lifecycle_change
 minimum_mode: standard
 expiry_sessions: 50
 expiry_days: 180
-created: '2026-09-30'
+created: 2026-09-30
 impact_weight: 1.0
 tags:
-- governance
-- dogfooding
-- process
-- meta
+  - governance
+  - dogfooding
+  - process
+  - meta
 fitness:
   score: 0.6
   impact_weight: 1.0
-  triggers: 5
-  true_positives: 3
-  false_positives: 0
-  last_trigger_date: '2026-10-01T04:26:19Z'
+  triggers: 24
+  true_positives: 8
+  false_positives: 13.0556
+  last_trigger_date: "2026-10-08T04:08:50Z"
 ---
+
 When performing lifecycle operations on Soma's own cells (create, promote,
 demote, verify), ALWAYS use the soma CLI or MCP tools first. If the tool
 doesn't support the operation, that's a feature gap — build it, don't bypass it.

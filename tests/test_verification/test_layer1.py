@@ -256,3 +256,124 @@ class TestRunnerBranchCoverageIntegration:
         coverage_results = [r for r in results if r.tool == "branch_coverage"]
         # Should not crash — either 0 results or a skip-evidence
         assert all(isinstance(r, ToolEvidence) for r in coverage_results)
+
+
+class TestGetModifiedLines:
+    """Test git diff modified line extraction helper."""
+
+    def test_get_modified_lines_parses_hunks(self, monkeypatch):
+        from soma_core.verification.runner import _get_modified_lines
+        import subprocess
+
+        fake_diff = "@@ -10,0 +15,5 @@\n+line1\n+line2\n"
+        def mock_run(cmd, *args, **kwargs):
+            return subprocess.CompletedProcess(cmd, 0, stdout=fake_diff, stderr="")
+        monkeypatch.setattr(subprocess, "run", mock_run)
+
+        lines = _get_modified_lines("app.py", "/repo")
+        assert lines == {15, 16, 17, 18, 19}
+
+    def test_get_modified_lines_empty_when_no_hunks(self, monkeypatch):
+        from soma_core.verification.runner import _get_modified_lines
+        import subprocess
+
+        def mock_run(cmd, *args, **kwargs):
+            return subprocess.CompletedProcess(cmd, 0, stdout="", stderr="")
+        monkeypatch.setattr(subprocess, "run", mock_run)
+
+        assert _get_modified_lines("app.py", "/repo") is None
+
+    def test_get_modified_lines_with_github_base_ref(self, monkeypatch):
+        from soma_core.verification.runner import _get_modified_lines
+        import subprocess
+
+        monkeypatch.setenv("GITHUB_BASE_REF", "develop")
+        observed_cmds = []
+
+        fake_diff = "@@ -20,0 +25,2 @@\n+line1\n+line2\n"
+        def mock_run(cmd, *args, **kwargs):
+            observed_cmds.append(cmd)
+            if "origin/develop...HEAD" in cmd:
+                return subprocess.CompletedProcess(cmd, 0, stdout=fake_diff, stderr="")
+            return subprocess.CompletedProcess(cmd, 0, stdout="", stderr="")
+
+        monkeypatch.setattr(subprocess, "run", mock_run)
+        lines = _get_modified_lines("app.py", "/repo")
+        assert lines == {25, 26}
+        assert any("origin/develop...HEAD" in c for c in observed_cmds)
+
+    def test_get_modified_lines_exception_handled(self, monkeypatch):
+        from soma_core.verification.runner import _get_modified_lines
+        import subprocess
+
+        def mock_run(cmd, *args, **kwargs):
+            raise OSError("git error")
+        monkeypatch.setattr(subprocess, "run", mock_run)
+
+        assert _get_modified_lines("app.py", "/repo") is None
+
+
+class TestRunnerCoverageEnhancements:
+    """Tests for edge cases in runner.py discovery and mapping."""
+
+    def test_find_test_file_runner_mapping(self):
+        from soma_core.verification.runner import _find_test_file
+        test_file = _find_test_file("soma_core/verification/runner.py", REPO_ROOT)
+        assert test_file is not None
+        assert test_file.endswith("test_layer1.py")
+
+    def test_discover_functions_with_target_lines(self, tmp_path):
+        from soma_core.verification.runner import _discover_functions
+        code = textwrap.dedent("""\
+            def func_a():
+                return 1
+
+            def func_b():
+                return 2
+
+            def func_c():
+                return 3
+        """)
+        f = tmp_path / "module.py"
+        f.write_text(code)
+
+        # Lines 1-2 belong to func_a
+        assert _discover_functions(str(f), target_lines={1, 2}) == ["func_a"]
+        # Lines 4-5 belong to func_b
+        assert _discover_functions(str(f), target_lines={5}) == ["func_b"]
+        # No overlap
+        assert _discover_functions(str(f), target_lines={100}) == []
+
+    def test_runner_run_layer2_forwarding(self, tmp_path):
+        """runner.run_layer2 emits DeprecationWarning and forwards to AdversarialVerifier + Arbiter."""
+        import warnings
+        from soma_core.verification import runner, ToolEvidence, Verdict
+        f = tmp_path / "mod.py"
+        f.write_text("def work(): return 1\n")
+        mock_backend = lambda p: "[]"
+        with warnings.catch_warnings(record=True) as warns:
+            warnings.simplefilter("always")
+            res = runner.run_layer2(
+                changed_files=["mod.py"],
+                repo_root=str(tmp_path),
+                task_plan="Plan",
+                layer1_evidence=[ToolEvidence("call_graph", "mod.py", True, "ok")],
+                llm_backend=mock_backend,
+            )
+        assert res.verdict == Verdict.SHIP
+        assert any(issubclass(w.category, DeprecationWarning) for w in warns)
+
+    def test_runner_run_layer2_empty_files_fallback(self, tmp_path):
+        """runner.run_layer2 fallback ArbitrationResult when changed_files is empty."""
+        from soma_core.verification import runner, Verdict, ArbitrationResult
+        res = runner.run_layer2(
+            changed_files=[],
+            repo_root=str(tmp_path),
+            task_plan="Empty run",
+            layer1_evidence=[],
+            llm_backend=lambda p: "[]",
+        )
+        assert isinstance(res, ArbitrationResult)
+        assert res.verdict == Verdict.SHIP
+
+

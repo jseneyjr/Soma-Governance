@@ -10,6 +10,8 @@ from soma_core.verification.review_adapter import (
     _classify_finding,
     findings_to_claims,
     findings_to_predictions,
+    get_latest_arbitration_evidence,
+    get_next_cycle_number,
     run_review_arbitration,
     save_arbitration_evidence,
 )
@@ -153,3 +155,236 @@ class TestSaveArbitrationEvidence:
                 record = json.load(f)
             assert record["verdict"] in ("block", "revise")
             assert record["divergence_count"] > 0
+
+
+class TestCycleHelpers:
+    """Cycle auto-increment and latest evidence retrieval."""
+
+    def test_get_next_cycle_number_empty(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            assert get_next_cycle_number(tmpdir) == 1
+
+    def test_get_next_cycle_number_increments(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            ev_dir = os.path.join(tmpdir, ".soma", "evidence")
+            os.makedirs(ev_dir, exist_ok=True)
+            with open(os.path.join(ev_dir, "arbitration_cycle_1.json"), "w") as f:
+                f.write("{}")
+            with open(os.path.join(ev_dir, "arbitration_cycle_2.json"), "w") as f:
+                f.write("{}")
+            with open(os.path.join(ev_dir, "signals.jsonl"), "w") as f:
+                f.write("")
+            assert get_next_cycle_number(tmpdir) == 3
+
+    def test_get_next_cycle_number_sparse(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            ev_dir = os.path.join(tmpdir, ".soma", "evidence")
+            os.makedirs(ev_dir, exist_ok=True)
+            with open(os.path.join(ev_dir, "arbitration_cycle_4.json"), "w") as f:
+                f.write("{}")
+            assert get_next_cycle_number(tmpdir) == 5
+
+    def test_get_latest_arbitration_evidence_empty(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            cycle, data = get_latest_arbitration_evidence(tmpdir)
+            assert cycle == 0
+            assert data is None
+
+    def test_get_latest_arbitration_evidence_finds_latest(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            ev_dir = os.path.join(tmpdir, ".soma", "evidence")
+            os.makedirs(ev_dir, exist_ok=True)
+            with open(os.path.join(ev_dir, "arbitration_cycle_1.json"), "w") as f:
+                json.dump({"cycle": 1, "verdict": "block"}, f)
+            with open(os.path.join(ev_dir, "arbitration_cycle_2.json"), "w") as f:
+                json.dump({"cycle": 2, "verdict": "ship"}, f)
+            cycle, data = get_latest_arbitration_evidence(tmpdir)
+            assert cycle == 2
+            assert data is not None
+            assert data["verdict"] == "ship"
+
+    def test_get_next_cycle_number_oserror(self, monkeypatch):
+        from pathlib import Path
+        with tempfile.TemporaryDirectory() as tmpdir:
+            ev_dir = Path(tmpdir) / ".soma" / "evidence"
+            ev_dir.mkdir(parents=True)
+            def mock_iterdir(self):
+                raise OSError("Permission denied")
+            monkeypatch.setattr(Path, "iterdir", mock_iterdir)
+            assert get_next_cycle_number(tmpdir) == 1
+
+    def test_get_latest_arbitration_evidence_oserror(self, monkeypatch):
+        from pathlib import Path
+        with tempfile.TemporaryDirectory() as tmpdir:
+            ev_dir = Path(tmpdir) / ".soma" / "evidence"
+            ev_dir.mkdir(parents=True)
+            def mock_iterdir(self):
+                raise OSError("Permission denied")
+            monkeypatch.setattr(Path, "iterdir", mock_iterdir)
+            cycle, data = get_latest_arbitration_evidence(tmpdir)
+            assert cycle == 0
+            assert data is None
+
+    def test_get_latest_arbitration_evidence_no_matching_files(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            ev_dir = os.path.join(tmpdir, ".soma", "evidence")
+            os.makedirs(ev_dir, exist_ok=True)
+            with open(os.path.join(ev_dir, "signals.jsonl"), "w") as f:
+                f.write("")
+            cycle, data = get_latest_arbitration_evidence(tmpdir)
+            assert cycle == 0
+            assert data is None
+
+    def test_get_latest_arbitration_evidence_corrupted_json(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            ev_dir = os.path.join(tmpdir, ".soma", "evidence")
+            os.makedirs(ev_dir, exist_ok=True)
+            with open(os.path.join(ev_dir, "arbitration_cycle_1.json"), "w") as f:
+                f.write("not valid json{{{")
+            cycle, data = get_latest_arbitration_evidence(tmpdir)
+            assert cycle == 1
+            assert data is None
+
+    def test_cycle_helpers_ignore_subdirectories(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            ev_dir = os.path.join(tmpdir, ".soma", "evidence")
+            os.makedirs(os.path.join(ev_dir, "subdir_should_be_skipped"), exist_ok=True)
+            with open(os.path.join(ev_dir, "arbitration_cycle_1.json"), "w") as f:
+                json.dump({"cycle": 1, "verdict": "ship"}, f)
+            assert get_next_cycle_number(tmpdir) == 2
+            cycle, data = get_latest_arbitration_evidence(tmpdir)
+            assert cycle == 1
+            assert data is not None
+
+    def test_save_arbitration_evidence_invalid_cycle(self):
+        from soma_core.verification import ArbitrationResult, Verdict
+        res = ArbitrationResult(
+            divergences=[],
+            convergences=[],
+            verdict=Verdict.SHIP,
+            layer1_results=[],
+            predictions=[],
+            claims=[],
+        )
+        with tempfile.TemporaryDirectory() as tmpdir:
+            with pytest.raises(ValueError, match="cycle must be a positive integer"):
+                save_arbitration_evidence(res, tmpdir, cycle=0)
+
+    def test_save_arbitration_evidence_with_target_files(self):
+        from soma_core.verification import ArbitrationResult, Verdict
+        res = ArbitrationResult(
+            divergences=[],
+            convergences=[],
+            verdict=Verdict.SHIP,
+            layer1_results=[],
+            predictions=[],
+            claims=[],
+        )
+        with tempfile.TemporaryDirectory() as tmpdir:
+            path = save_arbitration_evidence(
+                res, tmpdir, cycle=1, target_files=["worker.py", "main.py"]
+            )
+            # Verify successive save in existing directory (tests exist_ok=True)
+            path2 = save_arbitration_evidence(
+                res, tmpdir, cycle=2, target_files=["worker.py"]
+            )
+            assert os.path.exists(path2)
+            with open(path) as f:
+                record = json.load(f)
+            assert record["target_files"] == ["worker.py", "main.py"]
+
+    def test_save_arbitration_evidence_cleanup_on_error(self, monkeypatch):
+        from soma_core.verification import ArbitrationResult, Verdict
+        res = ArbitrationResult(
+            divergences=[],
+            convergences=[],
+            verdict=Verdict.SHIP,
+            layer1_results=[],
+            predictions=[],
+            claims=[],
+        )
+        with tempfile.TemporaryDirectory() as tmpdir:
+            ev_dir = os.path.join(tmpdir, ".soma", "evidence")
+            def broken_dump(*args, **kwargs):
+                raise RuntimeError("disk write failure")
+            monkeypatch.setattr(json, "dump", broken_dump)
+            with pytest.raises(RuntimeError, match="disk write failure"):
+                save_arbitration_evidence(res, tmpdir, cycle=1)
+            # Ensure no orphaned temp files remained in evidence dir
+            leftover = [f for f in os.listdir(ev_dir) if f.endswith(".json")]
+            assert leftover == []
+
+    def test_save_arbitration_evidence_auto_cycle(self):
+        from soma_core.verification import ArbitrationResult, Verdict
+        res = ArbitrationResult(
+            divergences=[],
+            convergences=[],
+            verdict=Verdict.SHIP,
+            layer1_results=[],
+            predictions=[],
+            claims=[],
+        )
+        with tempfile.TemporaryDirectory() as tmpdir:
+            p1 = save_arbitration_evidence(res, tmpdir)
+            assert "arbitration_cycle_1.json" in p1
+            with open(p1) as f:
+                assert json.load(f)["cycle"] == 1
+
+            p2 = save_arbitration_evidence(res, tmpdir)
+            assert "arbitration_cycle_2.json" in p2
+            with open(p2) as f:
+                assert json.load(f)["cycle"] == 2
+
+    def test_save_arbitration_evidence_git_metadata(self):
+        from pathlib import Path
+        import subprocess
+        from soma_core.verification import ArbitrationResult, Verdict
+        res = ArbitrationResult(
+            divergences=[],
+            convergences=[],
+            verdict=Verdict.SHIP,
+            layer1_results=[],
+            predictions=[],
+            claims=[],
+        )
+        with tempfile.TemporaryDirectory() as tmpdir:
+            subprocess.run(["git", "init"], cwd=tmpdir, capture_output=True, check=True)
+            subprocess.run(["git", "config", "user.name", "Tester"], cwd=tmpdir, check=True)
+            subprocess.run(["git", "config", "user.email", "tester@example.com"], cwd=tmpdir, check=True)
+            dummy = Path(tmpdir) / "dummy.txt"
+            dummy.write_text("hello")
+            subprocess.run(["git", "add", "dummy.txt"], cwd=tmpdir, check=True)
+            subprocess.run(["git", "commit", "-m", "initial"], cwd=tmpdir, check=True)
+
+            p = save_arbitration_evidence(res, tmpdir)
+            with open(p) as f:
+                record = json.load(f)
+            assert "commit_sha" in record
+            assert len(record["commit_sha"]) == 40
+            assert "tree_hash" in record
+            assert len(record["tree_hash"]) == 40
+
+    def test_save_arbitration_evidence_git_failure_graceful(self, monkeypatch):
+        import subprocess
+        from soma_core.verification import ArbitrationResult, Verdict
+        res = ArbitrationResult(
+            divergences=[],
+            convergences=[],
+            verdict=Verdict.SHIP,
+            layer1_results=[],
+            predictions=[],
+            claims=[],
+        )
+
+        def _raise_git(*args, **kwargs):
+            raise OSError("git not found")
+
+        monkeypatch.setattr(subprocess, "run", _raise_git)
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            p = save_arbitration_evidence(res, tmpdir)
+            with open(p) as f:
+                record = json.load(f)
+            assert "commit_sha" not in record
+            assert "tree_hash" not in record
+

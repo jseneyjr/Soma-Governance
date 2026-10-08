@@ -3,35 +3,33 @@ id: trap-path-traversal
 domain: security
 type: wall
 enforcement: gate
-hypothesis: User-supplied file paths (CLI --files, API params) that are joined with
-  a root directory without containment checks enable reading/writing arbitrary files
-  outside the workspace
-prediction: Will flag os.path.join(root, user_input) without is_relative_to() or startswith()
-  guard
+hypothesis: "User-supplied file paths (CLI --files, API params) that are joined with a root directory without containment checks enable reading/writing arbitrary files outside the workspace"
+prediction: "Will flag os.path.join(root, user_input) without is_relative_to() or startswith() guard"
 falsification: 0 findings in 20 sessions → prune
 target_paths:
-- '**/*.py'
+  - "**/*.py"
 triggers:
-- python_file_creation
-- python_file_modification
-- security_review
+  - python_file_creation
+  - python_file_modification
+  - security_review
 minimum_mode: standard
 expiry_sessions: 30
 expiry_days: 90
-created: '2026-09-30'
+created: 2026-09-30
 impact_weight: 1.0
 tags:
-- security
-- path-traversal
-- critical
+  - security
+  - path-traversal
+  - critical
 fitness:
   score: 0.625
   impact_weight: 1.0
-  triggers: 8
-  true_positives: 5
-  false_positives: 1
-  last_trigger_date: '2026-10-01T04:26:19Z'
+  triggers: 27
+  true_positives: 10
+  false_positives: 11.3882
+  last_trigger_date: "2026-10-08T04:08:50Z"
 ---
+
 Supercell S2 incident: `soma_cli/verify.py` accepted `--files ../../etc/passwd`
 without containment, allowing path traversal. Fix: resolve path and check
 `resolved.startswith(root + os.sep)`.

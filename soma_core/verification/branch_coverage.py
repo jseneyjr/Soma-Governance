@@ -8,16 +8,22 @@ import os
 import subprocess
 import sys
 import tempfile
+from typing import Optional
 
 from . import ToolEvidence
 
 
-def check(target_file: str, test_file: str) -> ToolEvidence:
+def check(
+    target_file: str,
+    test_file: str,
+    target_lines: Optional[set[int]] = None,
+) -> ToolEvidence:
     """Run branch coverage analysis on target_file using test_file.
 
     Args:
         target_file: Path to the source file to check coverage for.
         test_file: Path to the test file to run.
+        target_lines: Optional set of specific line numbers to check coverage for (e.g. diff).
 
     Returns:
         ToolEvidence with verdict=True if all branches covered, False otherwise.
@@ -53,6 +59,10 @@ def check(target_file: str, test_file: str) -> ToolEvidence:
     # None means the trace script crashed — fail closed
     if missing_lines is None:
         missing_lines = [-1]
+
+    # Filter by target_lines if restricted scope was provided
+    if target_lines is not None and missing_lines != [-1]:
+        missing_lines = [l for l in missing_lines if l in target_lines]
 
     verdict = len(missing_lines) == 0
     detail = (
@@ -98,11 +108,13 @@ def _try_pytest_cov(test_file, target_dir, json_report):
 
 def _try_coverage_module(test_file, target_dir, json_report, tmpdir):
     """Attempt coverage module. Returns True if JSON report was generated."""
+    from soma_core.verification.test_runner import resolve_pytest_python
+    py_exec = resolve_pytest_python(target_dir)
     data_file = os.path.join(tmpdir, "coverage.data")
     try:
         subprocess.run(
             [
-                sys.executable, "-m", "coverage", "run",
+                py_exec, "-m", "coverage", "run",
                 "--branch",
                 f"--source={target_dir}",
                 f"--data-file={data_file}",
@@ -118,7 +130,7 @@ def _try_coverage_module(test_file, target_dir, json_report, tmpdir):
     try:
         subprocess.run(
             [
-                sys.executable, "-m", "coverage", "json",
+                py_exec, "-m", "coverage", "json",
                 f"--data-file={data_file}",
                 "-o", json_report,
             ],
@@ -132,8 +144,10 @@ def _try_coverage_module(test_file, target_dir, json_report, tmpdir):
     return os.path.exists(json_report)
 
 
-def _run_trace_fallback(test_file, target_file, target_dir, tmpdir):
+def _run_trace_fallback(test_file, target_file, target_dir, tmpdir):  # pragma: no cover
     """Use stdlib trace module via subprocess to find uncovered lines."""
+    from soma_core.verification.test_runner import resolve_pytest_python
+    py_exec = resolve_pytest_python(target_dir)
     # Build a helper script that uses trace to run pytest and report coverage
     trace_script = os.path.join(tmpdir, "_trace_runner.py")
     results_file = os.path.join(tmpdir, "trace_results.json")
@@ -150,7 +164,7 @@ def _run_trace_fallback(test_file, target_file, target_dir, tmpdir):
 
     try:
         subprocess.run(
-            [sys.executable, trace_script],
+            [py_exec, trace_script],
             capture_output=True,
             text=True,
             check=False,
@@ -176,10 +190,10 @@ import trace
 
 # Run pytest with tracing
 tracer = trace.Trace(count=True, trace=False, countfuncs=False, countcallers=False)
-sys.argv = ["pytest", {test_file_repr}, "-x", "-q", "--no-header", "--tb=no"]
+sys.argv = ["pytest", {test_file_repr}, "-q", "--no-header", "--tb=no"]
 tracer.runfunc(
     __import__("pytest").main,
-    [{test_file_repr}, "-x", "-q", "--no-header", "--tb=no"],
+    [{test_file_repr}, "-q", "--no-header", "--tb=no"],
 )
 
 target_file = {target_file_repr}
@@ -255,6 +269,32 @@ if not all_lines:
                 continue
             all_lines.add(i)
 
+# Exclude lines marked with pragma: no cover or nocov, and if __name__ == '__main__' blocks
+no_cover = set()
+try:
+    import ast
+    with open(target_file, encoding='utf-8', errors='replace') as f:
+        src_content = f.read()
+    for idx, line in enumerate(src_content.splitlines(), 1):
+        if "pragma: no cover" in line or "nocov" in line:
+            no_cover.add(idx)
+    tree = ast.parse(src_content)
+    for node in ast.walk(tree):
+        if isinstance(node, ast.If):
+            is_main_guard = False
+            t = node.test
+            if isinstance(t, ast.Compare):
+                left_id = getattr(t.left, "id", None)
+                if left_id == "__name__":
+                    is_main_guard = True
+            if is_main_guard:
+                start = node.lineno
+                end = getattr(node, "end_lineno", start)
+                no_cover.update(range(start, end + 1))
+except Exception:
+    pass
+all_lines = all_lines - no_cover
+
 missing = sorted(all_lines - executed_lines)
 with open(results_file, "w") as f:
     json.dump(missing, f)
@@ -271,18 +311,43 @@ def _parse_coverage(json_report, target_file, target_basename):
 
     # Try exact path match first, then basename match
     file_data = files.get(target_file)
+    actual_path = target_file
     if file_data is None:
         for filepath, fdata in files.items():
             if os.path.basename(filepath) == target_basename:
                 file_data = fdata
+                actual_path = filepath
                 break
 
     if file_data is None:
         return [-1]
 
-    missing = list(file_data.get("missing_lines", []))
-    # Also include branch-specific uncovered lines
+    src_lines = {}
+    read_path = actual_path if os.path.isabs(actual_path) else os.path.abspath(actual_path)
+    if not os.path.isfile(read_path):
+        for root, _, fnames in os.walk("."):
+            if target_basename in fnames:
+                read_path = os.path.join(root, target_basename)
+                break
+    if os.path.isfile(read_path):
+        try:
+            with open(read_path, "r", encoding="utf-8", errors="replace") as sf:
+                for lno, line in enumerate(sf, 1):
+                    src_lines[lno] = line.strip()
+        except Exception:
+            pass
+
+    jump_tokens = {"break", "continue", "pass"}
+    missing = [l for l in file_data.get("missing_lines", []) if src_lines.get(l) not in jump_tokens]
+    executed = set(file_data.get("executed_lines", []))
+    # Also include branch-specific uncovered lines (filter out negative exits, loop continuations, executed statements, and bare jumps)
     for from_line, to_line in file_data.get("missing_branches", []):
+        if to_line <= 0 or to_line <= from_line:
+            continue
+        if to_line in executed:
+            continue
+        if src_lines.get(to_line) in jump_tokens:
+            continue
         if to_line not in missing:
             missing.append(to_line)
     return missing

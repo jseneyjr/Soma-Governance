@@ -5,25 +5,31 @@ type: wall
 enforcement: gate
 promotion_threshold: 0.85
 demotion_threshold: 0.3
-hypothesis: Changes to install.sh, install.ps1, uninstall.sh, common.sh, and Makefile
-  require install-flow review
+hypothesis: "Changes to install.sh, install.ps1, uninstall.sh, common.sh, and Makefile require install-flow review"
 prediction: Will flag unreviewed changes to core installer infrastructure
-falsification: "0 findings in 15 sessions \u2192 prune"
+falsification: 0 findings in 15 sessions → prune
 target_paths:
-- soma_cli/platforms/*.py
-- soma_cli/cli.py
-- install/hooks/*
-- install/soma.conf.example
-- Makefile
+  - "soma_cli/platforms/*.py"
+  - soma_cli/cli.py
+  - "install/hooks/*"
+  - install/soma.conf.example
+  - Makefile
 expiry_sessions: 15
 expiry_days: 60
-created: '2026-09-28'
+created: 2026-09-28
 impact_weight: 1.5
 minimum_mode: trident
 tags:
-- install
-- cross-platform
-- safety-critical
+  - install
+  - cross-platform
+  - safety-critical
+fitness:
+  score: null
+  impact_weight: 1.0
+  triggers: 17
+  true_positives: 1.0505
+  false_positives: 2.5212
+  last_trigger_date: "2026-10-08T04:08:50Z"
 ---
 
 The install flow is the first thing every user touches. Breakage here means

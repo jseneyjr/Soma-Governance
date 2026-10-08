@@ -456,6 +456,65 @@ def unwrap_command_stage(tokens: list[str]) -> tuple[UnwrappedCommand | None, st
                     break
             continue
 
+        # 7a. nohup wrapper
+        if base == "nohup":
+            idx += 1
+            while idx < len(tokens) and tokens[idx] == "--":
+                idx += 1
+            continue
+
+        # 7b. nice wrapper
+        if base == "nice":
+            idx += 1
+            while idx < len(tokens):
+                ntok = tokens[idx]
+                if ntok == "--":
+                    idx += 1
+                    break
+                if ntok.startswith("-"):
+                    idx += 1
+                    if ntok == "-n" and idx < len(tokens):
+                        idx += 1
+                else:
+                    break
+            continue
+
+        # 7c. timeout wrapper
+        if base == "timeout":
+            idx += 1
+            has_duration = False
+            while idx < len(tokens):
+                ttok = tokens[idx]
+                if ttok == "--":
+                    idx += 1
+                    continue
+                if ttok.startswith("-"):
+                    idx += 1
+                    if ttok in ("-s", "--signal", "-k", "--kill-after") and idx < len(tokens):
+                        idx += 1
+                elif not has_duration:
+                    has_duration = True
+                    idx += 1
+                else:
+                    break
+            continue
+
+        # 7d. xargs wrapper
+        if base == "xargs":
+            idx += 1
+            while idx < len(tokens):
+                xtok = tokens[idx]
+                if xtok == "--":
+                    idx += 1
+                    break
+                if xtok.startswith("-"):
+                    idx += 1
+                    if xtok in ("-n", "-L", "-I", "-s", "-d", "-E", "-P") and idx < len(tokens):
+                        idx += 1
+                else:
+                    break
+            continue
+
         # 8. eval builtin (evaluates remaining tokens as inner command)
         if base == "eval":
             if idx + 1 < len(tokens):

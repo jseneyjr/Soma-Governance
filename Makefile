@@ -28,7 +28,8 @@ SOMA_PYTHON_BIN ?= $(shell \
 
 .PHONY: help info install install-gemini install-kiro install-copilot \
         install-claude install-mcp install-windows \
-        uninstall doctor validate update status test
+        uninstall doctor validate update status test \
+        verify-layer1 release-gate
 
 help: ## Show available targets
 	@echo "Soma — Adaptive Governance"
@@ -195,3 +196,10 @@ test: validate ## Run validation tests (auto-parallelized when pytest-xdist is i
 	  echo "  ❌  pytest not found. Install with: pip install pytest"; \
 	  exit 1; \
 	fi
+
+verify-layer1: ## Run Layer 1 deterministic quality tools on changed files
+	@$(SOMA_PYTHON_BIN) -m soma_cli.verify --layer1-only
+
+release-gate: ## Assert Release Gate 4.5 passes with a valid SHIP arbitration receipt
+	@$(SOMA_PYTHON_BIN) -m soma_cli.verify --release-gate
+

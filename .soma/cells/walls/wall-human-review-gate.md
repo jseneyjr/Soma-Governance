@@ -3,30 +3,31 @@ id: wall-human-review-gate
 domain: governance
 type: wall
 enforcement: gate
-hypothesis: Autonomous agents prioritize task completion over prose governance instructions, resulting in self-reviewed and automated PR merges to protected branches unless mechanically blocked.
-prediction: Enforcing deterministic interception of 'gh pr merge' and direct git pushes to main prevents unauthorized bypassing of the Human Review Gate.
+hypothesis: "Autonomous agents prioritize task completion over prose governance instructions, resulting in self-reviewed and automated PR merges to protected branches unless mechanically blocked."
+prediction: "Enforcing deterministic interception of 'gh pr merge' and direct git pushes to main prevents unauthorized bypassing of the Human Review Gate."
 falsification: Agents reliably stop at prose human review gates without programmatic enforcement.
 target_paths:
-- soma_core/command_safety.py
-- soma_cli/hooks.py
-- docs/project/RELEASE_WORKFLOW.md
-- genome/gitflow-review-gate.md
+  - soma_core/command_safety.py
+  - soma_cli/hooks.py
+  - docs/project/RELEASE_WORKFLOW.md
+  - genome/gitflow-review-gate.md
 expiry_sessions: 100
 impact_weight: 1.0
 minimum_mode: maelstrom
 tags:
-- gitflow
-- governance
-- review-gate
-- human-in-the-loop
-created: '2026-10-07'
+  - gitflow
+  - governance
+  - review-gate
+  - human-in-the-loop
+created: 2026-10-07
 fitness:
-  triggers: 1
-  true_positives: 1
-  false_positives: 0
+  triggers: 19
+  true_positives: 2.4168
+  false_positives: 3.3892
   score: 1.0
-  last_trigger_date: '2026-10-07T21:12:00Z'
+  last_trigger_date: "2026-10-08T04:08:50Z"
 ---
+
 # Wall: Human Review Gate Enforcement
 
 Target: `soma_core/command_safety.py`, `soma_cli/hooks.py`

@@ -68,18 +68,22 @@ class TestVerifyCLIWiringWithTestHarness:
 
         captured_kwargs = {}
 
-        def mock_run_layer2(**kwargs):
+        def mock_pipeline_run(self, **kwargs):
             captured_kwargs.update(kwargs)
             res = MagicMock()
             res.verdict = Verdict.SHIP
-            res.divergences = []
-            res.convergences = []
+            res.arbitration_result = MagicMock()
+            res.arbitration_result.verdict = Verdict.SHIP
+            res.arbitration_result.divergences = []
+            res.arbitration_result.convergences = []
+            res.evidence_path = None
+            res.persistence_error = None
             return res
 
         mock_provider = MagicMock()
         mock_provider.generate = MagicMock(return_value="[]")
 
-        monkeypatch.setattr("soma_core.verification.runner.run_layer2", mock_run_layer2)
+        monkeypatch.setattr("soma_core.verification.pipeline.VerificationPipeline.run", mock_pipeline_run)
         monkeypatch.setattr("soma_cli.verify.resolve_cli_provider", lambda a, r: mock_provider)
         monkeypatch.setattr("soma_core.verification.runner.run_layer1", lambda *a, **kw: [
             ToolEvidence("call_graph", "service.py", True, "ok")

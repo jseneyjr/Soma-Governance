@@ -12,8 +12,12 @@ Usage:
     )
 """
 
+from datetime import datetime, timezone
 import json
 import os
+from pathlib import Path
+import re
+import subprocess
 import tempfile
 
 from . import (
@@ -165,10 +169,64 @@ def run_review_arbitration(
     return arbitrate(predictions, claims, evidence)
 
 
+def get_next_cycle_number(workspace: str | os.PathLike) -> int:
+    """Find the next arbitration cycle number by scanning existing cycles."""
+    evidence_dir = Path(workspace) / ".soma" / "evidence"
+    if not evidence_dir.is_dir():
+        return 1
+
+    max_cycle = 0
+    pattern = re.compile(r"^arbitration_cycle_(\d+)\.json$")
+    try:
+        for entry in evidence_dir.iterdir():
+            if entry.is_file():
+                m = pattern.match(entry.name)
+                if m:
+                    cycle_num = int(m.group(1))
+                    if cycle_num > max_cycle:
+                        max_cycle = cycle_num
+    except OSError:
+        return 1
+
+    return max_cycle + 1
+
+
+def get_latest_arbitration_evidence(workspace: str | os.PathLike) -> tuple[int, dict | None]:
+    """Retrieve the latest arbitration cycle record and cycle number."""
+    evidence_dir = Path(workspace) / ".soma" / "evidence"
+    if not evidence_dir.is_dir():
+        return 0, None
+
+    max_cycle = 0
+    latest_file = None
+    pattern = re.compile(r"^arbitration_cycle_(\d+)\.json$")
+    try:
+        for entry in evidence_dir.iterdir():
+            if entry.is_file():
+                m = pattern.match(entry.name)
+                if m:
+                    cycle_num = int(m.group(1))
+                    if cycle_num > max_cycle:
+                        max_cycle = cycle_num
+                        latest_file = entry
+    except OSError:
+        return 0, None
+
+    if latest_file is None:
+        return 0, None
+
+    try:
+        data = json.loads(latest_file.read_text(encoding="utf-8"))
+        return max_cycle, data
+    except Exception:
+        return max_cycle, None
+
+
 def save_arbitration_evidence(
     result: ArbitrationResult,
-    workspace: str,
-    cycle: int = 1,
+    workspace: str | os.PathLike,
+    cycle: int | None = None,
+    target_files: list[str] | None = None,
 ) -> str:
     """Persist arbitration result to .soma/evidence/ for checkpoint verification.
 
@@ -177,22 +235,27 @@ def save_arbitration_evidence(
 
     Returns the path to the saved evidence file.
     """
-    # Sanitize cycle to prevent path traversal
-    cycle = int(cycle)
-    if cycle < 1:
-        raise ValueError(f"cycle must be a positive integer, got {cycle}")
+    if cycle is None:
+        cycle = get_next_cycle_number(workspace)
+    else:
+        # Sanitize cycle to prevent path traversal
+        cycle = int(cycle)
+        if cycle < 1:
+            raise ValueError(f"cycle must be a positive integer, got {cycle}")
 
-    evidence_dir = os.path.join(workspace, ".soma", "evidence")
-    os.makedirs(evidence_dir, exist_ok=True)
-    target = os.path.join(evidence_dir, f"arbitration_cycle_{cycle}.json")
+    evidence_dir = Path(workspace) / ".soma" / "evidence"
+    evidence_dir.mkdir(parents=True, exist_ok=True)
+    target = evidence_dir / f"arbitration_cycle_{cycle}.json"
 
     record = {
         "cycle": cycle,
+        "timestamp": datetime.now(timezone.utc).isoformat(),
         "verdict": result.verdict.value,
         "divergence_count": len(result.divergences),
         "convergence_count": len(result.convergences),
         "prediction_count": len(result.predictions),
         "claim_count": len(result.claims),
+        "convergences": [c.value for c in result.convergences],
         "divergences": [
             {
                 "type": d.divergence_type,
@@ -202,6 +265,24 @@ def save_arbitration_evidence(
             for d in result.divergences
         ],
     }
+    if target_files:
+        record["target_files"] = list(target_files)
+
+    try:
+        git_sha = subprocess.run(
+            ["git", "rev-parse", "HEAD"],
+            cwd=str(workspace), capture_output=True, text=True, timeout=3,
+        )
+        if git_sha.returncode == 0:
+            record["commit_sha"] = git_sha.stdout.strip()
+        git_tree = subprocess.run(
+            ["git", "rev-parse", "HEAD^{tree}"],
+            cwd=str(workspace), capture_output=True, text=True, timeout=3,
+        )
+        if git_tree.returncode == 0:
+            record["tree_hash"] = git_tree.stdout.strip()
+    except Exception:
+        pass
 
     # Atomic write: write to temp file, then rename
     tmp_fd, tmp_path = tempfile.mkstemp(dir=str(evidence_dir), suffix='.json')
@@ -210,7 +291,8 @@ def save_arbitration_evidence(
             json.dump(record, f, indent=2)
         os.replace(tmp_path, str(target))
     except BaseException:
-        os.unlink(tmp_path)
+        if os.path.exists(tmp_path):
+            os.unlink(tmp_path)
         raise
 
-    return target
+    return str(target)

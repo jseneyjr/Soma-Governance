@@ -614,12 +614,67 @@ def check_arbitration_evidence(root: Path, strict: bool = False) -> list[dict]:
             "Only 'ship' passes the gate."
         )
     else:
+        # On SHIP verdict, if strict, verify target_files coverage against git modified files
+        if strict:
+            target_files = record.get("target_files")
+            if target_files is not None:
+                try:
+                    import subprocess
+                    res = subprocess.run(
+                        ["git", "diff", "--name-only", "--diff-filter=ACMR", "HEAD"],
+                        capture_output=True, text=True, cwd=str(root), timeout=5,
+                    )
+                    if res.returncode == 0:
+                        changed = [f.strip() for f in res.stdout.splitlines() if f.strip().endswith(".py")]
+                        uncovered = [f for f in changed if f not in target_files and not f.startswith("tests/")]
+                        if uncovered:
+                            issues.append({
+                                "check": "arbitration_evidence",
+                                "file": _relative(root, latest),
+                                "message": (
+                                    f"Arbitration cycle {cycle} does not cover modified files: "
+                                    f"{', '.join(uncovered)}"
+                                ),
+                            })
+                except Exception:
+                    pass
         return issues
     issues.append({
         "check": "arbitration_evidence",
         "file": _relative(root, latest),
         "message": message,
     })
+    return issues
+
+
+def check_paper_walls(root: Path, strict: bool = False) -> list[dict]:
+    """Verify that all wall cells have 'gate' enforcement and valid frontmatter."""
+    issues = []
+    walls_dir = root / ".soma" / "cells" / "walls"
+    if not walls_dir.is_dir():
+        return issues
+
+    for wall_file in sorted(walls_dir.glob("*.md")):
+        try:
+            content = wall_file.read_text(encoding="utf-8")
+            from soma_core.frontmatter import parse_frontmatter
+            meta = parse_frontmatter(content)
+            if not isinstance(meta, dict):
+                issues.append({
+                    "check": "paper_walls",
+                    "file": _relative(root, wall_file),
+                    "message": f"Wall cell '{wall_file.name}' has missing or invalid frontmatter.",
+                })
+                continue
+            enforcement = meta.get("enforcement")
+            if enforcement != "gate":
+                issues.append({
+                    "check": "paper_walls",
+                    "file": _relative(root, wall_file),
+                    "message": f"Wall cell '{wall_file.name}' enforcement is '{enforcement}', but all walls must use 'gate'.",
+                })
+        except Exception:
+            continue
     return issues
 
 
@@ -630,6 +685,7 @@ ALL_CHECKS = [
     check_cell_fitness,
     check_cell_conventions,
     check_arbitration_evidence,
+    check_paper_walls,
 ]
 CHECK_NAMES = [
     "test_coverage",
@@ -638,16 +694,17 @@ CHECK_NAMES = [
     "cell_fitness",
     "cell_conventions",
     "arbitration_evidence",
+    "paper_walls",
 ]
 
 
-def run_all_checks(root: Path, strict: bool = False) -> list[dict]:
+def run_all_checks(root: Path, strict: bool = False, require_arbitration: bool = False) -> list[dict]:
     """Run every check and convert unexpected check failures into issues."""
     issues = []  # type: List[dict]
     for check_fn in ALL_CHECKS:
         try:
             if check_fn == check_arbitration_evidence:
-                issues.extend(check_fn(root, strict=strict))
+                issues.extend(check_fn(root, strict=strict or require_arbitration))
             else:
                 issues.extend(check_fn(root))
         except Exception as exc:

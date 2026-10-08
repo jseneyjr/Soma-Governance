@@ -90,8 +90,9 @@ Before opening a release PR or bumping the release version:
 1. Ensure `GEMINI_API_KEY` (or other supported inference provider key) is configured in the environment.
 2. Execute `soma verify --plan "<Phase plan or specification summary>"`.
 3. Confirm Layer 1 deterministic checks pass.
-4. Confirm Layer 2 adversarial verification completes with Arbiter verdict **`SHIP`** (`exit 0`).
-5. If the Arbiter outputs `REVISE` or `BLOCK`, remediate flagged divergences before proceeding to Gate 5.
+4. Confirm Layer 2 adversarial verification completes with Arbiter verdict **`SHIP`** (`exit 0`), persisting receipt to `.soma/evidence/arbitration_cycle_{N}.json`.
+5. Run mechanical pre-release gate check: `make release-gate` (or `soma verify --release-gate`). Must exit with code 0.
+6. If the Arbiter outputs `REVISE` or `BLOCK`, remediate flagged divergences before proceeding to Gate 5.
 
 ### Documentation Hygiene (mandatory per release)
 
