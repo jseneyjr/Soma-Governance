@@ -1,6 +1,6 @@
-"""Hot Zone Analysis — backward-compatible facade delegating to soma_core.defects.
+"""Hot Zone Analysis SDK (Layer 1).
 
-The loop:
+Public interface for defect pattern analysis and cell fitness boosting:
     Bugs → Registry → Hot zones + pattern clusters →
     Cell fitness boost → Better cell selection → Fewer bugs → ♻️
 """

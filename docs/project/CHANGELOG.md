@@ -3,6 +3,23 @@
 All notable changes to Soma are documented here.
 This project uses [Semantic Versioning](https://semver.org/).
 
+## [0.120.0] — 2026-10-07 — "The Great Project-Wide Legacy Cleanse & Compatibility Contract"
+
+### The Great Project-Wide Legacy Cleanse & Compatibility Contract ("The Great Purge")
+- **Core Subsystem Cleanse (`soma_core/workspace/`)**:
+  - Permanently purges deprecated standalone getters: `get_cells_dir`, `get_metrics_dir`, `get_signals_file`, and `get_outcomes_file`. All callers and internal engines standardise on direct `Workspace` instance properties (`ws.cells_dir`, `ws.metrics_dir`, `ws.signals_file`, `ws.outcomes_file`).
+  - Removes unused legacy imports and obsolete wrappers across `soma_core`.
+- **CLI Porcelain Consolidation (`soma_cli/`)**:
+  - Purges legacy redundant CLI flag aliases: `--repo-root` from `soma verify` and `--project-root` from `soma genesis`, fully standardising on `--workspace` / `-w`.
+  - Streamlines `main()` CLI dispatch to standard `args.ws = Workspace.resolve(...)`.
+- **Public SDK Standardisation (`soma_sdk/`)**:
+  - Updates `soma_sdk/scoring.py` docstrings and exports to reflect the official public SDK scoring API rather than deprecated facades.
+- **Zero-Warning Test Suite Milestone (`tests/`)**:
+  - Modernised test suites (`test_workspace.py`, `test_workspace_model.py`, `test_workspace_package.py`, `test_core_engines_workspace.py`) to assert on `Workspace` properties directly.
+  - Replaced deprecation warning assertions with `TestPurgedLegacyGetters` verifying that purged getters are permanently removed from `soma_core.workspace` and `__all__`.
+  - Unskipped `test_legacy_purged_regressions.py` with all 15 regression checks actively passing.
+  - Achieved a 100% warning-free pytest run (0 warnings emitted across 2,900+ tests).
+
 ## [0.119.0] — 2026-10-07 — "Intelligent JIT Targeting, Salience Engine & Closed-Loop Attribution"
 
 ### Intelligent JIT Targeting, Salience Engine & Closed-Loop Attribution

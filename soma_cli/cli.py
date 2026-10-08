@@ -132,8 +132,6 @@ def _build_parser() -> argparse.ArgumentParser:
                           help="Skip Layer 2 (fast deterministic checks only)")
     p_verify.add_argument("--dry-run", action="store_true",
                           help="Show what would be checked without running")
-    p_verify.add_argument("--repo-root", default=None,
-                          help="Override repository root path")
     p_verify.add_argument("--plan", default=None,
                           help="Task plan or prompt context for Layer 2 adversarial verification")
     p_verify.add_argument("--plan-file", default=None,
@@ -199,8 +197,6 @@ def _build_parser() -> argparse.ArgumentParser:
                            help="Overwrite existing cells with same name")
     p_genesis.add_argument("--yes", "-y", action="store_true",
                            help="Skip confirmation prompts")
-    p_genesis.add_argument("--project-root", default=None,
-                           help="Override project root path")
     p_genesis.add_argument("--install-hooks", action="store_true",
                            help="Install git pre-commit hook automatically")
     p_genesis.add_argument("--no-hooks", action="store_true",
@@ -514,24 +510,15 @@ def main(argv: list[str] | None = None) -> int:
         if args.command == "completion":
             args.ws = None
         elif args.command == "init":
-            raw_ws = getattr(args, "workspace", None) or getattr(args, "_project_root", None) or Path.cwd()
+            raw_ws = getattr(args, "workspace", None) or Path.cwd()
             args.ws = Workspace.for_init(raw_ws)
         else:
-            raw_ws = (
-                getattr(args, "workspace", None)
-                or getattr(args, "repo_root", None)
-                or getattr(args, "project_root", None)
-                or getattr(args, "_project_root", None)
-            )
+            raw_ws = getattr(args, "workspace", None)
             args.ws = Workspace.resolve(raw_ws)
 
         if args.ws is not None:
             args._project_root = args.ws.root
             args.workspace = str(args.ws.root)
-            if hasattr(args, "repo_root"):
-                args.repo_root = str(args.ws.root)
-            if hasattr(args, "project_root"):
-                args.project_root = str(args.ws.root)
 
         func = globals().get(handler.__name__, handler)
         return func(args)

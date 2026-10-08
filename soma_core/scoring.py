@@ -141,9 +141,10 @@ def bayesian_score(
     triggers: int | float,
     impact_weight: float = 1.0,
 ) -> float:
-    """DEPRECATED: Use bayesian_posterior() for new code.
+    """Canonical Laplace-smoothed point estimate: (tp+1)/(triggers+2) × impact.
 
-    Legacy Laplace-smoothed point estimate.
+    Identical to laplace_score; provided as the canonical scalar scoring interface.
+    For full credible intervals and certainty bounds, use bayesian_posterior().
     """
     return laplace_score(tp, triggers, impact_weight)
 

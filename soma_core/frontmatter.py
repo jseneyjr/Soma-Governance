@@ -558,9 +558,6 @@ def parse_frontmatter(content: str) -> dict[str, object] | None:
     return data
 
 
-# Backwards-compatible private alias for in-module/legacy call sites.
-_parse_frontmatter = parse_frontmatter
-
 
 def dump_frontmatter(data: dict, body: str | None = None) -> str:
     """Serialize metadata dictionary to YAML frontmatter string without requiring PyYAML.

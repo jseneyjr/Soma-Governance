@@ -294,7 +294,7 @@ def cli_verify_readme_claims(argv: Optional[List[str]] = None) -> int:
 def load_cells_for_enforcement(cells_dir: str | Path | Workspace) -> List[Dict[str, Any]]:
     """Load all cells for enforcement artifact generation."""
     cells = []
-    from soma_core.frontmatter import _parse_frontmatter, _get_body
+    from soma_core.frontmatter import parse_frontmatter, _get_body
 
     if isinstance(cells_dir, Workspace):
         c_dir = str(cells_dir.cells_dir)
@@ -307,7 +307,7 @@ def load_cells_for_enforcement(cells_dir: str | Path | Workspace) -> List[Dict[s
         try:
             with open(cell_file, "r", encoding="utf-8-sig") as f:
                 content = f.read()
-            fm = _parse_frontmatter(content) or {}
+            fm = parse_frontmatter(content) or {}
             body = _get_body(content)
             fm["_path"] = cell_file
             fm["_name"] = os.path.splitext(os.path.basename(cell_file))[0]

@@ -21,7 +21,6 @@ from soma_cli.status import run_status
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 GENOME = REPO_ROOT / "genome"
-INSTALL_SH = REPO_ROOT / "install" / "install.sh"
 
 INSTALL_HEADER = (
     "# Soma Governance Rules\n\n"
@@ -161,27 +160,6 @@ def test_user_claude_md_without_soma_content_is_ignored(env, capsys):
     (env / "alpha.md").write_text("# Alpha\n", encoding="utf-8")
     count, out = _status(capsys)
     assert count == 1, out
-
-
-@pytest.mark.skipif(os.name == "nt" or shutil.which("bash") is None,
-                    reason="needs a POSIX bash to run install.sh")
-def test_real_install_sh_claude_merge_plus_loose_files(env, capsys, tmp_path):
-    """The exact BUG-033 repro: install.sh claude, then 2 loose .md files."""
-    if not INSTALL_SH.exists():
-        pytest.skip("legacy shell installers purged in v0.97.0")
-    home = env.parent
-    proc = subprocess.run(
-        ["bash", str(INSTALL_SH), "claude"],
-        cwd=str(tmp_path / "proj"), stdin=subprocess.DEVNULL,
-        capture_output=True, text=True, timeout=120,
-        env={**os.environ, "HOME": str(home), "USERPROFILE": str(home)},
-    )
-    assert proc.returncode == 0, proc.stdout + proc.stderr
-    assert (env / "CLAUDE.md").is_file()
-    (env / "alpha.md").write_text("# Alpha\n", encoding="utf-8")
-    (env / "beta.md").write_text("# Beta\n", encoding="utf-8")
-    count, out = _status(capsys)
-    assert count == len(_genome_rules()) + 2, out
 
 
 def test_bom_prefixed_loose_rule_uses_frontmatter_and_dedupes(env, capsys):

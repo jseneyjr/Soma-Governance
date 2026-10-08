@@ -150,33 +150,11 @@ def test_checkpoint_fails_closed_and_uses_weighted_outcomes(tmp_path):
     assert any(issue.get("cell_id") == "weighted" and "75%" in issue["message"] for issue in issues)
 
 
-def test_cell_collision_and_resolver_use_canonical_signal_path(tmp_path, monkeypatch):
-    if not (ROOT / "enzymes" / "cell_create_nl.py").exists():
-        pytest.skip("enzymes directory purged in v0.97.0")
-    import cell_create_nl
-    import soma_resolve
-
-    target = tmp_path / ".soma" / "cells" / "vacuoles" / "vacuole-security.md"
-    target.parent.mkdir(parents=True)
-    target.write_text("preserve me", encoding="utf-8")
-    _write_jsonl(tmp_path / ".soma" / "evidence" / "signals.jsonl", [_signal("vacuole-security", "trigger")])
-    monkeypatch.setattr(cell_create_nl, "resolve_workspace", lambda *_args: str(tmp_path))
-
-    cluster = {"common_category": "security", "common_files": ["src/**"], "confidence": 0.9}
-    assert cell_create_nl.create_cell_from_insight_cluster(cluster, str(tmp_path)) == str(target)
-    assert target.read_text(encoding="utf-8") == "preserve me"
-    expected = str(tmp_path / ".soma" / "evidence" / "signals.jsonl")
-    assert soma_resolve.get_signals_file(str(tmp_path)) == expected
-    assert soma_resolve.get_outcomes_file(str(tmp_path)) == expected
-
-
 def test_owned_production_has_no_active_legacy_evidence_paths():
     production = [
         p for p in [
             ROOT / "soma_cli" / "sync.py", ROOT / "soma_cli" / "report.py", ROOT / "soma_cli" / "status.py",
-            ROOT / "enzymes" / "oracle_checkpoint.py", ROOT / "enzymes" / "session_close.sh",
-            ROOT / "enzymes" / "cell_create_nl.py", ROOT / "enzymes" / "soma_resolve.py",
-            ROOT / "enzymes" / "fitness_updater.py", ROOT / "soma_core" / "verification" / "checkpoint_checks.py",
+            ROOT / "soma_core" / "verification" / "checkpoint_checks.py",
             ROOT / "soma_core" / "lifecycle.py",
         ]
         if p.exists()
@@ -189,9 +167,6 @@ def test_owned_production_has_no_active_legacy_evidence_paths():
         if needle in path.read_text(encoding="utf-8").replace("', 'evidence', '", "/evidence/").replace('\", \"evidence\", \"', "/evidence/")
     }
     assert offenders == {}
-    if (ROOT / "enzymes" / "session_close.sh").exists():
-        session_close = (ROOT / "enzymes" / "session_close.sh").read_text(encoding="utf-8")
-        assert session_close.count("signals.jsonl") >= 3
 
 
 def test_sync_malformed_ledger_does_not_apply_partial_counts(tmp_path, monkeypatch, capsys):

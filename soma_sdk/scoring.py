@@ -1,7 +1,5 @@
-"""Unified scoring module for soma-governance (SDK facade).
-
-DEPRECATED: Canonical scoring logic now resides in soma_core.scoring.
-This module re-exports all scoring functions for backward compatibility.
+"""Unified scoring module for soma-governance (SDK interface).
+Re-exports canonical scoring functions from soma_core.scoring.
 """
 from __future__ import annotations
 

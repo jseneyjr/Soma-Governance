@@ -51,57 +51,6 @@ def resolve_workspace_path(
     return Workspace.resolve(start=start, caller_file=caller_file, strict_env=strict_env).root
 
 
-def get_cells_dir(workspace: str | Path | os.PathLike[str] | Workspace | None = None) -> str:
-    """Get the path to the .soma/cells directory (deprecated)."""
-    warnings.warn(
-        "get_cells_dir is deprecated and will be removed in v1.0.0; use Workspace.cells_dir or ws.cells_dir instead.",
-        DeprecationWarning,
-        stacklevel=2,
-    )
-    ws = workspace if isinstance(workspace, Workspace) else (
-        Workspace(root=Path(workspace).resolve()) if workspace is not None else Workspace.resolve()
-    )
-    return str(ws.cells_dir)
-
-
-def get_metrics_dir(workspace: str | Path | os.PathLike[str] | Workspace | None = None) -> str:
-    """Get the path to the .soma/metrics directory (deprecated)."""
-    warnings.warn(
-        "get_metrics_dir is deprecated and will be removed in v1.0.0; use Workspace.metrics_dir or ws.metrics_dir instead.",
-        DeprecationWarning,
-        stacklevel=2,
-    )
-    ws = workspace if isinstance(workspace, Workspace) else (
-        Workspace(root=Path(workspace).resolve()) if workspace is not None else Workspace.resolve()
-    )
-    return str(ws.metrics_dir)
-
-
-def get_signals_file(workspace: str | Path | os.PathLike[str] | Workspace | None = None) -> str:
-    """Get the path to the canonical signals file (deprecated)."""
-    warnings.warn(
-        "get_signals_file is deprecated and will be removed in v1.0.0; use Workspace.signals_file or ws.signals_file instead.",
-        DeprecationWarning,
-        stacklevel=2,
-    )
-    ws = workspace if isinstance(workspace, Workspace) else (
-        Workspace(root=Path(workspace).resolve()) if workspace is not None else Workspace.resolve()
-    )
-    return str(ws.signals_file)
-
-
-def get_outcomes_file(workspace: str | Path | os.PathLike[str] | Workspace | None = None) -> str:
-    """Deprecated alias for get_signals_file."""
-    warnings.warn(
-        "get_outcomes_file is deprecated and will be removed in v1.0.0; use Workspace.signals_file or ws.signals_file instead.",
-        DeprecationWarning,
-        stacklevel=2,
-    )
-    ws = workspace if isinstance(workspace, Workspace) else (
-        Workspace(root=Path(workspace).resolve()) if workspace is not None else Workspace.resolve()
-    )
-    return str(ws.signals_file)
-
 
 def as_workspace(workspace: str | Path | os.PathLike[str] | Workspace | None = None) -> Workspace:
     """Coerce any workspace representation into a strongly-typed Workspace value object."""
@@ -139,20 +88,12 @@ def validate_cell_names(
     return ws.validate_cell_names(cell_names)
 
 
-find_workspace_root = resolve_workspace
-
-
 __all__ = [
     "GitWorkspace",
     "Workspace",
     "as_workspace",
     "confine_path",
     "confine_workspace",
-    "find_workspace_root",
-    "get_cells_dir",
-    "get_metrics_dir",
-    "get_outcomes_file",
-    "get_signals_file",
     "is_soma_repo",
     "resolve_git_hooks_dir",
     "resolve_workspace",

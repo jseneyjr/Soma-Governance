@@ -46,8 +46,6 @@ def _check_zero_dependencies() -> bool:
     return ok
 
 
-# Backward-compatible alias
-_check_pyyaml = _check_zero_dependencies
 
 
 def _check_platform(project_root: Path | None = None) -> str | None:
