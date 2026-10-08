@@ -62,3 +62,10 @@ class SlotRegistry:
 
     def to_dict(self) -> Dict[str, str]:
         return dict(self._slots)
+
+    def get_ast_driver(self, extension: str) -> Optional[str]:
+        """Resolve configured AST driver command for a given file extension."""
+        clean_ext = extension.lstrip(".").lower()
+        if clean_ext == "py":
+            return None
+        return self.get(f"ast_driver_{clean_ext}") or self.get("ast_driver")

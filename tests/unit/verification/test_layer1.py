@@ -19,6 +19,7 @@ from soma_core.verification import ToolEvidence
 from soma_core.verification import persistence_checker
 from soma_core.verification import call_graph
 from soma_core.verification import runner
+from unittest.mock import patch, MagicMock
 
 
 class TestPersistenceChecker:
@@ -398,5 +399,22 @@ class TestRunnerCoverageEnhancements:
         )
         assert isinstance(res, ArbitrationResult)
         assert res.verdict == Verdict.SHIP
+
+    def test_run_layer1_polyglot_call_graph(self, tmp_path):
+        """run_layer1 invokes call_graph on polyglot files if a driver is resolved."""
+        from soma_core.verification import runner
+        ts_file = tmp_path / "app.ts"
+        ts_file.write_text("export function run() {}\n")
+
+        with patch("soma_core.ast.runner.ASTDriverRegistry.resolve_driver", return_value="node driver.js"), \
+             patch("soma_core.verification.call_graph.check") as mock_cg:
+            mock_cg.return_value = ToolEvidence("call_graph", str(ts_file), True, "0 orphans")
+            results = runner.run_layer1(
+                changed_files=["app.ts"],
+                repo_root=str(tmp_path),
+                fast_mode=True,
+            )
+            assert mock_cg.called
+            assert any(r.target == str(ts_file) for r in results)
 
 
