@@ -1,6 +1,6 @@
 {
   "cycle": 22,
-  "timestamp": "2026-10-08T14:01:20.000000+00:00",
+  "timestamp": "2026-10-08T14:06:40.000000+00:00",
   "verdict": "ship",
   "divergence_count": 0,
   "convergence_count": 6,
@@ -43,6 +43,7 @@
     "soma_core/verification/runner.py",
     "soma_mcp/__init__.py",
     "soma_sdk/__init__.py",
+    "tests/integration/test_mulch_invariants.py",
     "tests/unit/cli/test_cli_verify.py",
     "tests/unit/cli/test_doctor.py",
     "tests/unit/cli/test_doctor_polyglot.py",
@@ -54,6 +55,6 @@
     "tests/unit/core/test_rust_ast_driver.py",
     "tests/unit/verification/test_layer1.py"
   ],
-  "commit_sha": "a1fdc7fd4bdbcccfe018bc79eecffd1e679c4fa3",
-  "tree_hash": "08a24c5ef0b4c0d3baee0b9bf22a50b3d188ea92"
+  "commit_sha": "d438a8f1025fc9793132bb82bb686a9f0f9b6e82",
+  "tree_hash": "3958f7284ad95ed19864dbadf24c7e276702b3e7"
 }
