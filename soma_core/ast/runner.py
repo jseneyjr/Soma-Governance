@@ -7,6 +7,7 @@ from pathlib import Path
 import shlex
 import shutil
 import subprocess
+import sys
 from typing import Any, Dict, List, Mapping, Optional, Union
 
 from soma_core.ast.drivers.python import parse_python_ast
@@ -20,7 +21,10 @@ __all__ = [
     "NoDriverConfiguredError",
     "ASTDriverRegistry",
     "ASTDriverRunner",
+    "resolve_driver_executable",
 ]
+
+_PYTHON_NAMES = frozenset({"python3", "python"})
 
 
 class ASTDriverError(SomaError):
@@ -109,6 +113,22 @@ def _split_command(cmd: str) -> list[str]:
     return shlex.split(cmd)
 
 
+def resolve_driver_executable(name: str) -> Optional[str]:
+    """Return the path a driver command's executable resolves to, or None.
+
+    Bundled drivers are provisioned as ``python3 <script>``, but a python.org
+    install on Windows ships no python3.exe (#144). A bare python name that is
+    not on PATH falls back to the interpreter running soma, which is Python 3
+    by definition; slots.yaml keeps the portable name.
+    """
+    found = shutil.which(name)
+    if found:
+        return found
+    if name in _PYTHON_NAMES and sys.executable:
+        return sys.executable
+    return None
+
+
 class ASTDriverRunner:
     """Dispatches AST parsing to native Python or external driver subprocesses."""
 
@@ -158,6 +178,8 @@ class ASTDriverRunner:
         cmd_parts = _split_command(driver_cmd)
         if not cmd_parts:
             raise ASTDriverError(f"Empty driver command for extension '{ext}'")
+        if cmd_parts[0] in _PYTHON_NAMES:
+            cmd_parts[0] = resolve_driver_executable(cmd_parts[0]) or cmd_parts[0]
 
         full_cmd = cmd_parts + [str(target_path)]
 
