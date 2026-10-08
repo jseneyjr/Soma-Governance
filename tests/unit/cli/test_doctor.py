@@ -123,6 +123,14 @@ def test_check_ast_drivers_native_when_no_slots(tmp_path, capsys):
     out = capsys.readouterr().out
     assert "native Python stdlib" in out
 
+    # slots.yaml exists, but no ast_driver slots
+    slots_file = tmp_path / ".soma" / "slots.yaml"
+    slots_file.parent.mkdir(parents=True, exist_ok=True)
+    slots_file.write_text("slots:\n  other_slot: foo\n")
+    assert _check_ast_drivers(tmp_path) is True
+    out2 = capsys.readouterr().out
+    assert "native Python stdlib" in out2
+
 
 def test_check_ast_drivers_with_valid_and_invalid_slots(tmp_path, capsys):
     from soma_cli.doctor import _check_ast_drivers
