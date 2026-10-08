@@ -3,6 +3,24 @@
 All notable changes to Soma are documented here.
 This project uses [Semantic Versioning](https://semver.org/).
 
+## [1.3.0] — 2026-10-08 — "Unified CLI Command Architecture & Discovery"
+
+### Unified CLI Command Architecture, Modular Subcommands & Categorized Discovery
+- **`SomaCommand` Protocol & Categorized Discovery (`soma_cli/commands/`)**:
+  - Modularized monolithic CLI handlers into distinct `SomaCommand` subclasses with explicit metadata: `name`, `category` (`CommandCategory`), `description`, and `aliases`.
+  - Structured all 24 commands across four decoupled domain modules:
+    - `bootstrap.py`: `init`, `genesis`, `clone`, `config`
+    - `inspection.py`: `status`, `list` (`ls`), `explain` (`show`), `history`, `metrics`, `doctor`, `detect` (`languages`, `drivers`)
+    - `governance.py`: `propose`, `audit`, `receipt`, `freeze`, `thaw`, `adapt` (`evolve`), `export`, `import`
+    - `verification.py`: `verify` (`check`), `quarantine`, `sweep`, `restore`, `checkpoint`
+- **`CommandRegistry` Engine (`soma_cli/commands/__init__.py`)**:
+  - Centralized registration, aliasing, and lazy instantiation for CLI commands.
+  - Built-in category filtering (`get_by_category()`), alias resolution (`resolve()`), and schema discovery.
+- **Orchestrator Refactor (`soma_cli/cli.py`)**:
+  - Slimmed CLI entrypoint from 620 to 300 lines by delegating argument definition and execution to registry commands.
+  - Enhanced `--help` formatting with clean category grouping, visual hierarchy, and alias hints.
+  - Guaranteed 100% backward compatibility with existing command arguments, subparser flags, and stdout/JSON contracts.
+
 ## [1.2.1] — 2026-10-08 — "Git-Aware Polyglot Call Graph & Doctor Display Hotfix"
 
 ### Git-Aware Call Graph Boundary Discovery & Doctor Auto-Repair Fix (BUG-085)
