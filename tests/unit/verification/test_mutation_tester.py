@@ -17,6 +17,7 @@ REPO_ROOT = str(next(p for p in Path(__file__).resolve().parents if (p / "pyproj
 sys.path.insert(0, REPO_ROOT)
 
 from soma_core.verification import ToolEvidence
+from unittest.mock import patch, MagicMock
 
 
 class TestMutationTesterContract:
@@ -393,4 +394,136 @@ class TestMutationTesterBoolAndTargetLines:
         res_empty = mutation_tester.check(str(src), "calc", str(test), target_lines={1})
         assert res_empty.verdict is True
         assert res_empty.detail == "No mutations on modified lines"
+
+
+class TestPolyglotMutationTesterCoverage:
+    """Branch and line coverage for apply_mutation_point, collect_mutations_from_ast, and non-python check()."""
+
+    def test_apply_mutation_point_coverage(self):
+        from soma_core.ast.schema import MutationPoint
+        from soma_core.verification.mutation_tester import apply_mutation_point
+
+        # 1. No original op
+        pt_empty = MutationPoint(line=1, col=0, original_op="", replacement_op="", mutation_type="cmpop")
+        assert apply_mutation_point("code", pt_empty) is None
+
+        # 2. original/mutated aliases
+        source = "x == 1"
+        pt_aliases = MutationPoint(line=1, col=2, original_op="==", replacement_op="!=", mutation_type="cmpop")
+        object.__setattr__(pt_aliases, "original", "==")
+        object.__setattr__(pt_aliases, "mutated", "!=")
+        assert apply_mutation_point(source, pt_aliases) == "x != 1"
+
+        # 3. byte_offset match
+        pt_byte = MutationPoint(line=1, col=2, original_op="==", replacement_op="!=", mutation_type="cmpop")
+        object.__setattr__(pt_byte, "byte_offset", 2)
+        assert apply_mutation_point(source, pt_byte) == "x != 1"
+
+        # 4. byte_offset mismatch falls through to line/col
+        object.__setattr__(pt_byte, "byte_offset", 0)  # offset 0 is 'x ', not '=='
+        assert apply_mutation_point(source, pt_byte) == "x != 1"
+
+        # 5. Out of bounds line
+        pt_oob = MutationPoint(line=999, col=0, original_op="==", replacement_op="!=", mutation_type="cmpop")
+        assert apply_mutation_point(source, pt_oob) is None
+
+        # 6. Column attribute variants (col vs column)
+        pt_col = MutationPoint(line=1, col=0, original_op="==", replacement_op="!=", mutation_type="cmpop")
+        object.__setattr__(pt_col, "col", None)
+        object.__setattr__(pt_col, "column", 2)
+        assert apply_mutation_point(source, pt_col) == "x != 1"
+
+        # 7. Fallback search when col doesn't match
+        pt_search = MutationPoint(line=1, col=0, original_op="==", replacement_op="!=", mutation_type="cmpop")
+        assert apply_mutation_point(source, pt_search) == "x != 1"
+
+        # 8. Target line does not contain orig
+        pt_missing = MutationPoint(line=1, col=0, original_op="===", replacement_op="!==", mutation_type="cmpop")
+        assert apply_mutation_point(source, pt_missing) is None
+
+    def test_collect_mutations_from_ast_coverage(self):
+        from soma_core.ast.schema import MutationPoint, NormalizedAST
+        from soma_core.verification.mutation_tester import collect_mutations_from_ast
+
+        # Empty points
+        ast_empty = NormalizedAST(file_path="f.ts", language="typescript", mutation_points=())
+        assert collect_mutations_from_ast(ast_empty) == []
+
+        # target_function is None
+        p1 = MutationPoint(line=1, col=0, original_op="+", replacement_op="-", mutation_type="binop")
+        p2 = MutationPoint(line=2, col=0, original_op="*", replacement_op="/", mutation_type="binop")
+        object.__setattr__(p1, "function_scope", "foo")
+        ast_pts = NormalizedAST(file_path="f.ts", language="typescript", mutation_points=(p1, p2))
+        assert collect_mutations_from_ast(ast_pts, target_function=None) == [p1, p2]
+
+        # target_function filter
+        assert collect_mutations_from_ast(ast_pts, target_function="foo") == [p1, p2]
+        assert collect_mutations_from_ast(ast_pts, target_function="bar") == [p2]
+
+    def test_check_non_python_runner_error(self, tmp_path):
+        from soma_core.verification import mutation_tester
+
+        ts_file = tmp_path / "app.ts"
+        ts_file.write_text("export function test() {}")
+        test_file = tmp_path / "test.ts"
+        test_file.write_text("test")
+
+        mock_runner = MagicMock()
+        mock_runner.parse_file.side_effect = RuntimeError("Driver failed")
+
+        ev = mutation_tester.check(str(ts_file), "test", str(test_file), ast_runner=mock_runner)
+        assert ev.verdict is False
+        assert "Failed to parse NormalizedAST" in ev.detail
+
+    def test_check_non_python_no_mutations_on_lines(self, tmp_path):
+        from soma_core.ast.schema import MutationPoint, NormalizedAST
+        from soma_core.verification import mutation_tester
+
+        ts_file = tmp_path / "app.ts"
+        ts_file.write_text("export function test() { return 1; }")
+        test_file = tmp_path / "test.ts"
+        test_file.write_text("test")
+
+        p = MutationPoint(line=5, col=0, original_op="+", replacement_op="-", mutation_type="binop")
+        mock_ast = NormalizedAST(file_path=str(ts_file), language="typescript", mutation_points=(p,))
+        mock_runner = MagicMock()
+        mock_runner.parse_file.return_value = mock_ast
+
+        ev = mutation_tester.check(str(ts_file), "test", str(test_file), target_lines={1}, ast_runner=mock_runner)
+        assert ev.verdict is True
+        assert ev.detail == "No mutations on modified lines"
+
+    def test_check_non_python_baseline_fail_and_survived_and_killed(self, tmp_path):
+        from soma_core.ast.schema import MutationPoint, NormalizedAST
+        from soma_core.verification import mutation_tester
+
+        ts_file = tmp_path / "app.ts"
+        ts_file.write_text("export function test() { return 1 + 2; }")
+        test_file = tmp_path / "test.ts"
+        test_file.write_text("test")
+
+        p1 = MutationPoint(line=1, col=34, original_op="+", replacement_op="-", mutation_type="binop")
+        p2 = MutationPoint(line=1, col=0, original_op="invalid", replacement_op="none", mutation_type="binop")
+        mock_ast = NormalizedAST(file_path=str(ts_file), language="typescript", mutation_points=(p1, p2))
+        mock_runner = MagicMock()
+        mock_runner.parse_file.return_value = mock_ast
+
+        # 1. Baseline tests fail
+        with patch("soma_core.verification.mutation_tester._run_tests", return_value=False):
+            ev = mutation_tester.check(str(ts_file), "test", str(test_file), ast_runner=mock_runner)
+            assert ev.verdict is False
+            assert "Baseline tests fail" in ev.detail
+
+        # 2. Mutant survives (test passes against mutant)
+        with patch("soma_core.verification.mutation_tester._run_tests", return_value=True):
+            ev = mutation_tester.check(str(ts_file), "test", str(test_file), max_mutations=2, ast_runner=mock_runner)
+            assert ev.verdict is False
+            assert "1/2 survived" in ev.detail
+
+        # 3. Mutant killed (baseline passes, mutant fails)
+        run_results = [True, False]  # first baseline passes, then mutant fails
+        with patch("soma_core.verification.mutation_tester._run_tests", side_effect=run_results):
+            ev = mutation_tester.check(str(ts_file), "test", str(test_file), max_mutations=1, ast_runner=mock_runner)
+            assert ev.verdict is True
+            assert "0/1 survived" in ev.detail
 

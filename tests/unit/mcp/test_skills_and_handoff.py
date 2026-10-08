@@ -556,5 +556,30 @@ class TestArtifactsAndSkillsBranchHardening:
         assert "[HMAC]: 0123456789ab..." in block
         assert "[HMAC]: 0123456789abc..." not in block
 
+    def test_get_ast_driver_branch_coverage_and_mutant_kills(self):
+        from soma_core.skills.slots import SlotRegistry
+        reg = SlotRegistry({
+            "ast_driver_ts": "node install/drivers/ts_ast.js",
+            "ast_driver": "default-runner",
+        })
+        # .py returns None
+        assert reg.get_ast_driver("py") is None
+        assert reg.get_ast_driver(".py") is None
+        assert reg.get_ast_driver("PY") is None
+
+        # specific extension
+        assert reg.get_ast_driver("ts") == "node install/drivers/ts_ast.js"
+        assert reg.get_ast_driver(".ts") == "node install/drivers/ts_ast.js"
+
+        # fallback to default ast_driver
+        assert reg.get_ast_driver("go") == "default-runner"
+        assert reg.get_ast_driver(".go") == "default-runner"
+
+        # empty registry
+        empty_reg = SlotRegistry()
+        assert empty_reg.get_ast_driver("ts") is None
+        assert empty_reg.get_ast_driver("py") is None
+
+
 
 
