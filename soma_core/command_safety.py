@@ -80,6 +80,10 @@ GIT_GLOBAL_FLAGS_WITH_ARG = frozenset({
     "-C", "-c", "--exec-path", "--config-env", "--work-tree", "--namespace"
 })
 
+GH_GLOBAL_FLAGS_WITH_ARG = frozenset({
+    "-R", "--repo"
+})
+
 ENV_VAR_RE = re.compile(r"^[a-zA-Z_][a-zA-Z0-9_]*=")
 WIN_DRIVE_RE = re.compile(r'([a-zA-Z]:)\\([\s*?$"]|$)')
 RM_DANGEROUS_TARGETS = frozenset({"/", "~", "/home", "$home", "/root", "$root", ".", "..", "*"})
@@ -507,6 +511,11 @@ def unwrap_command_stage(tokens: list[str]) -> tuple[UnwrappedCommand | None, st
                     idx += 1
                     if idx < len(tokens):
                         flags.append(tokens[idx])
+                # Global GitHub CLI options with arguments (-R <repo>, --repo <repo>)
+                elif binary == "gh" and "=" not in arg and arg in GH_GLOBAL_FLAGS_WITH_ARG:
+                    idx += 1
+                    if idx < len(tokens):
+                        flags.append(tokens[idx])
             else:
                 if subcommand is None and binary in ("git", "gh"):
                     subcommand = arg.lower()
@@ -555,7 +564,7 @@ def evaluate_git(cmd: UnwrappedCommand) -> SafetyEvaluation:
         for arg in cmd.positional_args:
             if arg.startswith("+"):
                 return SafetyEvaluation(True, REASON_GIT_PUSH_REFSPEC)
-            if arg == "main" or arg.endswith(":main"):
+            if arg == "main" or arg.endswith(":main") or arg.endswith("/main"):
                 return SafetyEvaluation(True, REASON_PROTECTED_BRANCH)
 
     elif sub == "reset":
