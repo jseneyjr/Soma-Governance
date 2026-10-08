@@ -39,6 +39,7 @@ REASON_POWERSHELL_DELETE = "PowerShell recursive force delete detected"
 REASON_CMD_DELETE = "Windows command-line recursive delete (/s /q) detected"
 REASON_HUMAN_REVIEW_GATE = "Human Review Gate: Agents are strictly prohibited from merging pull requests (gh pr merge). Merging requires human authority."
 REASON_PROTECTED_BRANCH = "Protected branch operation: Direct push to main is strictly prohibited for agents."
+REASON_GIT_MERGE = "Git branch merge detected — merging branches requires human confirmation"
 REASON_UNABLE_TO_PARSE = "Unable to parse command — requesting confirmation"
 
 MAX_DEPTH = 5
@@ -593,6 +594,11 @@ def evaluate_git(cmd: UnwrappedCommand) -> SafetyEvaluation:
             if f.startswith(("--output", "--ext-cmd")):
                 return SafetyEvaluation(True, REASON_GIT_DIFF)
 
+    elif sub == "merge":
+        if any(f in ("--abort", "--quit", "--continue") for f in flags):
+            return SafetyEvaluation(False)
+        return SafetyEvaluation(True, REASON_GIT_MERGE)
+
     return SafetyEvaluation(False)
 
 
@@ -810,6 +816,7 @@ __all__ = [
     "REASON_GIT_CLEAN_FORCE",
     "REASON_GIT_CONFIG",
     "REASON_GIT_DIFF",
+    "REASON_GIT_MERGE",
     "REASON_GIT_PUSH_FORCE",
     "REASON_GIT_PUSH_REFSPEC",
     "REASON_GIT_RESET_HARD",

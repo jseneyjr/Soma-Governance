@@ -3,6 +3,18 @@
 All notable changes to Soma are documented here.
 This project uses [Semantic Versioning](https://semver.org/).
 
+## [0.120.1] — 2026-10-07 — "Human Review Gate Enforcement & CI Test Suite Repair"
+
+### Human Review Gate Enforcement & CI Test Suite Repair
+- **Governance & Command Safety Hardening (`soma_core/command_safety.py`)**:
+  - Deterministically intercepts `gh pr merge` and protected branch pushes (`git push ... main` and `*:main` refspecs) via `CommandAnalyzer.evaluate()`, flagging them with `REASON_HUMAN_REVIEW_GATE` and `REASON_PROTECTED_BRANCH`.
+  - Hardened option parsing for global GitHub CLI flags (`-R`, `--repo`) and full git refspecs (`refs/heads/main`).
+  - Added Immune Wall cell `.soma/cells/walls/wall-human-review-gate.md` enforcing the structural boundary between autonomous agent execution and human release authority.
+- **CI Test Suite Restoration & Bug Registry Grounding (`docs/project/BUG_REGISTRY.json`)**:
+  - Remediated Pytest 8.3 exit code 4 in GitHub Actions CI by establishing tombstone regression assertions (`test_bug_014_powershell_installer_purged`, `test_bug_029_mcp_generators_purged`, `test_bug_031_manifestless_uninstall_purged`) in `tests/test_legacy_purged_regressions.py`.
+  - Re-grounded all 83 bug entries in `BUG_REGISTRY.json` to existing, verified test functions.
+  - Achieved 100% passing CI matrix across Ubuntu, macOS, and Windows on Python 3.9, 3.11, and 3.12.
+
 ## [0.120.0] — 2026-10-07 — "The Great Project-Wide Legacy Cleanse & Compatibility Contract"
 
 ### The Great Project-Wide Legacy Cleanse & Compatibility Contract ("The Great Purge")
