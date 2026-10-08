@@ -954,6 +954,7 @@ class TestReleaseGateCheck:
         args = argparse.Namespace(files=None, workspace=str(tmp_path))
         files = resolve_target_files(args)
         assert files == ["core/branch_file.py"]
+        assert getattr(args, "_diff_base", None) == "origin/main...HEAD"
 
     def test_resolve_target_files_head_parent_fallback(self, tmp_path, monkeypatch):
         """resolve_target_files falls back to HEAD~1 when branch diffs are unavailable."""
@@ -973,6 +974,7 @@ class TestReleaseGateCheck:
         args = argparse.Namespace(files=None, workspace=str(tmp_path))
         files = resolve_target_files(args)
         assert files == ["core/last_commit_file.py"]
+        assert getattr(args, "_diff_base", None) == "HEAD~1"
 
     def test_resolve_target_files_github_base_ref(self, tmp_path, monkeypatch):
         """resolve_target_files honors GITHUB_BASE_REF when present in environment."""

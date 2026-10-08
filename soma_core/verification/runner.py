@@ -118,17 +118,23 @@ def _discover_functions(filepath: str, target_lines: Optional[set[int]] = None) 
     return funcs
 
 
-def _get_modified_lines(filepath: str, repo_root: str) -> Optional[set[int]]:
+def _get_modified_lines(filepath: str, repo_root: str, diff_base: Optional[str] = None) -> Optional[set[int]]:
     """Extract line numbers of additions/modifications in filepath via git diff."""
     import re
     import subprocess
     lines: set[int] = set()
     found_hunks = False
 
-    diff_targets = [
+    diff_targets = []
+    if diff_base:
+        diff_targets.extend([
+            ["git", "diff", "-U0", diff_base, "--", filepath],
+            ["git", "diff", "-U0", f"{diff_base}...HEAD", "--", filepath],
+        ])
+    diff_targets.extend([
         ["git", "diff", "-U0", "HEAD", "--", filepath],
         ["git", "diff", "-U0", "--cached", "--", filepath],
-    ]
+    ])
     base_ref = os.environ.get("GITHUB_BASE_REF")
     if base_ref:
         diff_targets.extend([
@@ -140,6 +146,8 @@ def _get_modified_lines(filepath: str, repo_root: str) -> Optional[set[int]]:
         ["git", "diff", "-U0", "develop...HEAD", "--", filepath],
         ["git", "diff", "-U0", "origin/main...HEAD", "--", filepath],
         ["git", "diff", "-U0", "main...HEAD", "--", filepath],
+        ["git", "diff", "-U0", "HEAD~1...HEAD", "--", filepath],
+        ["git", "diff", "-U0", "HEAD~1", "--", filepath],
     ])
     for cmd in diff_targets:
         try:
@@ -170,6 +178,7 @@ def run_layer1(
     coverage_targets: Optional[list[tuple[str, str]]] = None,
     max_mutations: int = 5,
     fast_mode: bool = False,
+    diff_base: Optional[str] = None,
 ) -> list[ToolEvidence]:
     """Run all Layer 1 verification tools.
 
@@ -261,7 +270,7 @@ def run_layer1(
                 test_file = _find_test_file(filepath, repo_root)
                 if test_file is None:
                     continue
-                mod_lines = _get_modified_lines(filepath, repo_root)
+                mod_lines = _get_modified_lines(filepath, repo_root, diff_base=diff_base)
                 funcs = _discover_functions(full_path, target_lines=mod_lines)
                 for func_name in funcs[:3]:  # Limit auto-discovery to 3 functions
                     results.append(mutation_tester.check(
@@ -289,7 +298,7 @@ def run_layer1(
                 test_file = _find_test_file(filepath, repo_root)
                 if test_file is None:
                     continue
-                mod_lines = _get_modified_lines(filepath, repo_root)
+                mod_lines = _get_modified_lines(filepath, repo_root, diff_base=diff_base)
                 results.append(branch_coverage.check(full_path, test_file, target_lines=mod_lines))
 
     return results

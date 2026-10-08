@@ -1478,6 +1478,23 @@
       "regression_test": "tests/unit/verification/test_cell_creation_enforcement.py",
       "pattern": "Cell generation utility omits schema fields required by checkpoint conventions validator",
       "changelog_ref": "v0.111.0"
+    },
+    {
+      "id": "BUG-084",
+      "status": "fixed",
+      "title": "Release verification in CI publish workflow falls back to whole-file mutation testing",
+      "discovered_in": "v1.1.0",
+      "fixed_in": "v1.2.0",
+      "root_cause": "silent_failure",
+      "severity": "moderate",
+      "description": "In GitHub Actions release workflows (publish.yml on release tags), GITHUB_BASE_REF is unset and origin/main points to HEAD. While resolve_target_files correctly fell back to HEAD~1, runner._get_modified_lines did not include HEAD~1 in candidate git diff commands and verify.py did not pass diff_base to run_layer1. Consequently, modified line resolution returned None, causing Layer 1 verification to fall back to legacy whole-file mutation testing and failing CI.",
+      "affected_files": [
+        "soma_core/verification/runner.py",
+        "soma_cli/verify.py"
+      ],
+      "regression_test": "tests/unit/verification/test_layer1.py",
+      "pattern": "CI release workflow lacks base PR reference and verification runner lacks HEAD~1 diff candidate",
+      "changelog_ref": "v1.2.0"
     }
   ]
 }

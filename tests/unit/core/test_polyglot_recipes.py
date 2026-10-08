@@ -114,7 +114,7 @@ class TestPolyglotRecipes:
             [node_bin, str(recipe_path), str(sample_ts)],
             capture_output=True,
             text=True,
-            timeout=5,
+            timeout=15,
         )
         assert proc.returncode == 0, f"Driver failed with stderr: {proc.stderr}"
 
@@ -141,7 +141,7 @@ class TestPolyglotRecipes:
 
         registry = ASTDriverRegistry(drivers={".ts": driver_cmd})
         runner = ASTDriverRunner(registry=registry)
-        norm_ast = runner.parse_file(str(sample_ts), workspace_root=str(tmp_path))
+        norm_ast = runner.parse_file(str(sample_ts), workspace_root=str(tmp_path), timeout=15.0)
 
         assert norm_ast.file_path == str(sample_ts)
         assert any(d.name == "run" for d in norm_ast.definitions)

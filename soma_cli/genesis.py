@@ -37,6 +37,14 @@ def run_genesis(args: argparse.Namespace) -> int:
     force = getattr(args, "force", False)
 
     # Phase 1: Scan
+    from soma_core.ast.detect import detect_project_languages, provision_ast_driver_slots
+
+    detected_langs = detect_project_languages(project_root)
+    # Auto-provision AST driver slots for polyglot languages
+    provisioned_slots, created_drivers = provision_ast_driver_slots(
+        project_root, detected_langs, copy_drivers=not dry_run, dry_run=dry_run
+    )
+
     project_type = detect_project_type(project_root)
     candidates = scan(project_root, min_confidence=min_confidence)
 
@@ -47,9 +55,14 @@ def run_genesis(args: argparse.Namespace) -> int:
                 "status": "empty",
                 "message": msg,
                 "project_type": project_type,
+                "languages": list(detected_langs.keys()),
+                "slots_provisioned": bool(provisioned_slots),
             }))
         else:
             print(f"🔬 {msg}")
+            if provisioned_slots:
+                action = "Would auto-provision" if dry_run else "Auto-provisioned"
+                print(f"  ✨ {action} AST drivers in .soma/slots.yaml for {', '.join(k.title() for k in sorted(detected_langs))}")
         return 0
 
     # Display candidates

@@ -756,3 +756,91 @@ class TestIntegration:
         # Organelle report exists
         report_path = python_project / "docs" / "organelles.md"
         assert report_path.exists()
+
+    def test_genesis_cli_provisions_rust_ast_driver(self, tmp_path: Path) -> None:
+        """Genesis auto-provisions Rust AST driver in slots.yaml."""
+        from soma_cli.genesis import run_genesis
+        from soma_core.skills.slots import SlotRegistry
+
+        (tmp_path / "Cargo.toml").write_text("[package]\nname = 'rust_app'\n", encoding="utf-8")
+        src = tmp_path / "src"
+        src.mkdir()
+        (src / "main.rs").write_text("fn main() {}\n", encoding="utf-8")
+
+        args = Namespace(
+            project_root=str(tmp_path),
+            dry_run=False,
+            json=True,
+            min_confidence=0.5,
+            force=True,
+            yes=True,
+        )
+        rc = run_genesis(args)
+        assert rc == 0
+        registry = SlotRegistry.load(tmp_path)
+        assert registry.get_ast_driver(".rs") is not None
+        assert (tmp_path / ".soma" / "drivers" / "rust_ast.py").is_file()
+
+    def test_genesis_cli_no_candidates_polyglot_console_output(self, tmp_path: Path, capsys) -> None:
+        """Genesis prints auto-provisioned message to stdout when no candidates are detected."""
+        from soma_cli.genesis import run_genesis
+
+        (tmp_path / "Cargo.toml").write_text("[package]\nname = 'rust_app'\n", encoding="utf-8")
+        src = tmp_path / "src"
+        src.mkdir()
+        (src / "main.rs").write_text("fn main() {}\n", encoding="utf-8")
+
+        args = Namespace(
+            project_root=str(tmp_path),
+            dry_run=False,
+            json=False,
+            min_confidence=0.99,  # High threshold guarantees 0 candidates
+            force=True,
+            yes=True,
+        )
+        rc = run_genesis(args)
+        assert rc == 0
+        captured = capsys.readouterr().out
+        assert "Auto-provisioned AST drivers in .soma/slots.yaml for Rust" in captured
+
+    def test_genesis_cli_no_candidates_polyglot_dry_run_console_output(self, tmp_path: Path, capsys) -> None:
+        """Genesis prints would auto-provision message on dry-run when no candidates are detected."""
+        from soma_cli.genesis import run_genesis
+
+        (tmp_path / "Cargo.toml").write_text("[package]\nname = 'rust_app'\n", encoding="utf-8")
+        src = tmp_path / "src"
+        src.mkdir()
+        (src / "main.rs").write_text("fn main() {}\n", encoding="utf-8")
+
+        args = Namespace(
+            project_root=str(tmp_path),
+            dry_run=True,
+            json=False,
+            min_confidence=0.99,
+            force=True,
+            yes=True,
+        )
+        rc = run_genesis(args)
+        assert rc == 0
+        captured = capsys.readouterr().out
+        assert "Would auto-provision AST drivers in .soma/slots.yaml for Rust" in captured
+
+    def test_genesis_cli_no_candidates_python_only_no_provision_output(self, tmp_path: Path, capsys) -> None:
+        """Genesis does not print auto-provisioned message for pure Python project."""
+        from soma_cli.genesis import run_genesis
+
+        (tmp_path / "app.py").write_text("print('hello')\n", encoding="utf-8")
+        args = Namespace(
+            project_root=str(tmp_path),
+            dry_run=False,
+            json=False,
+            min_confidence=0.99,
+            force=True,
+            yes=True,
+        )
+        rc = run_genesis(args)
+        assert rc == 0
+        captured = capsys.readouterr().out
+        assert "Auto-provisioned AST drivers" not in captured
+
+

@@ -352,6 +352,18 @@ Relocated 191 test files into domain hierarchy: `tests/unit/core/`, `tests/unit/
 **Status**: ✅ Shipped (v1.0.0)  
 Restructures root `README.md` into a lean documentation portal (< 200 lines) with interactive closed-loop diagram, 30-second quickstart, and comprehensive production guides (`docs/guides/mcp_gateway.md`, `docs/guides/verification_pipeline.md`, `docs/guides/cell_lifecycle.md`, `docs/guides/skill_graph.md`). Formal SemVer 2.0 Backwards Compatibility Guarantee published in `docs/project/COMPATIBILITY.md`.
 
+## Phase 27 — v1.1.0 ✅ Shipped
+
+### Language-Agnostic AST Verification via Normalized AST Drivers
+**Status**: ✅ Shipped (v1.1.0)  
+Language-agnostic Normalized AST Driver (NAD) protocol (`soma_core/ast/`). NormalizedAST intermediate representation, in-process Python driver, subprocess driver runner with timeout and sandbox constraints. Polyglot Layer 1 call graph reachability, orphan deadwood detection, and mutation testing (`soma_core/verification/`). Reference driver recipes for TypeScript/JavaScript (`install/drivers/ts_ast.js`) and Go (`install/drivers/go_ast.go`).
+
+## Phase 28 — v1.2.0 ✅ Shipped
+
+### Zero-Touch Genesis Polyglot Provisioning & Rust AST Driver
+**Status**: ✅ Shipped (v1.2.0)  
+Zero-touch polyglot language detection and driver slot provisioning in `soma init`, `soma genesis`, and `soma doctor --fix` (`soma_core/ast/detect.py`). Pure Python stdlib reference Rust AST driver (`rust_ast.py`) producing NormalizedAST JSON without external dependencies. Bundled driver templates (`soma_core/ast/drivers/templates/`). CI/CD release verification alignment (`diff_base` propagation and `HEAD~1` fallback in `soma_core/verification/runner.py`).
+
 ## Research
 
 ### Antifragile Scaling
