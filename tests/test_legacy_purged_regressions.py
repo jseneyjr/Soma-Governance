@@ -88,3 +88,18 @@ def test_bug_025_migration_lock_purged():
     """BUG-025: migration locks purged in v0.103.0."""
     assert not (ROOT / "soma_cli" / "migration.py").exists()
 
+
+def test_bug_014_powershell_installer_purged():
+    """BUG-014: Legacy powershell installer purged in v0.97.0."""
+    assert not (ROOT / "install" / "install.ps1").exists()
+
+
+def test_bug_029_mcp_generators_purged():
+    """BUG-029: Legacy shell mcp generators purged in v0.97.0."""
+    assert not (ROOT / "install" / "install.sh").exists()
+
+
+def test_bug_031_manifestless_uninstall_purged():
+    """BUG-031: Legacy manifestless uninstall purged in v0.97.0."""
+    assert not (ROOT / "install" / "uninstall.sh").exists()
+

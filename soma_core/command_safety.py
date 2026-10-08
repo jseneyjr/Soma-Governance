@@ -37,6 +37,8 @@ REASON_DB_DESTRUCTIVE = "Destructive database operation without WHERE clause"
 REASON_WINDOWS_FORMAT = "Disk partition format detected — destructive operation"
 REASON_POWERSHELL_DELETE = "PowerShell recursive force delete detected"
 REASON_CMD_DELETE = "Windows command-line recursive delete (/s /q) detected"
+REASON_HUMAN_REVIEW_GATE = "Human Review Gate: Agents are strictly prohibited from merging pull requests (gh pr merge). Merging requires human authority."
+REASON_PROTECTED_BRANCH = "Protected branch operation: Direct push to main is strictly prohibited for agents."
 REASON_UNABLE_TO_PARSE = "Unable to parse command — requesting confirmation"
 
 MAX_DEPTH = 5
@@ -506,7 +508,7 @@ def unwrap_command_stage(tokens: list[str]) -> tuple[UnwrappedCommand | None, st
                     if idx < len(tokens):
                         flags.append(tokens[idx])
             else:
-                if subcommand is None and binary in ("git",):
+                if subcommand is None and binary in ("git", "gh"):
                     subcommand = arg.lower()
                 else:
                     pos_args.append(arg)
@@ -553,6 +555,8 @@ def evaluate_git(cmd: UnwrappedCommand) -> SafetyEvaluation:
         for arg in cmd.positional_args:
             if arg.startswith("+"):
                 return SafetyEvaluation(True, REASON_GIT_PUSH_REFSPEC)
+            if arg == "main" or arg.endswith(":main"):
+                return SafetyEvaluation(True, REASON_PROTECTED_BRANCH)
 
     elif sub == "reset":
         if any(f == "--hard" for f in flags):
@@ -579,6 +583,18 @@ def evaluate_git(cmd: UnwrappedCommand) -> SafetyEvaluation:
         for f in flags:
             if f.startswith(("--output", "--ext-cmd")):
                 return SafetyEvaluation(True, REASON_GIT_DIFF)
+
+    return SafetyEvaluation(False)
+
+
+def evaluate_gh(cmd: UnwrappedCommand) -> SafetyEvaluation:
+    sub = cmd.subcommand
+    if not sub:
+        return SafetyEvaluation(False)
+
+    if sub == "pr":
+        if any(arg == "merge" for arg in cmd.positional_args):
+            return SafetyEvaluation(True, REASON_HUMAN_REVIEW_GATE)
 
     return SafetyEvaluation(False)
 
@@ -735,6 +751,10 @@ class CommandAnalyzer:
                     res = evaluate_git(st)
                     if res.is_destructive:
                         return res
+                elif st.binary == "gh":
+                    res = evaluate_gh(st)
+                    if res.is_destructive:
+                        return res
                 elif st.binary == "rm":
                     ps_res = evaluate_powershell(st)
                     if ps_res.is_destructive:
@@ -788,6 +808,8 @@ __all__ = [
     "REASON_MKFS",
     "REASON_PIPE_TO_SHELL",
     "REASON_POWERSHELL_DELETE",
+    "REASON_PROTECTED_BRANCH",
+    "REASON_HUMAN_REVIEW_GATE",
     "REASON_RMDIR_BYPASS",
     "REASON_RM_RF",
     "REASON_RMTREE",
