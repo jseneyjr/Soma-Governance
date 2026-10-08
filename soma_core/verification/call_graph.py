@@ -12,13 +12,15 @@ Pure deterministic — no LLM judgment.
 
 import ast
 import os
+import re
 import sys
 from dataclasses import dataclass
-from typing import Optional
+from typing import Any, Optional
 
+from soma_core.ast.schema import NormalizedAST
 from . import ToolEvidence
 
-__all__ = ["check", "find_definitions", "find_call_sites"]
+__all__ = ["check", "check_normalized", "find_definitions", "find_call_sites"]
 
 
 @dataclass(frozen=True)
@@ -294,25 +296,177 @@ def find_call_sites(func_name: str, repo_root: str, exclude_file: str = "") -> l
     return call_sites
 
 
+_COMMENTS_STRINGS_RE = re.compile(
+    r'("""[\s\S]*?"""|\'\'\'[\s\S]*?\'\'\'|/\*[\s\S]*?\*/|//[^\n]*|#[^\n]*|"(?:\\.|[^"\\])*"|\'(?:\\.|[^\'\\])*\'|`(?:\\.|[^`\\])*`)'
+)
+
+
+def _strip_comments_and_strings(code: str) -> str:
+    """Strip comments and string literals from source to prevent false positive call sites."""
+    return _COMMENTS_STRINGS_RE.sub(" ", code)
+
+
+def check_normalized(
+    norm_ast: NormalizedAST,
+    repo_root: str,
+    exclude_names: set[str] | None = None,
+    *,
+    fast_mode: bool = False,
+) -> ToolEvidence:
+    """Run call graph reachability check using NormalizedAST representation."""
+    exclude_names = exclude_names or set()
+
+    definitions = {
+        d.name: FunctionDefInfo(
+            name=d.name,
+            line_no=d.line,
+            is_exported=d.is_exported,
+            is_method=d.is_method,
+            class_name=d.class_name,
+        )
+        for d in norm_ast.definitions
+        if d.kind in ("function", "method")
+    }
+
+    if not definitions:
+        return ToolEvidence(
+            tool="call_graph",
+            target=os.path.basename(norm_ast.file_path),
+            verdict=True,
+            detail="No function definitions found to verify",
+        )
+
+    # 2. Extract internal calls
+    internal_called = {c.target for c in norm_ast.call_sites} | {
+        c.target.split(".")[-1] for c in norm_ast.call_sites
+    }
+
+    # 3. Identify candidate orphan functions
+    candidate_orphans: dict[str, FunctionDefInfo] = {}
+    for name, info in definitions.items():
+        if name in exclude_names:
+            continue
+        if info.is_exported:
+            continue
+        if name in internal_called:
+            continue
+        candidate_orphans[name] = info
+
+    # 4. Inspect external repository files if needed
+    orphans: dict[str, int] = {}
+    if candidate_orphans:
+        if fast_mode:
+            return ToolEvidence(
+                tool="call_graph",
+                target=os.path.basename(norm_ast.file_path),
+                verdict=True,
+                detail=f"fast_mode: intra-module checks passed ({len(definitions)} functions verified, {len(candidate_orphans)} external candidates skipped)",
+            )
+        candidate_names = set(candidate_orphans.keys())
+        externally_matched: set[str] = set()
+
+        for root, dirs, files in os.walk(repo_root):
+            dirs[:] = [
+                d
+                for d in dirs
+                if not d.startswith(".")
+                and d not in (
+                    "__pycache__",
+                    "node_modules",
+                    ".venv",
+                    "venv",
+                    "dist",
+                    "build",
+                    "tests",
+                    "test",
+                    ".git",
+                    ".soma",
+                )
+            ]
+
+            for fname in files:
+                if fname.startswith("test_") or fname.endswith(
+                    ("_test.go", "_test.py", ".test.ts", ".spec.ts", ".test.js", ".spec.js")
+                ):
+                    continue
+                fpath = os.path.join(root, fname)
+                if os.path.abspath(fpath) == os.path.abspath(norm_ast.file_path):
+                    continue
+
+                remaining = candidate_names - externally_matched
+                if not remaining:
+                    break
+
+                try:
+                    with open(fpath, "r", encoding="utf-8", errors="ignore") as f:
+                        content = f.read()
+                except (OSError, UnicodeDecodeError):
+                    continue
+
+                stripped = _strip_comments_and_strings(content)
+
+                for name in remaining:
+                    if re.search(rf"\b{re.escape(name)}\s*\(", stripped):
+                        externally_matched.add(name)
+
+        for name, info in candidate_orphans.items():
+            if name not in externally_matched:
+                orphans[name] = info.line_no
+
+    if orphans:
+        orphan_details = [f"{name} (L{line})" for name, line in sorted(orphans.items())]
+        return ToolEvidence(
+            tool="call_graph",
+            target=os.path.basename(norm_ast.file_path),
+            verdict=False,
+            detail=f"ORPHAN FUNCTIONS: {'; '.join(orphan_details)} — defined but never called",
+            lines=list(orphans.values()),
+        )
+
+    return ToolEvidence(
+        tool="call_graph",
+        target=os.path.basename(norm_ast.file_path),
+        verdict=True,
+        detail=f"All {len(definitions)} functions have call sites",
+    )
+
+
 def check(
     filepath: str,
     repo_root: str,
     exclude_names: set[str] | None = None,
     *,
     fast_mode: bool = False,
+    ast_runner: Any = None,
 ) -> ToolEvidence:
     """Run AST-based call graph completeness check.
 
     Args:
-        filepath: Path to the Python file to analyze
+        filepath: Path to the source file to analyze
         repo_root: Root of the repository to search for call sites
         exclude_names: Function names to skip (e.g., CLI entry points)
         fast_mode: If True, performs file-isolated checks and skips external repo walks
+        ast_runner: Optional ASTDriverRunner instance for non-Python sources
 
     Returns:
         ToolEvidence with verdict=True if all functions have call sites or are exported
     """
     exclude_names = exclude_names or set()
+
+    ext = os.path.splitext(filepath)[1].lower()
+    if ext != ".py":
+        from soma_core.ast.runner import ASTDriverRunner
+        runner = ast_runner or ASTDriverRunner()
+        try:
+            norm_ast = runner.parse_file(filepath, workspace_root=repo_root)
+            return check_normalized(norm_ast, repo_root, exclude_names, fast_mode=fast_mode)
+        except Exception as e:
+            return ToolEvidence(
+                tool="call_graph",
+                target=os.path.basename(filepath),
+                verdict=False,
+                detail=f"Failed to parse AST via driver: {e}",
+            )
 
     try:
         with open(filepath, 'r', encoding='utf-8') as f:
