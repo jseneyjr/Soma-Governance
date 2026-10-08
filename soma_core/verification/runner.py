@@ -195,6 +195,7 @@ def run_layer1(
             norm.startswith('tests/')
             or '/tests/' in norm
             or bname.startswith('test_')
+            or bname.endswith(('_test.go', '_test.py', '.test.ts', '.spec.ts', '.test.js', '.spec.js'))
             or bname in ('__init__.py', 'conftest.py', 'harness.py', 'helpers_cell.py')
         )
 
@@ -206,15 +207,28 @@ def run_layer1(
                 results.append(persistence_checker.check(full_path, dict_name))
 
     # ── Call Graph Completeness ───────────────────────────────────────
+    from soma_core.ast.runner import ASTDriverRunner
+    ast_runner = ASTDriverRunner()
+
     for filepath in changed_files:
         full_path = os.path.join(repo_root, filepath)
-        if os.path.exists(full_path) and filepath.endswith('.py'):
-            if _is_test_or_support(filepath):
-                continue
+        if not os.path.exists(full_path):
+            continue
+        if _is_test_or_support(filepath):
+            continue
+        ext = os.path.splitext(filepath)[1].lower()
+        if ext == ".py":
             results.append(call_graph.check(
                 full_path, repo_root,
                 exclude_names={'main', '_parse_args', 'parse_args'},
                 fast_mode=fast_mode,
+            ))
+        elif ast_runner.registry.resolve_driver(ext, workspace_root=repo_root):
+            results.append(call_graph.check(
+                full_path, repo_root,
+                exclude_names={'main', '_parse_args', 'parse_args'},
+                fast_mode=fast_mode,
+                ast_runner=ast_runner,
             ))
 
     # ── Import Guards ─────────────────────────────────────────────────

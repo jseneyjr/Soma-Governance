@@ -190,6 +190,55 @@ def _check_mcp_launcher(path_env: str | None = None) -> bool:
     return False
 
 
+def _check_ast_drivers(project_root: Path | None = None) -> bool:
+    """Check configured AST drivers in .soma/slots.yaml and verify their binaries."""
+    import shlex
+    from soma_core.skills.slots import SlotRegistry
+
+    slots_path = (project_root or Path.cwd()) / ".soma" / "slots.yaml"
+    if not slots_path.is_file():
+        print("  ✅ AST drivers: native Python stdlib (in-process)")
+        return True
+
+    try:
+        registry = SlotRegistry.load(slots_path)
+    except Exception as exc:
+        print(f"  ❌ AST drivers: failed to load slots.yaml: {exc}")
+        return False
+
+    ast_drivers: dict[str, str] = {}
+    for slot_name, slot_val in registry.slots.items():
+        if slot_name == "ast_driver":
+            ast_drivers["default"] = str(slot_val)
+        elif slot_name.startswith("ast_driver_"):
+            ext = slot_name[len("ast_driver_"):]
+            ast_drivers[f".{ext}"] = str(slot_val)
+
+    if not ast_drivers:
+        print("  ✅ AST drivers: native Python stdlib (in-process)")
+        return True
+
+    all_resolvable = True
+    for ext, cmd in sorted(ast_drivers.items()):
+        parts = shlex.split(cmd) if os.name != "nt" else cmd.split()
+        if not parts:
+            continue
+        bin_name = parts[0]
+        found = shutil.which(bin_name)
+        if not found and project_root:
+            cand = (project_root / bin_name).resolve()
+            if cand.is_file():
+                found = str(cand)
+
+        if found:
+            print(f"  ✅ AST driver ({ext}): {bin_name} resolvable ({found})")
+        else:
+            print(f"  ⚠️  AST driver ({ext}): executable '{bin_name}' not found on PATH")
+            all_resolvable = False
+
+    return all_resolvable
+
+
 # ── Pre-commit hook (BUG-047) ────────────────────────────────────────────────
 
 def _check_precommit_hook(project_root: Path | None = None) -> bool | None:
@@ -446,6 +495,7 @@ def run_doctor(args: argparse.Namespace) -> int:
     results.append(_check_rules(platform, ws))
     results.append(_check_evidence_dir(ws))
     results.append(_check_cli_resolvable())
+    results.append(_check_ast_drivers(ws))
     hook_ok = _check_precommit_hook(ws)
     if hook_ok is not None:
         results.append(hook_ok)
