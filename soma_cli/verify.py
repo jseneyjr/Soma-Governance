@@ -138,6 +138,7 @@ def resolve_target_files(args: argparse.Namespace) -> list[str]:
                     cand_files = [f.strip() for f in res.stdout.splitlines() if f.strip()]
                     if cand_files:
                         files = cand_files
+                        setattr(args, "_diff_base", ref)
                         break
             except (subprocess.SubprocessError, FileNotFoundError):
                 pass
@@ -468,6 +469,7 @@ def run_verify(args: argparse.Namespace) -> int:
     results = runner.run_layer1(
         changed_files=target_files,
         repo_root=repo_root,
+        diff_base=getattr(args, "_diff_base", None),
     )
 
     layer1_pass = runner.gate_verdict(results)

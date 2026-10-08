@@ -417,4 +417,34 @@ class TestRunnerCoverageEnhancements:
             assert mock_cg.called
             assert any(r.target == str(ts_file) for r in results)
 
+    def test_get_modified_lines_uses_diff_base_and_head_fallback(self, tmp_path):
+        """_get_modified_lines prioritizes explicit diff_base and falls back to HEAD~1."""
+        from soma_core.verification import runner
+        import subprocess
+
+        called_cmds = []
+        def fake_run(cmd, *args, **kwargs):
+            called_cmds.append(cmd)
+            # Return hunk when HEAD~1 is queried
+            if "HEAD~1" in cmd:
+                return subprocess.CompletedProcess(cmd, 0, stdout="@@ -10,0 +11,5 @@\n", stderr="")
+            return subprocess.CompletedProcess(cmd, 0, stdout="", stderr="")
+
+        with patch("subprocess.run", side_effect=fake_run):
+            lines = runner._get_modified_lines("foo.py", str(tmp_path))
+            assert lines == {11, 12, 13, 14, 15}
+            assert any("HEAD~1" in c for c in called_cmds)
+
+        called_cmds.clear()
+        def fake_run_diff_base(cmd, *args, **kwargs):
+            called_cmds.append(cmd)
+            if "origin/feat...HEAD" in cmd:
+                return subprocess.CompletedProcess(cmd, 0, stdout="@@ -5,0 +6,2 @@\n", stderr="")
+            return subprocess.CompletedProcess(cmd, 0, stdout="", stderr="")
+
+        with patch("subprocess.run", side_effect=fake_run_diff_base):
+            lines = runner._get_modified_lines("foo.py", str(tmp_path), diff_base="origin/feat")
+            assert lines == {6, 7}
+            assert called_cmds[0] == ["git", "diff", "-U0", "origin/feat", "--", "foo.py"]
+
 
