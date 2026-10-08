@@ -3,6 +3,25 @@
 All notable changes to Soma are documented here.
 This project uses [Semantic Versioning](https://semver.org/).
 
+## [1.1.0] — 2026-10-08 — "Language-Agnostic AST Verification via Normalized AST Drivers"
+
+### Polyglot Verification, Normalized AST Drivers & Zero-Dependency Schema
+- **Normalized AST Driver (NAD) Protocol (`soma_core/ast/`)**:
+  - `soma_core/ast/schema.py`: Language-agnostic intermediate representation defining `NormalizedAST`, `DefinitionNode`, `CallSiteNode`, `ImportNode`, and `MutationPoint` with JSON and mapping roundtrip serialization.
+  - `soma_core/ast/drivers/python.py`: In-process native Python standard library parser (`ast.parse`) providing a sub-millisecond fast path with zero process overhead.
+  - `soma_core/ast/runner.py`: External process execution engine (`ASTDriverRunner`, `ASTDriverRegistry`) resolving drivers via `.soma/slots.yaml` or code registry with strict 3.0-second timeout enforcement and workspace confinement.
+- **Layer 1 Polyglot Call Graph & Mutation Adaptation (`soma_core/verification/`)**:
+  - `soma_core/verification/call_graph.py`: Implements `check_normalized` to verify function call reachability, detect orphan deadwood, and ignore comments and string literals across polyglot files.
+  - `soma_core/verification/mutation_tester.py`: Adds `apply_mutation_point` and `collect_mutations_from_ast` supporting byte-offset and coordinate operator swaps on non-Python sources.
+  - `soma_core/verification/runner.py`: Automatically routes changed polyglot files through configured AST drivers.
+- **Host Driver Recipes (`install/drivers/`)**:
+  - `install/drivers/ts_ast.js`: Zero-dependency Node.js recipe for TypeScript and JavaScript using the official `typescript` compiler API when present and falling back to a deterministic built-in lexer in bare environments.
+  - `install/drivers/go_ast.go`: Zero-dependency Go recipe leveraging standard library `go/parser`, `go/token`, and `go/ast`.
+- **Doctor Diagnostics & Architecture Documentation**:
+  - `soma_cli/doctor.py`: Added `_check_ast_drivers` diagnostic verifying that configured AST driver binaries are resolvable on PATH.
+  - `docs/guides/polyglot_ast.md`: Comprehensive developer guide for authoring and configuring custom AST drivers.
+  - `docs/architecture/decisions/ADR-015-normalized-ast-driver-protocol.md`: Architectural Decision Record codifying the NAD protocol and trade-offs.
+
 ## [1.0.0] — 2026-10-08 — "General Availability & Production Governance Framework"
 
 ### Production GA, Documentation Portal & Formal Backwards Compatibility
