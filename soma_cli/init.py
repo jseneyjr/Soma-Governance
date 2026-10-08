@@ -391,10 +391,13 @@ def run_init(args: argparse.Namespace) -> int:
             return 1
         print(f"  Detected platform: {platform}")
 
-    # 2. Detect project type
-    project_type = detect_project_type(project_root)
-    if project_type != "unknown":
-        print(f"  Detected project: {project_type}")
+    # 2. Detect project languages & type
+    from soma_core.ast.detect import detect_project_languages, provision_ast_driver_slots
+
+    detected_langs = detect_project_languages(project_root)
+    if detected_langs:
+        lang_str = ", ".join(k.title() for k in sorted(detected_langs))
+        print(f"  Detected language(s): {lang_str}")
     else:
         print("  Project type: unknown (rules are language-agnostic)")
 
@@ -448,6 +451,17 @@ def run_init(args: argparse.Namespace) -> int:
 
     for name in installed:
         print(f"    ✅ {name}")
+
+    # 6.5. Zero-touch AST driver provisioning
+    slots, created_drivers = provision_ast_driver_slots(
+        project_root, detected_langs, copy_drivers=not dry_run, dry_run=dry_run
+    )
+    if slots:
+        action = "Would configure" if dry_run else "Configured"
+        for slot_k, slot_cmd in sorted(slots.items()):
+            if slot_k.startswith("ast_driver_"):
+                ext = slot_k[len("ast_driver_"):]
+                print(f"    ✨ {action} AST driver (.{ext}): {slot_cmd}")
 
     print()
 

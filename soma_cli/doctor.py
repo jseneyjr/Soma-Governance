@@ -190,14 +190,29 @@ def _check_mcp_launcher(path_env: str | None = None) -> bool:
     return False
 
 
-def _check_ast_drivers(project_root: Path | None = None) -> bool:
+def _check_ast_drivers(project_root: Path | None = None, fix: bool = False) -> bool:
     """Check configured AST drivers in .soma/slots.yaml and verify their binaries."""
     import shlex
     from soma_core.skills.slots import SlotRegistry
+    from soma_core.ast.detect import detect_project_languages, provision_ast_driver_slots
 
     ws_root = Path(project_root or Path.cwd())
     slots_path = ws_root / ".soma" / "slots.yaml"
+
+    detected_langs = detect_project_languages(ws_root)
+    non_py_langs = {k: v for k, v in detected_langs.items() if k != "python"}
+
     if not slots_path.is_file():
+        if non_py_langs:
+            if fix:
+                new_slots, created = provision_ast_driver_slots(ws_root, detected_langs, copy_drivers=True)
+                if created:
+                    print(f"  ✅ Fixed: Auto-provisioned AST drivers in .soma/slots.yaml for {', '.join(k.title() for k in sorted(non_py_langs))}")
+            else:
+                missing_exts = sorted(set().union(*(d.get("extensions", []) for d in non_py_langs.values())))
+                ext_str = ", ".join(missing_exts) if missing_exts else ", ".join(non_py_langs.keys())
+                print(f"  ⚠️  AST drivers: unconfigured driver for detected source language(s): {ext_str}. Run 'soma doctor --fix' to provision.")
+                return False
         print("  ✅ AST drivers: native Python stdlib (in-process)")
         return True
 
@@ -214,6 +229,26 @@ def _check_ast_drivers(project_root: Path | None = None) -> bool:
         elif slot_name.startswith("ast_driver_"):
             ext = slot_name[len("ast_driver_"):]
             ast_drivers[f".{ext}"] = str(slot_val)
+
+    missing: list[str] = []
+    for lang, l_info in non_py_langs.items():
+        for ext in l_info.get("extensions", []):
+            if ext not in ast_drivers and "default" not in ast_drivers:
+                missing.append(ext)
+
+    if missing:
+        if fix:
+            new_slots, created = provision_ast_driver_slots(ws_root, detected_langs, copy_drivers=True)
+            if created:
+                print(f"  ✅ Fixed: Auto-provisioned missing AST driver slots in .soma/slots.yaml: {', '.join(missing)}")
+                registry = SlotRegistry.load(ws_root)
+                for slot_name, slot_val in registry.to_dict().items():
+                    if slot_name.startswith("ast_driver_"):
+                        ext = slot_name[len("ast_driver_"):]
+                        ast_drivers[f".{ext}"] = str(slot_val)
+        else:
+            print(f"  ⚠️  AST drivers: unconfigured driver for detected source extension(s): {', '.join(missing)}. Run 'soma doctor --fix' to provision.")
+            return False
 
     if not ast_drivers:
         print("  ✅ AST drivers: native Python stdlib (in-process)")
@@ -498,8 +533,9 @@ def run_doctor(args: argparse.Namespace) -> int:
     hook_ok = _check_precommit_hook(ws)
     if hook_ok is not None:
         results.append(hook_ok)
+    fix = getattr(args, "fix", False)
     # Advisory: report configured AST drivers (polyglot drivers are optional)
-    _check_ast_drivers(ws)
+    _check_ast_drivers(ws, fix=fix)
     # Advisory: only MCP users need it, so it does not fail the run.
     _check_mcp_launcher()
 

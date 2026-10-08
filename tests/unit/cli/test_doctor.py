@@ -175,3 +175,87 @@ def test_doctor_warns_when_ast_drivers_unresolvable(tmp_path, monkeypatch, capsy
     captured = capsys.readouterr().out
     assert "AST driver (.xyz): executable 'nonexistent_ast_binary_12345' not found on PATH" in captured
 
+
+def test_check_ast_drivers_missing_driver_warns_and_fixes(tmp_path, capsys):
+    from soma_cli.doctor import _check_ast_drivers
+    (tmp_path / "src").mkdir()
+    (tmp_path / "src" / "index.ts").write_text("const x = 1;")
+
+    # Without fix flag: warns and returns False
+    assert _check_ast_drivers(tmp_path, fix=False) is False
+    out = capsys.readouterr().out
+    assert "unconfigured driver for detected source language" in out
+    assert "Run 'soma doctor --fix' to provision" in out
+
+    # With fix flag: auto-provisions and returns True
+    assert _check_ast_drivers(tmp_path, fix=True) is True
+    out = capsys.readouterr().out
+    assert "Fixed: Auto-provisioned AST drivers" in out
+    assert (tmp_path / ".soma" / "slots.yaml").is_file()
+
+
+def test_check_ast_drivers_missing_extension_slot_warns_and_fixes(tmp_path, capsys):
+    from soma_cli.doctor import _check_ast_drivers
+    (tmp_path / "src").mkdir()
+    (tmp_path / "src" / "main.rs").write_text("fn main() {}")
+
+    # Write existing slots without rs slot
+    slots_file = tmp_path / ".soma" / "slots.yaml"
+    slots_file.parent.mkdir(parents=True)
+    slots_file.write_text("slots:\n  ast_driver_ts: node runner.js\n")
+
+    # Without fix: warns
+    assert _check_ast_drivers(tmp_path, fix=False) is False
+    out = capsys.readouterr().out
+    assert "unconfigured driver for detected source extension(s): .rs" in out
+
+    # With fix: provisions missing slot
+    assert _check_ast_drivers(tmp_path, fix=True) is True
+    out = capsys.readouterr().out
+    assert "Fixed: Auto-provisioned missing AST driver slots" in out
+    assert "ast_driver_rs" in slots_file.read_text()
+
+
+def test_run_doctor_with_fix_flag(tmp_path, monkeypatch, capsys):
+    (tmp_path / ".gemini").mkdir()
+    evidence = tmp_path / ".soma" / "evidence"
+    evidence.mkdir(parents=True)
+    rules_dir = tmp_path / "rules"
+    rules_dir.mkdir()
+    (rules_dir / "example.md").write_text("# rule")
+    (tmp_path / "src").mkdir()
+    (tmp_path / "src" / "index.ts").write_text("console.log(1);")
+
+    monkeypatch.chdir(tmp_path)
+    with patch("soma_cli.doctor.shutil.which", side_effect=lambda cmd, **kw: "/usr/local/bin/soma" if cmd == "soma" else "/bin/node"), \
+         patch("soma_cli.init.get_rules_dir", return_value=rules_dir):
+        args = argparse.Namespace(fix=True)
+        res = run_doctor(args)
+    assert res == 0
+    captured = capsys.readouterr().out
+    assert "Fixed: Auto-provisioned AST drivers" in captured
+    assert (tmp_path / ".soma" / "slots.yaml").is_file()
+
+
+def test_run_doctor_without_fix_flag_does_not_provision(tmp_path, monkeypatch, capsys):
+    (tmp_path / ".gemini").mkdir()
+    evidence = tmp_path / ".soma" / "evidence"
+    evidence.mkdir(parents=True)
+    rules_dir = tmp_path / "rules"
+    rules_dir.mkdir()
+    (rules_dir / "example.md").write_text("# rule")
+    (tmp_path / "src").mkdir()
+    (tmp_path / "src" / "index.ts").write_text("console.log(1);")
+
+    monkeypatch.chdir(tmp_path)
+    with patch("soma_cli.doctor.shutil.which", side_effect=lambda cmd, **kw: "/usr/local/bin/soma" if cmd == "soma" else "/bin/node"), \
+         patch("soma_cli.init.get_rules_dir", return_value=rules_dir):
+        args = argparse.Namespace()
+        res = run_doctor(args)
+    assert not (tmp_path / ".soma" / "slots.yaml").exists()
+    out = capsys.readouterr().out
+    assert "Run 'soma doctor --fix' to provision" in out
+
+
+
+

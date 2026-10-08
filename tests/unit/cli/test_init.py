@@ -346,3 +346,67 @@ class TestConfirmation:
         result = run_init(args)
         assert result == 0
         assert "Done!" in capsys.readouterr().out
+
+
+class TestPolyglotInit:
+    """Tests for zero-touch polyglot driver provisioning in soma init."""
+
+    def test_init_polyglot_language_detection_and_provisioning(self, tmp_path, capsys):
+        from soma_cli.init import run_init
+        from soma_core.skills.slots import SlotRegistry
+
+        (tmp_path / "Cargo.toml").write_text("[package]\nname = 'rust_app'\n", encoding="utf-8")
+        src = tmp_path / "src"
+        src.mkdir()
+        (src / "main.rs").write_text("fn main() {}\n", encoding="utf-8")
+        (tmp_path / ".git").mkdir()
+
+        args = argparse.Namespace(
+            dry_run=False, platform="gemini", yes=True, force=True,
+            _project_root=tmp_path, mcp=False, rules="minimal",
+        )
+        result = run_init(args)
+        assert result == 0
+        out = capsys.readouterr().out
+        assert "Detected language(s): Rust" in out
+        assert "Configured AST driver (.rs):" in out
+
+        registry = SlotRegistry.load(tmp_path)
+        assert registry.get_ast_driver(".rs") is not None
+        assert (tmp_path / ".soma" / "drivers" / "rust_ast.py").is_file()
+
+    def test_init_polyglot_dry_run(self, tmp_path, capsys):
+        from soma_cli.init import run_init
+
+        (tmp_path / "Cargo.toml").write_text("[package]\nname = 'rust_app'\n", encoding="utf-8")
+        src = tmp_path / "src"
+        src.mkdir()
+        (src / "main.rs").write_text("fn main() {}\n", encoding="utf-8")
+        (tmp_path / ".git").mkdir()
+
+        args = argparse.Namespace(
+            dry_run=True, platform="gemini", yes=True, force=True,
+            _project_root=tmp_path, mcp=False, rules="minimal",
+        )
+        result = run_init(args)
+        assert result == 0
+        out = capsys.readouterr().out
+        assert "Would configure AST driver (.rs):" in out
+        assert not (tmp_path / ".soma" / "slots.yaml").exists()
+
+    def test_init_detected_project_type_fallback(self, tmp_path, capsys):
+        from soma_cli.init import run_init
+
+        (tmp_path / "README.md").write_text("# Readme\n", encoding="utf-8")
+        (tmp_path / ".git").mkdir()
+
+        args = argparse.Namespace(
+            dry_run=False, platform="gemini", yes=True, force=True,
+            _project_root=tmp_path, mcp=False, rules="minimal",
+        )
+        result = run_init(args)
+        assert result == 0
+        out = capsys.readouterr().out
+        assert "Project type: unknown" in out
+
+

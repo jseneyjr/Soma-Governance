@@ -118,6 +118,8 @@ def _build_parser() -> argparse.ArgumentParser:
 
     # soma doctor
     p_doctor = sub.add_parser("doctor", aliases=["audit"], parents=[common_parser], help="System health and governance audit")
+    p_doctor.add_argument("--fix", action="store_true",
+                          help="Automatically repair detected issues (pre-commit hooks, missing AST drivers)")
     p_doctor.add_argument("--fix-path", action="store_true",
                           help="Add soma's scripts directory to your shell startup file "
                                "(dry run unless confirmed or --yes; zsh/bash/fish only)")
