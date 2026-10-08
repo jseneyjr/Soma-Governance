@@ -3,6 +3,24 @@
 All notable changes to Soma are documented here.
 This project uses [Semantic Versioning](https://semver.org/).
 
+## [1.2.0] — 2026-10-08 — "Zero-Touch Genesis Polyglot Provisioning & Rust AST Driver"
+
+### Zero-Touch Polyglot Detection, Rust AST Driver & Release Verification Alignment
+- **Zero-Touch Polyglot Provisioning (`soma_core/ast/detect.py`)**:
+  - `detect_project_languages()`: Automatically detects source languages (Rust, Go, TypeScript/JavaScript, Python) by inspecting root manifests (`Cargo.toml`, `package.json`, `go.mod`, etc.) and scanning project source trees.
+  - `provision_ast_driver_slots()`: Proactively configures `.soma/slots.yaml` with recommended driver commands and stages reference driver files into `.soma/drivers/` with full dry-run support.
+- **CLI Workflows Integration (`soma_cli/`)**:
+  - `soma init`: Automatically detects project languages and provisions polyglot AST driver slots during repository initialization.
+  - `soma genesis`: Seamlessly auto-provisions AST drivers during initial repository scan and reports status in console and JSON output.
+  - `soma doctor --fix`: Identifies unconfigured AST drivers for non-Python sources in the workspace and repairs them with `--fix`.
+- **Reference Rust AST Driver & Template Bundling**:
+  - Pure Python stdlib regex/block parser (`rust_ast.py`) producing `NormalizedAST` JSON with functions, structs, impls, modules, macros, and mutation points without external pip dependencies.
+  - Bundled driver templates in `soma_core/ast/drivers/templates/` and installer recipe in `install/drivers/rust_ast.py`. Added package data distribution in `pyproject.toml`.
+- **CI/CD & Release Verification Alignment (BUG-084)**:
+  - Fixed `soma verify --layer1-only` in release tag publishing workflows by propagating resolved `diff_base` to `soma_core.verification.runner.run_layer1()` and adding `HEAD~1` fallback in `_get_modified_lines()`.
+- **Architecture Decision Record (ADR)**:
+  - `docs/architecture/decisions/ADR-016-zero-touch-polyglot-genesis.md`: Documents design trade-offs, language detection heuristics, and template installation paths.
+
 ## [1.1.0] — 2026-10-08 — "Language-Agnostic AST Verification via Normalized AST Drivers"
 
 ### Polyglot Verification, Normalized AST Drivers & Zero-Dependency Schema

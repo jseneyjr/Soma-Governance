@@ -77,6 +77,9 @@ develop ──→ release/v0.XX ──→ PR to main ──→ tag v0.XX.0 ─�
 | Phase 24 | v0.121.0 ✅ | Canonical Verification Pipeline, Fail-Closed Arbitration & Closed-Loop I->W->C |
 | Phase 24.1 | v0.121.1 ✅ | Gate 4.5 Tree Hash Binding, Deduplication & Safety Hardening |
 | Phase 25 | v0.122.0 ✅ | Zero-Dependency SomaYAML, Horizontal Skill Graph & Lean Gateway |
+| Phase 26 | v1.0.0 ✅ | Production GA, Documentation Portal & SemVer 2.0 Compatibility Guarantee |
+| Phase 27 | v1.1.0 ✅ | Language-Agnostic AST Verification via Normalized AST Drivers |
+| Phase 28 | v1.2.0 ✅ | Zero-Touch Genesis Polyglot Provisioning & Rust AST Driver |
 
 ## Pre-Release Checklist
 
