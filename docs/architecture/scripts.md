@@ -1,10 +1,10 @@
 # Scripts Reference
 
-This document catalogs 78 executable scripts, command modules, SDK modules, and MCP/core modules in the Soma governance framework.
+This document catalogs 79 executable scripts, command modules, SDK modules, and MCP/core modules in the Soma governance framework.
 
 ## Counting Method
 
-Counts are generated from the source tree with mutually exclusive categories: package initializers (`__init__.py`, `__main__.py`) and subpackages (`soma_core/workspace/`, `soma_core/lifecycle/`, `soma_core/schemas/`, `soma_core/outcomes/`, `soma_cli/hooks/`) are excluded; `install/hooks/pre-commit` is counted as the lifecycle script; and all non-initializer `soma_core/*.py` modules are grouped with the MCP modules. This produces 78 unique paths with no double counting.
+Counts are generated from the source tree with mutually exclusive categories: package initializers (`__init__.py`, `__main__.py`) and subpackages (`soma_core/workspace/`, `soma_core/lifecycle/`, `soma_core/schemas/`, `soma_core/outcomes/`, `soma_cli/hooks/`) are excluded; `install/hooks/pre-commit` is counted as the lifecycle script; and all non-initializer `soma_core/*.py` modules are grouped with the MCP modules. This produces 79 unique paths with no double counting.
 
 ## Summary by Category
 
@@ -12,10 +12,10 @@ Counts are generated from the source tree with mutually exclusive categories: pa
 |:---------|:----------------------------|:------|:------------|
 | [Lifecycle Scripts (Hooks)](#lifecycle-scripts-hooks--bash) | bash (`install/hooks/`) | 1 | Git pre-commit lifecycle hook |
 | [Verification Scripts](#verification-scripts--python) | Python (`soma_core/verification/`) | 14 | Deterministic AST checkers, coverage tools, and adversarial verification |
-| [CLI Commands](#cli-commands--python-soma_cli) | Python and bash (`soma_cli/`, root) | 22 | CLI launcher and command implementation modules |
+| [CLI Commands](#cli-commands--python-soma_cli) | Python and bash (`soma_cli/`, root) | 23 | CLI launcher and command implementation modules |
 | [SDK Modules](#sdk-modules--python-soma_sdk) | Python (`soma_sdk/`) | 8 | Canonical scoring, parsing, telemetry, hot-zone, and governance APIs |
 | [MCP and Core Modules](#mcp-and-core-modules) | Python (`soma_mcp/`, `soma_core/`) | 33 | MCP transport, dispatch, confinement, content inventory, canonical evidence, cache, errors, receipts, and atomic storage |
-| **Total** | | **78** | Unique paths under the method above |
+| **Total** | | **79** | Unique paths under the method above |
 
 ---
 
@@ -54,7 +54,7 @@ These 14 Python scripts form the deterministic and adversarial verification engi
 
 ## CLI Commands — Python (`soma_cli/`)
 
-These 22 paths provide the root `soma` launcher and 21 non-initializer Python modules in `soma_cli/`. Seventeen modules implement registered subcommands; scanner/generator modules support Genesis, and `pathcheck.py` supports `soma doctor` and the installers.
+These 23 paths provide the root `soma` launcher and 22 non-initializer Python modules in `soma_cli/`. Eighteen modules implement registered subcommands; scanner/generator modules support Genesis, and `pathcheck.py` supports `soma doctor` and the installers.
 
 | Command / Script | Location | Purpose |
 |:-----------------|:---------|:--------|
@@ -64,6 +64,7 @@ These 22 paths provide the root `soma` launcher and 21 non-initializer Python mo
 | **`clean_rules.py`** | `soma_cli/clean_rules.py` | `soma clean-global-rules`: Quarantines and cleanses leaked internal rules and HGT playbooks from global platform directories. |
 | **`completion.py`** | `soma_cli/completion.py` | `soma completion {bash,zsh,fish}`: Prints a shell completion script generated at runtime from the argparse parser, so it never drifts from the CLI. Never edits dotfiles. |
 | **`demote.py`** | `soma_cli/demote.py` | `soma demote`: Evaluates and displays cell demotion candidates when false positive rates exceed acceptable bounds. |
+| **`detect.py`** | `soma_cli/detect.py` | `soma detect`: Discovers project languages, toolchains, and source extensions, and auto-provisions `.soma/slots.yaml` and reference AST drivers. |
 | **`doctor.py`** | `soma_cli/doctor.py` | `soma doctor`: System health check verifying workspace structure, rules, configuration, and dependencies, the pre-commit hook format (BUG-047) and the MCP `python3` launcher (Windows Store stub). `--fix-path [--yes]` opt-in appends the PATH line to the zsh/bash/fish rc file and records it in `~/.soma/manifest.json` (`path_lines`). |
 | **`genesis.py`** | `soma_cli/genesis.py` | `soma genesis`: Analyzes codebase architecture with 8 language-agnostic detectors and generates governance cell candidates. |
 | **`genesis_generator.py`** | `soma_cli/genesis_generator.py` | Generates candidate cell files in `vacuoles/` and architecture map `docs/organelles.md` from scan results. |

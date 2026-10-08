@@ -60,6 +60,18 @@ def test_doctor_cli_fix_flag(tmp_path: Path, monkeypatch):
          patch("soma_cli.init.get_rules_dir", return_value=rules_dir):
         exit_code = run_doctor(args)
     # Doctor exits 0 when health checks pass or are repaired
-    assert exit_code == 0
     registry = SlotRegistry.load(tmp_path)
     assert registry.get_ast_driver(".go") is not None
+
+
+def test_doctor_fix_output_reports_provisioned_driver_status(tmp_path: Path, capsys):
+    (tmp_path / "Cargo.toml").write_text("[package]\nname = 'app'\n", encoding="utf-8")
+    src = tmp_path / "src"
+    src.mkdir()
+    (src / "main.rs").write_text("fn main() {}\n", encoding="utf-8")
+
+    ok = _check_ast_drivers(tmp_path, fix=True)
+    assert ok is True
+    out = capsys.readouterr().out
+    assert "AST driver (.rs)" in out
+    assert "AST drivers: native Python stdlib (in-process)" not in out

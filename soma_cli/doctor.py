@@ -213,8 +213,9 @@ def _check_ast_drivers(project_root: Path | None = None, fix: bool = False) -> b
                 ext_str = ", ".join(missing_exts) if missing_exts else ", ".join(non_py_langs.keys())
                 print(f"  ⚠️  AST drivers: unconfigured driver for detected source language(s): {ext_str}. Run 'soma doctor --fix' to provision.")
                 return False
-        print("  ✅ AST drivers: native Python stdlib (in-process)")
-        return True
+        if not slots_path.is_file():
+            print("  ✅ AST drivers: native Python stdlib (in-process)")
+            return True
 
     try:
         registry = SlotRegistry.load(ws_root)
@@ -520,6 +521,13 @@ def run_doctor(args: argparse.Namespace) -> int:
         getattr(args, "workspace", None) or getattr(args, "_project_root", None)
     )
     ws = ws_obj.root
+
+    if getattr(args, "drivers", False):
+        print(f"soma doctor — AST driver health check ({ws}):\n")
+        fix = getattr(args, "fix", False)
+        ok = _check_ast_drivers(ws, fix=fix)
+        return 0 if ok else 1
+
     print(f"soma doctor — running health checks ({ws}):\n")
     results: list[bool] = []
 

@@ -1495,6 +1495,23 @@
       "regression_test": "tests/unit/verification/test_layer1.py",
       "pattern": "CI release workflow lacks base PR reference and verification runner lacks HEAD~1 diff candidate",
       "changelog_ref": "v1.2.0"
+    },
+    {
+      "id": "BUG-085",
+      "status": "fixed",
+      "title": "Unfiltered repository walk in call_graph reads non-source and build artifact binaries",
+      "discovered_in": "v1.2.0",
+      "fixed_in": "v1.2.1",
+      "root_cause": "path_error",
+      "severity": "critical",
+      "description": "In call_graph.check and check_normalized, external call site searching used os.walk without excluding language build directories (e.g. target/) and without checking file extensions. In projects with large compiled outputs, multi-gigabyte binary files (such as .rlib, object files, and debug symbols) were read into memory as text, causing memory exhaustion and system freeze.",
+      "affected_files": [
+        "soma_core/verification/call_graph.py",
+        "soma_cli/doctor.py"
+      ],
+      "regression_test": "tests/unit/verification/test_polyglot_call_graph.py",
+      "pattern": "Repository walk lacks .gitignore awareness and source extension allowlist filtering",
+      "changelog_ref": "v1.2.1"
     }
   ]
 }
