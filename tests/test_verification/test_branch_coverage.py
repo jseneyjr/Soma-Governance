@@ -302,3 +302,54 @@ class TestBranchCoverageFilteringAndFallback:
         missing = _run_trace_fallback(str(test), str(src), str(tmp_path), str(tmp_path))
         assert missing == []
 
+    def test_parse_coverage_filters_jump_tokens_and_handles_walk(self, tmp_path, monkeypatch):
+        from soma_core.verification.branch_coverage import _parse_coverage
+
+        sub = tmp_path / "sub"
+        sub.mkdir(parents=True)
+        src = sub / "worker.py"
+        src.write_text("a = 1\nbreak\ncontinue\npass\nb = 2\n")
+
+        report = tmp_path / "coverage.json"
+        report.write_text(json.dumps({
+            "files": {
+                "worker.py": {
+                    "missing_lines": [2, 3, 5],  # 2 (break), 3 (continue), 5 (b=2)
+                    "missing_branches": [
+                        [1, 4],  # jump to line 4 (pass) -> filtered
+                    ],
+                }
+            }
+        }))
+
+        monkeypatch.chdir(tmp_path)
+        missing = _parse_coverage(str(report), "not_found/worker.py", "worker.py")
+        assert missing == [5]
+
+    def test_parse_coverage_open_exception_handled(self, tmp_path, monkeypatch):
+        from soma_core.verification.branch_coverage import _parse_coverage
+
+        src = tmp_path / "unreadable.py"
+        src.write_text("x = 1\n")
+        report = tmp_path / "coverage.json"
+        report.write_text(json.dumps({
+            "files": {
+                str(src): {
+                    "missing_lines": [1],
+                    "missing_branches": [],
+                }
+            }
+        }))
+
+        orig_open = open
+        def mock_open(file, *args, **kwargs):
+            if str(file) == str(src):
+                raise OSError("unreadable")
+            return orig_open(file, *args, **kwargs)
+
+        monkeypatch.setattr("builtins.open", mock_open)
+        missing = _parse_coverage(str(report), str(src), "unreadable.py")
+        assert missing == [1]
+
+
+

@@ -311,22 +311,42 @@ def _parse_coverage(json_report, target_file, target_basename):
 
     # Try exact path match first, then basename match
     file_data = files.get(target_file)
+    actual_path = target_file
     if file_data is None:
         for filepath, fdata in files.items():
             if os.path.basename(filepath) == target_basename:
                 file_data = fdata
+                actual_path = filepath
                 break
 
     if file_data is None:
         return [-1]
 
-    missing = list(file_data.get("missing_lines", []))
+    src_lines = {}
+    read_path = actual_path if os.path.isabs(actual_path) else os.path.abspath(actual_path)
+    if not os.path.isfile(read_path):
+        for root, _, fnames in os.walk("."):
+            if target_basename in fnames:
+                read_path = os.path.join(root, target_basename)
+                break
+    if os.path.isfile(read_path):
+        try:
+            with open(read_path, "r", encoding="utf-8", errors="replace") as sf:
+                for lno, line in enumerate(sf, 1):
+                    src_lines[lno] = line.strip()
+        except Exception:
+            pass
+
+    jump_tokens = {"break", "continue", "pass"}
+    missing = [l for l in file_data.get("missing_lines", []) if src_lines.get(l) not in jump_tokens]
     executed = set(file_data.get("executed_lines", []))
-    # Also include branch-specific uncovered lines (filter out negative exits, loop continuations, and executed statements)
+    # Also include branch-specific uncovered lines (filter out negative exits, loop continuations, executed statements, and bare jumps)
     for from_line, to_line in file_data.get("missing_branches", []):
         if to_line <= 0 or to_line <= from_line:
             continue
         if to_line in executed:
+            continue
+        if src_lines.get(to_line) in jump_tokens:
             continue
         if to_line not in missing:
             missing.append(to_line)
