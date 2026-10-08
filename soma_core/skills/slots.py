@@ -69,3 +69,13 @@ class SlotRegistry:
         if clean_ext == "py":
             return None
         return self.get(f"ast_driver_{clean_ext}") or self.get("ast_driver")
+
+    def get_configured_extensions(self) -> set[str]:
+        """Return the set of source extensions configured with an AST driver, plus '.py'."""
+        exts = {".py"}
+        for key in self._slots:
+            if key.startswith("ast_driver_"):
+                ext = key[len("ast_driver_"):].strip().lower()
+                if ext:
+                    exts.add(f".{ext}" if not ext.startswith(".") else ext)
+        return exts

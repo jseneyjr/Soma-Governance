@@ -174,21 +174,22 @@ def provision_ast_driver_slots(
 
     # 1. Copy required driver scripts if requested
     if copy_drivers and recommended_slots:
-        drivers_dir.mkdir(parents=True, exist_ok=True)
         for lang, config in LANGUAGE_DEFINITIONS.items():
             slot_name = config.get("driver_slot")
             filename = config.get("driver_filename")
             if slot_name in recommended_slots and filename:
                 src_path = _find_driver_template(filename)
                 target_path = drivers_dir / filename
-                if src_path and src_path.is_file():
-                    shutil.copy2(src_path, target_path)
-                    try:
-                        # Ensure executable
-                        target_path.chmod(0o755)
-                    except OSError:
-                        pass
-                    created_files.append(str(target_path))
+                if not dry_run:
+                    drivers_dir.mkdir(parents=True, exist_ok=True)
+                    if src_path and src_path.is_file():
+                        shutil.copy2(src_path, target_path)
+                        try:
+                            # Ensure executable
+                            target_path.chmod(0o755)
+                        except OSError:
+                            pass
+                created_files.append(str(target_path))
 
     # 2. Read or create slots.yaml
     current_slots: Dict[str, str] = {}

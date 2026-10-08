@@ -51,6 +51,7 @@ class TestCLIDispatch:
         ("status", []),
         ("report", []),
         ("doctor", []),
+        ("detect", ["--dry-run", "--fix"]),
     ])
     def test_subcommand_runs_without_crash(self, cmd, extra_args, capsys):
         from soma_cli.cli import main

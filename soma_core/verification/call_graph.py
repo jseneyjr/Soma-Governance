@@ -254,44 +254,147 @@ def _get_target_module_stems(filepath: str, repo_root: str) -> set[str]:
     return stems
 
 
+def _resolve_searchable_extensions(
+    repo_root: str,
+    norm_ast: Optional[NormalizedAST] = None,
+    ast_runner: Optional[Any] = None,
+) -> set[str]:
+    """Dynamically determine allowed source extensions for the workspace.
+
+    Discovers extensions from configured workspace slots (.soma/slots.yaml),
+    active AST runner registry, the target file extension, and its language definition.
+    Zero hardcoded extension lists.
+    """
+    exts: set[str] = {".py"}
+
+    # 1. Active AST driver registry and configured workspace slots
+    if ast_runner is not None and hasattr(ast_runner, "registry"):
+        try:
+            exts.update(ast_runner.registry.get_configured_extensions(workspace_root=repo_root))
+        except Exception:
+            pass
+    else:
+        try:
+            from soma_core.skills.slots import SlotRegistry
+            slot_reg = SlotRegistry.load(repo_root)
+            exts.update(slot_reg.get_configured_extensions())
+        except Exception:
+            pass
+
+    # 2. Extensions derived from norm_ast (file extension + language definition)
+    if norm_ast is not None:
+        if norm_ast.file_path:
+            file_ext = os.path.splitext(norm_ast.file_path)[1].lower()
+            if file_ext:
+                exts.add(file_ext)
+        if norm_ast.language:
+            try:
+                from soma_core.ast.detect import LANGUAGE_DEFINITIONS
+                lang_info = LANGUAGE_DEFINITIONS.get(norm_ast.language.lower())
+                if lang_info and "extensions" in lang_info:
+                    exts.update(lang_info["extensions"])
+            except Exception:
+                pass
+
+    return exts
+
+_COMMON_IGNORE_DIRS: frozenset[str] = frozenset({
+    "__pycache__", "node_modules", ".venv", "venv", "dist", "build",
+    "target", ".cargo", "bin", "obj", ".git", ".soma", ".tox",
+    "tests", "test",
+})
+
+
+def _is_safe_source_file(filepath: str, max_size_bytes: int = 1_000_000) -> bool:
+    """Ensure file is under size threshold and does not contain null bytes."""
+    try:
+        st = os.stat(filepath)
+        if st.st_size > max_size_bytes or st.st_size == 0:
+            return False
+        with open(filepath, "rb") as f:
+            chunk = f.read(1024)
+            return b"\x00" not in chunk
+    except OSError:
+        return False
+
+
+def _get_searchable_source_files(
+    repo_root: str,
+    allowed_extensions: set[str],
+) -> list[str]:
+    """Resolve source code files within repo_root matching allowed_extensions.
+
+    Uses Git to respect .gitignore automatically. Falls back to os.walk for non-git trees.
+    """
+    from soma_core.workspace import as_workspace
+    from soma_core.workspace.git import GitWorkspace
+
+    clean_exts = {e if e.startswith(".") else f".{e}" for e in allowed_extensions}
+
+    try:
+        ws = as_workspace(repo_root)
+        if isinstance(ws, GitWorkspace) and ws.is_git:
+            res = ws._run_git(["git", "ls-files", "--cached", "--others", "--exclude-standard"])
+            if res.returncode == 0:
+                files = []
+                for line in res.stdout.splitlines():
+                    f = line.strip()
+                    if not f:
+                        continue
+                    ext = os.path.splitext(f)[1].lower()
+                    if ext in clean_exts:
+                        full_p = os.path.join(repo_root, f)
+                        if _is_safe_source_file(full_p):
+                            files.append(full_p)
+                return files
+    except Exception:
+        pass
+
+    # Fallback for non-git directories
+    matched = []
+    for root, dirs, fnames in os.walk(repo_root):
+        dirs[:] = [
+            d for d in dirs
+            if not d.startswith(".") and d not in _COMMON_IGNORE_DIRS
+        ]
+        for fname in fnames:
+            ext = os.path.splitext(fname)[1].lower()
+            if ext in clean_exts:
+                full_p = os.path.join(root, fname)
+                if _is_safe_source_file(full_p):
+                    matched.append(full_p)
+    return matched
+
+
 def find_call_sites(func_name: str, repo_root: str, exclude_file: str = "") -> list[str]:
     """Find all files in repo_root that call a function by name using AST."""
     target_stems = _get_target_module_stems(exclude_file, repo_root) if exclude_file else {func_name}
     target_funcs = {func_name}
     call_sites: list[str] = []
+    exclude_abs = os.path.abspath(exclude_file) if exclude_file else ""
 
-    for root, dirs, files in os.walk(repo_root):
-        dirs[:] = [
-            d for d in dirs
-            if not d.startswith('.')
-            and d not in ('__pycache__', 'node_modules', '.venv', 'venv', 'dist', 'build')
-        ]
+    for fpath in _get_searchable_source_files(repo_root, {".py"}):
+        if exclude_abs and os.path.abspath(fpath) == exclude_abs:
+            continue
 
-        for fname in files:
-            if not fname.endswith('.py'):
-                continue
-            fpath = os.path.join(root, fname)
-            if exclude_file and os.path.abspath(fpath) == os.path.abspath(exclude_file):
-                continue
+        try:
+            with open(fpath, 'r', encoding='utf-8', errors='ignore') as f:
+                content = f.read()
+        except (OSError, UnicodeDecodeError):
+            continue
 
-            try:
-                with open(fpath, 'r', encoding='utf-8', errors='ignore') as f:
-                    content = f.read()
-            except (OSError, UnicodeDecodeError):
-                continue
+        if func_name not in content:
+            continue
 
-            if func_name not in content:
-                continue
+        try:
+            tree = ast.parse(content, filename=fpath)
+        except SyntaxError:
+            continue
 
-            try:
-                tree = ast.parse(content, filename=fpath)
-            except SyntaxError:
-                continue
-
-            inspector = ExternalModuleInspector(target_stems, target_funcs)
-            inspector.visit(tree)
-            if func_name in inspector.matched_calls:
-                call_sites.append(fpath)
+        inspector = ExternalModuleInspector(target_stems, target_funcs)
+        inspector.visit(tree)
+        if func_name in inspector.matched_calls:
+            call_sites.append(fpath)
 
     return call_sites
 
@@ -312,6 +415,7 @@ def check_normalized(
     exclude_names: set[str] | None = None,
     *,
     fast_mode: bool = False,
+    ast_runner: Optional[Any] = None,
 ) -> ToolEvidence:
     """Run call graph reachability check using NormalizedAST representation."""
     exclude_names = exclude_names or set()
@@ -365,49 +469,33 @@ def check_normalized(
         candidate_names = set(candidate_orphans.keys())
         externally_matched: set[str] = set()
 
-        for root, dirs, files in os.walk(repo_root):
-            dirs[:] = [
-                d
-                for d in dirs
-                if not d.startswith(".")
-                and d not in (
-                    "__pycache__",
-                    "node_modules",
-                    ".venv",
-                    "venv",
-                    "dist",
-                    "build",
-                    "tests",
-                    "test",
-                    ".git",
-                    ".soma",
-                )
-            ]
+        allowed_exts = _resolve_searchable_extensions(repo_root, norm_ast=norm_ast, ast_runner=ast_runner)
+        norm_file_abs = os.path.abspath(norm_ast.file_path)
 
-            for fname in files:
-                if fname.startswith("test_") or fname.endswith(
-                    ("_test.go", "_test.py", ".test.ts", ".spec.ts", ".test.js", ".spec.js")
-                ):
-                    continue
-                fpath = os.path.join(root, fname)
-                if os.path.abspath(fpath) == os.path.abspath(norm_ast.file_path):
-                    continue
+        for fpath in _get_searchable_source_files(repo_root, allowed_exts):
+            fname = os.path.basename(fpath)
+            if fname.startswith("test_") or fname.endswith(
+                ("_test.go", "_test.py", ".test.ts", ".spec.ts", ".test.js", ".spec.js")
+            ):
+                continue
+            if os.path.abspath(fpath) == norm_file_abs:
+                continue
 
-                remaining = candidate_names - externally_matched
-                if not remaining:
-                    break
+            remaining = candidate_names - externally_matched
+            if not remaining:
+                break
 
-                try:
-                    with open(fpath, "r", encoding="utf-8", errors="ignore") as f:
-                        content = f.read()
-                except (OSError, UnicodeDecodeError):
-                    continue
+            try:
+                with open(fpath, "r", encoding="utf-8", errors="ignore") as f:
+                    content = f.read()
+            except (OSError, UnicodeDecodeError):
+                continue
 
-                stripped = _strip_comments_and_strings(content)
+            stripped = _strip_comments_and_strings(content)
 
-                for name in remaining:
-                    if re.search(rf"\b{re.escape(name)}\s*\(", stripped):
-                        externally_matched.add(name)
+            for name in remaining:
+                if re.search(rf"\b{re.escape(name)}\s*\(", stripped):
+                    externally_matched.add(name)
 
         for name, info in candidate_orphans.items():
             if name not in externally_matched:
@@ -459,7 +547,7 @@ def check(
         runner = ast_runner or ASTDriverRunner()
         try:
             norm_ast = runner.parse_file(filepath, workspace_root=repo_root)
-            return check_normalized(norm_ast, repo_root, exclude_names, fast_mode=fast_mode)
+            return check_normalized(norm_ast, repo_root, exclude_names, fast_mode=fast_mode, ast_runner=runner)
         except Exception as e:
             return ToolEvidence(
                 tool="call_graph",
@@ -536,43 +624,34 @@ def check(
         target_stems = _get_target_module_stems(filepath, repo_root)
         candidate_names = set(candidate_orphans.keys())
         externally_matched: set[str] = set()
+        file_abs = os.path.abspath(filepath)
 
-        for root, dirs, files in os.walk(repo_root):
-            dirs[:] = [
-                d for d in dirs
-                if not d.startswith('.')
-                and d not in ('__pycache__', 'node_modules', '.venv', 'venv', 'dist', 'build')
-            ]
+        for fpath in _get_searchable_source_files(repo_root, {".py"}):
+            if os.path.abspath(fpath) == file_abs:
+                continue
 
-            for fname in files:
-                if not fname.endswith('.py'):
-                    continue
-                fpath = os.path.join(root, fname)
-                if os.path.abspath(fpath) == os.path.abspath(filepath):
-                    continue
+            remaining = candidate_names - externally_matched
+            if not remaining:
+                break
 
-                remaining = candidate_names - externally_matched
-                if not remaining:
-                    break
+            try:
+                with open(fpath, 'r', encoding='utf-8', errors='ignore') as f:
+                    content = f.read()
+            except (OSError, UnicodeDecodeError):
+                continue
 
-                try:
-                    with open(fpath, 'r', encoding='utf-8', errors='ignore') as f:
-                        content = f.read()
-                except (OSError, UnicodeDecodeError):
-                    continue
+            # Fast filter: skip AST parsing if none of the candidate names appear
+            if not any(name in content for name in remaining):
+                continue
 
-                # Fast filter: skip AST parsing if none of the candidate names appear
-                if not any(name in content for name in remaining):
-                    continue
+            try:
+                ext_tree = ast.parse(content, filename=fpath)
+            except SyntaxError:
+                continue
 
-                try:
-                    ext_tree = ast.parse(content, filename=fpath)
-                except SyntaxError:
-                    continue
-
-                inspector = ExternalModuleInspector(target_stems, remaining)
-                inspector.visit(ext_tree)
-                externally_matched.update(inspector.matched_calls)
+            inspector = ExternalModuleInspector(target_stems, remaining)
+            inspector.visit(ext_tree)
+            externally_matched.update(inspector.matched_calls)
 
         for name, info in candidate_orphans.items():
             if name not in externally_matched:
