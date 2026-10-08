@@ -3,6 +3,11 @@
 All notable changes to Soma are documented here.
 This project uses [Semantic Versioning](https://semver.org/).
 
+## [Unreleased]
+
+### Fixed
+- **Rust AST driver on installs without `python3.exe` (BUG-086, [#144](https://github.com/nseney1/Soma-Governance/issues/144))**: the AST driver runner and `soma doctor` now resolve a bare `python3`/`python` driver command that is not on `PATH` to the interpreter running Soma. On a python.org Windows install, the Rust driver ran into WinError 2, and `soma doctor --fix` reported the slot it had just provisioned as broken. `slots.yaml` keeps the portable `python3`.
+
 ## [1.3.0] — 2026-10-08 — "Unified CLI Command Architecture & Discovery"
 
 ### Unified CLI Command Architecture, Modular Subcommands & Categorized Discovery
