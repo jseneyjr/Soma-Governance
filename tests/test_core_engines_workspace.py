@@ -31,13 +31,7 @@ from soma_core.lifecycle.promotion import evaluate_demotions, evaluate_promotion
 from soma_core.lifecycle.selection import crossover_cells, run_cell_selection
 from soma_core.outcomes import harvest_git_history, run_outcome_engine
 from soma_core.sync import load_soma_config, run_post_session_hook
-from soma_core.workspace import (
-    Workspace,
-    get_cells_dir,
-    get_metrics_dir,
-    get_outcomes_file,
-    get_signals_file,
-)
+from soma_core.workspace import Workspace
 
 
 @pytest.fixture
@@ -92,28 +86,14 @@ def mock_soma_workspace(tmp_path: Path) -> Workspace:
     return Workspace(root=tmp_path)
 
 
-class TestDeprecationWarnings:
-    """Verify that standalone path getters emit DeprecationWarning."""
+class TestPurgedLegacyGetters:
+    """Verify that legacy standalone path getters have been permanently purged in v0.120.0."""
 
-    def test_get_cells_dir_emits_deprecation_warning(self, mock_soma_workspace: Workspace):
-        with pytest.deprecated_call(match="get_cells_dir is deprecated"):
-            res = get_cells_dir(mock_soma_workspace)
-        assert res == str(mock_soma_workspace.cells_dir)
-
-    def test_get_metrics_dir_emits_deprecation_warning(self, mock_soma_workspace: Workspace):
-        with pytest.deprecated_call(match="get_metrics_dir is deprecated"):
-            res = get_metrics_dir(mock_soma_workspace)
-        assert res == str(mock_soma_workspace.metrics_dir)
-
-    def test_get_signals_file_emits_deprecation_warning(self, mock_soma_workspace: Workspace):
-        with pytest.deprecated_call(match="get_signals_file is deprecated"):
-            res = get_signals_file(mock_soma_workspace)
-        assert res == str(mock_soma_workspace.signals_file)
-
-    def test_get_outcomes_file_emits_deprecation_warning(self, mock_soma_workspace: Workspace):
-        with pytest.deprecated_call():
-            res = get_outcomes_file(mock_soma_workspace)
-        assert res == str(mock_soma_workspace.signals_file)
+    def test_legacy_getters_purged_from_workspace_module(self):
+        import soma_core.workspace as scw
+        for getter in ("get_cells_dir", "get_metrics_dir", "get_signals_file", "get_outcomes_file"):
+            assert not hasattr(scw, getter), f"{getter} must be purged from soma_core.workspace"
+            assert getter not in scw.__all__, f"{getter} must not be in soma_core.workspace.__all__"
 
 
 class TestLifecycleWorkspaceInteroperability:

@@ -39,9 +39,6 @@ class TestReviewIntensityDocs:
         skill = _read(skill_path)
         assert "Supercell" in skill
 
-    def test_readme_architecture_diagram_has_supercell(self):
-        """Architecture diagram no longer shows intensity progression (stripped in v0.73)."""
-        pytest.skip("Review intensity stripped from README in v0.73 — see ROADMAP.md")
 
     def test_skill_escalation_table_has_supercell(self):
         """Adaptive reviewer SKILL.md must include Supercell escalation."""
@@ -62,9 +59,6 @@ class TestReviewIntensityDocs:
                 f"Missing intensity level '{level}' in adaptive-reviewer SKILL.md"
             )
 
-    def test_intensity_hierarchy_order_in_readme(self):
-        """Intensity table stripped from README in v0.73 — see ROADMAP.md."""
-        pytest.skip("Review intensity stripped from README in v0.73 — see ROADMAP.md")
 
 
 def _read(path):

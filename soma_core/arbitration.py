@@ -456,10 +456,10 @@ def _parse_cell(filepath: str) -> Tuple[Dict[str, Any], str]:
         fm, body = _core_parse(filepath)
         return (fm or {}, body)
     except Exception:
-        from soma_core.frontmatter import _parse_frontmatter, _get_body
+        from soma_core.frontmatter import parse_frontmatter, _get_body
         with open(filepath, "r", encoding="utf-8") as f:
             content = f.read()
-        fm = _parse_frontmatter(content) or {}
+        fm = parse_frontmatter(content) or {}
         body = _get_body(content)
         return fm, body
 

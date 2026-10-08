@@ -13,21 +13,9 @@ import pytest
 REPO_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, REPO_ROOT)
 
-# Phase 2.2 will create soma_sdk.scoring with these functions.
-# Until then, tests that import from soma_sdk.scoring will be skipped.
-try:
-    from soma_sdk.scoring import _wilson_interval, bayesian_posterior, laplace_score
-    HAS_SCORING = True
-except ImportError:
-    HAS_SCORING = False
-
-skip_until_phase2 = pytest.mark.skipif(
-    not HAS_SCORING,
-    reason="soma_sdk.scoring not yet implemented (Phase 2.2)"
-)
+from soma_sdk.scoring import _wilson_interval, bayesian_posterior, laplace_score
 
 
-@skip_until_phase2
 class TestWilsonInterval:
     """Verify Wilson score interval against known reference values."""
 
@@ -68,7 +56,6 @@ class TestWilsonInterval:
         assert lower == 0.0
 
 
-@skip_until_phase2
 class TestBayesianPosterior:
     """Verify bayesian_posterior returns correct structure and values."""
 
@@ -129,7 +116,6 @@ class TestBayesianPosterior:
         assert result['upper'] <= 1.0
 
 
-@skip_until_phase2
 class TestLaplaceScore:
     """Verify legacy Laplace scoring is preserved."""
 
@@ -151,7 +137,6 @@ try:
     from hypothesis import given, settings, assume
     from hypothesis import strategies as st
 
-    @skip_until_phase2
     class TestWilsonProperties:
         """Property-based tests for Wilson interval correctness."""
 

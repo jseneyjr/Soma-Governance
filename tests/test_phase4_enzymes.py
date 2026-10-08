@@ -146,24 +146,6 @@ def test_match_cells_windows_backslash_paths(tmp_path):
 
 
 
-def test_shell_wrapper_delegation(tmp_path, bash):
-    """Verify that thin .sh wrappers delegate to their .py counterparts."""
-    if not ENZYMES_DIR.exists():
-        pytest.skip("enzymes directory purged in v0.97.0")
-    script_sh = ENZYMES_DIR / "cell_create.sh"
-    env = dict(os.environ)
-    env["SOMA_PYTHON"] = sys.executable
-
-    proc = subprocess.run(
-        [bash, str(script_sh), "--help"],
-        cwd=str(REPO_ROOT),
-        capture_output=True,
-        text=True,
-        env=env,
-        timeout=30,
-    )
-    assert proc.returncode == 0, proc.stderr
-    assert "cell_create.py" in proc.stdout.lower()
 
 
 def test_cli_transfer_subcommand(tmp_path):
@@ -221,65 +203,4 @@ def test_cli_transfer_subcommand(tmp_path):
     assert "created_by: transfer" in content
 
 
-def test_shell_shims_forward_to_python_cli(tmp_path, bash):
-    """Verify that enzymes/*.sh forwarding shims execute python cleanly."""
-    if not ENZYMES_DIR.exists():
-        pytest.skip("enzymes directory purged in v0.97.0")
-    env = dict(os.environ)
-    env["SOMA_PYTHON"] = sys.executable
-
-    # 1. safety_gate.sh
-    safety_gate_sh = ENZYMES_DIR / "safety_gate.sh"
-    payload = json.dumps({"toolCall": {"name": "run_command", "args": {"CommandLine": "ls -la"}}})
-    proc_sg = subprocess.run(
-        [bash, str(safety_gate_sh)],
-        input=payload,
-        cwd=str(tmp_path),
-        capture_output=True,
-        text=True,
-        env=env,
-        timeout=10,
-    )
-    assert proc_sg.returncode == 0, proc_sg.stderr
-    out_sg = json.loads(proc_sg.stdout)
-    assert out_sg.get("decision") == "allow"
-
-    # 2. immune_init.sh
-    immune_init_sh = ENZYMES_DIR / "immune_init.sh"
-    proc_ii = subprocess.run(
-        [bash, str(immune_init_sh)],
-        input="{}",
-        cwd=str(tmp_path),
-        capture_output=True,
-        text=True,
-        env=env,
-        timeout=15,
-    )
-    assert proc_ii.returncode == 0, proc_ii.stderr
-
-    # 3. session_close.sh
-    session_close_sh = ENZYMES_DIR / "session_close.sh"
-    proc_sc = subprocess.run(
-        [bash, str(session_close_sh)],
-        input="{}",
-        cwd=str(tmp_path),
-        capture_output=True,
-        text=True,
-        env=env,
-        timeout=15,
-    )
-    assert proc_sc.returncode == 0, proc_sc.stderr
-
-    # 4. cell_transfer.sh help/usage
-    cell_transfer_sh = ENZYMES_DIR / "cell_transfer.sh"
-    proc_ct = subprocess.run(
-        [bash, str(cell_transfer_sh), "--help"],
-        cwd=str(tmp_path),
-        capture_output=True,
-        text=True,
-        env=env,
-        timeout=10,
-    )
-    assert proc_ct.returncode == 0, proc_ct.stderr
-    assert "transfer" in proc_ct.stdout.lower()
 

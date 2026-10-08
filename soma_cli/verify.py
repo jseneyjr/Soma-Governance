@@ -68,7 +68,14 @@ def verdict_to_exit_code(verdict) -> int:
 def resolve_target_files(args: argparse.Namespace) -> list[str]:
     """Resolve target files from --files flag or git staged/changed files."""
     if args.files:
-        repo_root = os.path.realpath(getattr(args, 'workspace', None) or getattr(args, 'repo_root', None) or getattr(args, '_project_root', None) or os.getcwd())
+        repo_root = os.path.realpath(
+            (str(args.ws.root) if getattr(args, "ws", None) is not None else None)
+            or getattr(args, 'workspace', None)
+            or getattr(args, 'repo_root', None)
+            or getattr(args, '_project_root', None)
+            or getattr(args, '_root', None)
+            or os.getcwd()
+        )
         safe_files = []
         for f in args.files:
             resolved = os.path.realpath(os.path.join(repo_root, f))
@@ -83,12 +90,13 @@ def resolve_target_files(args: argparse.Namespace) -> list[str]:
 
     # Default: query git for staged/changed files
     git_cwd = (
-        str(getattr(args, 'ws', None).root)
+        str(args.ws.root)
         if getattr(args, 'ws', None) is not None
         else (
             getattr(args, 'workspace', None)
             or getattr(args, 'repo_root', None)
             or getattr(args, '_project_root', None)
+            or getattr(args, '_root', None)
             or os.getcwd()
         )
     )
@@ -315,6 +323,7 @@ def run_verify(args: argparse.Namespace) -> int:
         getattr(args, 'workspace', None)
         or getattr(args, 'repo_root', None)
         or getattr(args, '_project_root', None)
+        or getattr(args, '_root', None)
     )
     repo_root = str(ws_obj.root)
     if not os.path.isdir(repo_root):

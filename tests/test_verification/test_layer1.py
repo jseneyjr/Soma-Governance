@@ -23,14 +23,6 @@ from soma_core.verification import runner
 class TestPersistenceChecker:
     """Test the persistence completeness checker against real and synthetic code."""
 
-    def test_post_fix_cell_promote_passes(self):
-        """After v0.30 fixes, cell_promote.py should have no persistence gaps."""
-        filepath = os.path.join(REPO_ROOT, "enzymes", "cell_promote.py")
-        if not os.path.exists(filepath):
-            pytest.skip("enzymes directory purged in v0.97.0")
-        result = persistence_checker.check(filepath, "fitness")
-        assert result.verdict is True, f"Expected PASS, got: {result.detail}"
-        assert result.tool == "persistence_checker"
 
     def test_synthetic_gap_detected(self, tmp_path):
         """A file that mutates a key but doesn't serialize it should FAIL."""
@@ -81,13 +73,6 @@ class TestPersistenceChecker:
 class TestCallGraph:
     """Test the call graph completeness checker."""
 
-    def test_bayesian_score_has_callers(self):
-        """bayesian_score.py's function should have callers in the repo."""
-        filepath = os.path.join(REPO_ROOT, "enzymes", "bayesian_score.py")
-        if not os.path.exists(filepath):
-            pytest.skip("enzymes directory purged in v0.97.0")
-        result = call_graph.check(filepath, REPO_ROOT)
-        assert result.verdict is True, f"Expected PASS: {result.detail}"
 
     def test_synthetic_orphan_detected(self, tmp_path):
         """A function with no call sites should be flagged."""
@@ -109,17 +94,6 @@ class TestCallGraph:
 class TestLayer1Runner:
     """Test the Layer 1 orchestrator."""
 
-    def test_runner_returns_results(self):
-        """Runner should return ToolEvidence list for changed files."""
-        if not os.path.exists(os.path.join(REPO_ROOT, "enzymes", "cell_promote.py")):
-            pytest.skip("enzymes directory purged in v0.97.0")
-        results = runner.run_layer1(
-            changed_files=["enzymes/cell_promote.py"],
-            repo_root=REPO_ROOT,
-            persistence_targets=[("enzymes/cell_promote.py", "fitness")],
-        )
-        assert len(results) >= 2  # persistence + call_graph
-        assert all(isinstance(r, ToolEvidence) for r in results)
 
     def test_gate_verdict_all_pass(self):
         """Gate should pass when all tools pass."""

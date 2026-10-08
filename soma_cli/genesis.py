@@ -15,9 +15,11 @@ def run_genesis(args: argparse.Namespace) -> int:
     from soma_core.workspace import Workspace
 
     raw_root = (
-        getattr(args, "project_root", None)
+        (args.ws.root if getattr(args, "ws", None) is not None else None)
         or getattr(args, "workspace", None)
+        or getattr(args, "project_root", None)
         or getattr(args, "_project_root", None)
+        or getattr(args, "_root", None)
     )
     if raw_root is not None and not Path(raw_root).is_dir():
         print(f"Error: {raw_root} is not a directory", file=sys.stderr)

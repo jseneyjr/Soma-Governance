@@ -17,29 +17,8 @@ from soma_core.frontmatter import dump_frontmatter, parse_yaml_subset
 REPO_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, REPO_ROOT)
 
-from soma_sdk.cells import Cell, CellFitness
-
-# Phase 2.1 deliverables — skip until implemented
-try:
-    from soma_sdk.cells import parse_cell_file, write_cell_frontmatter
-    HAS_PARSER = True
-except ImportError:
-    HAS_PARSER = False
-
-try:
-    from soma_sdk.errors import CellPathTraversalError, CellParseError
-    HAS_ERRORS = True
-except ImportError:
-    HAS_ERRORS = False
-
-skip_until_parser = pytest.mark.skipif(
-    not HAS_PARSER,
-    reason="parse_cell_file not yet implemented (Phase 2.1)"
-)
-skip_until_errors = pytest.mark.skipif(
-    not HAS_ERRORS,
-    reason="soma_sdk.errors not yet implemented (Phase 2.3)"
-)
+from soma_sdk.cells import Cell, CellFitness, parse_cell_file, write_cell_frontmatter
+from soma_sdk.errors import CellPathTraversalError, CellParseError
 
 
 class TestCellFitnessBaseline:
@@ -167,7 +146,6 @@ class TestCellBaseline:
         assert restored.stress_survived == original.stress_survived
 
 
-@skip_until_parser
 class TestParseCellFile:
     """Tests for parse_cell_file — Phase 2.1 deliverable."""
 
@@ -223,16 +201,11 @@ class TestParseCellFile:
         ) as f:
             f.write('No frontmatter here.')
             f.flush()
-            if HAS_ERRORS:
-                with pytest.raises(CellParseError):
-                    parse_cell_file(f.name)
-            else:
-                with pytest.raises(Exception):
-                    parse_cell_file(f.name)
+            with pytest.raises(CellParseError):
+                parse_cell_file(f.name)
         os.unlink(f.name)
 
 
-@skip_until_errors
 class TestPathTraversal:
     """Tests for path traversal guards — Phase 2.3 deliverable."""
 

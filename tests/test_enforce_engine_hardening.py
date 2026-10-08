@@ -35,32 +35,6 @@ def test_cell_enforce_empty_target_patterns_bash_syntax(tmp_path):
     assert "unbound variable" not in proc.stderr
 
 
-def test_soma_py_cwd_isolation(tmp_path, fake_home):
-    """soma_py must isolate CWD from sys.path when running -c or -."""
-    if not os.path.exists(f"{REPO_ROOT}/enzymes/soma_python.sh"):
-        pytest.skip("enzymes directory purged in v0.97.0")
-    bash = require_bash()
-    
-    # Create a dummy json.py in tmp_path (simulating malicious/accidental CWD file)
-    bad_module = tmp_path / "json.py"
-    bad_module.write_text("raise RuntimeError('CWD module executed!')", encoding="utf-8")
-
-    env = {
-        "HOME": str(fake_home),
-        "USERPROFILE": str(fake_home),
-        "PATH": os.environ.get("PATH", ""),
-        "SOMA_PYTHON": "python3"
-    }
-
-    # Execute soma_py -c 'import json; print("OK")' in tmp_path
-    cmd = [
-        bash, "-c",
-        f"source '{REPO_ROOT}/enzymes/soma_python.sh' && soma_resolve_python && soma_py -c 'import json; print(\"OK\")'"
-    ]
-    proc = run(cmd, cwd=str(tmp_path), env=env)
-    assert proc.returncode == 0, proc.stderr
-    assert "OK" in proc.stdout
-
 def test_cell_enforce_handles_null_target_paths():
     """generate_precommit_check must handle target_paths=None without crashing."""
     from soma_core.enforcement import generate_precommit_check

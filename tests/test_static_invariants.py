@@ -124,173 +124,7 @@ def test_no_stale_gemini_config_paths():
     assert not offenders, "Stale gemini config path:\n" + "\n".join(offenders)
 
 
-# ── SOMA-C05: backup and restore must agree on directory names ──────────
 
-def test_backup_and_restore_directory_names_agree():
-    """SOMA-C05: install.sh created $BACKUP_DIR/{genome,organs}; uninstall.sh
-    restored from $BACKUP_DIR/{rules,skills}. Restore was dead code."""
-    install_sh = os.path.join(REPO_ROOT, "install", "install.sh")
-    if not os.path.exists(install_sh):
-        pytest.skip("legacy shell installers purged in v0.97.0")
-    install = read(install_sh)
-    uninstall = read(os.path.join(REPO_ROOT, "install", "uninstall.sh"))
-
-    created = set(re.findall(r'"\$BACKUP_DIR/([A-Za-z0-9_.-]+)"', install))
-    # install.sh also copies flat files via: cp "source/FILE" "$BACKUP_DIR/"
-    # where the filename is inferred from the source, not explicit in the target.
-    # Match patterns like: cp ".../<filename>" "$BACKUP_DIR/"
-    for m in re.finditer(
-        r'cp\s+(?:-r\s+)?"[^"]*?/([A-Za-z0-9_.-]+)"\s+"\$BACKUP_DIR/"',
-        install,
-    ):
-        created.add(m.group(1))
-    referenced = set()
-    for line in uninstall.splitlines():
-        if line.lstrip().startswith("#") or line.lstrip().startswith("echo"):
-            continue
-        referenced.update(re.findall(r'"\$BACKUP_DIR/([A-Za-z0-9_.-]+)"', line))
-
-    # Payload names restore reads must be names install actually creates.
-    unknown = {n for n in referenced if n not in created}
-    assert not unknown, (
-        f"uninstall.sh restores from $BACKUP_DIR/{sorted(unknown)} but install.sh "
-        f"only creates $BACKUP_DIR/{sorted(created)}"
-    )
-
-
-# ── SOMA-C04: the manifest must record what was copied ──────────────────
-
-def test_manifest_is_not_built_by_scanning_destinations():
-    """SOMA-C04: building the manifest with `find $TARGET_...` enrolled every
-    pre-existing user file in the destination directory for deletion."""
-    install_sh = os.path.join(REPO_ROOT, "install", "install.sh")
-    if not os.path.exists(install_sh):
-        pytest.skip("legacy shell installers purged in v0.97.0")
-    install = read(install_sh)
-    bad = re.compile(r'find\s+"\$(TARGET_RULES|TARGET_SKILLS|TARGET_HOOKS|TARGET_DIR)"')
-    hits = [ln.strip() for ln in install.splitlines() if bad.search(ln)]
-    assert not hits, (
-        "manifest still scans destination directories:\n" + "\n".join(hits)
-    )
-    assert "record_installed_file" in install, "no explicit install recording found"
-
-
-# ── SOMA-C06: backups must retain more than one generation ──────────────
-
-def test_install_does_not_wipe_all_backups():
-    """SOMA-C06: `rm -rf $RESOLVED_HOME/.soma/backup` left exactly one
-    generation, so the pre-Soma state died on the second install."""
-    install_sh = os.path.join(REPO_ROOT, "install", "install.sh")
-    if not os.path.exists(install_sh):
-        pytest.skip("legacy shell installers purged in v0.97.0")
-    install = read(install_sh)
-    for lineno, line in enumerate(install.splitlines(), 1):
-        if line.lstrip().startswith("#"):
-            continue
-        assert not re.search(r'rm\s+-rf\s+"\$RESOLVED_HOME/\.soma/backup"\s*$', line), (
-            f"install.sh:{lineno} wipes every backup generation: {line.strip()}"
-        )
-
-
-# ── SOMA-C10: uninstall must not delete user-authored data ──────────────
-
-def test_uninstall_preserves_user_data_by_default():
-    """SOMA-C10: cells, fitness history and snapshots are authored by the user,
-    not installed, so removal must be opt-in."""
-    uninstall_sh = os.path.join(REPO_ROOT, "install", "uninstall.sh")
-    if not os.path.exists(uninstall_sh):
-        pytest.skip("legacy shell installers purged in v0.97.0")
-    uninstall = read(uninstall_sh)
-    assert "--purge-data" in uninstall, "no opt-in flag guarding user data removal"
-    assert "PRESERVED_PATHS" in uninstall, "user data is not tracked as preserved"
-
-
-# ── SOMA-H07: --force must not disable recovery ─────────────────────────
-
-def test_force_does_not_disable_restore():
-    """SOMA-H07: --force skipped the deletion prompt AND the restore offer, so
-    the one flag meant for automation removed the safety net."""
-    uninstall_sh = os.path.join(REPO_ROOT, "install", "uninstall.sh")
-    if not os.path.exists(uninstall_sh):
-        pytest.skip("legacy shell installers purged in v0.97.0")
-    uninstall = read(uninstall_sh)
-    assert "--no-restore" in uninstall, "no separate flag to suppress restore"
-    assert "Force mode enabled, skipping restore" not in uninstall, (
-        "--force still suppresses restore"
-    )
-
-
-def test_interactive_prompts_are_tty_guarded():
-    """SOMA-H07: `read -p` returns 1 at EOF, which under `set -e` aborted the
-    whole script in CI, containers and `curl | bash`."""
-    uninstall_sh = os.path.join(REPO_ROOT, "install", "uninstall.sh")
-    if not os.path.exists(uninstall_sh):
-        pytest.skip("legacy shell installers purged in v0.97.0")
-    uninstall = read(uninstall_sh)
-    assert "-t 0" in uninstall, "no TTY guard around interactive prompts"
-
-
-# ── SOMA-C09: manifest read failures must be fatal ──────────────────────
-
-def test_manifest_path_not_interpolated_into_python_source():
-    """SOMA-C09: open('$MANIFEST_PATH') inside python3 -c made a quote in the
-    path a silent SyntaxError and a crafted path code execution."""
-    uninstall_sh = os.path.join(REPO_ROOT, "install", "uninstall.sh")
-    if not os.path.exists(uninstall_sh):
-        pytest.skip("legacy shell installers purged in v0.97.0")
-    uninstall = read(uninstall_sh)
-    assert "open('$MANIFEST_PATH')" not in uninstall, (
-        "manifest path is still interpolated into Python source"
-    )
-    assert "SOMA_MANIFEST" in uninstall, "manifest path is not passed via environment"
-
-
-# ── SOMA-C11 / C12 / H05: PowerShell parity ─────────────────────────────
-
-def test_powershell_installer_resolves_repo_root():
-    """SOMA-C11: $RepoDir resolved to <repo>/install, so genome/ and organs/
-    pointed at directories that do not exist and 0 rules installed."""
-    ps1 = os.path.join(REPO_ROOT, "install", "install.ps1")
-    if not os.path.exists(ps1):
-        pytest.skip("install.ps1 not present")
-    content = read(ps1)
-    assert re.search(r'\$RepoDir\s*=\s*\(Resolve-Path\s*\(Join-Path\s+\$ScriptDir\s+"\.\."\)\)', content), (
-        "install.ps1 does not resolve the repo root one level above install/"
-    )
-    # The derived source dirs must exist relative to the real repo root.
-    for name in ("genome", "organs"):
-        assert os.path.isdir(os.path.join(REPO_ROOT, name)), f"{name}/ missing from repo root"
-    assert not os.path.isdir(os.path.join(REPO_ROOT, "install", name)), (
-        f"install/{name} exists — the C11 assertion is no longer meaningful"
-    )
-
-
-def test_powershell_rule_discovery_is_recursive():
-    """SOMA-H05: non-recursive Get-ChildItem installed 7 of 13 rules; the other
-    6 live in genome/.oracles, which also needs -Force (dot-directory)."""
-    ps1 = os.path.join(REPO_ROOT, "install", "install.ps1")
-    if not os.path.exists(ps1):
-        pytest.skip("install.ps1 not present")
-    offenders = []
-    for lineno, line in enumerate(read(ps1).splitlines(), 1):
-        if "Get-ChildItem" not in line or "$SourceRules" not in line:
-            continue
-        if "-Recurse" not in line or "-Force" not in line:
-            offenders.append(f"install.ps1:{lineno}: {line.strip()}")
-    assert not offenders, (
-        "rule enumeration must use -Recurse -Force:\n" + "\n".join(offenders)
-    )
-
-
-def test_powershell_uninstaller_exists():
-    """SOMA-C12: with no uninstall.ps1, a Windows user could not uninstall at
-    all without first obtaining Git Bash or WSL."""
-    ps1 = os.path.join(REPO_ROOT, "install", "uninstall.ps1")
-    if not os.path.exists(ps1):
-        pytest.skip("legacy shell/ps1 installers purged in v0.97.0")
-    assert os.path.exists(ps1), (
-        "install/uninstall.ps1 is missing"
-    )
 
 
 def test_powershell_scripts_with_non_ascii_have_utf8_bom():
@@ -306,19 +140,6 @@ def test_powershell_scripts_with_non_ascii_have_utf8_bom():
     assert not offenders, f"non-ASCII PowerShell scripts missing UTF-8 BOM: {offenders}"
 
 
-def test_powershell_mcp_platform_parity():
-    """install.ps1 must support MCP and bind it to the governed workspace."""
-    ps1 = os.path.join(REPO_ROOT, "install", "install.ps1")
-    if not os.path.exists(ps1):
-        pytest.skip("install.ps1 not present")
-
-    with open(ps1, "r", encoding="utf-8") as f:
-        content = f.read()
-
-    assert '"mcp" {' in content, "install.ps1 is missing the 'mcp' platform switch case"
-    assert re.search(r'"cwd"\s*=', content), "install.ps1 MCP generation is missing cwd"
-    assert '"SOMA_WORKSPACE"' in content, "install.ps1 MCP generation is missing SOMA_WORKSPACE"
-    assert '"SOMA_ROOT"' not in content, "install.ps1 still emits the obsolete SOMA_ROOT key"
 def test_rule_basenames_are_unique_when_flattened():
     """install.sh flattens genome/**/*.md into one directory, so a duplicate
     basename would silently overwrite, last write winning."""
@@ -552,14 +373,6 @@ def test_make_validate_fails_on_broken_shell_script(tmp_path):
     )
 
 
-def test_make_validate_covers_the_uninstaller():
-    """SOMA-H01: uninstall.sh — the destructive script — was excluded from the
-    validation file list entirely."""
-    if not os.path.exists(os.path.join(REPO_ROOT, "install", "uninstall.sh")):
-        pytest.skip("legacy shell installers purged in v0.97.0")
-    makefile = read(os.path.join(REPO_ROOT, "Makefile"))
-    validate = makefile.split("validate:")[1].split("\nupdate:")[0]
-    assert "uninstall.sh" in validate, "make validate does not check uninstall.sh"
 
 
 # ── Static Import & Documentation Integrity ─────────────────────────────
