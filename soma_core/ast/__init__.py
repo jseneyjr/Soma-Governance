@@ -9,12 +9,24 @@ from .schema import (
     NormalizedAST,
 )
 from .drivers.python import parse_python_ast
+from .runner import (
+    ASTDriverError,
+    ASTDriverRegistry,
+    ASTDriverRunner,
+    ASTDriverTimeoutError,
+    NoDriverConfiguredError,
+)
 
 __all__ = [
+    "ASTDriverError",
+    "ASTDriverRegistry",
+    "ASTDriverRunner",
+    "ASTDriverTimeoutError",
     "CallSiteNode",
     "DefinitionNode",
     "ImportNode",
     "MutationPoint",
+    "NoDriverConfiguredError",
     "NormalizedAST",
     "parse_python_ast",
 ]
