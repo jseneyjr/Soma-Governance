@@ -339,3 +339,57 @@ class TestMutationTesterAppliesEveryCollectedMutation:
         assert documented.detail == "0/2 survived"
         returns_none = mutation_tester.check(str(src), "nothing", str(test))
         assert returns_none.verdict is True, returns_none.detail
+
+
+class TestMutationTesterBoolAndTargetLines:
+    """Tests for boolean constant mutation and target_lines scoping."""
+
+    def test_bool_constant_mutated(self, tmp_path):
+        from soma_core.verification import mutation_tester
+
+        src = tmp_path / "target.py"
+        src.write_text(textwrap.dedent("""\
+            def is_ready():
+                return True
+        """))
+        test = tmp_path / "test_target.py"
+        test.write_text(textwrap.dedent(f"""\
+            import sys
+            sys.path.insert(0, {str(tmp_path)!r})
+            from target import is_ready
+            def test_ready():
+                assert is_ready() is True
+        """))
+
+        result = mutation_tester.check(str(src), "is_ready", str(test))
+        assert result.verdict is True
+        assert "survived" in result.detail
+
+    def test_target_lines_filtering(self, tmp_path):
+        from soma_core.verification import mutation_tester
+
+        src = tmp_path / "target.py"
+        src.write_text(textwrap.dedent("""\
+            def calc(x):
+                a = x + 1
+                b = a * 2
+                return b
+        """))
+        test = tmp_path / "test_target.py"
+        test.write_text(textwrap.dedent(f"""\
+            import sys
+            sys.path.insert(0, {str(tmp_path)!r})
+            from target import calc
+            def test_calc():
+                assert calc(3) == 8
+        """))
+
+        # Restrict mutation testing only to line 2 (a = x + 1)
+        res_line2 = mutation_tester.check(str(src), "calc", str(test), target_lines={2})
+        assert res_line2.verdict is True
+
+        # Restrict mutation testing to a line with no mutations (e.g. line 1 def calc)
+        res_empty = mutation_tester.check(str(src), "calc", str(test), target_lines={1})
+        assert res_empty.verdict is True
+        assert res_empty.detail == "No mutations on modified lines"
+

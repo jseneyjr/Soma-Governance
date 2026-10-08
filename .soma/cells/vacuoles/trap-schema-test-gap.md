@@ -5,35 +5,34 @@ type: vacuole
 enforcement: advisory
 promotion_threshold: 0.85
 demotion_threshold: 0.3
-hypothesis: New cell types or genome categories committed without corresponding parametrized
-  schema test coverage regress toward incomplete frontmatter
-prediction: Will flag when a new cell subdirectory exists but has no dedicated test
-  coverage in test_rule_metadata.py
+hypothesis: New cell types or genome categories committed without corresponding parametrized schema test coverage regress toward incomplete frontmatter
+prediction: Will flag when a new cell subdirectory exists but has no dedicated test coverage in test_rule_metadata.py
 falsification: 0 findings in 10 sessions → prune
 target_paths:
-- .soma/cells/**/*.md
-- genome/*.md
-- tests/test_rule_metadata.py
+  - ".soma/cells/**/*.md"
+  - "genome/*.md"
+  - tests/test_rule_metadata.py
 triggers:
-- cell_creation
-- cell_type_addition
-- genome_rule_creation
+  - cell_creation
+  - cell_type_addition
+  - genome_rule_creation
 expiry_sessions: 10
 expiry_days: 30
-created: '2026-09-30'
+created: 2026-09-30
 impact_weight: 0.9
 tags:
-- testing
-- schema
-- meta-governance
+  - testing
+  - schema
+  - meta-governance
 fitness:
   score: 0.5
   impact_weight: 0.9
-  triggers: 6
-  true_positives: 3
-  false_positives: 1
-  last_trigger_date: '2026-10-01T04:26:19Z'
+  triggers: 25
+  true_positives: 9
+  false_positives: 14
+  last_trigger_date: "2026-10-08T04:52:01Z"
 ---
+
 Every cell subdirectory under `.soma/cells/` (vacuoles, walls, membranes,
 chloroplasts, plasmodesmata) must have corresponding parametrized content
 coherence tests in `tests/test_rule_metadata.py`.

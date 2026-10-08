@@ -52,8 +52,10 @@ def capture_insight(
     context_files: list,
     source_conversation: Optional[str] = None,
     category: Optional[str] = None,
+    scaffold_wall: bool = False,
+    wall_id: Optional[str] = None,
 ) -> dict:
-    """Capture a human insight and persist it to JSONL."""
+    """Capture a human insight and persist it to JSONL, optionally scaffolding a Wall cell."""
     if not isinstance(context_files, list):
         raise ValueError("context_files must be a list, not " + type(context_files).__name__)
     if not context_files:
@@ -61,7 +63,8 @@ def capture_insight(
     if not insight or not insight.strip():
         raise ValueError("insight must not be empty")
 
-    cells_dir = os.path.join(workspace, ".soma", "cells")
+    ws_path = getattr(workspace, "root", workspace)
+    cells_dir = os.path.join(ws_path, ".soma", "cells")
     if os.path.isdir(cells_dir):
         cells = load_cells(cells_dir)
     else:
@@ -71,7 +74,7 @@ def capture_insight(
     covering_cell_names = [c["cell"]["_name"] for c in covering]
     was_covered = len(covering_cell_names) > 0
 
-    signal_weight = _load_signal_weight(workspace)
+    signal_weight = _load_signal_weight(ws_path)
 
     record = {
         "timestamp": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
@@ -84,7 +87,33 @@ def capture_insight(
         "signal_weight": signal_weight,
     }
 
-    jsonl_path = os.path.join(workspace, ".soma", "human_insights.jsonl")
+    if scaffold_wall or wall_id:
+        wall_dir = os.path.join(ws_path, ".soma", "cells", "walls")
+        os.makedirs(wall_dir, exist_ok=True)
+        if wall_id:
+            clean_stem = wall_id.strip().lower()
+            stem = clean_stem if clean_stem.startswith("wall-") else f"wall-{clean_stem}"
+        else:
+            h = hashlib.sha256(insight.strip().encode("utf-8")).hexdigest()[:8]
+            stem = f"wall-insight-{h}"
+
+        wall_path = os.path.join(wall_dir, f"{stem}.md")
+        meta = {
+            "id": stem,
+            "type": "wall",
+            "enforcement": "gate",
+            "domain": category or "security",
+            "description": insight.strip(),
+            "context_files": list(context_files),
+        }
+        body = f"# {stem}\n\n## Summary\n{insight.strip()}\n\n## Invariants\n- All changes touching context files must satisfy deterministic verification.\n"
+        content = dump_frontmatter(meta, body)
+        with open(wall_path, "w", encoding="utf-8") as wf:
+            wf.write(content)
+        record["wall_file"] = wall_path
+        record["wall_id"] = stem
+
+    jsonl_path = os.path.join(ws_path, ".soma", "human_insights.jsonl")
     os.makedirs(os.path.dirname(jsonl_path), exist_ok=True)
     with open(jsonl_path, "a", encoding="utf-8") as f:
         f.write(json.dumps(record) + "\n")

@@ -3,6 +3,24 @@
 All notable changes to Soma are documented here.
 This project uses [Semantic Versioning](https://semver.org/).
 
+## [0.121.0] — 2026-10-08 — "Canonical Verification Pipeline, Fail-Closed Arbitration & Closed-Loop I->W->C"
+
+### Canonical Verification Pipeline, Fail-Closed Arbitration & Closed-Loop I->W->C
+- **Canonical Verification Pipeline (`soma_core/verification/pipeline.py`, `soma_cli/verify.py`)**:
+  - Permanently collapses the dual verification pathway by routing all Layer 1 and Layer 2 verification requests (CLI and in-band MCP) through `VerificationPipeline`.
+  - Replaces fragmented verify logic in `soma_cli/verify.py` with `VerificationPipeline.run()`, guaranteeing identical evaluation semantics, fail-closed enforcement, and diagnostic output across CLI, hooks, and MCP tools.
+  - Converts `soma_core/verification/runner.py::run_layer2()` into a thin backward-compatibility facade delegating directly to `VerificationPipeline.run()`.
+- **Fail-Closed Layer 2 Arbitration & Evidence Generation (`soma_core/arbitration.py`, `soma_core/verification/pipeline.py`)**:
+  - Hardens Layer 2 arbiter evaluation: provider timeouts, inference formatting errors, or malformed provider responses fail closed with `BLOCK` or `REVISE`, preventing ungrounded changes from passing verification.
+  - Serializes verified arbitration receipts to `.soma/evidence/arbitration_cycle_{N}.json` with comprehensive round-trip fidelity.
+- **Closed-Loop I->W->C Autonomous Repair Loop (`soma_cli/verify.py`, `soma_core/verification/pipeline.py`)**:
+  - Implements the `--repair` flag on `soma verify`, enabling closed-loop remediation where failed assertions and Layer 2 arbiter critique trigger iterative deterministic repair before checkpoint commit.
+- **Dynamic Baseline Ref Resolution & Branch Target Precision (`soma_core/verification/runner.py`, `soma_cli/verify.py`)**:
+  - Adds prioritized base ref resolution inspecting `GITHUB_BASE_REF` and tracking remote branches (`origin/develop` before `origin/main`), ensuring precise modified-line diff targeting in CI pull request workflows.
+- **Cross-Version Python 3.9 Coverage Precision (`soma_core/verification/branch_coverage.py`)**:
+  - Remediates pre-PEP 626 jump tracing anomalies in Python 3.9 by filtering bare jump tokens (`break`, `continue`, `pass`) from missing line reporting.
+  - Hardens `_parse_coverage` filtering out negative branch exits, backward loop headers, and already-executed jump targets.
+
 ## [0.120.1] — 2026-10-07 — "Human Review Gate Enforcement & CI Test Suite Repair"
 
 ### Human Review Gate Enforcement & CI Test Suite Repair

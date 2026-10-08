@@ -3,38 +3,36 @@ id: trap-fail-open-verification
 domain: security
 type: wall
 enforcement: gate
-hypothesis: Verification tools that return empty/success on execution failure silently
-  bypass the safety gate — the tool reports "all checks passed" when it actually crashed
-  before checking anything
-prediction: Will fire when a verification function returns an empty list, True, or
-  exit code 0 on an error path (missing file, crashed subprocess, None data)
+hypothesis: "Verification tools that return empty/success on execution failure silently bypass the safety gate — the tool reports \"all checks passed\" when it actually crashed before checking anything"
+prediction: "Will fire when a verification function returns an empty list, True, or exit code 0 on an error path (missing file, crashed subprocess, None data)"
 falsification: 0 findings in 10 sessions → prune
 target_paths:
-- soma_core/verification/*.py
-- soma_cli/verify.py
-- soma_cli/checkpoint.py
+  - "soma_core/verification/*.py"
+  - soma_cli/verify.py
+  - soma_cli/checkpoint.py
 triggers:
-- verification_modification
-- error_handling_change
-- security_review
+  - verification_modification
+  - error_handling_change
+  - security_review
 minimum_mode: standard
 expiry_sessions: 50
 expiry_days: 180
-created: '2026-09-30'
+created: 2026-09-30
 impact_weight: 1.0
 tags:
-- security
-- verification
-- fail-open
-- critical
+  - security
+  - verification
+  - fail-open
+  - critical
 fitness:
   score: 0.8333
   impact_weight: 1.0
-  triggers: 6
-  true_positives: 5
-  false_positives: 0
-  last_trigger_date: '2026-10-01T04:26:19Z'
+  triggers: 25
+  true_positives: 7.4254
+  false_positives: 4.5112
+  last_trigger_date: "2026-10-08T05:01:40Z"
 ---
+
 Verification tools MUST fail-closed: any execution error must produce a
 FAIL verdict, never a PASS.
 

@@ -3,33 +3,33 @@ id: trap-shell-true-portability
 domain: portability
 type: wall
 enforcement: gate
-hypothesis: subprocess calls with shell=True fail on Windows due to different shell
-  quoting rules and may introduce shell injection vulnerabilities
+hypothesis: subprocess calls with shell=True fail on Windows due to different shell quoting rules and may introduce shell injection vulnerabilities
 prediction: Will flag subprocess.run/check_output/Popen calls using shell=True
 falsification: 0 findings in 20 sessions → prune
 target_paths:
-- '**/*.py'
+  - "**/*.py"
 triggers:
-- python_file_creation
-- python_file_modification
-- portability_review
+  - python_file_creation
+  - python_file_modification
+  - portability_review
 minimum_mode: standard
 expiry_sessions: 30
 expiry_days: 90
-created: '2026-09-30'
+created: 2026-09-30
 impact_weight: 1.0
 tags:
-- portability
-- windows
-- subprocess
+  - portability
+  - windows
+  - subprocess
 fitness:
   score: 0.6
   impact_weight: 1.0
-  triggers: 5
-  true_positives: 3
-  false_positives: 0
-  last_trigger_date: '2026-10-01T04:26:19Z'
+  triggers: 27
+  true_positives: 9.1641
+  false_positives: 10.3882
+  last_trigger_date: "2026-10-08T05:01:40Z"
 ---
+
 Supercell C6 incident: `jit_engine.py` used
 `subprocess.check_output(cmd, shell=True)` for git diff commands. On Windows,
 shell quoting differs and paths with spaces break. Fix: pass command as a list

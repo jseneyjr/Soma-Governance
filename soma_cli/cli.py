@@ -140,6 +140,8 @@ def _build_parser() -> argparse.ArgumentParser:
                           help="Inference provider to use (gemini, anthropic, openai, keyring, prompt)")
     p_verify.add_argument("--in-band", action="store_true",
                           help="Generate an in-band charge sheet for conversational rebuttal (zero external API keys)")
+    p_verify.add_argument("--release-gate", action="store_true",
+                          help="Check Release Gate 4.5: assert latest arbitration evidence is a valid SHIP receipt")
 
     # soma sync
     p_sync = sub.add_parser("sync", parents=[common_parser], help="Reconcile evidence JSONL with cell frontmatter")
@@ -152,6 +154,8 @@ def _build_parser() -> argparse.ArgumentParser:
                               help="Warn mode: exit 0 even if issues found (unless --strict)")
     p_checkpoint.add_argument("--strict", action="store_true",
                               help="In pre-commit mode, exit 1 on issues")
+    p_checkpoint.add_argument("--require-arbitration", action="store_true",
+                              help="Require valid passing arbitration evidence without requiring full --strict")
 
     # soma oracle
     p_oracle = sub.add_parser("oracle", parents=[common_parser], help="Cell health classification and recommendations")

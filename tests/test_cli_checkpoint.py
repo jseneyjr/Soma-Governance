@@ -22,6 +22,9 @@ REPO_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, REPO_ROOT)
 
 
+from soma_cli.checkpoint import run_checkpoint
+
+
 def _setup_clean_workspace(root):
     """Helper to populate a clean workspace with compliant code and tests."""
     src = root / "src"
@@ -531,4 +534,95 @@ class TestCheckpointEdgeCases:
         exit_code = run_checkpoint(args)
         assert exit_code == 0
         assert not SyncMock.called, "Checkpoint mutated workspace state by calling sync/aggregate"
+
+
+class TestRequireArbitrationFlag:
+    """Test soma checkpoint --require-arbitration flag."""
+
+    def test_require_arbitration_fails_without_evidence(self, tmp_path):
+        _setup_clean_workspace(tmp_path)
+        args = argparse.Namespace(
+            workspace=str(tmp_path),
+            pre_commit=True,
+            strict=False,
+            require_arbitration=True,
+            json=False,
+        )
+        exit_code = run_checkpoint(args)
+        assert exit_code == 1
+
+    def test_require_arbitration_passes_with_ship_evidence(self, tmp_path):
+        _setup_clean_workspace(tmp_path)
+        ev_dir = tmp_path / ".soma" / "evidence"
+        (ev_dir / "arbitration_cycle_1.json").write_text(
+            json.dumps({"cycle": 1, "verdict": "ship", "divergence_count": 0}),
+            encoding="utf-8",
+        )
+        args = argparse.Namespace(
+            workspace=str(tmp_path),
+            pre_commit=True,
+            strict=False,
+            require_arbitration=True,
+            json=False,
+        )
+        exit_code = run_checkpoint(args)
+        assert exit_code == 0
+
+    def test_require_arbitration_fails_with_block_evidence(self, tmp_path):
+        _setup_clean_workspace(tmp_path)
+        ev_dir = tmp_path / ".soma" / "evidence"
+        (ev_dir / "arbitration_cycle_1.json").write_text(
+            json.dumps({"cycle": 1, "verdict": "block", "divergence_count": 2}),
+            encoding="utf-8",
+        )
+        args = argparse.Namespace(
+            workspace=str(tmp_path),
+            pre_commit=True,
+            strict=False,
+            require_arbitration=True,
+            json=False,
+        )
+        exit_code = run_checkpoint(args)
+        assert exit_code == 1
+
+    def test_paper_wall_with_advisory_enforcement_fails_gate(self, tmp_path):
+        _setup_clean_workspace(tmp_path)
+        walls_dir = tmp_path / ".soma" / "cells" / "walls"
+        walls_dir.mkdir(parents=True, exist_ok=True)
+        bad_wall = walls_dir / "wall-bad.md"
+        bad_wall.write_text(
+            "---\nid: wall-bad\ntype: wall\nenforcement: advisory\n---\n# Bad Wall\n",
+            encoding="utf-8",
+        )
+        args = argparse.Namespace(
+            workspace=str(tmp_path),
+            pre_commit=False,
+            strict=True,
+            require_arbitration=False,
+            json=False,
+        )
+        exit_code = run_checkpoint(args)
+        assert exit_code == 1
+
+    def test_paper_wall_blocks_even_in_pre_commit_warn_mode(self, tmp_path):
+        _setup_clean_workspace(tmp_path)
+        walls_dir = tmp_path / ".soma" / "cells" / "walls"
+        walls_dir.mkdir(parents=True, exist_ok=True)
+        bad_wall = walls_dir / "wall-bad.md"
+        bad_wall.write_text(
+            "---\nid: wall-bad\ntype: wall\nenforcement: advisory\n---\n# Bad Wall\n",
+            encoding="utf-8",
+        )
+        # Even with pre_commit=True and strict=False, wall violations must be blocking
+        args = argparse.Namespace(
+            workspace=str(tmp_path),
+            pre_commit=True,
+            strict=False,
+            require_arbitration=False,
+            json=False,
+        )
+        exit_code = run_checkpoint(args)
+        assert exit_code == 1
+
+
 

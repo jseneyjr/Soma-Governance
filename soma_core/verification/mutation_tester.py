@@ -8,6 +8,7 @@ suite against each mutant, and reports surviving mutations.
 """
 
 import ast
+import atexit
 import copy
 import re
 import subprocess
@@ -99,8 +100,10 @@ def _collect_mutations(source: str, function_name: str) -> list[_Mutation]:
             mutations.append(_Mutation(node.lineno, None))
 
         # 3) Constant replacement
-        if isinstance(node, ast.Constant) and isinstance(node.value, (int, float)):
-            if node.value != 0:
+        if isinstance(node, ast.Constant):
+            if isinstance(node.value, bool):
+                mutations.append(_Mutation(node.lineno, None))
+            elif isinstance(node.value, (int, float)) and node.value != 0:
                 mutations.append(_Mutation(node.lineno, None))
 
         # 4) Comparison operator swaps (<↔>, <=↔>=, ==↔!=)
@@ -151,8 +154,11 @@ def _apply_mutation_by_index(
         if isinstance(node, ast.UnaryOp) and type(node.op) in _UNARYOP_SWAPS:
             targets2.append(node)
             kinds2.append("unaryop")
-        if isinstance(node, ast.Constant) and isinstance(node.value, (int, float)):
-            if node.value != 0:
+        if isinstance(node, ast.Constant):
+            if isinstance(node.value, bool):
+                targets2.append(node)
+                kinds2.append("bool_const")
+            elif isinstance(node.value, (int, float)) and node.value != 0:
                 targets2.append(node)
                 kinds2.append("const")
         if isinstance(node, ast.Compare):
@@ -187,6 +193,8 @@ def _apply_mutation_by_index(
         node_to_mutate.op = _BINOP_SWAPS[type(node_to_mutate.op)]()
     elif k == "unaryop":
         node_to_mutate.op = _UNARYOP_SWAPS[type(node_to_mutate.op)]()
+    elif k == "bool_const":
+        node_to_mutate.value = not node_to_mutate.value
     elif k == "const":
         if isinstance(node_to_mutate.value, int):
             node_to_mutate.value = node_to_mutate.value + 1
@@ -245,6 +253,7 @@ def check(
     target_function: str,
     test_file: str,
     max_mutations: int | None = None,
+    target_lines: Optional[set[int]] = None,
 ) -> ToolEvidence:
     """Run mutation testing on *target_function* in *target_file*.
 
@@ -254,18 +263,34 @@ def check(
     Returns ToolEvidence with verdict=True if no mutations survive.
     """
     source = Path(target_file).read_text()
-    mutations = _collect_mutations(source, target_function)
+    all_mutations = _collect_mutations(source, target_function)
+
+    # Filter mutations to target_lines if restricted scope was provided
+    mutation_candidates: list[tuple[int, _Mutation]] = []
+    for idx, mut in enumerate(all_mutations):
+        if target_lines is not None and mut.lineno not in target_lines:
+            continue
+        mutation_candidates.append((idx, mut))
+
+    if target_lines is not None and not mutation_candidates:
+        return ToolEvidence(
+            tool="mutation_tester",
+            target=f"{target_file}::{target_function}",
+            verdict=True,
+            detail="No mutations on modified lines",
+            lines=[],
+        )
 
     if max_mutations is not None:
-        mutations = mutations[:max_mutations]
+        mutation_candidates = mutation_candidates[:max_mutations]
 
-    total = len(mutations)
+    total = len(mutation_candidates)
     survived: list[int] = []
 
     # A mutant counts as killed whenever the tests fail, so tests that can't
     # pass against the original code (syntax/import error, wrong assertion)
     # would "kill" every mutant and pass (BUG-034). Fail closed instead.
-    if mutations and not _run_tests(test_file):
+    if mutation_candidates and not _run_tests(test_file):
         return ToolEvidence(
             tool="mutation_tester",
             target=f"{target_file}::{target_function}",
@@ -274,8 +299,8 @@ def check(
             lines=[-1],
         )
 
-    for i, mutation in enumerate(mutations):
-        mutated_source = _apply_mutation_by_index(source, target_function, i)
+    for orig_idx, mutation in mutation_candidates:
+        mutated_source = _apply_mutation_by_index(source, target_function, orig_idx)
         if mutated_source is None:
             continue
 
@@ -291,6 +316,8 @@ def check(
             tmp.write(mutated_source)
             tmp_path = tmp.name
 
+        clean_target = lambda p=tmp_path: Path(p).unlink(missing_ok=True)
+        atexit.register(clean_target)
         try:
             # Patch test file to import from mutant instead of original
             test_source = Path(test_file).read_text()
@@ -318,14 +345,18 @@ def check(
                 test_tmp.write(patched_test)
                 test_tmp_path = test_tmp.name
 
+            clean_test = lambda p=test_tmp_path: Path(p).unlink(missing_ok=True)
+            atexit.register(clean_test)
             try:
                 if _run_tests(test_tmp_path):
                     # Tests passed with mutation → mutation survived
                     survived.append(mutation.lineno)
             finally:
-                Path(test_tmp_path).unlink(missing_ok=True)
+                atexit.unregister(clean_test)
+                clean_test()
         finally:
-            Path(tmp_path).unlink(missing_ok=True)
+            atexit.unregister(clean_target)
+            clean_target()
 
     survived_count = len(survived)
     verdict = survived_count == 0

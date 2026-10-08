@@ -328,13 +328,19 @@ Extends JIT matching from path globs to syntactic AST triggers (imports, decorat
 **Status**: ✅ Shipped (v0.120.0)  
 The designated clean-slate release. Purged all accumulated rapid-iteration backwards-compatibility shims across the entire project (CLI, Core, MCP, SDK, and Tests) to establish the pristine baseline for permanent backwards compatibility. Removed deprecated standalone getters (`get_cells_dir`, `get_metrics_dir`, `get_signals_file`, `get_outcomes_file`), obsolete wrapper facades, legacy CLI flags (`--repo-root`, `--project-root`). Established the zero-warning test suite baseline (0 pytest warnings across 2,900+ tests). Official project-wide backwards compatibility contract begins here.
 
-## Phase 24 — v0.121.0 🔨 In Progress
+## Phase 24 — v0.121.0 ✅ Shipped
+
+### Canonical Verification Pipeline, Fail-Closed Arbitration & Closed-Loop I->W->C
+**Status**: ✅ Shipped (v0.121.0)  
+Unifies all verification surfaces onto `VerificationPipeline` as the single canonical execution engine across CLI and MCP. Eliminates the split-brain architecture between `runner.py` and `pipeline.py` by converting `runner.run_layer2()` into a thin forwarding facade. Enforces fail-closed Layer 2 arbitration guarantees, real-time closed-loop repair loops (`--repair`), dynamic branch baseline discovery via `GITHUB_BASE_REF`, and cross-version Python 3.9 branch coverage resilience.
+
+## Phase 25 — v0.122.0 (Planned)
 
 ### Documentation Architecture, Developer Experience & Compatibility Contract
-**Status**: 🔨 In Progress (v0.121.0)  
+**Status**: 📋 Planned (v0.122.0)  
 Re-architects project documentation for developer discoverability and SEO optimization above the fold (30-second Quickstart with Genesis auto-scan and direct hook install). Deconstructs monolithic README into modular deep-dive guides (`docs/architecture/salience_and_evolution.md`, `docs/architecture/dual_mode_verifier.md`, `docs/guides/mcp_integration.md`, `docs/guides/multi_repo_worktrees.md`, `docs/guides/authoring_cells.md`). Publishes official Backwards Compatibility Guarantee starting from `v0.120.0`. Re-aligns and automates verification across `CLAIM_REGISTRY.json` and single-source versioning surfaces.
 
-## Phase 25 — v1.0.0 (Planned)
+## Phase 26 — v1.0.0 (Planned)
 
 ### Production GA Hardening & Multi-Lens Staff Review
 **Status**: 📋 Planned (v1.0.0)  

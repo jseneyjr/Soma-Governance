@@ -4,23 +4,28 @@ domain: correctness
 type: wall
 enforcement: gate
 hypothesis: Every platform in the installer must have a matching uninstall path
-prediction: Adding a new platform to install.sh without updating uninstall.sh creates
-  orphaned files
-falsification: "Platform count matches between install.sh and uninstall.sh for 10\
-  \ sessions \u2192 maintain"
+prediction: Adding a new platform to install.sh without updating uninstall.sh creates orphaned files
+falsification: Platform count matches between install.sh and uninstall.sh for 10 sessions → maintain
 target_paths:
-- soma_cli/platforms/*.py
-- soma_cli/cli.py
+  - "soma_cli/platforms/*.py"
+  - soma_cli/cli.py
 expiry_sessions: 15
 expiry_days: 60
-created: '2026-09-28'
+created: 2026-09-28
 impact_weight: 1.3
 minimum_mode: trident
 tags:
-- install
-- uninstall
-- parity
-- lifecycle
+  - install
+  - uninstall
+  - parity
+  - lifecycle
+fitness:
+  score: null
+  impact_weight: 1.0
+  triggers: 18
+  true_positives: 0.261
+  false_positives: 0.522
+  last_trigger_date: "2026-10-08T05:01:40Z"
 ---
 
 The install and uninstall scripts must support the same set of platforms. When adding
