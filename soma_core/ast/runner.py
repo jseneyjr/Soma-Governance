@@ -27,6 +27,13 @@ __all__ = [
 _PYTHON_NAMES = frozenset({"python3", "python"})
 
 
+def _is_python_name(name: str) -> bool:
+    clean = name.lower()
+    if clean.endswith(".exe"):
+        clean = clean[:-4]
+    return clean in _PYTHON_NAMES
+
+
 class ASTDriverError(SomaError):
     """Raised when an external AST driver execution fails."""
 
@@ -123,8 +130,14 @@ def resolve_driver_executable(name: str) -> Optional[str]:
     """
     found = shutil.which(name)
     if found:
+        # On Windows, WindowsApps contains 0-byte execution alias stubs that
+        # exit 49/9009 or open the Microsoft Store. Reject them for Python names.
+        if sys.platform == "win32" and "windowsapps" in found.lower():
+            if _is_python_name(name) and sys.executable:
+                return sys.executable
+            return None
         return found
-    if name in _PYTHON_NAMES and sys.executable:
+    if _is_python_name(name) and sys.executable:
         return sys.executable
     return None
 
@@ -178,7 +191,7 @@ class ASTDriverRunner:
         cmd_parts = _split_command(driver_cmd)
         if not cmd_parts:
             raise ASTDriverError(f"Empty driver command for extension '{ext}'")
-        if cmd_parts[0] in _PYTHON_NAMES:
+        if _is_python_name(cmd_parts[0]):
             cmd_parts[0] = resolve_driver_executable(cmd_parts[0]) or cmd_parts[0]
 
         full_cmd = cmd_parts + [str(target_path)]

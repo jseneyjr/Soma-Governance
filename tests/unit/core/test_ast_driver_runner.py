@@ -4,6 +4,7 @@ from __future__ import annotations
 import json
 from pathlib import Path
 import pytest
+import shutil
 import sys
 
 from soma_core.ast.runner import (
@@ -161,7 +162,17 @@ def test_resolve_driver_executable_falls_back_only_for_python_names(tmp_path, mo
     monkeypatch.chdir(empty_bin)
 
     assert resolve_driver_executable("python3") == sys.executable
+    assert resolve_driver_executable("python3.exe") == sys.executable
+    assert resolve_driver_executable("PYTHON") == sys.executable
     assert resolve_driver_executable("node") is None
+
+    # Test WindowsApps stub rejection
+    fake_stub = tmp_path / "WindowsApps" / "python3.exe"
+    fake_stub.parent.mkdir(parents=True, exist_ok=True)
+    fake_stub.touch()
+    monkeypatch.setattr(shutil, "which", lambda cmd: str(fake_stub) if "python" in cmd else None)
+    monkeypatch.setattr(sys, "platform", "win32")
+    assert resolve_driver_executable("python3") == sys.executable
 
     monkeypatch.setattr(sys, "executable", "")
     assert resolve_driver_executable("python3") is None
