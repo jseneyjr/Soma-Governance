@@ -430,8 +430,10 @@ class TestSomaYAMLBranchHardening:
         assert doc_written.id == "written-id"
         assert doc_written.body == "Written body"
 
-        # Symlink checks last: symlink_or_skip skips on Windows without the
-        # symlink privilege, and the checks above must still run there.
+    def test_parse_file_rejects_symlinks_branch_hardening(self, tmp_path: Path):
+        ws = Workspace(tmp_path)
+        real_file = tmp_path / "target.md"
+        real_file.write_text("---\nid: sym-target\n---\n", encoding="utf-8")
         symlink_file = tmp_path / "link.md"
         symlink_or_skip(real_file, symlink_file)
         with pytest.raises(SomaYAMLError, match="Symlink parsing prohibited"):

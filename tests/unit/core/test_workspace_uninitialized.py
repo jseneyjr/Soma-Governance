@@ -28,8 +28,7 @@ class TestWorkspaceForInit:
         real_dir = tmp_path / "real_dir"
         real_dir.mkdir()
         sym_dir = tmp_path / "sym_dir"
-        # real_dir exists, so os.symlink creates a directory link on Windows.
-        symlink_or_skip(real_dir, sym_dir)
+        symlink_or_skip(real_dir, sym_dir, target_is_directory=True)
 
         with pytest.raises(WorkspaceError, match="symlink"):
             Workspace.for_init(sym_dir)
