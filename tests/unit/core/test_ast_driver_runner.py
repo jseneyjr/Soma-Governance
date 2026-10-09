@@ -4,6 +4,7 @@ from __future__ import annotations
 import json
 from pathlib import Path
 import pytest
+import shutil
 import sys
 
 from soma_core.ast.runner import (
@@ -128,3 +129,50 @@ def test_split_command_windows(monkeypatch):
         cmd_unquoted = r"C:\Python312\python.exe D:\driver.py"
         parts2 = _split_command(cmd_unquoted)
         assert parts2 == [r"C:\Python312\python.exe", r"D:\driver.py"]
+
+
+RUST_DRIVER = Path(__file__).resolve().parents[3] / "install" / "drivers" / "rust_ast.py"
+
+
+@pytest.mark.parametrize("interpreter", ["python3", "python"])
+def test_python_driver_runs_when_interpreter_name_is_not_on_path(tmp_path, monkeypatch, interpreter):
+    """A python.org install on Windows has no python3.exe (#144); the driver
+    must still run, using the interpreter that is running soma."""
+    empty_bin = tmp_path / "empty-bin"
+    empty_bin.mkdir()
+    monkeypatch.setenv("PATH", str(empty_bin))
+    source = tmp_path / "lib.rs"
+    source.write_text("fn alpha() {}\nfn beta() { alpha(); }\n", encoding="utf-8")
+
+    registry = ASTDriverRegistry({".rs": f"{interpreter} {RUST_DRIVER}"})
+    result = ASTDriverRunner(registry=registry).parse_file(source, workspace_root=tmp_path)
+
+    assert result.language == "rust"
+    assert {"alpha", "beta"} <= {d.name for d in result.definitions}
+
+
+def test_resolve_driver_executable_falls_back_only_for_python_names(tmp_path, monkeypatch):
+    # Asserted on the resolver, not a subprocess: Windows CreateProcess also
+    # searches the parent interpreter's directory, so an emptied PATH alone
+    # can't make a bare python3 unlaunchable on every runner.
+    from soma_core.ast.runner import resolve_driver_executable
+    empty_bin = tmp_path / "empty-bin"
+    empty_bin.mkdir()
+    monkeypatch.setenv("PATH", str(empty_bin))
+    monkeypatch.chdir(empty_bin)
+
+    assert resolve_driver_executable("python3") == sys.executable
+    assert resolve_driver_executable("python3.exe") == sys.executable
+    assert resolve_driver_executable("PYTHON") == sys.executable
+    assert resolve_driver_executable("node") is None
+
+    # Test WindowsApps stub rejection
+    fake_stub = tmp_path / "WindowsApps" / "python3.exe"
+    fake_stub.parent.mkdir(parents=True, exist_ok=True)
+    fake_stub.touch()
+    monkeypatch.setattr(shutil, "which", lambda cmd: str(fake_stub) if "python" in cmd else None)
+    monkeypatch.setattr(sys, "platform", "win32")
+    assert resolve_driver_executable("python3") == sys.executable
+
+    monkeypatch.setattr(sys, "executable", "")
+    assert resolve_driver_executable("python3") is None
